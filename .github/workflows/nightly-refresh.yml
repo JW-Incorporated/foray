@@ -1,0 +1,130 @@
+# Foray nightly refresh — deterministic half (Phase 1 of the cloud migration).
+#
+# This is the KEYLESS, no-LLM stage. It polls the curated RSS feeds and resolves
+# Apple trackIds (scan + resolve, tools/refresh/), then publishes a credential-
+# free digest — resolved.json — to the `refresh-digest` branch. A Claude Cloud
+# scheduled agent reads that digest, authors hooks/tags (edits.json), runs
+# tools/refresh/merge.mjs, and opens a PR against protected main. See
+# tools/refresh/README.md and docs/nightly-refresh-cloud.md.
+#
+# Why a side branch, not main: the digest regenerates nightly and main is (will
+# be) protected with zero bypass — the Actions bot cannot push there. The digest
+# branch is unprotected and writable, mirrors Swift2's news-worker pattern, and
+# keeps main's history clean. The scan's seen-guid state (refresh-state.json)
+# rides on the same branch so it persists across ephemeral runners.
+#
+# No secrets are needed: scan is RSS-only, resolve is iTunes-lookup-only. The
+# only credential is the auto-provided GITHUB_TOKEN, scoped to contents below.
+#
+# Cron is offset off :00 (Swift2 convention — avoids GitHub's top-of-hour
+# scheduling contention). 09:40 UTC ≈ early US morning, a couple hours ahead of
+# the Cloud agent's run so it always finds a fresh digest.
+
+name: nightly-refresh
+
+on:
+  schedule:
+    - cron: "40 9 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: nightly-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  DIGEST_BRANCH: refresh-digest
+
+jobs:
+  scan-and-resolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      # scan.mjs pulls fast-xml-parser from backend/ via createRequire.
+      - name: Install backend deps
+        run: npm ci --prefix backend
+
+      # Restore the scan's seen-guid state from the digest branch so we don't
+      # re-emit episodes already processed on earlier nights. Absent on the very
+      # first run — that's fine; resolve.mjs still dedups against published
+      # discover.json, so a lost state file can never produce a duplicate.
+      - name: Restore scan state
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/$REPO/contents/refresh-state.json?ref=$DIGEST_BRANCH" --jq .content 2>/dev/null | base64 -d > refresh-state.json; then
+            echo "restored refresh-state.json ($(wc -c < refresh-state.json) bytes)"
+          else
+            echo '{"seen":{}}' > refresh-state.json
+            echo "no prior state on $DIGEST_BRANCH — starting fresh"
+          fi
+
+      - name: Scan feeds
+        env:
+          STATE_PATH: refresh-state.json
+          PENDING_PATH: fresh-pending.json
+        run: node tools/refresh/scan.mjs --window-hours 48
+
+      - name: Resolve trackIds
+        env:
+          PENDING_PATH: fresh-pending.json
+          RESOLVED_PATH: resolved.json
+        run: node tools/refresh/resolve.mjs
+
+      # Publish resolved.json + refresh-state.json to the digest branch via the
+      # contents API (create-or-update, with retry on GitHub's intermittent 5xx).
+      # This step DOES fail the job if publishing genuinely fails — a digest no
+      # one can read is the whole point of failure — but only after retrying.
+      - name: Publish digest to refresh-digest branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          retry() {
+            local n=1 max=4 delay=5
+            until "$@"; do
+              if [ $n -ge $max ]; then echo "FAILED after $max attempts: $*" >&2; return 1; fi
+              echo "attempt $n/$max failed, retrying in ${delay}s..." >&2
+              sleep $delay; n=$((n + 1)); delay=$((delay * 3))
+            done
+          }
+
+          # Create the branch from the current commit if it does not exist yet.
+          if ! gh api "repos/$REPO/git/ref/heads/$DIGEST_BRANCH" >/dev/null 2>&1; then
+            retry gh api -X POST "repos/$REPO/git/refs" \
+              -f ref="refs/heads/$DIGEST_BRANCH" -f sha="${{ github.sha }}"
+            echo "created $DIGEST_BRANCH branch"
+          fi
+
+          put_file() {
+            local path="$1" msg="$2"
+            local sha
+            sha=$(gh api "repos/$REPO/contents/$path?ref=$DIGEST_BRANCH" --jq .sha 2>/dev/null || true)
+            if [ -n "$sha" ]; then
+              retry gh api -X PUT "repos/$REPO/contents/$path" \
+                -f message="$msg" -f branch="$DIGEST_BRANCH" -f sha="$sha" \
+                -f content="$(base64 -w0 "$path")" >/dev/null
+            else
+              retry gh api -X PUT "repos/$REPO/contents/$path" \
+                -f message="$msg" -f branch="$DIGEST_BRANCH" \
+                -f content="$(base64 -w0 "$path")" >/dev/null
+            fi
+          }
+
+          COUNT=$(node -e "console.log(require('./resolved.json').resolved.length)")
+          put_file resolved.json "chore(refresh): digest — ${COUNT} resolved ($(date -u +%F))"
+          put_file refresh-state.json "chore(refresh): scan state ($(date -u +%F))"
+          echo "published digest: ${COUNT} resolved episodes"
