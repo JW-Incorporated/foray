@@ -233,7 +233,72 @@ rich the deep-dive branching can get.)
   curriculum — without an autoplay chain (still one deliberate tap per session,
   principle-safe).
 
-## 7. Recommender architecture — the evolution (not a rewrite)
+## 7. Search & user playlists — token-light by construction
+
+Users must be able to **search** the catalogue and **build playlists**. Neither
+should cost meaningful LLM spend, and they don't have to — because the same
+structured feature layer that powers curation *is a query language*. The rule:
+
+> **LLM tags items offline (once, at ingest). At query time it does nothing but,
+> occasionally, translate a vague request into a structured query — never select
+> or rank content.** Selection and ranking are deterministic filters over
+> taxonomy nodes, tags, depth, format, duration, and (later) embeddings.
+
+This keeps sustainment cost near zero and makes search, filters, recommendations,
+playlists, and depth ladders all the *same operation* over one index.
+
+### Search
+- **Keyword + faceted search — zero tokens, shippable now.** The catalogue is
+  ~1k items, small enough to ship a prebuilt inverted index to the client (e.g.
+  FlexSearch/MiniSearch-style) over `title` + `show` + `hook` + `tags` + taxonomy
+  labels. Facets = taxonomy node, `depth`, `format`, duration bucket, `evergreen`.
+  All deterministic, offline-capable, instant. No backend LLM.
+- **Semantic search — later, still token-light.** When the embedding pipeline
+  exists (Step E), "find episodes *like* this idea" is a vector nearest-neighbor
+  lookup. Item embeddings are computed once at ingest; only the *query* needs
+  embedding — a call ~1000× cheaper than generation, cacheable, and doable with a
+  small/local model. Still no per-query *generation*.
+
+### User playlists (manual) — zero LLM
+Plain CRUD over episode ids: save, name, reorder, share. Stored per user
+(`playlists(user_id, id, title, episode_ids[], created_at)` — see §4). Table
+stakes; no AI involved. "Save for later" is just the default playlist.
+
+### Generated / smart playlists — deterministic first, one cheap LLM call at most
+1. **Deterministic path (the common case, zero tokens).** Most prompts map
+   straight onto known structure: *"fusion primer"* → node `engineering/energy-fusion`
+   + depth-ordered = a depth ladder (§6); *"aviation history"* → tags + node +
+   `format:narrative`. If the prompt resolves to taxonomy nodes/tags with decent
+   confidence, build the playlist by filter+rank — **no LLM at all.**
+2. **The one allowed LLM call — query *understanding*, not content selection.**
+   For a genuinely vague prompt (*"something to make me feel better about the
+   world"*), call **Sonnet once** to translate it into a **structured filter spec**
+   (nodes, tags, tone, format, depth, target length) — a tiny, cheap, **cacheable
+   by prompt** call whose output is a *query*, not a playlist. The playlist is then
+   assembled deterministically from that spec. So the model shapes the *where to
+   look*; the architecture does the *choosing*. One small call per novel vague
+   prompt, then cached.
+3. **Smart playlists = saved queries.** Persist the filter spec, not a frozen
+   list, so the playlist **auto-refreshes** as new episodes arrive (iTunes-smart-
+   playlist / Netflix-row style) — zero ongoing LLM. Depth ladders are the
+   hand-curated, prerequisite-ordered special case of exactly this.
+
+### Where LLM cost actually lives (and doesn't)
+| Operation | LLM at query/runtime? |
+|---|---|
+| Keyword/facet search | **No** |
+| Semantic search | Cheap query-embed only (no generation) |
+| Manual playlists / save-for-later | **No** |
+| Generated playlist, prompt maps to known tags | **No** |
+| Generated playlist, vague prompt | **One cached Sonnet call** → filter spec (not content) |
+| Smart-playlist refresh | **No** (re-runs the saved query) |
+| Item tagging | Yes — but **offline at ingest**, already metered by the budget guard |
+
+This is the "rich per-item feature vector is a moat" lesson (prior-art §Pandora)
+paying off: once items are well-tagged, everything users *do* with the catalogue
+is cheap querying, not expensive generation.
+
+## 8. Recommender architecture — the evolution (not a rewrite)
 
 Each step is shippable and preserves the archetype menu + exploration floor.
 
@@ -250,7 +315,12 @@ Steps A–D are buildable now and don't need a population or an embedding pipeli
 E–F are earned once there's data. **Do not skip to F** — CF without the guardrails
 of A–D and the exploration floor is how you rebuild an engagement feed by accident.
 
-## 8. Metrics — measure the right thing (not watch-time)
+**Search and manual playlists (§7) are orthogonal and ship independently** — they
+need only the catalogue index and a `playlists` table, no user model. Generated /
+smart playlists reuse the depth-ladder machinery (Step D). Semantic search rides
+the embeddings from Step E.
+
+## 9. Metrics — measure the right thing (not watch-time)
 
 Because the objective is curiosity/learning, not time-on-app:
 - **Deliberate-completion rate** (finished ≥85% of a *chosen* item) — the core
@@ -264,7 +334,7 @@ Because the objective is curiosity/learning, not time-on-app:
 - **Explicitly NOT a metric:** session length, daily-active minutes, or anything
   that rewards keeping someone in the app longer than their commute.
 
-## 9. Open decisions for the founders
+## 10. Open decisions for the founders
 
 1. **Accounts model (Wyatt):** confirm anonymous-first with opt-in accounts later
    (§4), or do we want real accounts at launch? Everything downstream depends on
@@ -282,7 +352,7 @@ Because the objective is curiosity/learning, not time-on-app:
 6. **Privacy posture:** confirm the minimal-data, self-serve export/delete stance
    (§4) as a written principle (candidate for `docs/DECISIONS.md`).
 
-## 10. Suggested sequencing
+## 11. Suggested sequencing
 
 1. **Decisions #1, #2** (accounts model + persona research) — they gate everything.
 2. **Step A + B** (per-user weights + personas + optional onboarding) — the
