@@ -1,0 +1,34 @@
+# Auto-merge the nightly content PRs once their required checks pass.
+#
+# The Claude Cloud agent (foray-nightly-enrich) opens a PR from a `nightly/<date>`
+# branch. This enables GitHub's native auto-merge on it, so the PR merges itself
+# the moment the required checks (`backend`, `data-and-site`) go green — no human
+# in the loop for routine content. It does NOT bypass anything: auto-merge waits
+# for the same `protect-main` checks every other PR must pass; a red check simply
+# means the PR never merges.
+#
+# Scoped to `nightly/*` head branches ONLY — human PRs are never auto-merged.
+# Requires the repo's "Allow auto-merge" setting (enabled 2026-07-24).
+
+name: automerge-nightly
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-automerge:
+    if: startsWith(github.head_ref, 'nightly/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge (squash)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --auto --squash --delete-branch

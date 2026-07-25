@@ -66,8 +66,9 @@ You produce `edits.json` (hooks + tags) and run the committed merge. See
    gh pr create --base main --title "Nightly refresh: +N episodes (YYYY-MM-DD)" \
      --body "Automated nightly content refresh. N new episodes from the refresh-digest of <date>. Copy rules + pool integrity green."
    ```
-   A human (or the future integrity check) reviews and merges. GitHub Pages
-   deploys from `main` on merge.
+   Do NOT merge it yourself. `automerge-nightly.yml` enables auto-merge on
+   `nightly/*` PRs, so it merges automatically once the required checks
+   (`backend`, `data-and-site`) pass; GitHub Pages then deploys from `main`.
 
 ## Hard constraints
 
