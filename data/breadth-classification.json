@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T11:36:09.669Z",
+  "built_at": "2026-07-25T12:37:19.547Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-7f43cc10",
+    "last_batch_id": "fresh-2026-07-25-14f41007",
     "last_batch_tier": 1
   },
   "entries": {
@@ -70758,11 +70758,40 @@
     },
     "1525283536": {
       "topics": [
-        "education/how-to"
+        "sports/football",
+        "kids-family/stories",
+        "culture/books",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about football within sports; strong signal from episodes.",
+      "display_title": "The All In Podcast",
+      "blurb": "The All In Podcast is hosted by Rod Watson and features conversations with elite athletes, entrepreneurs, entertainers investors, and creators coverin.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1525311067": {
       "topics": [
@@ -70831,11 +70860,40 @@
     },
     "1525445350": {
       "topics": [
-        "society/government"
+        "news/politics",
+        "society/law",
+        "history/military-modern",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about politics within news; strong signal from episodes.",
+      "display_title": "Pekingology",
+      "blurb": "China is one of the 21st century’s most consequential nations, and it has never been more important to understand how the country is governed. Pekingo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1525448211": {
       "topics": [
@@ -70876,11 +70934,40 @@
     },
     "1525514686": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "kids-family/parenting",
+        "tv-film/reviews",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused podcast about tennis within sports; strong signal from episodes.",
+      "display_title": "Tennis IQ Podcast",
+      "blurb": "Ninety percent of tennis performance is mental and that's what makes the sport so difficult. Sport psychology professionals Brian Lomax and Josh Burge.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1525551929": {
       "topics": [
@@ -71035,12 +71122,40 @@
     },
     "1525750966": {
       "topics": [
-        "health",
-        "health/mental"
+        "nature/ocean-science",
+        "culture/design",
+        "transport/maritime",
+        "craft/instrument-making"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/instrument-making",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about ocean-science within nature; strong signal from episodes.",
+      "display_title": "Relaxing White Noise",
+      "blurb": "Welcome to Relaxing White Noise, the podcast featuring white noise and nature sounds to help you sleep, study or soothe a baby. We make relaxing sound.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1525760514": {
       "topics": [
@@ -71127,11 +71242,40 @@
     },
     "1525997434": {
       "topics": [
-        "culture/art"
+        "craft/filmmaking",
+        "culture/books",
+        "news/daily",
+        "tv-film/history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about filmmaking within craft; strong signal from episodes.",
+      "display_title": "A brush with...",
+      "blurb": "A brush with, sponsored by Bloomberg Connects, is a podcast by The Art Newspaper that features in-depth conversations with leading international ar....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1526015775": {
       "topics": [
@@ -71531,11 +71675,40 @@
     },
     "1526914048": {
       "topics": [
-        "computing"
+        "news/politics",
+        "culture/books",
+        "economics/markets",
+        "tv-film/reviews"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about politics within news; strong signal from episodes.",
+      "display_title": "This Machine Kills",
+      "blurb": "A podcast about technology and political economy /// Agitprop against innovation and capital /// Hosted by Jathan Sadowski and Edward Ongweso Jr., Pro.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1526915967": {
       "topics": [
@@ -71554,13 +71727,40 @@
     },
     "1526947972": {
       "topics": [
-        "education/courses",
-        "transport/trains",
-        "history/military-modern"
+        "culture/design",
+        "tv-film/reviews",
+        "transport/maritime",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about design within culture; strong signal from episodes.",
+      "display_title": "Combat Ready Fire Training Show",
+      "blurb": "Will be replay's from our live Q&A's. Join us to come talk shop!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1526950497": {
       "topics": [
@@ -71616,11 +71816,40 @@
     },
     "1527053422": {
       "topics": [
-        "nature"
+        "fiction/sci-fi",
+        "history/military-ancient",
+        "food/cooking-science",
+        "culture/design"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.8
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about sci-fi within fiction; strong signal from episodes.",
+      "display_title": "Shark Week: The Podcast",
+      "blurb": "\"Shark Week: The Podcast” with host Kasha Patel is your place for thrilling shark tales intertwined with science and research. Each week, we unearth c.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1527059276": {
       "topics": [
@@ -71694,12 +71923,43 @@
     },
     "1527210118": {
       "topics": [
-        "society/government",
-        "psychology"
+        "history/military-modern",
+        "nature/animal-cognition",
+        "philosophy/ideas",
+        "travel"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about military-modern within history; strong signal from episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1527286862": {
       "topics": [
@@ -71774,11 +72034,40 @@
     },
     "1527442768": {
       "topics": [
-        "personal-journals"
+        "food/cooking-science",
+        "culture/books",
+        "fiction/comedy",
+        "society/law"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about cooking-science within food; strong signal from episodes.",
+      "display_title": "The Shift with Sam Baker",
+      "blurb": "The Shift is a podcast that aims to tell the truth about being a woman post-40, created and hosted by writer and broadcaster, Sam Baker. Did you ever.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1527449114": {
       "topics": [
@@ -71987,11 +72276,40 @@
     },
     "1527948382": {
       "topics": [
-        "tv-film/reviews"
+        "kids-family/stories",
+        "craft/photography",
+        "culture/art",
+        "tv-film/history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about stories within kids-family; strong signal from episodes.",
+      "display_title": "You Are Good",
+      "blurb": "A feelings podcast about movies..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1527984094": {
       "topics": [
@@ -72093,11 +72411,40 @@
     },
     "1528267426": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "education/language-learning",
+        "culture/design",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused podcast about tennis within sports; strong signal from episodes.",
+      "display_title": "The GreatBase Tennis Podcast",
+      "blurb": "The GreatBase Tennis Podcast is a weekly audio show presented by Steve Smith and associates. Information, ideas, and insights are provided to help tho.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1528306060": {
       "topics": [
@@ -72220,11 +72567,40 @@
     },
     "1528622068": {
       "topics": [
-        "sports/football"
+        "sports/soccer",
+        "health/fitness",
+        "culture/design",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused podcast about soccer within sports; strong signal from episodes.",
+      "display_title": "The Athletic Football Show: A show about the",
+      "blurb": "The Athletic’s flagship NFL podcast covers the league like only The Athletic can. Host Robert Mays and co-hosts Derrik Klassen and Dave Helman dive in.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1528634304": {
       "topics": [
@@ -72494,11 +72870,40 @@
     },
     "1529341876": {
       "topics": [
-        "religion/judaism"
+        "news/politics",
+        "culture/design",
+        "society/law",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about politics within news; strong signal from episodes.",
+      "display_title": "Unpacking Israeli History",
+      "blurb": "Join self-confessed history nerd Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1529343755": {
       "topics": [
@@ -72546,11 +72951,40 @@
     },
     "1529370760": {
       "topics": [
-        "culture"
+        "true-crime",
+        "automotive/racing",
+        "news/politics",
+        "culture/design"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Broad true-crime content; consistent across episodes and description.",
+      "display_title": "The Underworld Podcast",
+      "blurb": "Underworld exposes the secret world of transnational criminal networks that have flourished since there were banks to bust, drugs to smuggle, and scam.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1529430696": {
       "topics": [
@@ -72576,11 +73010,40 @@
     },
     "1529501014": {
       "topics": [
-        "gaming"
+        "culture/design",
+        "adventure/exploration",
+        "travel",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about design within culture; strong signal from episodes.",
+      "display_title": "Curse of Strahd: Twice Bitten",
+      "blurb": "Six DMs return to the mists to run a completely Rules-As-Written Curse of Strahd campaign. Our core question: what happens when, rather than luring in.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1529524084": {
       "topics": [
@@ -72841,11 +73304,40 @@
     },
     "1530250126": {
       "topics": [
-        "culture/books"
+        "fiction/sci-fi",
+        "culture/books",
+        "economics/markets",
+        "tv-film/reviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about sci-fi within fiction; strong signal from episodes.",
+      "display_title": "The Shit No One Tells You About Writing",
+      "blurb": "This is a podcast for emerging writers who want to improve the quality of their work and learn more about the publishing industry. Your one host, Bian.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1530297765": {
       "topics": [
@@ -73157,11 +73649,43 @@
     },
     "1531105768": {
       "topics": [
-        "education/how-to"
+        "health/mental",
+        "culture/design",
+        "medicine/neuroscience",
+        "philosophy/ideas"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about mental within health; strong signal from episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /delve/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1531117248": {
       "topics": [
@@ -73279,11 +73803,40 @@
     },
     "1531526782": {
       "topics": [
-        "science"
+        "tv-film/reviews",
+        "medicine/neuroscience",
+        "health/nutrition",
+        "culture/art"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about reviews within tv-film; strong signal from episodes.",
+      "display_title": "Unbiased Science",
+      "blurb": "Dr. Jessica Steier, a public-health expert, and Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1531533683": {
       "topics": [
@@ -73317,11 +73870,40 @@
     },
     "1531548700": {
       "topics": [
-        "music"
+        "culture/design",
+        "economics/markets",
+        "engineering/ai-robotics",
+        "news/daily"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about design within culture; strong signal from episodes.",
+      "display_title": "Dipped In Tone",
+      "blurb": "Rhett Shull and Zach Broyles combine their music and gear industry knowledge for this weekly podcast. Together they discuss news, talk gear, debunk my.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1531582939": {
       "topics": [
@@ -73363,11 +73945,40 @@
     },
     "1531637824": {
       "topics": [
-        "sports/cricket"
+        "kids-family/parenting",
+        "tv-film/reviews",
+        "craft/diy-home",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about parenting within kids-family; strong signal from episodes.",
+      "display_title": "The BYC Podcast",
+      "blurb": "The BYC is New Zealand's most celebrated and feared specialty cricket podcast. Join Paul Ford, Dylan Cleaver and a range of dubious guests for those u.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1531650924": {
       "topics": [
@@ -73378,11 +73989,40 @@
     },
     "1531659166": {
       "topics": [
-        "psychology"
+        "true-crime",
+        "culture/books",
+        "tv-film/reviews",
+        "society/law"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Broad true-crime content; consistent across episodes and description.",
+      "display_title": "The Criminology Academy",
+      "blurb": "A podcast, hosted by Jose Sanchez (Assistant Professor of Criminology and Criminal Justice, Texas Christian University) and Jennifer Tostlebe (Assista.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1531729571": {
       "topics": [
@@ -73665,11 +74305,40 @@
     },
     "1532672950": {
       "topics": [
-        "tv-film/reviews"
+        "true-crime",
+        "culture/books",
+        "paranormal",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Broad true-crime content; consistent across episodes and description.",
+      "display_title": "Scream!",
+      "blurb": "A horror movie podcast that started with hostile movie discussions has evolved into hostile movie discussions. Hosted by Ash & Alaina from Morbid:....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1532674246": {
       "topics": [
@@ -73806,11 +74475,40 @@
     },
     "1532931622": {
       "topics": [
-        "education/how-to"
+        "craft/filmmaking",
+        "culture/design",
+        "transport/maritime",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about filmmaking within craft; strong signal from episodes.",
+      "display_title": "Coordinated",
+      "blurb": "AP coordinators, this is our podcast! Laugh outloud with hosts Abby and Karli as they engage in conversations with superstars and unsung heroes in edu.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1532932137": {
       "topics": [
@@ -73821,11 +74519,40 @@
     },
     "1532956108": {
       "topics": [
-        "education/self-improvement"
+        "comedy/stand-up",
+        "kids-family/stories",
+        "automotive/racing",
+        "culture/books"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about stand-up within comedy; strong signal from episodes.",
+      "display_title": "IMO with Michelle Obama and Craig Robinson",
+      "blurb": "Michelle Obama and her big brother Craig Robinson bring their unique experiences and candid perspectives to a range of listeners’ personal dilemmas, f.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1532976305": {
       "topics": [
@@ -73860,11 +74587,40 @@
     },
     "1533079072": {
       "topics": [
-        "nature"
+        "nature/ocean-science",
+        "cities/urbanism",
+        "travel",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "cities/urbanism",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about ocean-science within nature; strong signal from episodes.",
+      "display_title": "Wildlife for You",
+      "blurb": "Discussions about wildlife that are both entertaining and educational..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1533088916": {
       "topics": [
@@ -73989,11 +74745,40 @@
     },
     "1533545890": {
       "topics": [
-        "culture"
+        "kids-family/education",
+        "transport/maritime",
+        "education/how-to",
+        "philosophy/ideas"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about education within kids-family; strong signal from episodes.",
+      "display_title": "Wake Up With The Wolf",
+      "blurb": "In order to become the best version of yourself, you need to get out of your mind and into your body. Too many people remain the same for decades beca.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1533546034": {
       "topics": [
@@ -74048,11 +74833,25 @@
     },
     "1533649648": {
       "topics": [
-        "hobbies"
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Broad education content; consistent across episodes and description.",
+      "display_title": "TBSラジオ『ジェーン・スーと堀井美香の「OVER THE SUN」』",
+      "blurb": "ジェーン・スーと堀井美香による、Podcast番組。リスナーのみなさんともに語らいながら、〝太陽の向こう側〟を目指していきます。 ※メールアドレスは、｟ over@tbs.co.jp ｠ ※毎週金曜日・午後5時に配信予定 出演：ジェーン・スー（コラムニスト・作詞家）、堀井美香（フリーアナウンサー・ナ.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1533675150": {
       "topics": [
@@ -74119,19 +74918,77 @@
     },
     "1533722524": {
       "topics": [
-        "culture/books"
+        "food/cooking-science",
+        "culture/books",
+        "transport/maritime",
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about cooking-science within food; strong signal from episodes.",
+      "display_title": "Glamorous Trash: A Celebrity Memoir Podcast",
+      "blurb": "Celebrity memoirs, pop culture, and books! Join us as we book club female celebrity memoirs through a thoughtful lens..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1533736348": {
       "topics": [
-        "fiction/drama"
+        "craft/woodworking",
+        "culture/books",
+        "business/careers",
+        "space"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        },
+        {
+          "node": "space",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about woodworking within craft; strong signal from episodes.",
+      "display_title": "Tower 4",
+      "blurb": "Mike Archer is a newly appointed fire watcher in the Wyoming woods. While he's never done anything like this before, he needed something new after his.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1533739264": {
       "topics": [
@@ -74395,11 +75252,40 @@
     },
     "1534355704": {
       "topics": [
-        "health/nutrition"
+        "culture/design",
+        "engineering/ai-robotics",
+        "health/nutrition",
+        "medicine/biology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about design within culture; strong signal from episodes.",
+      "display_title": "LONGEVITY with Nathalie Niddam",
+      "blurb": "LONGEVITY with Nathalie Niddam is your go-to podcast for diving deep into the science and practices for increasing your longevity and healthspan. This.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1534365100": {
       "topics": [
@@ -74564,11 +75450,30 @@
     },
     "1534640362": {
       "topics": [
-        "religion"
+        "culture/design",
+        "automotive"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about design within culture; strong signal from episodes.",
+      "display_title": "Santo Rosario - Misioneros Digitales Católicos",
+      "blurb": "Rosario significa una corona de rosas, si porque cuando rezamos el rosario, estamos haciendo una corona de rosas para la virgen..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1534645641": {
       "topics": [
@@ -74601,11 +75506,40 @@
     },
     "1534764208": {
       "topics": [
-        "religion/spirituality"
+        "kids-family/parenting",
+        "automotive/racing",
+        "culture/books",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about parenting within kids-family; strong signal from episodes.",
+      "display_title": "Hey Spirit! with Theresa Caputo",
+      "blurb": "Theresa Caputo – better known to millions of fans as the “Long Island Medium” from the hit reality series of the same name – provides virtual readings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1534771206": {
       "topics": [
@@ -74617,11 +75551,40 @@
     },
     "1534780078": {
       "topics": [
-        "society/government"
+        "true-crime",
+        "automotive/racing",
+        "news/politics",
+        "craft/filmmaking"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Broad true-crime content; consistent across episodes and description.",
+      "display_title": "Fiasco",
+      "blurb": "Host Leon Neyfakh transports listeners into the day-to-day reality of our country's most pivotal historical events, bringing to life the forgotten twi.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1534809194": {
       "topics": [
@@ -74707,12 +75670,40 @@
     },
     "1534972612": {
       "topics": [
-        "nature/earth-science",
-        "engineering/disasters"
+        "news/politics",
+        "culture/design",
+        "tv-film/reviews",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about politics within news; strong signal from episodes.",
+      "display_title": "Breaking Down: Collapse",
+      "blurb": "Apprehensive about the future? Like many, you likely have a gut feeling that things aren't quite right, but haven&rsquo;t been able to place your fing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1535045689": {
       "topics": [
@@ -75085,11 +76076,40 @@
     },
     "1536199648": {
       "topics": [
-        "tv-film"
+        "automotive/racing",
+        "craft/filmmaking",
+        "tv-film/reviews",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about racing within automotive; strong signal from episodes.",
+      "display_title": "Dear Movies, I Love You",
+      "blurb": "Movies aren't just something we watch—they're something we fall for. Dear​ Movies, I Love You is a podcast that treats cinema like that high school cr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1536210147": {
       "topics": [
@@ -75763,11 +76783,40 @@
     },
     "1538378650": {
       "topics": [
-        "culture/fashion"
+        "kids-family/parenting",
+        "automotive/racing",
+        "craft/filmmaking",
+        "culture/design"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about parenting within kids-family; strong signal from episodes.",
+      "display_title": "Add to Cart with Kulap Vilaysack & SuChin",
+      "blurb": "SuChin Pak and Kulap Vilaysack host the award-winning weekly comedy podcast, Add to Cart, a podcast about the things we buy, the things we buy into, a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1538415261": {
       "topics": [
@@ -75825,11 +76874,40 @@
     },
     "1538513554": {
       "topics": [
-        "psychology"
+        "news/politics",
+        "culture/design",
+        "linguistics/language",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about politics within news; strong signal from episodes.",
+      "display_title": "Converging Dialogues",
+      "blurb": "Converging Dialogues is a podcast that is designed to have honest and authentic conversations with a diversity of thoughts and opinions. Wide-ranging.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1538648705": {
       "topics": [
@@ -76189,11 +77267,40 @@
     },
     "1540251892": {
       "topics": [
-        "culture"
+        "kids-family/stories",
+        "true-crime",
+        "craft/woodworking",
+        "culture/books"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about stories within kids-family; strong signal from episodes.",
+      "display_title": "I'm Not a Monster",
+      "blurb": "Seeking to separate fact from fiction, the multi award-winning series returns to investigate the divisive story of Shamima Begum. When three London sc.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1540297059": {
       "topics": [
@@ -76271,11 +77378,40 @@
     },
     "1540459978": {
       "topics": [
-        "education/courses"
+        "culture/design",
+        "tv-film/reviews",
+        "society/law",
+        "cities/urbanism"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "cities/urbanism",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about design within culture; strong signal from episodes.",
+      "display_title": "ACE the ACE with Sylvia Kenmuir",
+      "blurb": "A review of the important topics needed to study and pass the Associate Certified Entomologist exam. Episodes will follow the ACE study guide \"IPM for.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1540463232": {
       "topics": [
@@ -76519,11 +77655,40 @@
     },
     "1541227588": {
       "topics": [
-        "religion"
+        "culture/books",
+        "cities/urbanism",
+        "relationships",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "cities/urbanism",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about books within culture; strong signal from episodes.",
+      "display_title": "5 minutes a Day on the Parsha with",
+      "blurb": "These Shiurim are available on TorahAnytime by clicking https://MyTaT.me/s1406 Good News! The Rabbi's Book Day-to-Day based on these podcasts is now a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1541268793": {
       "topics": [
@@ -76534,11 +77699,40 @@
     },
     "1541274724": {
       "topics": [
-        "hobbies"
+        "religion/christianity",
+        "kids-family/stories",
+        "craft/photography",
+        "culture/design"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about christianity within religion; strong signal from episodes.",
+      "display_title": "Duck Call Room",
+      "blurb": "The guys who kept America laughing for 11 seasons while cranking out duck calls are back in the heart of Duck Commander to share hilarious stories, ta.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1541366646": {
       "topics": [
@@ -76604,11 +77798,40 @@
     },
     "1541561056": {
       "topics": [
-        "music"
+        "kids-family/stories",
+        "craft/filmmaking",
+        "culture/design",
+        "tv-film/interviews"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about stories within kids-family; strong signal from episodes.",
+      "display_title": "Music Matters with Darrell Craig Harris",
+      "blurb": "Music Matters with Darrell Craig Harris features exclusive conversations with some of the biggest names in music, entertainment, and the recording ind.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1541602946": {
       "topics": [
@@ -77037,11 +78260,40 @@
     },
     "1543038352": {
       "topics": [
-        "culture/art"
+        "craft/woodworking",
+        "culture/books",
+        "gaming/design",
+        "tv-film/interviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about woodworking within craft; strong signal from episodes.",
+      "display_title": "The Quilter on Fire Podcast",
+      "blurb": "Quilting is the best hobby on earth! It includes everything from quilts and fibre art to wearables and bags. It brings you immense joy and it's a grea.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1543051153": {
       "topics": [
@@ -77340,11 +78592,40 @@
     },
     "1544098624": {
       "topics": [
-        "education/self-improvement"
+        "sports/basketball",
+        "health/mental",
+        "culture/books",
+        "medicine/neuroscience"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about basketball within sports; strong signal from episodes.",
+      "display_title": "How to Be a Better Human",
+      "blurb": "How To Be A Better Human isn’t your average self improvement podcast. Each week join Chris Duffy in conversation with guests and past speakers as they.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1544099373": {
       "topics": [
@@ -77466,11 +78747,40 @@
     },
     "1544614138": {
       "topics": [
-        "religion/islam"
+        "culture/books",
+        "society/law",
+        "space",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.7
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about books within culture; strong signal from episodes.",
+      "display_title": "Noreen Muhammad Siddique",
+      "blurb": "Sheikh Noreen Muhammad Siddiq was born 38 years ago in a town called Farajab in Sudan, and he studied boarding in Khorsi in 1998, and was a student of.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1544615251": {
       "topics": [
@@ -77718,11 +79028,40 @@
     },
     "1545536782": {
       "topics": [
-        "science"
+        "culture/design",
+        "paranormal",
+        "travel",
+        "gaming"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about design within culture; strong signal from episodes.",
+      "display_title": "Completely Arbortrary",
+      "blurb": "Tree advocate Casey Clapp and his tree-curious friend Alex Crowson bring you a podcast about trees and other related topics. History, culture, art, re.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1545551635": {
       "topics": [
@@ -77820,11 +79159,40 @@
     },
     "1545953110": {
       "topics": [
-        "health"
+        "health/mental",
+        "culture/books",
+        "kids-family/education",
+        "society/law"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused podcast about mental within health; strong signal from episodes.",
+      "display_title": "Huberman Lab",
+      "blurb": "The Huberman Lab podcast is hosted by Andrew Huberman, Ph.D., a neuroscientist and tenured professor in the department of neurobiology, and by courtes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1546000046": {
       "topics": [
@@ -77872,11 +79240,40 @@
     },
     "1546171048": {
       "topics": [
-        "sports/endurance"
+        "culture/design",
+        "engineering/ai-robotics",
+        "cities/urbanism",
+        "travel"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "cities/urbanism",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about design within culture; strong signal from episodes.",
+      "display_title": "An Open Water Swimmer's Podcast",
+      "blurb": "Outdoor swimming is one of the fastest growing activities in the world, the benefits of which are well documented across many platforms and media. Eac.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1546190819": {
       "topics": [
@@ -77959,11 +79356,40 @@
     },
     "1546393120": {
       "topics": [
-        "psychology"
+        "health/mental",
+        "culture/books",
+        "tv-film/interviews",
+        "nature/earth-science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about mental within health; strong signal from episodes.",
+      "display_title": "Finding Our Voice",
+      "blurb": "Finding Our Voice is an anthology podcast that aligns with the American Psychiatric Association Presidential theme. It brings the viewpoints and opini.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1546456269": {
       "topics": [
@@ -77991,11 +79417,40 @@
     },
     "1546521148": {
       "topics": [
-        "education/courses"
+        "culture/design",
+        "tv-film/reviews",
+        "engineering/ai-robotics",
+        "health/nutrition"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about design within culture; strong signal from episodes.",
+      "display_title": "Cram The Pance",
+      "blurb": "Designed for PA students, medical students, nurse practitioner students, nursing students, and all future healthcare professionals, this podcast deliv.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1546528865": {
       "topics": [
@@ -78072,11 +79527,40 @@
     },
     "1546644202": {
       "topics": [
+        "news/politics",
+        "culture/art",
+        "travel",
         "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about politics within news; strong signal from episodes.",
+      "display_title": "Ranking U.S. Presidents",
+      "blurb": "We rank U.S. presidents.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1546685351": {
       "topics": [
@@ -78089,12 +79573,43 @@
     },
     "1546693714": {
       "topics": [
-        "culture",
-        "nature/earth-science"
+        "economics/markets",
+        "paranormal",
+        "tv-film/history",
+        "travel"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about markets within economics; strong signal from episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1546700341": {
       "topics": [
@@ -78173,11 +79688,40 @@
     },
     "1547078080": {
       "topics": [
-        "education/self-improvement"
+        "education/language-learning",
+        "culture/books",
+        "tv-film/reviews",
+        "linguistics/language"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused podcast about language-learning within education; strong signal from episodes.",
+      "display_title": "All It Takes Is A Goal",
+      "blurb": "Jon Acuff is the New York Times bestselling author of ten books, including his most recent, All it Takes is a Goal. Published in dozens of languages,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1547078697": {
       "topics": [
@@ -78328,11 +79872,40 @@
     },
     "1547327662": {
       "topics": [
-        "business/non-profit"
+        "automotive/racing",
+        "culture/design",
+        "economics/markets",
+        "society/law"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about racing within automotive; strong signal from episodes.",
+      "display_title": "Understanding IP Matters",
+      "blurb": "‘Understanding IP Matters,’ is a popular podcast series that enables successful entrepreneurs, inventors, content creators, executives and experts to.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1547329537": {
       "topics": [
@@ -78364,12 +79937,40 @@
     },
     "1547404042": {
       "topics": [
-        "news",
-        "religion/judaism"
+        "news/politics",
+        "craft/filmmaking",
+        "culture/books",
+        "tv-film/reviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused podcast about politics within news; strong signal from episodes.",
+      "display_title": "The Times of Israel Daily Briefing",
+      "blurb": "Welcome to The Times of Israel Daily Briefing: Your update on what&rsquo;s important in Israel, the Middle East and The Jewish World..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1547409175": {
       "topics": [
@@ -78417,11 +80018,40 @@
     },
     "1547649886": {
       "topics": [
-        "gaming"
+        "true-crime",
+        "nature/ocean-science",
+        "culture/design",
+        "adventure/exploration"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Broad true-crime content; consistent across episodes and description.",
+      "display_title": "Find the Path Presents",
+      "blurb": "The city of Kintargo has long been a shelter for artists, free-thinkers, and those marginalized by the oppressive Chelaxian government ― but now the c.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1547669099": {
       "topics": [
@@ -78551,11 +80181,40 @@
     },
     "1547990488": {
       "topics": [
-        "culture/performing-arts"
+        "health/mental",
+        "culture/art",
+        "relationships",
+        "space"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        },
+        {
+          "node": "space",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused podcast about mental within health; strong signal from episodes.",
+      "display_title": "Crossroads Podcast Uk",
+      "blurb": "Mental health issues guest about life singers actors giving people a😆voice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-14f41007",
+      "classified_at": "2026-07-25T12:37:19.547Z"
     },
     "1548008150": {
       "topics": [
