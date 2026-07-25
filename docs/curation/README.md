@@ -21,6 +21,11 @@ depth-based learning paths.
   serves them (finding: the taxonomy architecture fits; content is founder-skewed,
   with software/computing and true-crime the notable gaps). Full persona research
   is delegated to Joey's lane via a tracking issue.
+- **[ladders-client-spec.md](ladders-client-spec.md)** — Step D (§6): how the
+  web client should fetch `data/ladders.json`, infer a listener's entry rung
+  from observed history (never declared), and surface it as an additive badge
+  — not yet implemented; `app.js`/`sw.js` are untouched pending a dedicated
+  client-integration pass.
 
 Background these build on: `docs/brief/03_CURATION_SPEC.md` (the original,
 excellent — but single-user — curation design) and the product principles in

@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "built_at": "2026-07-25T01:31:59.828Z",
+  "ladders": [
+    {
+      "id": "fusion-101",
+      "node": "engineering/energy-fusion",
+      "title": "Understanding fusion energy",
+      "status": "draft",
+      "estimated_total_min": 1163,
+      "rungs": [
+        {
+          "id": "overview",
+          "level": "overview",
+          "subtopic": null,
+          "goal": "The competing approaches to fusion power, and why none has reached the grid yet.",
+          "episode_ids": [
+            "cbc-general-fusion"
+          ],
+          "prerequisites": []
+        },
+        {
+          "id": "fundamentals",
+          "level": "fundamentals",
+          "subtopic": null,
+          "goal": "Tokamak basics: what confinement means and why fusion plasma is so hard to hold.",
+          "episode_ids": [
+            "titans-391-solomon"
+          ],
+          "prerequisites": [
+            "overview"
+          ]
+        },
+        {
+          "id": "deep-dive-frc-zpinch",
+          "level": "deep-dive",
+          "subtopic": "Field-reversed configuration & Z-pinch",
+          "goal": "Two approaches that skip superconducting magnets entirely, confining plasma with its own current.",
+          "episode_ids": [
+            "titans-403-tae",
+            "titans-zap-levitt"
+          ],
+          "prerequisites": [
+            "fundamentals"
+          ]
+        },
+        {
+          "id": "deep-dive-icf",
+          "level": "deep-dive",
+          "subtopic": "Inertial confinement",
+          "goal": "How a 192-beam laser and a pinhead-sized target achieved fusion ignition at NIF.",
+          "episode_ids": [
+            "titans-378-ma"
+          ],
+          "prerequisites": [
+            "fundamentals"
+          ]
+        },
+        {
+          "id": "deep-dive-stellarator",
+          "level": "deep-dive",
+          "subtopic": "Stellarator",
+          "goal": "The stellarator's harder-to-build, steadier-running alternative to the tokamak, from Wendelstein to planar coils.",
+          "episode_ids": [
+            "cleantechies-216-thea",
+            "omegatau-312-w7x"
+          ],
+          "prerequisites": [
+            "fundamentals"
+          ]
+        },
+        {
+          "id": "deep-dive-tokamak",
+          "level": "deep-dive",
+          "subtopic": "Tokamak",
+          "goal": "Magnetic confinement in depth: the Lawson criterion, superconducting magnets, and today's tokamak startups.",
+          "episode_ids": [
+            "l2m-tokamak-energy",
+            "omegatau-285-superconductivity",
+            "lex-353-whyte"
+          ],
+          "prerequisites": [
+            "fundamentals"
+          ]
+        },
+        {
+          "id": "frontier",
+          "level": "frontier",
+          "subtopic": null,
+          "goal": "Where the fusion race stands now: commercial timelines, plant economics, and who's closest.",
+          "episode_ids": [
+            "catalyst-pacific-fusion",
+            "lex-485-kirtley"
+          ],
+          "prerequisites": [
+            "deep-dive-frc-zpinch",
+            "deep-dive-icf",
+            "deep-dive-stellarator",
+            "deep-dive-tokamak"
+          ]
+        }
+      ]
+    }
+  ]
+}

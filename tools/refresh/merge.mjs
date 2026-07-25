@@ -22,6 +22,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
+import copyRules from "../../backend/src/copy/rules.js";
 
 const root = new URL("../../", import.meta.url);
 const p = (rel) => new URL(rel, root);
@@ -39,12 +40,10 @@ const tagsDoc = JSON.parse(readFileSync(p("data/item-tags.json"), "utf8"));
 
 // --- Copy-rule preflight — mirrors backend test/copyRules.test.ts (the CI gate).
 // We check here too so a bad hook fails fast, before touching the data files,
-// rather than reddening CI after a commit.
-const BANNED = [
-  /fascinat/i, /deep[\s-]dive/i, /delve/i, /\bexplores?\b/i,
-  /you won'?t believe/i, /fits? your drive/i, /your commute\b/i, /-min(ute)? drive/i,
-];
-const wc = (t) => t.trim().split(/\s+/).length;
+// rather than reddening CI after a commit. BANNED/wc come from
+// backend/src/copy/rules.js — the shared source of truth (2026-07-24; see
+// docs/DECISIONS.md) so this list and the CI gate's list can never drift.
+const { BANNED, wordCount: wc } = copyRules;
 
 const copyErrors = [];
 for (const [id, e] of Object.entries(edits)) {

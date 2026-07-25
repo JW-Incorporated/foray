@@ -1,0 +1,35 @@
+{
+  "title": "Understanding fusion energy",
+  "notes": "Curator input for `npm run build-ladder -- --node engineering/energy-fusion --hints docs/research/fusion-ladder-curation.json`. Mirrors the fusion-candidates.md pattern: hand-authored, human-reviewed, versioned as data. role_hints/subtopic_keys pin the deterministic builder's episode-to-rung assignment (see backend/src/curation/ladderBuilder.ts); goals are the rung one-liners, copy-rule gated same as why-lines (<=18 words, no banned phrases).",
+  "role_hints": {
+    "cbc-general-fusion": "overview",
+    "titans-391-solomon": "fundamentals",
+    "lex-485-kirtley": "frontier",
+    "catalyst-pacific-fusion": "frontier"
+  },
+  "subtopic_keys": {
+    "lex-353-whyte": "tokamak",
+    "omegatau-285-superconductivity": "tokamak",
+    "l2m-tokamak-energy": "tokamak",
+    "omegatau-312-w7x": "stellarator",
+    "cleantechies-216-thea": "stellarator",
+    "titans-378-ma": "icf",
+    "titans-403-tae": "frc-zpinch",
+    "titans-zap-levitt": "frc-zpinch"
+  },
+  "subtopic_labels": {
+    "tokamak": "Tokamak",
+    "stellarator": "Stellarator",
+    "icf": "Inertial confinement",
+    "frc-zpinch": "Field-reversed configuration & Z-pinch"
+  },
+  "goals": {
+    "overview": "The competing approaches to fusion power, and why none has reached the grid yet.",
+    "fundamentals": "Tokamak basics: what confinement means and why fusion plasma is so hard to hold.",
+    "deep-dive-tokamak": "Magnetic confinement in depth: the Lawson criterion, superconducting magnets, and today's tokamak startups.",
+    "deep-dive-stellarator": "The stellarator's harder-to-build, steadier-running alternative to the tokamak, from Wendelstein to planar coils.",
+    "deep-dive-icf": "How a 192-beam laser and a pinhead-sized target achieved fusion ignition at NIF.",
+    "deep-dive-frc-zpinch": "Two approaches that skip superconducting magnets entirely, confining plasma with its own current.",
+    "frontier": "Where the fusion race stands now: commercial timelines, plant economics, and who's closest."
+  }
+}

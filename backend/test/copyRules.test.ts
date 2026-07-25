@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { BANNED, wordCount } from "../src/copy/rules";
 
 /**
  * Golden copy rules — the editorial standards from 03_CURATION_SPEC.md and
@@ -10,24 +11,15 @@ import { join } from "node:path";
  *   - no generic-praise filler ("fascinating", "deep dive", "delves", "explores")
  *   - no commute-length framing (dropped 2026-07-08: state observed, not declared)
  *   - no clickbait withholding
+ *
+ * BANNED + wordCount live in src/copy/rules.js — the single source of truth
+ * shared with tools/refresh/merge.mjs (was two independently-drifting copies
+ * before 2026-07-24; see docs/DECISIONS.md).
  */
 
 const dataDir = join(__dirname, "..", "..", "data");
 const session = JSON.parse(readFileSync(join(dataDir, "session.json"), "utf8"));
 const discover = JSON.parse(readFileSync(join(dataDir, "discover.json"), "utf8"));
-
-const BANNED = [
-  /fascinat/i,
-  /deep[\s-]dive/i,
-  /delve/i,
-  /\bexplores?\b/i,
-  /you won'?t believe/i,
-  /fits? your drive/i,
-  /your commute\b/i,
-  /-min(ute)? drive/i,
-];
-
-const wordCount = (t: string) => t.trim().split(/\s+/).length;
 
 describe("session card why-lines", () => {
   for (const card of session.cards) {
