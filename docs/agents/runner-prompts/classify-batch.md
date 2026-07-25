@@ -110,14 +110,19 @@ description and a sample of its recent episodes.
 
 4. **Generate the two Foray-authored display fields** (same call, same
    show — you're already reading its description and episodes):
-   - **`display_title`**: a short, accurate tile header. If the real show
-     title is already clear, pass it through unchanged or lightly
-     normalize it (fix ALL CAPS, strip a redundant tagline). Only propose
-     something different when the real title is genuinely opaque,
-     clickbait-shaped, or a pun with no topic signal — and even then, it
-     must accurately describe what the show covers. **Never invent a
-     framing that misrepresents the show** — a wrong-but-plausible title
-     is worse than the original ever was.
+   - **`display_title`**: **DEFAULT = the real show title, kept VERBATIM.**
+     Rewriting is the rare exception, not the norm. Keep good real titles
+     exactly as they are — `Sound Opinions` → `Sound Opinions`,
+     `The Dice Tower` → `The Dice Tower`, `Real Time with Bill Maher` →
+     `Real Time with Bill Maher`. Only change it when the real title is
+     genuinely long, cryptic, ALL-CAPS, or clickbait — and even then keep
+     the real brand: `Planetary Radio: Space Exploration, Astronomy and
+     Science` → `Planetary Radio` (shorten, brand kept). **NEVER replace a
+     real show name with a generic category** — `Sound Opinions` →
+     `Music Criticism`, `Real Time with Bill Maher` → `Political
+     Commentary`, `The Dice Tower` → `Board Game Show` are all WRONG: they
+     destroy the show's identity. A generic descriptor is worse than the
+     original title. When in any doubt, keep the real title unchanged.
    - **`blurb`**: 1–2 sentences, grounded strictly in the real
      description/episodes you just read. Never fabricate, never
      exaggerate, never claim something the source material doesn't
