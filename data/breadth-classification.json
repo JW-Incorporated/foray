@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T04:24:58.398Z",
+  "built_at": "2026-07-25T04:50:15.673Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-dbdc2637",
+    "last_batch_id": "fresh-2026-07-25-8acde825",
     "last_batch_tier": 1
   },
   "entries": {
@@ -2670,19 +2670,67 @@
     },
     "151230264": {
       "topics": [
-        "news"
+        "news",
+        "news/daily",
+        "economics/markets"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Global news and current affairs with strong business/finance focus.",
+      "display_title": "Economist Podcasts",
+      "blurb": "Daily global news and analysis covering current affairs, business, and finance from The Economist's worldwide correspondents.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "151485804": {
       "topics": [
-        "nature/earth-science"
+        "science",
+        "nature/earth-science",
+        "nature/animal-cognition"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Broad science coverage from atoms to animals with strong earth/life science emphasis.",
+      "display_title": "Quirks and Quarks",
+      "blurb": "Science investigations covering everything from animal behavior and earth sciences to physics, featuring storytelling and accessible reporting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "152016440": {
       "topics": [
@@ -2694,11 +2742,30 @@
     },
     "152022135": {
       "topics": [
-        "business/management"
+        "business/management",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business leadership and management strategies from leading thinkers.",
+      "display_title": "HBR IdeaCast",
+      "blurb": "Weekly insights on business leadership, management strategies, and organizational challenges from Harvard Business Review experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "152024419": {
       "topics": [
@@ -2710,35 +2777,116 @@
     },
     "152249110": {
       "topics": [
-        "science"
+        "science",
+        "nature",
+        "science/physics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Broad science and curiosity with investigative journalism and innovative audio storytelling.",
+      "display_title": "Radiolab",
+      "blurb": "Investigations into science, law, and the human experience with distinctive sound design and storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "152564324": {
       "topics": [
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Christian teaching and spiritual guidance from Joyce Meyer.",
+      "display_title": "Joyce Meyer Enjoying Everyday Life® TV Audio Podcast",
+      "blurb": "Daily Christian teachings on personal growth, faith, and spiritual living.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "152564333": {
       "topics": [
+        "religion",
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Religious teaching focused on Christian faith and personal transformation.",
+      "display_title": "Joyce Meyer Enjoying Everyday Life® Radio Podcast",
+      "blurb": "Daily radio teachings on Christian faith, mindset, and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "152788201": {
       "topics": [
-        "religion"
+        "society/government",
+        "philosophy",
+        "news/politics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Secular perspectives on religion, politics, and state-church separation.",
+      "display_title": "Freethought Radio",
+      "blurb": "Weekly show exploring secular perspectives, religious freedom, and church-state separation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "155974141": {
       "topics": [
@@ -2763,11 +2911,35 @@
     },
     "158961219": {
       "topics": [
-        "society/government"
+        "news/politics",
+        "society/government",
+        "news/commentary"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Libertarian policy analysis on government, liberty, and current events.",
+      "display_title": "Cato Podcast",
+      "blurb": "Libertarian policy analysis on individual liberty, free markets, and limited government.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "159752078": {
       "topics": [
@@ -2778,11 +2950,30 @@
     },
     "160064459": {
       "topics": [
-        "travel"
+        "travel",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Disney vacation planning and theme park experience discussions.",
+      "display_title": "DIS Unlimited",
+      "blurb": "Weekly roundtable on Disney vacation planning, theme parks, and resort experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "160835381": {
       "topics": [
@@ -2793,27 +2984,94 @@
     },
     "160904630": {
       "topics": [
-        "society"
+        "society",
+        "education",
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Diverse talks on ideas, innovation, and learning from thought leaders globally.",
+      "display_title": "TED Talks Daily",
+      "blurb": "Daily TED Talks on innovation, science, technology, and ideas from leading thinkers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "161198236": {
       "topics": [
-        "society/government"
+        "news/politics",
+        "society/government",
+        "society/law"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conservative legal and political commentary from the ACLJ.",
+      "display_title": "Sekulow",
+      "blurb": "Daily conservative legal and political analysis from the American Center for Law & Justice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "162722276": {
       "topics": [
+        "news/politics",
         "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.95
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily parliamentary proceedings and British government news.",
+      "display_title": "Today in Parliament",
+      "blurb": "Daily coverage of proceedings and news from the UK Parliament.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "164829166": {
       "topics": [
@@ -2855,8 +3113,22 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian worship services from a Methodist congregation.",
+      "display_title": "St. Luke's United Methodist Church - Houston, Texas",
+      "blurb": "Worship services from St. Luke's United Methodist Church in Houston.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "171668359": {
       "topics": [
@@ -2867,27 +3139,84 @@
     },
     "173001861": {
       "topics": [
-        "history"
+        "history",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.95
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dramatic historical narratives exploring pivotal moments and figures.",
+      "display_title": "Dan Carlin's Hardcore History",
+      "blurb": "In-depth historical narratives on warfare, empires, and transformative moments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "173429229": {
       "topics": [
+        "education",
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English language tips and writing advice for writers.",
+      "display_title": "Grammar Girl: For Writers and Language Lovers",
+      "blurb": "Grammar, punctuation, and writing tips for improving language and communication.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "174194853": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian perspectives on sexual integrity and relationship healing.",
+      "display_title": "PSR Podcast",
+      "blurb": "Christian teachings on sexual integrity, relationships, and personal healing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "174890525": {
       "topics": [
@@ -2898,19 +3227,57 @@
     },
     "178083008": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "sports/football"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football strategies and NFL analysis for league competition.",
+      "display_title": "The Audible",
+      "blurb": "Fantasy football strategy and NFL analysis to help dominate your league.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "179237749": {
       "topics": [
+        "news/tech",
         "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Apple product news and analysis from tech experts.",
+      "display_title": "MacBreak Weekly (Audio)",
+      "blurb": "Weekly Apple news and tech analysis covering iOS, Macs, and Apple innovation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "179911785": {
       "topics": [
@@ -2928,11 +3295,35 @@
     },
     "182496736": {
       "topics": [
-        "society/government"
+        "travel",
+        "nature",
+        "history/archaeology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "National park tours and American landscape/history content.",
+      "display_title": "National Park Service",
+      "blurb": "Narrated tours and presentations on American national parks and landscapes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "185237578": {
       "topics": [
@@ -2957,19 +3348,57 @@
     },
     "185888113": {
       "topics": [
-        "education/courses"
+        "education",
+        "education/self-improvement"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "K-12 education trends and teacher professional development.",
+      "display_title": "Shifting Schools: Conversations for K12 Educators",
+      "blurb": "Education trends and professional development conversations for K-12 teachers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "187310910": {
       "topics": [
-        "sports/football"
+        "sports/football",
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "New England Patriots news and NFL coverage from team experts.",
+      "display_title": "Patriots Unfiltered",
+      "blurb": "New England Patriots and NFL news, analysis, and insider perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "187812953": {
       "topics": [
@@ -3004,11 +3433,30 @@
     },
     "190516844": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Firearms, shooting sports, and gun rights advocacy.",
+      "display_title": "Gun Talk",
+      "blurb": "Firearms, shooting sports, and Second Amendment discussions for gun enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "190658822": {
       "topics": [
@@ -3019,11 +3467,30 @@
     },
     "191105605": {
       "topics": [
-        "sports/soccer"
+        "sports/soccer",
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Football/soccer analysis and World Cup coverage from The Times.",
+      "display_title": "The Game",
+      "blurb": "Soccer analysis, tactical discussion, and World Cup coverage from The Times journalists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "191303933": {
       "topics": [
@@ -3035,19 +3502,57 @@
     },
     "191636169": {
       "topics": [
-        "space"
+        "space",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly astronomy discussions on planets, stars, and cosmology.",
+      "display_title": "Astronomy Cast",
+      "blurb": "Weekly astronomy discussions on planets, space exploration, and cosmology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "192740136": {
       "topics": [
-        "space"
+        "education/courses",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "University astronomy lectures on the solar system and space.",
+      "display_title": "Astronomy 161 - Introduction to Solar System Astronomy",
+      "blurb": "University lecture series on solar system astronomy for introductory learners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "193128576": {
       "topics": [
@@ -3058,11 +3563,30 @@
     },
     "193181775": {
       "topics": [
-        "kids-family"
+        "kids-family",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama and discussions about the family-friendly Adventures in Odyssey series.",
+      "display_title": "The Official Adventures in Odyssey Podcast",
+      "blurb": "Podcast for fans of the family-friendly audio drama and entertainment series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "194167775": {
       "topics": [
@@ -3081,11 +3605,30 @@
     },
     "197875368": {
       "topics": [
-        "news/tech"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Microsoft and Windows news analysis from veteran tech journalists.",
+      "display_title": "Windows Weekly (Audio)",
+      "blurb": "Weekly Microsoft and Windows news analysis from tech industry veterans.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "199024793": {
       "topics": [
@@ -3096,60 +3639,197 @@
     },
     "201106659": {
       "topics": [
-        "craft/woodworking"
+        "craft/woodworking",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Woodworking projects and furniture design techniques.",
+      "display_title": "Woodworking with The Wood Whisperer",
+      "blurb": "Woodworking tutorials and furniture design for craftspeople of all levels.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "201376301": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Advice on sex and relationships with cultural commentary.",
+      "display_title": "Savage Lovecast",
+      "blurb": "Advice on sex and relationships with cultural and political commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "201539011": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baseball coverage including prospects, draft, and performance analysis.",
+      "display_title": "Baseball America",
+      "blurb": "Baseball news and analysis covering prospects, draft, and player development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "201598403": {
       "topics": [
-        "education/language-learning"
+        "education/language-learning",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Structured Spanish language lessons and grammar teaching.",
+      "display_title": "Coffee Break Spanish",
+      "blurb": "Coffee-break Spanish lessons covering grammar and conversational skills.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "201671138": {
       "topics": [
-        "society"
+        "society",
+        "personal-journals",
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True stories about American life with themes and narrative exploration.",
+      "display_title": "This American Life",
+      "blurb": "True stories and narratives exploring what it's like to be alive in America.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "201680433": {
       "topics": [
+        "history",
         "espionage"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "International espionage history and intelligence service narratives.",
+      "display_title": "SpyCast",
+      "blurb": "International espionage history and intelligence narratives from the Spy Museum.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "201853034": {
       "topics": [
-        "economics/markets",
-        "business"
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and economic news analysis for general audiences.",
+      "display_title": "Marketplace",
+      "blurb": "Daily business and economic news analysis making finance accessible to everyone.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8acde825",
+      "classified_at": "2026-07-25T04:50:15.673Z"
     },
     "202795382": {
       "topics": [
