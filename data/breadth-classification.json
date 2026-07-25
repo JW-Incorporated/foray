@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T11:12:20.637Z",
+  "built_at": "2026-07-25T12:15:28.338Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-2a828a85",
+    "last_batch_id": "fresh-2026-07-25-1ef6e2e8",
     "last_batch_tier": 1
   },
   "entries": {
@@ -51467,11 +51467,40 @@
     },
     "1469333142": {
       "topics": [
-        "personal-journals"
+        "education/language-learning",
+        "personal-journals",
+        "space/rockets",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship and success stories.",
+      "display_title": "Women Over 70: Aging Reimagined",
+      "blurb": "Women Over 70: Aging Reimagined challenges outdated narratives about aging and celebrates what’s possible in later life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1469342104": {
       "topics": [
@@ -51565,11 +51594,25 @@
     },
     "1469767038": {
       "topics": [
-        "science"
+        "education/courses"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified - requires review.",
+      "display_title": "ژرفا - Zharfa",
+      "blurb": "ژرفا صدایی است از ژرفای اقیانوس ها.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1469826718": {
       "topics": [
@@ -51688,11 +51731,30 @@
     },
     "1470544620": {
       "topics": [
-        "culture/performing-arts"
+        "music",
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music and sound for relaxation.",
+      "display_title": "Scary Stories and Rain",
+      "blurb": "🌧️ Scary Stories and Rain — New Episodes Every Night Unsettling true accounts told with calm narration and soothing rain ambience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1470546918": {
       "topics": [
@@ -51783,19 +51845,77 @@
     },
     "1470773952": {
       "topics": [
-        "music"
+        "music/theory-production",
+        "history/military-modern",
+        "culture/art",
+        "nature/ocean-science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Visual arts and culture.",
+      "display_title": "History in Five Songs with Martin Popoff",
+      "blurb": "History in Five Songs with Martin Popoff is the show that aims to make grand and often oddball hard rock and heavy metal points through a narrative built upon the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1470779784": {
       "topics": [
-        "health/alternative"
+        "personal-journals",
+        "health/nutrition",
+        "space/rockets",
+        "medicine/neuroscience"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Visual arts and culture.",
+      "display_title": "The Ben Azadi Show",
+      "blurb": "Ben Azadi, NYT best-selling author of Metabolic Freedom, is the host of The Ben Azadi Show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1470817868": {
       "topics": [
@@ -51906,8 +52026,22 @@
         "education/language-learning"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language instruction and learning.",
+      "display_title": "Japanese podcast for beginners (Nihongo con Teppei)",
+      "blurb": "Thank you for listening! I need your support to keep making content for all leaners for FREE! I really appreciate all your support! https://www.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1471543887": {
       "topics": [
@@ -52075,11 +52209,40 @@
     },
     "1472456658": {
       "topics": [
+        "history/military-modern",
+        "medicine/neuroscience",
+        "gaming",
         "health/sexuality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming and hobby discussion.",
+      "display_title": "The Game EXPOSED: Narcissist & Narcissistic Abuse",
+      "blurb": "Yaz gives you the Juice on Relationship & Narcissists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1472466139": {
       "topics": [
@@ -52143,11 +52306,40 @@
     },
     "1473055758": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "education/how-to",
+        "culture/art",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Endurance sports and running.",
+      "display_title": "Establish The Run Fantasy Football",
+      "blurb": "Renowned fantasy experts Adam Levitan and Evan Silva cover fantasy football, DFS, prop betting and sports betting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1473057761": {
       "topics": [
@@ -52371,11 +52563,40 @@
     },
     "1473865038": {
       "topics": [
-        "hobbies"
+        "culture/art",
+        "gaming",
+        "relationships",
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming and hobby discussion.",
+      "display_title": "Marcus In The Morning Second Date Update",
+      "blurb": "If you go on a date and thought it was great, but then it gets weird… we’ll call the other person and find out what’s up.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1473872585": {
       "topics": [
@@ -52589,12 +52810,40 @@
     },
     "1475115108": {
       "topics": [
-        "nature",
-        "sports/baseball"
+        "sports/baseball",
+        "culture/art",
+        "gaming",
+        "nature/ocean-science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming and hobby discussion.",
+      "display_title": "Locked On Mariners - Daily Podcast On the",
+      "blurb": "Locked On Mariners podcast is your daily ticket to stay ahead of the game and the first to know the latest news, analysis, and insider info for the Seattle Mariners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1475116211": {
       "topics": [
@@ -52606,11 +52855,40 @@
     },
     "1475117736": {
       "topics": [
-        "health/sexuality"
+        "health/nutrition",
+        "education/self-improvement",
+        "health/sexuality",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship and success stories.",
+      "display_title": "The Openlove101 Show",
+      "blurb": "This is your show to discuss open relationships, the swinger lifestyle, consensual non-monogamy - however you describe it, we're here to talk about it..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1475261223": {
       "topics": [
@@ -52717,12 +52995,40 @@
     },
     "1475672610": {
       "topics": [
-        "medicine/neuroscience",
-        "computing"
+        "personal-journals",
+        "health/nutrition",
+        "education/how-to",
+        "medicine/neuroscience"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship and success stories.",
+      "display_title": "Brain Science: Neuroscience, Behavior",
+      "blurb": "For the curious! We're exploring the inner-workings of the human brain to understand behavior change, habit formation, mental health, and being human.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1475766100": {
       "topics": [
@@ -52855,11 +53161,40 @@
     },
     "1476322140": {
       "topics": [
-        "education/courses"
+        "personal-journals",
+        "education/courses",
+        "education/how-to",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and technology news.",
+      "display_title": "The Law School Playbook",
+      "blurb": "Coaching, training, and resources to get the most out of your law school experience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1476323409": {
       "topics": [
@@ -53047,11 +53382,30 @@
     },
     "1477011156": {
       "topics": [
+        "nature/ocean-science",
         "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music and sound for relaxation.",
+      "display_title": "Sleep - Meandering Piano",
+      "blurb": "A piano player meanders about quietly on a piano, to help you get some sleep.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1477060127": {
       "topics": [
@@ -53129,19 +53483,77 @@
     },
     "1477409118": {
       "topics": [
-        "kids-family/education"
+        "personal-journals",
+        "sports/endurance",
+        "nature/ocean-science",
+        "music"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Endurance sports and running.",
+      "display_title": "Family Road Trip Trivia Podcast",
+      "blurb": "Weekly trivia fun for everyone!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1477409622": {
       "topics": [
-        "health/sexuality"
+        "personal-journals",
+        "education/courses",
+        "education/how-to",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Visual arts and culture.",
+      "display_title": "Sex Talk Cafe",
+      "blurb": "Enjoy juicy conversations on the transformative power of sex, pleasure, and embodied sexuality.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1477467491": {
       "topics": [
@@ -53237,11 +53649,40 @@
     },
     "1477655202": {
       "topics": [
-        "aviation"
+        "aviation",
+        "space/rockets",
+        "culture/art",
+        "nature/ocean-science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Visual arts and culture.",
+      "display_title": "Flight Safety Detectives",
+      "blurb": "World-renowned aviation-industry consultants and former NTSB investigators John Goglia and Greg Feith have 100 years of worldwide aviation safety experience between them..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1477660645": {
       "topics": [
@@ -53387,11 +53828,40 @@
     },
     "1478129934": {
       "topics": [
-        "education/how-to"
+        "education/courses",
+        "education/how-to",
+        "medicine/neuroscience",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship and success stories.",
+      "display_title": "Autism Classroom Resources Podcast: A Podcast for Special",
+      "blurb": "Are you a special educator looking for practical tools and strategies? Are you juggling a ton of responsibilities with very little time? The Autism Classroom Resources Podcast is for you..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1478145610": {
       "topics": [
@@ -53530,11 +54000,40 @@
     },
     "1478660220": {
       "topics": [
-        "sports/wrestling"
+        "sports/wrestling",
+        "history/military-modern",
+        "culture/art",
+        "nature/ocean-science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Visual arts and culture.",
+      "display_title": "DEADLOCK: A Pro Wrestling Podcast",
+      "blurb": "The DEADLOCK Podcast is an off-the-rails retrospective look at pro wrestling's highest & lowest points hosted by James Darnell & John Blud.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1478682639": {
       "topics": [
@@ -53709,11 +54208,40 @@
     },
     "1479137502": {
       "topics": [
-        "space"
+        "aviation",
+        "music/theory-production",
+        "space/rockets",
+        "math"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "math",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and technology news.",
+      "display_title": "EVSN: Escape Velocity Space News",
+      "blurb": "Get your weekly dose of all that's new in space and astronomy with Escape Velocity Space News.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1479227419": {
       "topics": [
@@ -53731,11 +54259,40 @@
     },
     "1479285354": {
       "topics": [
-        "education/language-learning"
+        "education/language-learning",
+        "personal-journals",
+        "education/how-to",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Visual arts and culture.",
+      "display_title": "Intermediate Spanish Podcast - Español Intermedio",
+      "blurb": "With over 10 million downloads, this podcast brings you comprehensible input through clear, engaging stories created specifically for intermediate Spanish learners..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1479298432": {
       "topics": [
@@ -53805,12 +54362,40 @@
     },
     "1479389232": {
       "topics": [
-        "space",
-        "math"
+        "space/rockets",
+        "math",
+        "medicine/neuroscience",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "math",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Homesteading and sustainable farming.",
+      "display_title": "The Universe Speaks in Numbers",
+      "blurb": "In The Universe Speaks in Numbers award-winning science writer Graham Farmelo is in conversation with some of the great names in modern physics and mathematics..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1479444959": {
       "topics": [
@@ -53868,11 +54453,40 @@
     },
     "1479564642": {
       "topics": [
-        "education/courses"
+        "aviation",
+        "religion/judaism",
+        "health/nutrition",
+        "space/rockets"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cryptocurrency and technology.",
+      "display_title": "Those Who Were There: Voices from the Holocaust",
+      "blurb": "Survivors and witnesses of the Holocaust are the subjects of “Those Who Were There,” a new podcast from Yale University’s Fortunoff Video Archive for Holocaust Testimonies..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1479594692": {
       "topics": [
@@ -54012,11 +54626,40 @@
     },
     "1480022700": {
       "topics": [
-        "education/how-to"
+        "medicine/biology",
+        "nature/ocean-science",
+        "education/how-to",
+        "kids-family/education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biology and biological sciences.",
+      "display_title": "Family Tree Magazine Podcast",
+      "blurb": "Build Your Family Tree with Genealogy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1480037528": {
       "topics": [
@@ -54095,11 +54738,40 @@
     },
     "1480167042": {
       "topics": [
-        "nature"
+        "music/theory-production",
+        "education/how-to",
+        "medicine/neuroscience",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Endurance sports and running.",
+      "display_title": "Songbirding",
+      "blurb": "Immerse yourself in the elsewhere.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1480185754": {
       "topics": [
@@ -54193,11 +54865,40 @@
     },
     "1480583664": {
       "topics": [
-        "computing"
+        "aviation",
+        "education/how-to",
+        "space/rockets",
+        "culture/art"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cryptocurrency and technology.",
+      "display_title": "Elon Musk Podcast",
+      "blurb": "The Elon Musk Podcast takes an in-depth look into the world of the visionary entrepreneur.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1480589194": {
       "topics": [
@@ -54338,11 +55039,40 @@
     },
     "1480853742": {
       "topics": [
-        "education/courses"
+        "personal-journals",
+        "education/courses",
+        "culture/art",
+        "sports/endurance"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Endurance sports and running.",
+      "display_title": "Inside the Admissions Office: Advice from Former Admissions",
+      "blurb": "Need help navigating the college admissions process? We’re here to help! Every other Monday we’ll bring you exclusive interviews with Former Admissions Officers, graduates from top universities, and admissions experts..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1480854950": {
       "topics": [
@@ -54521,11 +55251,40 @@
     },
     "1481252940": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "education/how-to",
+        "culture/art",
+        "gaming"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming and hobby discussion.",
+      "display_title": "Locked On Sharks - Daily Podcast On The",
+      "blurb": "Locked On Sharks podcast is the daily podcast that drops the puck and keeps you ahead of the game and the first to know the latest news, analysis, and insider.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1481253733": {
       "topics": [
@@ -54696,11 +55455,35 @@
     },
     "1481720142": {
       "topics": [
-        "science"
+        "religion/christianity",
+        "nature/ocean-science",
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Christian religious teachings.",
+      "display_title": "In Research Of",
+      "blurb": "The show where we watch the 1970s TV show \"In Search Of.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1481728195": {
       "topics": [
@@ -55079,11 +55862,40 @@
     },
     "1482645186": {
       "topics": [
-        "computing"
+        "music/theory-production",
+        "space/rockets",
+        "culture/art",
+        "education/self-improvement"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and technology news.",
+      "display_title": "Kim Komando Daily Tech Update",
+      "blurb": "Sound like a tech pro, even if you’re not! Award-winning popular host Kim Komando is your secret weapon.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1482648241": {
       "topics": [
@@ -55313,11 +56125,40 @@
     },
     "1483237956": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "culture/art",
+        "gaming",
+        "nature/ocean-science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming and hobby discussion.",
+      "display_title": "Locked On NHL - Daily Podcast On The",
+      "blurb": "Locked On NHL podcast is the daily podcast that drops the puck and keeps you ahead of the game and the first to know the latest news, analysis, and insider.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1483252435": {
       "topics": [
@@ -55389,11 +56230,40 @@
     },
     "1483304964": {
       "topics": [
-        "education/courses"
+        "health/nutrition",
+        "education/how-to",
+        "culture/art",
+        "medicine/biology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hobby crafting and modeling.",
+      "display_title": "» Divine Intervention Podcasts",
+      "blurb": "Podcasts/Vodcasts relevant to the USMLE Step 1-3 exams and 3rd year shelf exams.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1483329487": {
       "topics": [
@@ -55411,11 +56281,40 @@
     },
     "1483392342": {
       "topics": [
-        "music"
+        "music/theory-production",
+        "education/how-to",
+        "culture/art",
+        "education/self-improvement"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship and success stories.",
+      "display_title": "Something About the Beatles",
+      "blurb": "Hosted by award-winning author Robert Rodriguez, Something About The Beatles is an intelligent but entertaining examination of The Beatles' music and career..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1483394012": {
       "topics": [
@@ -55455,20 +56354,77 @@
     },
     "1483513974": {
       "topics": [
-        "culture/books",
-        "education/how-to"
+        "education/courses",
+        "education/how-to",
+        "medicine/neuroscience",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Visual arts and culture.",
+      "display_title": "Science of Reading: The Podcast",
+      "blurb": "Science of Reading: The Podcast will deliver the latest insights from researchers and practitioners in early reading.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1483544772": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "culture/art",
+        "craft/diy-home",
+        "gaming"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming and hobby discussion.",
+      "display_title": "The Modern Homesteading Podcast",
+      "blurb": "Join us as we talk about all things homesteading! We discuss things like gardening, livestock, permaculture, food preservation, foraging, hunting, fishing, and the know-how and skills that will help you.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1483545385": {
       "topics": [
@@ -55761,11 +56717,40 @@
     },
     "1484445852": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "nature/ocean-science",
+        "music",
+        "business/founders"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cryptocurrency and technology.",
+      "display_title": "The Art Angle",
+      "blurb": "A weekly podcast that brings the biggest stories in the art world down to earth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1484511465": {
       "topics": [
@@ -55868,11 +56853,40 @@
     },
     "1484783544": {
       "topics": [
-        "education/self-improvement"
+        "personal-journals",
+        "health/nutrition",
+        "math",
+        "history/military-modern"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "math",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship and success stories.",
+      "display_title": "Success Story with Scott D. Clary",
+      "blurb": "Welcome to the Success Story Podcast, hosted by entrepreneur, business executive, author, educator & speaker, Scott D.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1484818403": {
       "topics": [
@@ -56285,11 +57299,43 @@
     },
     "1485811734": {
       "topics": [
-        "education/how-to"
+        "personal-journals",
+        "education/how-to",
+        "culture/art",
+        "craft/diy-home"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Business and technology news.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1485813093": {
       "topics": [
@@ -56300,12 +57346,40 @@
     },
     "1485819528": {
       "topics": [
-        "psychology",
-        "society"
+        "personal-journals",
+        "health/nutrition",
+        "medicine/neuroscience",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and technology news.",
+      "display_title": "Spooky Psychology",
+      "blurb": "Two licensed therapists discuss the spookier side of psychology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1485875648": {
       "topics": [
@@ -56370,11 +57444,43 @@
     },
     "1486045932": {
       "topics": [
-        "society"
+        "math",
+        "history/military-modern",
+        "culture/art",
+        "craft/diy-home"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Business and technology news.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1486086093": {
       "topics": [
@@ -56481,11 +57587,30 @@
     },
     "1486375788": {
       "topics": [
-        "business"
+        "culture/art",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and technology news.",
+      "display_title": "Vital Dawn",
+      "blurb": "A quick synopsis of the morning financial news and how US equity markets could react to it.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1486420789": {
       "topics": [
@@ -56551,11 +57676,40 @@
     },
     "1486883874": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "health/nutrition",
+        "math",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "math",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming and hobby discussion.",
+      "display_title": "Rates & Barrels: A show about Baseball",
+      "blurb": "In baseball, numbers are everywhere.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1486968407": {
       "topics": [
@@ -56719,11 +57873,40 @@
     },
     "1487724216": {
       "topics": [
-        "health/sexuality"
+        "personal-journals",
+        "health/nutrition",
+        "history/military-modern",
+        "medicine/neuroscience"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Visual arts and culture.",
+      "display_title": "Husband Material",
+      "blurb": "So you want to outgrow porn.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1487789978": {
       "topics": [
@@ -57879,11 +59062,35 @@
     },
     "1492327668": {
       "topics": [
-        "sports/endurance"
+        "music/theory-production",
+        "sports/endurance",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Endurance sports and running.",
+      "display_title": "The Freetrail Podcast with Dylan Bowman",
+      "blurb": "Professional ultrarunner, Dylan Bowman, brings conversations with a wide-ranging cohort of guests, covering ultrarunning, sports, business, and the outdoor industry..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1492360046": {
       "topics": [
@@ -57977,11 +59184,40 @@
     },
     "1492745634": {
       "topics": [
-        "religion"
+        "culture/art",
+        "religion/christianity",
+        "nature/ocean-science",
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian religious teachings.",
+      "display_title": "Johnson Ferry Sermons",
+      "blurb": "Sermon messages from Pastor Clay Smith and the pastoral team of Johnson Ferry Baptist Church.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1492747637": {
       "topics": [
@@ -58031,11 +59267,40 @@
     },
     "1492827360": {
       "topics": [
-        "nature"
+        "health/nutrition",
+        "culture/art",
+        "hobbies",
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hobby crafting and modeling.",
+      "display_title": "Accidental Gods",
+      "blurb": "Another World is still Possible.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1492836835": {
       "topics": [
@@ -58077,11 +59342,40 @@
     },
     "1492934826": {
       "topics": [
-        "sports"
+        "history/military-modern",
+        "culture/art",
+        "sports/endurance",
+        "gaming"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming and hobby discussion.",
+      "display_title": "Propulsion Swimming Podcast",
+      "blurb": "Dive into the exhilarating world of swimming with the Propulsion Swimming Podcast! We're your passionate guides, celebrating British swimming in all its glory..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1492946397": {
       "topics": [
@@ -58248,11 +59542,40 @@
     },
     "1493328264": {
       "topics": [
-        "hobbies"
+        "education/how-to",
+        "culture/art",
+        "gaming",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming and hobby discussion.",
+      "display_title": "Shadowless Podcast: A Pokemon Podcast",
+      "blurb": "RealBreakingNate and PokeSisterKatie bring you a wide variety of Pokemon topics from the collecting, news and so much more! Right here on.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1493353598": {
       "topics": [
@@ -58279,11 +59602,40 @@
     },
     "1493360298": {
       "topics": [
-        "science"
+        "health/nutrition",
+        "education/courses",
+        "history/military-modern",
+        "medicine/neuroscience"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biology and biological sciences.",
+      "display_title": "AnthroBiology Podcast",
+      "blurb": "The AnthroBiology Podcast sits down with biological anthropologists once or twice a month to learn about what they do and why it's rad.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1493360574": {
       "topics": [
@@ -58324,19 +59676,67 @@
     },
     "1493448606": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish religious and textual study.",
+      "display_title": "Torat Imecha Nach Yomi",
+      "blurb": "In this new Nach series, women scholars will deliver a daily shiur on the books of Prophets (Nevi’im) and Writings (Ketuvim) at the pace of a chapter a day..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1493453604": {
       "topics": [
-        "history"
+        "education/how-to",
+        "history/military-modern",
+        "culture/art",
+        "education/self-improvement"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biology and biological sciences.",
+      "display_title": "HISTORY This Week",
+      "blurb": "Visit htwpod.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1493460441": {
       "topics": [
@@ -58355,11 +59755,40 @@
     },
     "1493503500": {
       "topics": [
-        "computing"
+        "space/rockets",
+        "hobbies",
+        "computing",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cryptocurrency and technology.",
+      "display_title": "BTC Sessions",
+      "blurb": "Get your dose of Bitcoin with weekly news roundups and \"Why Are We Bullish\" panel shows featuring Bitcoiners from around the world!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1493541692": {
       "topics": [
@@ -58467,11 +59896,40 @@
     },
     "1493757042": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "education/how-to",
+        "true-crime",
+        "kids-family/education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.75
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish religious and textual study.",
+      "display_title": "Take One Daf Yomi",
+      "blurb": "As Jews around the world engage in a seven-and-a-half year cycle of Daf Yomi, reading the entire Talmud one page per day, Tablet Magazine's new podcast, Take One, will offer.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1493858530": {
       "topics": [
@@ -58549,11 +60007,40 @@
     },
     "1494066720": {
       "topics": [
+        "health/nutrition",
+        "culture/art",
+        "sports/endurance",
         "hobbies"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hobby crafting and modeling.",
+      "display_title": "Plastic Model Mojo",
+      "blurb": "Plastic Model Mojo, a podcast dedicated to scale modeling, as well as the news and events around the hobby.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1494092727": {
       "topics": [
@@ -58776,11 +60263,30 @@
     },
     "1494539046": {
       "topics": [
-        "personal-journals"
+        "culture/art",
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Visual arts and culture.",
+      "display_title": "Dead Eyes",
+      "blurb": "Actor/comedian Connor Ratliff ( The Chris Gethard Show , UCB, The Marvelous Mrs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-1ef6e2e8",
+      "classified_at": "2026-07-25T12:15:28.338Z"
     },
     "1494540431": {
       "topics": [
