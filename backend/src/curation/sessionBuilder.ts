@@ -6,6 +6,7 @@ import type { NormalizedCandidate } from "./candidateExtractor";
 import { DEFAULT_WEIGHTS, scoreCandidate, type RecentPick, type ScoreComponents, type ScoreWeights } from "./scoring";
 import { ARCHETYPE_LABELS, ARCHETYPE_ORDER, auditMenuDiversity, pickSlots, type DiversityAuditResult } from "./archetypes";
 import { groupDuplicates, type DedupCandidate } from "../identity/dedup";
+import { resolveEffectiveTaxonomy, type UserInterestsProvider } from "./userInterests";
 
 /**
  * Ties enrichment (Tier-1 classification), dedup, scoring, and archetype
@@ -28,6 +29,16 @@ export interface BuildSessionOptions {
   recentPicks?: RecentPick[];
   weights?: ScoreWeights;
   maxAlternates?: number;
+  /**
+   * Per-user interest state (personalization-and-depth-plan.md Step A+B).
+   * Optional and additive: when omitted, behavior is byte-identical to
+   * before this existed — opts.taxonomy.nodes (the global taxonomy) is used
+   * as-is, exactly like every existing caller/test does today. When
+   * supplied, the effective per-user node weights (real observed rows ->
+   * persona seed -> global taxonomy fallback, see resolveEffectiveTaxonomy)
+   * are substituted everywhere opts.taxonomy.nodes would otherwise be read.
+   */
+  userInterestsProvider?: UserInterestsProvider;
 }
 
 export interface CandidateScoreLogEntry {
@@ -60,6 +71,26 @@ export async function buildSession(opts: BuildSessionOptions): Promise<BuildSess
   const maxAlternates = opts.maxAlternates ?? 5;
   const weights = opts.weights ?? DEFAULT_WEIGHTS;
   const recentPicks = opts.recentPicks ?? [];
+
+  // --- per-user interest resolution (personalization-and-depth-plan.md Step
+  // A+B). Omitting userInterestsProvider keeps this byte-identical to the
+  // pre-personalization pipeline: effectiveTaxonomy === opts.taxonomy.
+  let effectiveTaxonomy: TaxonomyFile = opts.taxonomy;
+  if (opts.userInterestsProvider) {
+    const provider = opts.userInterestsProvider;
+    const [userRows, personaId] = await Promise.all([
+      provider.getUserTaxonomyNodes(opts.userId),
+      provider.getPersonaSeed(opts.userId)
+    ]);
+    if (userRows.length === 0 && personaId) {
+      await provider.seedFromPersona(opts.userId, personaId); // (c) lazy, once, idempotent
+    }
+    const [resolvedRows, persona] = await Promise.all([
+      provider.getUserTaxonomyNodes(opts.userId), // re-read post-seed so a first-run session already personalizes
+      personaId ? provider.getPersona(personaId) : Promise.resolve(undefined)
+    ]);
+    effectiveTaxonomy = { ...opts.taxonomy, nodes: resolveEffectiveTaxonomy(opts.taxonomy, resolvedRows, persona) };
+  }
 
   // --- dedup safety net (corner case 3): drop accidental duplicates across
   // the whole candidate set before scoring, so the menu can never surface
@@ -121,7 +152,7 @@ export async function buildSession(opts: BuildSessionOptions): Promise<BuildSess
         sourceConfidence: enrichment.sourceConfidence,
         show: c.show
       },
-      opts.taxonomy.nodes,
+      effectiveTaxonomy.nodes,
       recentPicks,
       weights,
       builtAt
@@ -170,8 +201,8 @@ export async function buildSession(opts: BuildSessionOptions): Promise<BuildSess
   for (let i = 0; i < slotPicks.length; i++) {
     const slot = slotPicks[i]!;
     const gist = episodes[slot.pick.id]?.summary ?? "";
-    const userContext = buildUserContext(topicsByCandidateId.get(slot.pick.id) ?? [], opts.taxonomy);
-    const bridgeFrom = slot.archetype === "stretch" ? dominantTaxonomyNodeId(opts.taxonomy) : undefined;
+    const userContext = buildUserContext(topicsByCandidateId.get(slot.pick.id) ?? [], effectiveTaxonomy);
+    const bridgeFrom = slot.archetype === "stretch" ? dominantTaxonomyNodeId(effectiveTaxonomy) : undefined;
 
     const whyLineInput: Parameters<Enricher["generateWhyLine"]>[0] = {
       episodeId: slot.pick.id,

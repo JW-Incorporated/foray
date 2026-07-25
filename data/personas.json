@@ -1,0 +1,179 @@
+{
+  "version": 1,
+  "notes": "Preset weight vectors over top-level data/taxonomy.json nodes (personalization-and-depth-plan.md sec.3a, sec.5). Cold-start priors only, seeded once into a user taxonomy_nodes rows and expected to be outweighed by real observed signal once Step C (event capture) ships -- see backend/src/curation/userInterests.ts. Persona content beyond generalist is Joey product-research lane (issue #8, docs/curation/persona-catalogue-fit.md); this file is the mechanism plus one safe default.",
+  "default_persona_id": "generalist",
+  "personas": [
+    {
+      "id": "generalist",
+      "label": "Generalist",
+      "description": "Broad curiosity across the whole catalogue -- no single lane yet, high exploration by default.",
+      "seed_confidence": 0.15,
+      "weights": [
+        {
+          "node_id": "engineering",
+          "weight": 0.25
+        },
+        {
+          "node_id": "science",
+          "weight": 0.25
+        },
+        {
+          "node_id": "history",
+          "weight": 0.25
+        },
+        {
+          "node_id": "craft",
+          "weight": 0.25
+        },
+        {
+          "node_id": "business",
+          "weight": 0.25
+        },
+        {
+          "node_id": "comedy",
+          "weight": 0.25
+        },
+        {
+          "node_id": "architecture",
+          "weight": 0.25
+        },
+        {
+          "node_id": "aviation",
+          "weight": 0.25
+        },
+        {
+          "node_id": "espionage",
+          "weight": 0.25
+        },
+        {
+          "node_id": "food",
+          "weight": 0.25
+        },
+        {
+          "node_id": "linguistics",
+          "weight": 0.25
+        },
+        {
+          "node_id": "math",
+          "weight": 0.25
+        },
+        {
+          "node_id": "medicine",
+          "weight": 0.25
+        },
+        {
+          "node_id": "music",
+          "weight": 0.25
+        },
+        {
+          "node_id": "nature",
+          "weight": 0.25
+        },
+        {
+          "node_id": "sports",
+          "weight": 0.25
+        },
+        {
+          "node_id": "space",
+          "weight": 0.25
+        },
+        {
+          "node_id": "computing",
+          "weight": 0.25
+        },
+        {
+          "node_id": "economics",
+          "weight": 0.25
+        },
+        {
+          "node_id": "psychology",
+          "weight": 0.25
+        },
+        {
+          "node_id": "automotive",
+          "weight": 0.25
+        },
+        {
+          "node_id": "philosophy",
+          "weight": 0.25
+        },
+        {
+          "node_id": "cities",
+          "weight": 0.25
+        },
+        {
+          "node_id": "adventure",
+          "weight": 0.25
+        },
+        {
+          "node_id": "gaming",
+          "weight": 0.25
+        },
+        {
+          "node_id": "society",
+          "weight": 0.25
+        },
+        {
+          "node_id": "culture",
+          "weight": 0.25
+        },
+        {
+          "node_id": "transport",
+          "weight": 0.25
+        },
+        {
+          "node_id": "news",
+          "weight": 0
+        },
+        {
+          "node_id": "true-crime",
+          "weight": 0.25
+        },
+        {
+          "node_id": "religion",
+          "weight": 0.25
+        },
+        {
+          "node_id": "kids-family",
+          "weight": 0.25
+        },
+        {
+          "node_id": "fiction",
+          "weight": 0.25
+        },
+        {
+          "node_id": "tv-film",
+          "weight": 0.25
+        },
+        {
+          "node_id": "health",
+          "weight": 0.25
+        },
+        {
+          "node_id": "education",
+          "weight": 0.25
+        },
+        {
+          "node_id": "personal-journals",
+          "weight": 0.25
+        },
+        {
+          "node_id": "relationships",
+          "weight": 0.25
+        },
+        {
+          "node_id": "hobbies",
+          "weight": 0.25
+        },
+        {
+          "node_id": "travel",
+          "weight": 0.25
+        },
+        {
+          "node_id": "paranormal",
+          "weight": 0.25
+        }
+      ]
+    }
+  ]
+}
