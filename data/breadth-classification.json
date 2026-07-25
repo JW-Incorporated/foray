@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T09:53:42.435Z",
+  "built_at": "2026-07-25T10:53:44.555Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-b7dd4c1c",
+    "last_batch_id": "fresh-2026-07-25-9571a745",
     "last_batch_tier": 1
   },
   "entries": {
@@ -37432,8 +37432,22 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and fitness podcast.",
+      "display_title": "The Ready State Podcast",
+      "blurb": "Expert conversations on fitness, recovery, and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1334257580": {
       "topics": [
@@ -37444,11 +37458,25 @@
     },
     "1334328470": {
       "topics": [
-        "education"
+        "sports/football"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Football commentary and sports analysis.",
+      "display_title": "OCCUPY! An Unfinished Uprising",
+      "blurb": "Sports radio highlights and expert opinions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1334407316": {
       "topics": [
@@ -37573,8 +37601,22 @@
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business strategies for salon professionals.",
+      "display_title": "Thriving Stylist Podcast",
+      "blurb": "Interviews and strategies for the beauty industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1335892956": {
       "topics": [
@@ -37630,11 +37672,25 @@
     },
     "1337100398": {
       "topics": [
-        "personal-journals"
+        "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book discussions and literary interviews.",
+      "display_title": "This is Love",
+      "blurb": "Weekly book commentary and author interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1337195586": {
       "topics": [
@@ -37745,9 +37801,23 @@
       "topics": [
         "education/courses"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational resource for anatomy instruction.",
+      "display_title": "The A&P Professor",
+      "blurb": "Teaching guidance for anatomy and physiology educators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1339816815": {
       "topics": [
@@ -37774,11 +37844,25 @@
     },
     "1339976762": {
       "topics": [
-        "health/nutrition"
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health education on nutrition and fasting.",
+      "display_title": "Dr. Berg’s Healthy Keto and Intermittent Fasting Podcast",
+      "blurb": "Content on ketogenic diet and intermittent fasting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1340449607": {
       "topics": [
@@ -37810,8 +37894,22 @@
         "business/non-profit"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonprofit operations and fundraising guidance.",
+      "display_title": "Nonprofit Jenni Show",
+      "blurb": "Resources for nonprofit professionals and leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1340999161": {
       "topics": [
@@ -37869,8 +37967,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby news and analysis.",
+      "display_title": "The Counter Ruck",
+      "blurb": "In-depth rugby coverage and expert match analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1341781855": {
       "topics": [
@@ -37884,9 +37996,23 @@
       "topics": [
         "education/courses"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational resource for anatomy instruction.",
+      "display_title": "Teaching Hard History",
+      "blurb": "Teaching guidance for anatomy and physiology educators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1342003491": {
       "topics": [
@@ -37920,11 +38046,30 @@
     },
     "1342674932": {
       "topics": [
-        "espionage"
+        "music"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Musicians analyze classic albums.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8",
+        "display_title: banned /deep[\\s-]dive/i",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1342684917": {
       "topics": [
@@ -38088,11 +38233,25 @@
     },
     "1345690082": {
       "topics": [
-        "adventure"
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health education on nutrition and fasting.",
+      "display_title": "The Southern Outdoorsmen Hunting Podcast",
+      "blurb": "Content on ketogenic diet and intermittent fasting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1345755593": {
       "topics": [
@@ -38126,11 +38285,25 @@
     },
     "1346234726": {
       "topics": [
-        "personal-journals"
+        "health/fitness"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and fitness podcast.",
+      "display_title": "Mike Drop",
+      "blurb": "Expert conversations on fitness, recovery, and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1346314086": {
       "topics": [
@@ -38145,8 +38318,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DJ curated music mixes.",
+      "display_title": "Dj LOFT's Podcast",
+      "blurb": "Contemporary and world music curated by DJ.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1346804716": {
       "topics": [
@@ -38196,11 +38383,25 @@
     },
     "1347286418": {
       "topics": [
-        "education/how-to"
+        "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Church sermons and spiritual teaching.",
+      "display_title": "Sari Swears",
+      "blurb": "Weekly sermons and spiritual guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1347293924": {
       "topics": [
@@ -38341,11 +38542,25 @@
     },
     "1348831124": {
       "topics": [
-        "religion/christianity"
+        "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Church sermons and spiritual teaching.",
+      "display_title": "Transformation Church",
+      "blurb": "Weekly sermons and spiritual guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1348856817": {
       "topics": [
@@ -38652,11 +38867,28 @@
     },
     "1352231546": {
       "topics": [
-        "sports/soccer"
+        "business/marketing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Business strategies for salon professionals.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1352305461": {
       "topics": [
@@ -38699,8 +38931,22 @@
         "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal development and mindset coaching.",
+      "display_title": "The Positive Mindset Podcast",
+      "blurb": "Storytelling for mindset and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1352860989": {
       "topics": [
@@ -38956,8 +39202,25 @@
         "travel"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Travel rewards and expert guidance.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 14w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1357401021": {
       "topics": [
@@ -39093,11 +39356,25 @@
     },
     "1358713082": {
       "topics": [
-        "education"
+        "business/marketing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business strategies for salon professionals.",
+      "display_title": "Spanish for Beginners",
+      "blurb": "Interviews and strategies for the beauty industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1358733969": {
       "topics": [
@@ -39130,11 +39407,25 @@
     },
     "1359249098": {
       "topics": [
-        "religion/christianity"
+        "religion"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Church sermons and spiritual teaching.",
+      "display_title": "Relatable with Allie Beth Stuckey",
+      "blurb": "Weekly sermons and spiritual guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1359253455": {
       "topics": [
@@ -39416,11 +39707,25 @@
     },
     "1364764784": {
       "topics": [
-        "culture/books"
+        "travel"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel rewards and expert guidance.",
+      "display_title": "Bad On Paper",
+      "blurb": "Tips on travel rewards, airlines, and hotels.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1364825229": {
       "topics": [
@@ -39697,11 +40002,25 @@
     },
     "1368713096": {
       "topics": [
-        "sports/football"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book discussions and literary interviews.",
+      "display_title": "The Ticket Top 10",
+      "blurb": "Weekly book commentary and author interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1368800817": {
       "topics": [
@@ -39760,11 +40079,29 @@
     },
     "1370651486": {
       "topics": [
-        "society/law"
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science and technology storytelling.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8",
+        "blurb: banned /fascinat/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:53:19.370Z"
     },
     "1370718758": {
       "topics": [
@@ -39845,8 +40182,25 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Hockey coverage and analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 15w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:53:19.370Z"
     },
     "1372615635": {
       "topics": [
@@ -39878,11 +40232,25 @@
     },
     "1372879808": {
       "topics": [
-        "tv-film/reviews"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book discussions and literary interviews.",
+      "display_title": "Deck The Hallmark",
+      "blurb": "Weekly book commentary and author interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1372908592": {
       "topics": [
@@ -39916,11 +40284,25 @@
     },
     "1373312240": {
       "topics": [
-        "nature/weather"
+        "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Church sermons and spiritual teaching.",
+      "display_title": "Weather Geeks",
+      "blurb": "Weekly sermons and spiritual guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1373342716": {
       "topics": [
@@ -40124,9 +40506,26 @@
       "topics": [
         "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science and technology storytelling.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:53:19.370Z"
     },
     "1377869557": {
       "topics": [
@@ -40312,11 +40711,25 @@
     },
     "1381257272": {
       "topics": [
-        "health/alternative"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and fitness podcast.",
+      "display_title": "Dhru Purohit Show",
+      "blurb": "Expert conversations on fitness, recovery, and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1381271199": {
       "topics": [
@@ -40572,19 +40985,50 @@
     },
     "1386867488": {
       "topics": [
-        "education"
+        "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book discussions and literary interviews.",
+      "display_title": "The Symbolic World",
+      "blurb": "Weekly book commentary and author interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1386936932": {
       "topics": [
-        "society/government"
+        "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Church sermons and spiritual teaching.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1386958485": {
       "topics": [
@@ -40643,12 +41087,25 @@
     },
     "1387529624": {
       "topics": [
-        "psychology",
-        "society"
+        "education/courses"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational resource for anatomy instruction.",
+      "display_title": "Two Psychologists Four Beers",
+      "blurb": "Teaching guidance for anatomy and physiology educators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1387584894": {
       "topics": [
@@ -40765,11 +41222,25 @@
     },
     "1391240708": {
       "topics": [
-        "nature/earth-science"
+        "sports/hockey"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hockey coverage and analysis.",
+      "display_title": "AccuWeather Daily",
+      "blurb": "In-depth hockey news and expert commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:53:19.370Z"
     },
     "1391337832": {
       "topics": [
@@ -40812,12 +41283,25 @@
     },
     "1391915810": {
       "topics": [
-        "computing",
-        "news/tech"
+        "sports/football"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Football commentary and sports analysis.",
+      "display_title": "Hacking Humans",
+      "blurb": "Sports radio highlights and expert opinions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1392545186": {
       "topics": [
@@ -41143,12 +41627,25 @@
     },
     "1399009172": {
       "topics": [
-        "architecture",
-        "culture/design"
+        "education/courses"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational resource for anatomy instruction.",
+      "display_title": "Life of an Architect",
+      "blurb": "Teaching guidance for anatomy and physiology educators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1399025196": {
       "topics": [
@@ -41167,11 +41664,25 @@
     },
     "1399177286": {
       "topics": [
-        "sports/basketball"
+        "sports/hockey"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hockey coverage and analysis.",
+      "display_title": "The Dane Moore NBA Podcast",
+      "blurb": "In-depth hockey news and expert commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:53:19.370Z"
     },
     "1399303137": {
       "topics": [
@@ -41550,11 +42061,25 @@
     },
     "1406174660": {
       "topics": [
-        "kids-family"
+        "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Church sermons and spiritual teaching.",
+      "display_title": "Catholic Sprouts: Daily Podcast for Catholic Kids",
+      "blurb": "Weekly sermons and spiritual guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1406179184": {
       "topics": [
@@ -41718,11 +42243,25 @@
     },
     "1409420546": {
       "topics": [
-        "education/courses"
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "the speech link with char boshart looking for a sp...",
+      "display_title": "The Speech Link with Char Boshart",
+      "blurb": "Looking for a speech therapy podcast that delivers real-world info and ideas that you can use? Join Char Boshart, MA, CC...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:53:44.555Z"
     },
     "1409735368": {
       "topics": [
@@ -41843,11 +42382,25 @@
     },
     "1412385746": {
       "topics": [
-        "science"
+        "sports/football"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Football commentary and sports analysis.",
+      "display_title": "Dr. Chapa’s OBGYN Clinical Pearls",
+      "blurb": "Sports radio highlights and expert opinions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1412479643": {
       "topics": [
@@ -41933,11 +42486,25 @@
     },
     "1413504428": {
       "topics": [
-        "history"
+        "education/courses"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational resource for anatomy instruction.",
+      "display_title": "Talking Tudors",
+      "blurb": "Teaching guidance for anatomy and physiology educators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1413723815": {
       "topics": [
@@ -42015,19 +42582,50 @@
     },
     "1415491130": {
       "topics": [
-        "society"
+        "health/fitness"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and fitness podcast.",
+      "display_title": "The Science of Psychotherapy",
+      "blurb": "Expert conversations on fitness, recovery, and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1415546090": {
       "topics": [
-        "gaming"
+        "business/marketing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Business strategies for salon professionals.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1415808510": {
       "topics": [
@@ -42150,11 +42748,25 @@
     },
     "1420216970": {
       "topics": [
-        "society/government"
+        "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book discussions and literary interviews.",
+      "display_title": "DSR's Words Matter",
+      "blurb": "Weekly book commentary and author interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1420395891": {
       "topics": [
@@ -42220,11 +42832,25 @@
     },
     "1422812354": {
       "topics": [
-        "sports"
+        "sports/football"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Football commentary and sports analysis.",
+      "display_title": "Thunder & Lightning",
+      "blurb": "Sports radio highlights and expert opinions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1422814215": {
       "topics": [
@@ -42337,9 +42963,23 @@
       "topics": [
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sapiens: a podcast for everything human what makes...",
+      "display_title": "SAPIENS: A Podcast for Everything Human",
+      "blurb": "What makes you … you? And who tells what stories and why? In the SAPIENS podcast, listeners will hear a range of human s...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:53:44.555Z"
     },
     "1425185370": {
       "topics": [
@@ -42470,12 +43110,25 @@
     },
     "1428880766": {
       "topics": [
-        "medicine/neuroscience",
-        "science"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book discussions and literary interviews.",
+      "display_title": "Brain Inspired",
+      "blurb": "Weekly book commentary and author interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1428964002": {
       "topics": [
@@ -42493,12 +43146,25 @@
     },
     "1429317218": {
       "topics": [
-        "economics/markets",
         "business/non-profit"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonprofit operations and fundraising guidance.",
+      "display_title": "The Fundraising Talent Podcast",
+      "blurb": "Resources for nonprofit professionals and leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1429808898": {
       "topics": [
@@ -42631,20 +43297,50 @@
     },
     "1432259450": {
       "topics": [
-        "sports/tennis"
+        "music"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DJ curated music mixes.",
+      "display_title": "Monday Match Analysis",
+      "blurb": "Contemporary and world music curated by DJ.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1432369172": {
       "topics": [
-        "psychology",
-        "society"
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "DJ curated music mixes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1432539965": {
       "topics": [
@@ -42657,9 +43353,23 @@
       "topics": [
         "education/self-improvement"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal development and mindset coaching.",
+      "display_title": "The Christian Bae",
+      "blurb": "Storytelling for mindset and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1432713243": {
       "topics": [
@@ -42730,11 +43440,25 @@
     },
     "1433583146": {
       "topics": [
-        "gaming"
+        "sports/hockey"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hockey coverage and analysis.",
+      "display_title": "WhatCulture Gaming",
+      "blurb": "In-depth hockey news and expert commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:53:19.370Z"
     },
     "1433827361": {
       "topics": [
@@ -42815,11 +43539,28 @@
     },
     "1434243584": {
       "topics": [
-        "computing"
+        "music"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Musicians analyze classic albums.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1434244995": {
       "topics": [
@@ -42838,12 +43579,28 @@
     },
     "1434282974": {
       "topics": [
-        "economics/markets",
-        "society"
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science and technology storytelling.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:53:19.370Z"
     },
     "1434306168": {
       "topics": [
@@ -42854,11 +43611,25 @@
     },
     "1434321470": {
       "topics": [
-        "education/how-to"
+        "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book discussions and literary interviews.",
+      "display_title": "School Librarians United with Amy Hermon",
+      "blurb": "Weekly book commentary and author interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:52:37.105Z"
     },
     "1434325875": {
       "topics": [
@@ -43548,11 +44319,25 @@
     },
     "1436541194": {
       "topics": [
-        "nature"
+        "sports/hockey"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hockey coverage and analysis.",
+      "display_title": "Constant Wonder",
+      "blurb": "In-depth hockey news and expert commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9571a745",
+      "classified_at": "2026-07-25T10:53:19.370Z"
     },
     "1436616330": {
       "topics": [
