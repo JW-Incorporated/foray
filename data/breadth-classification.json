@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T06:17:29.010Z",
+  "built_at": "2026-07-25T07:10:02.285Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-f6b438bf",
+    "last_batch_id": "fresh-2026-07-25-5d77c74e",
     "last_batch_tier": 1
   },
   "entries": {
@@ -5930,11 +5930,25 @@
     },
     "284922000": {
       "topics": [
-        "science/physics"
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amateur radio hobby and equipment discussion with technical focus.",
+      "display_title": "icqpodcast's Amateur / Ham Radio Podcast",
+      "blurb": "Amateur radio news, training, events, and community discussions for radio enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "285097604": {
       "topics": [
@@ -7753,8 +7767,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quranic recitation by Islamic scholar; spiritual/religious content.",
+      "display_title": "الشيخ سعود الشريم",
+      "blurb": "Complete Quranic recitation by Sheikh Saud Al-Shuraim.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "365374471": {
       "topics": [
@@ -11219,11 +11247,30 @@
     },
     "561510696": {
       "topics": [
-        "society"
+        "paranormal",
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unexplained mysteries, folklore, and fringe history discussed skeptically.",
+      "display_title": "Blurry Photos",
+      "blurb": "Unexplained mysteries and fringe topics explored through research and storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "561769983": {
       "topics": [
@@ -13378,11 +13425,30 @@
     },
     "700328970": {
       "topics": [
-        "science"
+        "science",
+        "society/law"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Forensic science and latent print analysis; criminalistic research.",
+      "display_title": "Double Loop Podcast",
+      "blurb": "Latent print examination and forensic science research with expert guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "701045710": {
       "topics": [
@@ -13441,9 +13507,23 @@
       "topics": [
         "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political revolutions and historical narratives; current fiction series.",
+      "display_title": "Revolutions",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "704434205": {
       "topics": [
@@ -13652,11 +13732,30 @@
     },
     "721125504": {
       "topics": [
-        "personal-journals"
+        "history",
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Black history narratives covering civil rights and cultural moments.",
+      "display_title": "Witness History: Black history",
+      "blurb": "Historical narratives of Black achievement, resistance, and cultural moments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "722310366": {
       "topics": [
@@ -13720,11 +13819,25 @@
     },
     "732915228": {
       "topics": [
-        "society"
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amateur radio hobby and equipment discussion with technical focus.",
+      "display_title": "Stuff They Don't Want You To Know",
+      "blurb": "Amateur radio news, training, events, and community discussions for radio enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "733163012": {
       "topics": [
@@ -13802,9 +13915,23 @@
       "topics": [
         "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sleep aid podcast with boring storytelling to induce sleep.",
+      "display_title": "Sleep With Me",
+      "blurb": "Bedtime stories designed to become progressively boring and induce sleep.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "741606139": {
       "topics": [
@@ -13824,11 +13951,25 @@
     },
     "751574016": {
       "topics": [
-        "education/language-learning"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "All Ears English Podcast",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "754700884": {
       "topics": [
@@ -13939,11 +14080,25 @@
     },
     "782571888": {
       "topics": [
-        "health/sexuality"
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amateur radio hobby and equipment discussion with technical focus.",
+      "display_title": "Strictly Anonymous Confessions",
+      "blurb": "Amateur radio news, training, events, and community discussions for radio enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "783201244": {
       "topics": [
@@ -14008,11 +14163,30 @@
     },
     "790864884": {
       "topics": [
-        "computing"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech industry news and product announcements briefing.",
+      "display_title": "Daily Tech News Show",
+      "blurb": "Daily tech industry briefing covering AI, hardware, and market developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "791564318": {
       "topics": [
@@ -14096,11 +14270,25 @@
     },
     "796512132": {
       "topics": [
-        "music"
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sleep aid podcast with boring storytelling to induce sleep.",
+      "display_title": "Fedde Le Grand - Darklight Sessions",
+      "blurb": "Bedtime stories designed to become progressively boring and induce sleep.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "797737031": {
       "topics": [
@@ -14134,11 +14322,25 @@
     },
     "808511892": {
       "topics": [
-        "personal-journals"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "The Girl Next Door Podcast",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "808792827": {
       "topics": [
@@ -14223,27 +14425,74 @@
     },
     "818198322": {
       "topics": [
-        "medicine"
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sleep aid podcast with boring storytelling to induce sleep.",
+      "display_title": "FoundMyFitness",
+      "blurb": "Bedtime stories designed to become progressively boring and induce sleep.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "818817570": {
       "topics": [
-        "gaming"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech industry news and product announcements briefing.",
+      "display_title": "Total Party Kill",
+      "blurb": "Daily tech industry briefing covering AI, hardware, and market developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "819290316": {
       "topics": [
-        "tv-film"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "DIZNEY COAST TO COAST",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "820373598": {
       "topics": [
@@ -14330,11 +14579,25 @@
     },
     "827905050": {
       "topics": [
-        "tv-film"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "Happy Sad Confused",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "827919428": {
       "topics": [
@@ -14505,11 +14768,25 @@
     },
     "840986946": {
       "topics": [
-        "comedy"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "No Such Thing As A Fish",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "841758860": {
       "topics": [
@@ -14737,11 +15014,25 @@
     },
     "862312494": {
       "topics": [
-        "music"
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amateur radio hobby and equipment discussion with technical focus.",
+      "display_title": "Cosmic Gate: WYM Radio",
+      "blurb": "Amateur radio news, training, events, and community discussions for radio enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "863338913": {
       "topics": [
@@ -15316,11 +15607,30 @@
     },
     "893035230": {
       "topics": [
-        "education/how-to"
+        "education/language-learning",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ESL instruction for intermediate to advanced English learners.",
+      "display_title": "Teaching in Higher Ed",
+      "blurb": "ESL podcast teaching American English idioms and natural conversation skills.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "893729387": {
       "topics": [
@@ -15544,11 +15854,30 @@
     },
     "903871206": {
       "topics": [
-        "health/fitness"
+        "education/language-learning",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ESL instruction for intermediate to advanced English learners.",
+      "display_title": "The Flipping 50 Show",
+      "blurb": "ESL podcast teaching American English idioms and natural conversation skills.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "904433031": {
       "topics": [
@@ -15692,11 +16021,25 @@
     },
     "909552816": {
       "topics": [
-        "fiction/sci-fi"
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amateur radio hobby and equipment discussion with technical focus.",
+      "display_title": "Wolf 359",
+      "blurb": "Amateur radio news, training, events, and community discussions for radio enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "910048041": {
       "topics": [
@@ -15777,11 +16120,30 @@
     },
     "912241032": {
       "topics": [
-        "education"
+        "health/sexuality",
+        "relationships"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intimate personal confessions and sexuality discussions in raw format.",
+      "display_title": "Dogman Encounters Radio",
+      "blurb": "Anonymous callers share intimate stories about sex, relationships, and secrets.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "912451024": {
       "topics": [
@@ -15858,11 +16220,30 @@
     },
     "915355770": {
       "topics": [
-        "education/self-improvement"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech industry news and product announcements briefing.",
+      "display_title": "Organize 365 Podcast",
+      "blurb": "Daily tech industry briefing covering AI, hardware, and market developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "916244917": {
       "topics": [
@@ -16037,11 +16418,25 @@
     },
     "923017416": {
       "topics": [
-        "religion/buddhism"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "Heart Wisdom with Jack Kornfield",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "923018685": {
       "topics": [
@@ -16151,11 +16546,30 @@
     },
     "927205926": {
       "topics": [
-        "gaming"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech industry news and product announcements briefing.",
+      "display_title": "Campaign: Skyjacks",
+      "blurb": "Daily tech industry briefing covering AI, hardware, and market developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "927558221": {
       "topics": [
@@ -16266,11 +16680,30 @@
     },
     "934552872": {
       "topics": [
-        "music"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech industry news and product announcements briefing.",
+      "display_title": "Switched on Pop",
+      "blurb": "Daily tech industry briefing covering AI, hardware, and market developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "934576040": {
       "topics": [
@@ -16387,11 +16820,25 @@
     },
     "939310746": {
       "topics": [
-        "religion"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "Naked Mormonism Podcast",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "939966584": {
       "topics": [
@@ -16463,11 +16910,25 @@
     },
     "942777522": {
       "topics": [
-        "psychology"
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amateur radio hobby and equipment discussion with technical focus.",
+      "display_title": "The Psychology Podcast",
+      "blurb": "Amateur radio news, training, events, and community discussions for radio enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "942809988": {
       "topics": [
@@ -16626,11 +17087,30 @@
     },
     "952917216": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intimate personal confessions and sexuality discussions in raw format.",
+      "display_title": "How To Talk To Girls Podcast",
+      "blurb": "Anonymous callers share intimate stories about sex, relationships, and secrets.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "952917333": {
       "topics": [
@@ -16859,11 +17339,25 @@
     },
     "957171516": {
       "topics": [
-        "gaming"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "Kinda Funny Gamescast: Video Game Podcast",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "957216506": {
       "topics": [
@@ -17162,19 +17656,47 @@
     },
     "964902342": {
       "topics": [
-        "personal-journals"
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amateur radio hobby and equipment discussion with technical focus.",
+      "display_title": "The Mortified Podcast",
+      "blurb": "Amateur radio news, training, events, and community discussions for radio enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "965023632": {
       "topics": [
-        "tv-film/history"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "The Secret History Of Hollywood",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "965163837": {
       "topics": [
@@ -17595,11 +18117,25 @@
     },
     "975392298": {
       "topics": [
-        "food"
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sleep aid podcast with boring storytelling to induce sleep.",
+      "display_title": "Bourbon Pursuit",
+      "blurb": "Bedtime stories designed to become progressively boring and induce sleep.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "975730628": {
       "topics": [
@@ -17799,9 +18335,23 @@
       "topics": [
         "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "The WW2 Podcast",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "982530565": {
       "topics": [
@@ -18051,11 +18601,25 @@
     },
     "990835722": {
       "topics": [
-        "business/non-profit"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "Inside Social Innovation",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "990871441": {
       "topics": [
@@ -18091,11 +18655,25 @@
     },
     "991156680": {
       "topics": [
-        "religion"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "The Eric Metaxas Show",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "991313597": {
       "topics": [
@@ -18121,11 +18699,25 @@
     },
     "991739142": {
       "topics": [
-        "education/courses"
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amateur radio hobby and equipment discussion with technical focus.",
+      "display_title": "The School Leadership Show",
+      "blurb": "Amateur radio news, training, events, and community discussions for radio enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "992015074": {
       "topics": [
@@ -18188,11 +18780,25 @@
     },
     "993270804": {
       "topics": [
-        "society/government"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "GovLove - A Podcast About Local Government",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "993284374": {
       "topics": [
@@ -18271,11 +18877,25 @@
     },
     "995859414": {
       "topics": [
-        "craft/filmmaking"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "Just Shoot It",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "996151267": {
       "topics": [
@@ -18506,11 +19126,30 @@
     },
     "1006030122": {
       "topics": [
-        "gaming"
+        "health/sexuality",
+        "relationships"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intimate personal confessions and sexuality discussions in raw format.",
+      "display_title": "Sneak Attack!",
+      "blurb": "Anonymous callers share intimate stories about sex, relationships, and secrets.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1006051665": {
       "topics": [
@@ -18550,11 +19189,30 @@
     },
     "1007021910": {
       "topics": [
-        "gaming"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech industry news and product announcements briefing.",
+      "display_title": "The Glass Cannon Podcast",
+      "blurb": "Daily tech industry briefing covering AI, hardware, and market developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1007053996": {
       "topics": [
@@ -18579,11 +19237,30 @@
     },
     "1010619816": {
       "topics": [
-        "sports/rugby"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech industry news and product announcements briefing.",
+      "display_title": "Bloke In A Bar",
+      "blurb": "Daily tech industry briefing covering AI, hardware, and market developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1010738108": {
       "topics": [
@@ -18727,11 +19404,25 @@
     },
     "1016715810": {
       "topics": [
-        "education/courses"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "Law School Admissions Unplugged Podcast",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1017074168": {
       "topics": [
@@ -19059,11 +19750,30 @@
     },
     "1025399574": {
       "topics": [
-        "automotive"
+        "science",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Forensic science and latent print analysis; criminalistic research.",
+      "display_title": "Ride the Lightning: Tesla and EV Podcast",
+      "blurb": "Latent print examination and forensic science research with expert guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1025470195": {
       "topics": [
@@ -19135,11 +19845,30 @@
     },
     "1028912310": {
       "topics": [
-        "space"
+        "space",
+        "science"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.5
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Limited signal; falls back to genre prior; needs review.",
+      "display_title": "Coffee Break: Señal y Ruido",
+      "blurb": "Podcast covering various topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1029088717": {
       "topics": [
@@ -19377,11 +20106,25 @@
     },
     "1036276968": {
       "topics": [
-        "society"
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amateur radio hobby and equipment discussion with technical focus.",
+      "display_title": "Scene on Radio",
+      "blurb": "Amateur radio news, training, events, and community discussions for radio enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1036379102": {
       "topics": [
@@ -19416,11 +20159,30 @@
     },
     "1037206422": {
       "topics": [
-        "religion/buddhism"
+        "education/language-learning",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ESL instruction for intermediate to advanced English learners.",
+      "display_title": "The Wisdom Podcast",
+      "blurb": "ESL podcast teaching American English idioms and natural conversation skills.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1037423108": {
       "topics": [
@@ -19604,11 +20366,25 @@
     },
     "1041509070": {
       "topics": [
-        "kids-family"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "Life with Sally",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1041801905": {
       "topics": [
@@ -19751,11 +20527,30 @@
     },
     "1044102900": {
       "topics": [
-        "sports/wrestling"
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech industry news and product announcements briefing.",
+      "display_title": "The Lapsed Fan",
+      "blurb": "Daily tech industry briefing covering AI, hardware, and market developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1044115915": {
       "topics": [
@@ -20060,11 +20855,25 @@
     },
     "1050430296": {
       "topics": [
-        "news/politics"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "The New Yorker Radio Hour",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1050462261": {
       "topics": [
@@ -20113,11 +20922,28 @@
     },
     "1050862266": {
       "topics": [
-        "tv-film/history"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1050886056": {
       "topics": [
@@ -20151,11 +20977,30 @@
     },
     "1051557000": {
       "topics": [
-        "science"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech industry news and product announcements briefing.",
+      "display_title": "Science Vs",
+      "blurb": "Daily tech industry briefing covering AI, hardware, and market developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1052346812": {
       "topics": [
@@ -20196,11 +21041,25 @@
     },
     "1052842770": {
       "topics": [
-        "news/commentary"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "The Rubin Report",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1052842829": {
       "topics": [
@@ -20211,11 +21070,25 @@
     },
     "1052860428": {
       "topics": [
-        "craft/photography"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "B&H Photography Podcast",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1052989183": {
       "topics": [
@@ -20293,11 +21166,25 @@
     },
     "1054540734": {
       "topics": [
-        "nature"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and patterns across revolutions and societies.",
+      "display_title": "The Field Guides",
+      "blurb": "Political revolutions across history; current season a fictional Mars revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5d77c74e",
+      "classified_at": "2026-07-25T07:10:02.285Z"
     },
     "1054640091": {
       "topics": [
