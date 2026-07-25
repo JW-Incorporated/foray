@@ -70,4 +70,10 @@ jobs:
             console.log('data invariants ok');
           "
       - name: Syntax-check site JS
-        run: node --check app.js
+        run: |
+          node --check app.js
+          node --check search-engine.js
+      - name: Validate semantic-index.json
+        run: node tools/validate-semantic-index.mjs
+      - name: Search-quality battery
+        run: node tools/test-search.mjs

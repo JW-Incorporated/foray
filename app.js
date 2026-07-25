@@ -341,152 +341,18 @@ function whyFor(id, item) {
   return curated ? curated.why_line : (item.hook || "");
 }
 
-/* ---------- query interpreter (playlist builder) ---------- */
+/* ---------- query interpreter (playlist builder) ----------
+   The actual matching/scoring logic lives in search-engine.js (loaded
+   before this script, see index.html) — pure, DOM-free, and shared with
+   tools/test-search.mjs's search-quality battery. `searchCtx` is the
+   session-lifetime memoization context it reads/writes (its per-term
+   frequency caches); build it once real data is loaded. */
 
-const STOPWORDS = new Set(["a","an","the","about","series","playlist","of","on","for","me","my","give","build","make","with","to","and","or","in","podcast","podcasts","episode","episodes","show","shows","some","something","want","i","please","that","stuff","things"]);
-
-const ALIASES = {
-  bbq: ["barbecue", "grill"], barbeque: ["barbecue"],
-  cooking: ["food", "culinary"], rome: ["roman"], ww2: ["war"],
-  plane: ["aviation", "aircraft"], planes: ["aviation", "aircraft"],
-  car: ["automotive"], cars: ["automotive"], ocean: ["sea", "marine"],
-};
-
-function tokenize(q) {
-  const base = q.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 1 && !STOPWORDS.has(w));
-  const expanded = new Set(base);
-  base.forEach(w => (ALIASES[w] || []).forEach(a => expanded.add(a)));
-  return [...expanded];
-}
-
-function tagDF(term) {
-  if (!state._dfMemo) state._dfMemo = new Map();
-  if (state._dfMemo.has(term)) return state._dfMemo.get(term);
-  const tagsMap = state.itemTags?.tags || {};
-  let n = 0;
-  for (const tags of Object.values(tagsMap)) {
-    if (tags.some(tag => term.length < 4 ? (tag === term || tag.split("-").includes(term)) : tag.includes(term))) n++;
+function searchCtx() {
+  if (!state._searchCtx) {
+    state._searchCtx = { semantic: state.semantic, itemTags: state.itemTags, discover: state.discover };
   }
-  state._dfMemo.set(term, n);
-  return n;
-}
-
-function interpretQuery(q) {
-  const tokens = tokenize(q);
-  const filters = [];
-  const topicBoosts = new Set();
-  const mods = state.semantic?.modifiers || {};
-  const concepts = state.semantic?.concepts || {};
-
-  const contentTokens = tokens.filter(tok => {
-    if (mods[tok]) { filters.push(mods[tok]); return false; }
-    return true;
-  });
-
-  const groups = contentTokens.map(tok => {
-    const terms = new Map([[tok, 1]]);
-    const addTerm = (t, w) => terms.set(t, Math.max(terms.get(t) || 0, w));
-    const others = contentTokens.filter(o => o !== tok);
-
-    for (const [cid, c] of Object.entries(concepts)) {
-      if (!c.terms?.includes(tok)) continue;
-      const related = new Set(c.related || []);
-      const supported = others.length === 0 || others.some(o => {
-        if (c.terms.includes(o)) return true;
-        return Object.entries(concepts).some(([oid, oc]) =>
-          oc.terms?.includes(o) && (related.has(oid) || (oc.related || []).includes(cid)));
-      });
-      const wTerm = supported ? 0.6 : 0.25;
-      const wRelated = supported ? 0.25 : 0.1;
-      c.terms.forEach(t => addTerm(t, wTerm));
-      if (supported) (c.topics || []).forEach(t => topicBoosts.add(t));
-      (c.related || []).forEach(rid => {
-        const rc = concepts[rid];
-        if (rc) rc.terms?.forEach(t => addTerm(t, wRelated));
-      });
-    }
-    for (const [t, w] of [...terms]) {
-      if (w >= 1) continue;
-      const df = tagDF(t);
-      if (df > 60) terms.delete(t);
-      else if (df > 25) terms.set(t, w * 0.4);
-    }
-    return { token: tok, terms };
-  });
-
-  return { groups, filters, topicBoosts };
-}
-
-function passesFilters(item, filters) {
-  for (const f of filters) {
-    if (f.type === "duration_max" && !(item.duration_min && item.duration_min <= f.value)) return false;
-    if (f.type === "duration_min" && !(item.duration_min && item.duration_min >= f.value)) return false;
-    if (f.type === "branch" && !f.value.includes(branchOf(item))) return false;
-    if (f.type === "recency_days") {
-      const d = new Date(item.release_date || 0);
-      if ((Date.now() - d.getTime()) / 86400000 > f.value) return false;
-    }
-  }
-  return true;
-}
-
-function scoreMatch(item, interp) {
-  const title = item.title.toLowerCase();
-  const hook = (item.hook || "").toLowerCase();
-  const show = item.show.toLowerCase();
-  const topics = (item.topics || []).join(" ").toLowerCase();
-  const tags = state.itemTags?.tags?.[item.id] || [];
-
-  const hitText = (text, t) =>
-    t.length < 4 ? new RegExp("\\b" + t + "\\b").test(text) : text.includes(t);
-  const hitTag = (tag, t) =>
-    t.length < 4 ? (tag === t || tag.split("-").includes(t)) : tag.includes(t);
-
-  let sum = 0;
-  let matchedGroups = 0;
-  for (const group of interp.groups) {
-    let best = 0;
-    for (const [t, w] of group.terms) {
-      let f = 0;
-      if (tags.some(tag => hitTag(tag, t))) f += 2.5;
-      if (hitText(topics, t)) f += 3;
-      if (hitText(title, t)) f += 2;
-      if (hitText(hook, t)) f += 1.5;
-      if (hitText(show, t)) f += 1;
-      best = Math.max(best, f * w);
-    }
-    if (best >= 1.2) matchedGroups++;
-    const df = tagDF(group.token);
-    sum += best * (df <= 10 ? 1.35 : df <= 30 ? 1 : 0.75);
-  }
-  for (const tb of interp.topicBoosts) {
-    if ((item.topics || []).includes(tb)) sum += 2;
-  }
-  return { sum, matched: matchedGroups };
-}
-
-function searchWithRelaxation(interp, minScore) {
-  const attempt = (filters) => {
-    const pool = poolFiltered().filter(i => passesFilters(i, filters));
-    if (!interp.groups.length) {
-      return pool.map(i => ({ i, sum: interestScore(i), matched: 0 }))
-        .sort((a, b) => b.sum - a.sum);
-    }
-    return pool.map(i => ({ i, ...scoreMatch(i, interp) }))
-      .filter(x => x.matched > 0 && x.sum > minScore)
-      .sort((a, b) => b.matched - a.matched || b.sum - a.sum);
-  };
-  let results = attempt(interp.filters);
-  let relaxed = null;
-  if (!results.length && interp.filters.some(f => f.type.startsWith("duration"))) {
-    results = attempt(interp.filters.filter(f => !f.type.startsWith("duration")));
-    if (results.length) relaxed = "duration";
-  }
-  if (!results.length && interp.filters.length) {
-    results = attempt([]);
-    if (results.length) relaxed = "all";
-  }
-  return { results, relaxed };
+  return state._searchCtx;
 }
 
 /* ---------- playlists ---------- */
@@ -497,7 +363,7 @@ const ACRONYMS = new Set(["ai", "bbq", "ww2", "ww1", "f1", "nasa", "diy", "cia",
 
 function prettyTitle(query) {
   const raw = query.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  let words = raw.filter(w => !STOPWORDS.has(w));
+  let words = raw.filter(w => !SearchEngine.STOPWORDS.has(w));
   if (!words.length) words = raw;
   return words.slice(0, 4)
     .map(w => ACRONYMS.has(w) ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1))
@@ -528,12 +394,23 @@ function touchPlaylistPlayed(id) {
   if (p) { p.last_played_at = new Date().toISOString(); savePlaylists(all); }
 }
 
+/* Honest rich/sparse/empty contract (product principle #1: an honest
+   sparse/empty answer beats padding a list with off-topic filler). Tiering
+   rule itself lives in SearchEngine.classifyResults — one definition shared
+   with tools/test-search.mjs so the harness validates exactly what ships. */
 function buildPlaylist(query) {
-  const interp = interpretQuery(query);
-  if (!interp.groups.length && !interp.filters.length) return null;
-  const { results } = searchWithRelaxation(interp, 2);
-  const picks = results.slice(0, 10);
-  if (picks.length < 2) return null;
+  const ctx = searchCtx();
+  const interp = SearchEngine.interpretQuery(query, ctx);
+  if (!interp.groups.length && !interp.filters.length) {
+    return { status: "empty", suggestions: [] };
+  }
+  const { results } = SearchEngine.searchWithRelaxation(poolFiltered(), interp, 2, state.itemTags, interestScore);
+  const { status, picks } = SearchEngine.classifyResults(results);
+
+  if (status === "empty") {
+    return { status: "empty", suggestions: SearchEngine.suggestAdjacentTopics(interp, ctx) };
+  }
+
   const playlist = {
     id: "q" + Date.now(),
     query: query.trim(),
@@ -541,9 +418,10 @@ function buildPlaylist(query) {
     item_ids: picks.map(x => x.i.id),
     created: new Date().toISOString(),
     last_played_at: null,
+    sparse: status === "sparse",
   };
   savePlaylists([playlist, ...playlists()]);
-  return playlist;
+  return { status, playlist };
 }
 
 /* ---------- shared wiring ---------- */
@@ -657,13 +535,15 @@ function renderHome() {
     e.preventDefault();
     const query = $("#pl-input").value.trim();
     if (!query) return;
-    const p = buildPlaylist(query);
-    logEvent("playlist_built", { query, found: p ? p.item_ids.length : 0 });
-    if (p) {
-      location.hash = "#/playlist/" + p.id;
+    const result = buildPlaylist(query);
+    logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.item_ids.length : 0 });
+    if (result.status === "ok" || result.status === "sparse") {
+      location.hash = "#/playlist/" + result.playlist.id;
     } else {
       const note = $("#pl-note");
-      note.textContent = "Couldn't find enough for that — try different words.";
+      note.textContent = result.suggestions.length
+        ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
+        : `Not much on "${query}" yet — try different words.`;
       note.hidden = false;
     }
   });
@@ -704,6 +584,7 @@ function renderPlaylistDetail(id) {
           <p class="sub">${items.length}-part playlist · ${played} played</p>
         </div>
       </div>
+      ${p.sparse ? `<p class="note">Only found a few on this — here's what we've got.</p>` : ""}
       ${items.map((item, i) => epRow(item, i, "playlist-" + p.id, nextIdx)).join("")}
       <button class="danger" id="pl-remove">remove this playlist</button>
     </div>`;

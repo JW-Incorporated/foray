@@ -179,6 +179,7 @@
         "launch"
       ],
       "topics": [
+        "space/rockets",
         "business/startups"
       ],
       "related": [
@@ -201,7 +202,7 @@
         "drug-discovery",
         "self-driving-lab"
       ],
-      "topics": [],
+      "topics": ["engineering/ai-robotics"],
       "related": [
         "computing",
         "robotics",
@@ -227,7 +228,7 @@
         "tech",
         "technology"
       ],
-      "topics": [],
+      "topics": ["computing"],
       "related": [
         "ai",
         "semiconductors",
@@ -289,7 +290,7 @@
         "servers",
         "compute"
       ],
-      "topics": [],
+      "topics": ["engineering/ai-robotics"],
       "related": [
         "ai",
         "computing",
@@ -706,7 +707,6 @@
         "food-chemistry",
         "flavor",
         "fermentation",
-        "nutrition",
         "gastronomy"
       ],
       "topics": [
@@ -827,7 +827,8 @@
         "brain"
       ],
       "topics": [
-        "medicine/biology"
+        "medicine/biology",
+        "health"
       ],
       "related": [
         "biology",
@@ -1229,7 +1230,8 @@
         "underground"
       ],
       "topics": [
-        "architecture/infrastructure"
+        "architecture/infrastructure",
+        "cities/urbanism"
       ],
       "related": [
         "construction",
@@ -1392,6 +1394,7 @@
         "wealth"
       ],
       "topics": [
+        "economics/markets",
         "business/startups"
       ],
       "related": [
@@ -1412,6 +1415,7 @@
         "driving"
       ],
       "topics": [
+        "automotive",
         "business/startups"
       ],
       "related": [
@@ -1619,8 +1623,7 @@
         "documentary",
         "saga",
         "epic",
-        "journalism",
-        "true-crime"
+        "journalism"
       ],
       "topics": [
         "history/military-ancient",
@@ -1629,7 +1632,27 @@
       "related": [
         "history",
         "ancient-history",
-        "books"
+        "books",
+        "true-crime"
+      ]
+    },
+    "true-crime": {
+      "terms": [
+        "true-crime",
+        "crime",
+        "murder",
+        "serial-killer",
+        "cold-case",
+        "missing-persons",
+        "unsolved",
+        "homicide",
+        "detective"
+      ],
+      "topics": [
+        "true-crime"
+      ],
+      "related": [
+        "storytelling"
       ]
     },
     "rockets": {
@@ -2022,7 +2045,8 @@
         "wisdom"
       ],
       "topics": [
-        "philosophy/ideas"
+        "philosophy/ideas",
+        "religion"
       ],
       "related": [
         "psychology",

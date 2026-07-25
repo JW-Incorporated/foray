@@ -4,11 +4,12 @@
    cache-first; data files are network-first with cache fallback so a fresh
    session wins when connectivity exists. */
 
-const CACHE = "foray-v2";
+const CACHE = "foray-v3";
 const SHELL = [
   "./",
   "index.html",
   "styles.css",
+  "search-engine.js",
   "app.js",
   "manifest.json",
   "icon-180.png",
