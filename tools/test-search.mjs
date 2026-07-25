@@ -29,21 +29,32 @@
         fix): "fusion" no longer matches inside "diffusion", "roman" no
         longer matches inside "romance", "team" no longer matches inside
         "steam".
+     7. Proper-noun matching: a multi-word show/host query ("lex fridman")
+        is rescued by the full-phrase show-name bonus even when neither
+        word crosses the normal per-term threshold alone, AND a lone
+        coincidental word match (e.g. "lex" in an unrelated Ancient Rome
+        episode) no longer satisfies it once AND-gating applies.
+     8. Newly-authored/fixed concepts (bulk expansion against
+        data/top-topics.json + data/topic-coverage-report.json, hand-
+        verified against the CURRENT semantic-index.json since the report
+        predates this PR and #16): nutrition, parenting, relationships,
+        world-war-2 (now routes to the correct history/military-modern,
+        not -ancient), video games, stand-up comedy, design, paranormal,
+        fiction/audio-drama. Coverage-gated throughout -- topics with no
+        real catalog content (e.g. gardening, chess: verified zero tag
+        hits despite the coverage report listing them) got no concept.
+     9. `sports` concept cleanup: zero-coverage league/team terms (nba,
+        basketball, baseball, tennis, ...) removed so a bare "nba"/
+        "basketball" query no longer floods in generic sports-science
+        content and instead stays honestly empty -- verified via the
+        validator's new zero-coverage-term WARN (tools/validate-semantic-
+        index.mjs), which flagged exactly these two as strictly zero
+        (tagDF=0 AND corpusDF=0); the rest were removed by hand after
+        direct verification they're negligible (tagDF<=1, i.e. one
+        tangential mention for an entire league name).
 
    Usage: node tools/test-search.mjs
-   Exit code 0 = all pass, 1 = at least one failure (readable report to stdout).
-
-   NOTE on scope: two pre-existing weaknesses found while building this
-   battery are deliberately NOT fixed/asserted here -- planned for a
-   follow-up PR (see PR description):
-     - Multi-word proper-noun queries (e.g. a podcast host's name that isn't
-       repeated in individual episode titles, like "huberman lab") can be
-       satisfied by matching only ONE of the words when both are flagged
-       primary -- there's no AND-semantics across primary groups yet.
-     - The `sports` concept's terms include several specific league/team
-       words (nba, basketball, ...) the catalog has ~zero real coverage
-       for, so a bare "nba"/"basketball" query still surfaces generic
-       sports-science content rather than staying honestly thin. */
+   Exit code 0 = all pass, 1 = at least one failure (readable report to stdout). */
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -173,6 +184,18 @@ const topicalCases = [
   // accepted, deliberate precision/recall trade-off. 4 genuinely
   // politics-tagged items, honestly sparse.
   { query: "politics", status: "sparse", checkTop: 4, anyOf: ["politics"] },
+  // Bulk concept-expansion additions (PR2) -- each grounded in verified
+  // real tag coverage, see tools/validate-semantic-index.mjs for the
+  // coverage audit that backs every one of these.
+  { query: "nutrition", status: "ok", checkTop: 5, anyOf: ["nutrition"] },
+  { query: "parenting", status: "ok", checkTop: 5, anyOf: ["parenting"] },
+  { query: "relationships", status: "ok", checkTop: 5, anyOf: ["relationships", "dating", "marriage"] },
+  { query: "world war 2", status: "ok", checkTop: 5, anyOf: ["war", "ww2", "wwii", "pacific"] },
+  { query: "video games", status: "ok", checkTop: 5, anyOf: ["game", "gaming", "video-games"] },
+  { query: "stand up comedy", status: "ok", checkTop: 5, anyOf: ["comedy", "comedian", "stand-up"] },
+  { query: "design", status: "ok", checkTop: 5, anyOf: ["design"] },
+  { query: "paranormal", status: "ok", checkTop: 3, anyOf: ["paranormal", "supernatural"] },
+  { query: "fiction podcast", status: "ok", checkTop: 5, anyOf: ["fiction", "audio-drama"] },
 ];
 
 for (const c of topicalCases) {
@@ -197,7 +220,12 @@ for (const c of topicalCases) {
 
 /* ---------- 3. honest empty for genuinely-absent topics ---------- */
 
-for (const query of ["the lakers", "warriors"]) {
+/* "nba"/"basketball" join this list in PR2 -- before the `sports` concept
+   cleanup, a bare "nba" query flooded in generic sports-science content
+   (the one real "nba"-tagged item is about an NBA performance coach's
+   biomechanics, not the league) via full concept-vocabulary expansion.
+   With the zero-coverage league terms removed, it's honestly empty. */
+for (const query of ["the lakers", "warriors", "nba", "basketball"]) {
   const { status, picks } = search(query);
   check(`"${query}" is honestly empty (no NBA-team content in catalog)`, status === "empty" && picks.length === 0,
     `got status=${status}, picks=${picks.length}`);
@@ -262,7 +290,42 @@ for (const c of collisionCases) {
     `still present in picks`);
 }
 
-/* ---------- 7. generic-filler stress test: filler words never dominate ---------- */
+/* ---------- 7. proper-noun matching (fix B) ---------- */
+
+{
+  // Recall (B)(i): "lex fridman" -- neither word alone reliably crosses
+  // the match threshold (the only real per-item signal is a flat +1
+  // show-field hit each), so before the full-phrase show-name rescue this
+  // returned nothing useful. Now it should be rich, and every pick should
+  // genuinely be the show (the rescue only fires for the full phrase).
+  const lex = search("lex fridman");
+  check(`"lex fridman" status is ok (recall fix)`, lex.status === "ok", `got status=${lex.status}`);
+  if (lex.status === "ok") {
+    const wrongShow = lex.picks.filter((p) => p.i.show !== "Lex Fridman Podcast");
+    check(`"lex fridman" every pick is actually the show`, wrongShow.length === 0,
+      `off-show picks: ${wrongShow.map((p) => `${p.i.id} (${p.i.show})`).join(", ")}`);
+  }
+
+  // Precision (B)(ii): "lex" alone matches an unrelated Ancient History
+  // Fangirl episode about "The Lex Juliae" (a Roman law) via the show/
+  // title text -- neither "lex" nor "fridman" is concept vocabulary, so
+  // this query is AND-gated: a lone "lex" hit is no longer enough.
+  check(`"lex fridman" excludes the unrelated Lex Juliae episode`,
+    !lex.picks.some((p) => p.i.id === "ancient-history-fangirl--lex-juliae"),
+    `still present -- AND-gating for proper-noun queries isn't excluding a lone coincidental word match`);
+
+  // "huberman lab": "lab" alone is common enough to match other shows
+  // (Materialism, Off-Nominal, Lab to Market Leadership) via the
+  // topic-phrase OR-gate ("lab" IS concept vocabulary via `computing`/
+  // similar, so this ISN'T AND-gated) -- the fix here is recall, not
+  // precision: real Huberman Lab episodes must now be findable at all.
+  const huberman = search("huberman lab");
+  const realHuberman = huberman.picks.filter((p) => p.i.show === "Huberman Lab");
+  check(`"huberman lab" finds real Huberman Lab episodes (recall fix)`, realHuberman.length >= 2,
+    `only found ${realHuberman.length}; picks: ${huberman.picks.map((p) => p.i.show).join(", ")}`);
+}
+
+/* ---------- 8. generic-filler stress test: filler words never dominate ---------- */
 
 for (const query of ["how bbq works", "the history of jazz"]) {
   const { interp } = search(query);

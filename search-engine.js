@@ -136,8 +136,10 @@ function interpretQuery(q, ctx) {
     const others = contentTokens.filter(o => o !== tok);
     const otherKeys = others.map(o => new Set([o, ...(ALIASES[o] || [])]));
 
+    let hasConceptExpansion = false;
     for (const [cid, c] of Object.entries(concepts)) {
       if (!c.terms?.some(t => lookupKeys.has(t))) continue;
+      hasConceptExpansion = true;
       const related = new Set(c.related || []);
       const supported = others.length === 0 || otherKeys.some(okeys => {
         if (c.terms.some(t => okeys.has(t))) return true;
@@ -166,10 +168,30 @@ function interpretQuery(q, ctx) {
       terms,
       broad: corpusDF(tok, ctx) >= BROAD_DF_THRESHOLD,
       df: tagDF(tok, ctx),
+      hasConceptExpansion,
     };
   });
 
-  return { groups, filters, topicBoosts, hasPrimary: groups.some(g => !g.broad) };
+  const primaryGroups = groups.filter(g => !g.broad);
+  /* A query where every specific (non-broad) token is ALSO unrecognized by
+     any concept's vocabulary looks like a proper noun (a person/show name),
+     not a topic phrase -- topic words are almost always concept terms once
+     the index has real coverage for them. Only for that narrow shape do we
+     require every primary token to match (AND), not just one (OR): a named-
+     entity query where only one of two names coincidentally matches
+     something unrelated (e.g. "lex" alone matching an Ancient Rome episode
+     about the "Lex Juliae") should not qualify. Topic-phrase queries (at
+     least one token IS concept vocabulary) keep OR semantics -- requiring
+     every word of "nuclear fusion energy" to literally co-occur would hurt
+     recall for legitimate broader topic matches. */
+  const properNounQuery = primaryGroups.length >= 2 && primaryGroups.every(g => !g.hasConceptExpansion);
+
+  return {
+    groups, filters, topicBoosts,
+    hasPrimary: primaryGroups.length > 0,
+    properNounQuery,
+    primaryGroupCount: primaryGroups.length,
+  };
 }
 
 function passesFilters(item, filters) {
@@ -237,6 +259,38 @@ function scoreMatch(item, interp, itemTags) {
   for (const tb of interp.topicBoosts) {
     if ((item.topics || []).includes(tb)) sum += 2;
   }
+
+  /* Full-phrase show-name RESCUE: a multi-word query where every token
+     appears as a whole word in the show name is almost certainly a direct
+     show/host search ("lex fridman", "huberman lab"). Those often can't
+     cross the normal per-term threshold on their own -- the only real
+     signal is a flat +1 show-field hit per term, deliberately capped low
+     since a single show-word hit alone is weak evidence.
+
+     Gated on `!wouldPassGate`: only items that would otherwise be EXCLUDED
+     get this treatment. An early version applied it unconditionally and
+     regressed "crime junkie"/"endurance running" from rich to sparse --
+     shows whose NAME happens to equal the query (Crime Junkie, Physiology
+     & Endurance Running) already pass normally through real topic/tag
+     matches, and adding +8 on top of an already-good score inflated the
+     query's *relative* strong-match bar (see classifyResults), knocking
+     other genuinely-good matches (other true-crime/endurance shows) out
+     of the "strong" set even though nothing about THEIR relevance
+     changed. Gating on "would otherwise be excluded" makes this a pure
+     rescue for the recall gap it targets, with zero effect on any query
+     that already worked -- verified via the full battery. */
+  const wouldPassGate = interp.properNounQuery
+    ? primaryMatched === interp.primaryGroupCount
+    : (interp.hasPrimary ? primaryMatched > 0 : matchedGroups > 0);
+  if (!wouldPassGate && interp.groups.length >= 2) {
+    const allTokensInShow = interp.groups.every(g => new RegExp("\\b" + g.token + "\\b").test(show));
+    if (allTokensInShow) {
+      sum += 8;
+      matchedGroups = interp.groups.length;
+      primaryMatched = interp.primaryGroupCount;
+    }
+  }
+
   return { sum, matched: matchedGroups, primaryMatched };
 }
 
@@ -257,8 +311,15 @@ function searchWithRelaxation(pool, interp, minScore, itemTags, rankFallback) {
          -- a broad/generic-only match (e.g. "history") can never by itself
          justify inclusion. When the whole query is broad words (e.g. a bare
          "history"), there's nothing more specific to prefer, so any match
-         counts, same as before. */
-      .filter(x => (interp.hasPrimary ? x.primaryMatched > 0 : x.matched > 0) && x.sum > minScore)
+         counts, same as before. For a properNounQuery (see interpretQuery),
+         the gate tightens from OR to AND -- every primary token must match,
+         not just one -- since a lone coincidental word match (e.g. "lex" in
+         an unrelated Ancient Rome episode) shouldn't satisfy a 2-word name
+         search. */
+      .filter(x => {
+        if (interp.properNounQuery) return x.primaryMatched === interp.primaryGroupCount && x.sum > minScore;
+        return (interp.hasPrimary ? x.primaryMatched > 0 : x.matched > 0) && x.sum > minScore;
+      })
       .sort((a, b) => b.matched - a.matched || b.sum - a.sum);
   };
   let results = attempt(interp.filters);
