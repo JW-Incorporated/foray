@@ -87,6 +87,33 @@
       "batch_id": "fresh-2026-07-25-31acd1c8",
       "classified_at": "2026-07-25T13:54:10.190Z"
     },
+    "73329638": {
+      "topics": [
+        "science",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The surprising connections in science and technology that give you the Big Picture.",
+      "display_title": "Big Picture Science",
+      "blurb": "The surprising connections in science and technology that give you the Big Picture. Astronomer Seth Shostak and science journalist Molly Bentley are joined each week by leading researchers, techies, and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
     "73330112": {
       "topics": [
         "tv-film/reviews",
@@ -1469,6 +1496,1226 @@
       "batch_id": "fresh-2026-07-25-31acd1c8",
       "classified_at": "2026-07-25T13:54:10.190Z"
     },
+    "257441540": {
+      "topics": [
+        "linguistics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ben and Marina bring you real conversations and natural language to help you start speaking.",
+      "display_title": "Learn Spanish: Notes in Spanish Inspired Beginners",
+      "blurb": "Ben and Marina bring you real conversations and natural language to help you start speaking the Spanish you'll never find in a text book. With over 100 Spanish podcasts to.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "259744514": {
+      "topics": [
+        "psychology"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "YogaDownload.",
+      "display_title": "20 min. Yoga Sessions from YogaDownload.com",
+      "blurb": "YogaDownload. com brings you 20 minute yoga sessions to help you relax, become more centered, and bring balance to your body, mind and soul.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "260843816": {
+      "topics": [
+        "philosophy"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "This podcast is hosted by John Eldredge, an author, counselor, and president of Wild at.",
+      "display_title": "Wild at Heart",
+      "blurb": "This podcast is hosted by John Eldredge, an author, counselor, and president of Wild at Heart, a ministry that helps people find God's love and Kingdom. With his experience as.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "261779480": {
+      "topics": [
+        "nature"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A topical guide to life in the Scottish outdoors.",
+      "display_title": "Scotland Outdoors",
+      "blurb": "A topical guide to life in the Scottish outdoors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "265264862": {
+      "topics": [
+        "philosophy"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tara Brach, Ph.",
+      "display_title": "Tara Brach",
+      "blurb": "Tara Brach, Ph. D is an internationally known meditation teacher and author of bestselling Radical Acceptance and True Refuge.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "267165284": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Le Super Moscato Show, le show sport numéro un en France.",
+      "display_title": "Super Moscato Show",
+      "blurb": "Le Super Moscato Show, le show sport numéro un en France. Foot, Rugby, Tennis, Boxe,… les meilleurs débats, les plus grandes dingueries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "267300884": {
+      "topics": [
+        "math"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tim Harford explains - and sometimes debunks - the numbers and statistics used in political.",
+      "display_title": "More or Less",
+      "blurb": "Tim Harford explains - and sometimes debunks - the numbers and statistics used in political debate, the news and everyday life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "269795738": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leo Laporte brings some of the most interesting personalities in technology together to talk about.",
+      "display_title": "All TWiT.tv Shows (Audio)",
+      "blurb": "Leo Laporte brings some of the most interesting personalities in technology together to talk about the most important issues. Fun, relaxed, informative and always entertaining, count on TWiT for the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "271202930": {
+      "topics": [
+        "craft/filmmaking"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host Adam Graham is your guide on this journey through the Man of Steel's Golden.",
+      "display_title": "Old Time Radio Superman Show|Superhero Adventure Audiodrama",
+      "blurb": "Host Adam Graham is your guide on this journey through the Man of Steel's Golden Ageadventures in Old TIme Radio. This looks like a job for Superman.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "272591768": {
+      "topics": [
+        "psychology"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Varied-tempo workout music mixes for runners, joggers, and power walkers, from the creator of Podrun",
+      "display_title": "PODRUNNER: INTERVALS -- Workout Music",
+      "blurb": "Varied-tempo workout music mixes for runners, joggers, and power walkers, from the creator of Podrunner, the popular workout mix series. These professionally designed, multi-week series are your training partner for.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "275087414": {
+      "topics": [
+        "craft/filmmaking"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Modern audio drama presented by an award winning group from the Dallas / Fort Worth.",
+      "display_title": "Texas Radio Theatre",
+      "blurb": "Modern audio drama presented by an award winning group from the Dallas / Fort Worth area. Most productions have been recorded in front of a studio audience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "276268070": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "For decades, PlayStation consoles have brought incredible games and unforgettable stories to million",
+      "display_title": "Beyond",
+      "blurb": "For decades, PlayStation consoles have brought incredible games and unforgettable stories to millions of gamers— and Beyond has been there every step of the way. Join passionate PlayStation experts Max.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "276268226": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Veteran games industry host Daemon Hatfield and the IGN crew break down the biggest gaming.",
+      "display_title": "Game Scoop!",
+      "blurb": "Veteran games industry host Daemon Hatfield and the IGN crew break down the biggest gaming news of the week, dive into retro gaming nostalgia, and challenge each other—and the audience—with.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "276268454": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "These days, practically everything is an Xbox, and Xbox fans deserve to celebrate their passion.",
+      "display_title": "Unlocked",
+      "blurb": "These days, practically everything is an Xbox, and Xbox fans deserve to celebrate their passion for Xbox everywhere. Unlocked is the definitive Xbox podcast, hosted by Ryan McCaffrey alongside a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "277975394": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert analysis on legal issues and cases in the news.",
+      "display_title": "Bloomberg Law",
+      "blurb": "Expert analysis on legal issues and cases in the news. Host June Grasso speaks with prominent attorneys and scholars on the legal stories making news and shaping the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "281329178": {
+      "topics": [
+        "space"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "El Radio Show / Podcast semanal David Gausa presents Sutil Sensations, en su edición en.",
+      "display_title": "DAVID GAUSA presents SUTIL SENSATIONS PODCAST",
+      "blurb": "El Radio Show / Podcast semanal David Gausa presents Sutil Sensations, en su edición en Español, explorando la mejor música y exclusivas de los mejores sellos de la escena global.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "282285938": {
+      "topics": [
+        "philosophy"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vipassana Metta Foundation strives for the cultivation of awareness through the traditional practice",
+      "display_title": "Vipassana Metta Foundation",
+      "blurb": "Vipassana Metta Foundation strives for the cultivation of awareness through the traditional practices of Generosity, Moral Conduct, Concentration, Insight, and Lovingkindness with the understanding that liberation of the heart brings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "283537064": {
+      "topics": [
+        "philosophy"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A close reading of the text of Karl Marx's Capital Volume I in 13 lectures.",
+      "display_title": "Reading Marx's Capital (audio)",
+      "blurb": "A close reading of the text of Karl Marx's Capital Volume I in 13 lectures by Professor David Harvey.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "284198852": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two dudes blogging and podcasting about the San Jose Sharks, straight from sunny California.",
+      "display_title": "Dudes On Hockey",
+      "blurb": "Two dudes blogging and podcasting about the San Jose Sharks, straight from sunny California.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "284675702": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Red Eye Radio is the pre-eminent syndicated overnight radio show hosted by radio vets Gary.",
+      "display_title": "Red Eye Radio",
+      "blurb": "Red Eye Radio is the pre-eminent syndicated overnight radio show hosted by radio vets Gary McNamara and Eric Harley airing Monday through Friday, Midnight to 5am Central. Targeted at long.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "285097604": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "2 hours of the hottest dance music brought to you from Toolroom.",
+      "display_title": "Toolroom Radio",
+      "blurb": "2 hours of the hottest dance music brought to you from Toolroom. Including only but the best in underground dance music of right now, plus AAA weekly guests on the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "285259130": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The HouseSmarts Radio with Lou Manfredini Podcast from 720 WGN.",
+      "display_title": "HouseSmarts Radio with Lou Manfredini",
+      "blurb": "The HouseSmarts Radio with Lou Manfredini Podcast from 720 WGN.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "285260960": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The McKinsey Podcast, our new flagship podcast series, takes you inside our global firm, and.",
+      "display_title": "The McKinsey Podcast",
+      "blurb": "The McKinsey Podcast, our new flagship podcast series, takes you inside our global firm, and features conversations with experts on issues that matter most in business and management. McKinsey &.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "288838352": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brew Strong, with hosts Jamil Zainasheff and John Palmer, combines the two most prominent authors.",
+      "display_title": "The Brewing Network Presents |  Brew Strong",
+      "blurb": "Brew Strong, with hosts Jamil Zainasheff and John Palmer, combines the two most prominent authors and figures in homebrewing today in a live beer radio format that allows listeners to.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "290618642": {
+      "topics": [
+        "aviation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AOPA presents the \"Never Again\" series in AOPA Pilot magazine and online to allow pilots.",
+      "display_title": "AOPA Never Again",
+      "blurb": "AOPA presents the \"Never Again\" series in AOPA Pilot magazine and online to allow pilots to learn from the experiences of others.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "291832580": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Makeshift Stories is an indie sci-fi, fantasy, and speculative fiction podcast.",
+      "display_title": "Original Science Fiction - Makeshift Stories",
+      "blurb": "Makeshift Stories is an indie sci-fi, fantasy, and speculative fiction podcast. Each month, journey with us through uncharted futures, strange realities, and rebellious technologies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "295908830": {
+      "topics": [
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The 365 Days of Astronomy podcast launched in 2009 as part of the International Year.",
+      "display_title": "The 365 Days of Astronomy",
+      "blurb": "The 365 Days of Astronomy podcast launched in 2009 as part of the International Year of Astronomy. This community podcast continues to bring you day after day of content across.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "300765836": {
+      "topics": [
+        "philosophy"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dharma Seed is dedicated to preserving and sharing the spoken teachings of Theravada Buddhism in.",
+      "display_title": "Dharma Seed: dharma talks and meditation instruction",
+      "blurb": "Dharma Seed is dedicated to preserving and sharing the spoken teachings of Theravada Buddhism in modern languages. Since the early 1980's, Dharma Seed has collected and distributed dharma talks by.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "300973784": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "This Week in Virology is a netcast about viruses - the kind that make you.",
+      "display_title": "This Week in Virology",
+      "blurb": "This Week in Virology is a netcast about viruses - the kind that make you sick.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "301444064": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improve your inner game of tennis quickly with mental game expert Dr.",
+      "display_title": "The Tennis Psychology Podcast",
+      "blurb": "Improve your inner game of tennis quickly with mental game expert Dr. Patrick Cohn, sports psychology for tennis expert at www.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "301774100": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "We are gaming industry veterans and newcomers from across the spectrum from outlets like IGN.",
+      "display_title": "Rebel FM",
+      "blurb": "We are gaming industry veterans and newcomers from across the spectrum from outlets like IGN and Polygon, talking about video games, movies, books and more.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "304534298": {
+      "topics": [
+        "sports",
+        "linguistics",
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "linguistics",
+          "confidence": 0.6
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lively debate and discussion about the game on and off the field with a focus.",
+      "display_title": "Switch Hit Podcast",
+      "blurb": "Lively debate and discussion about the game on and off the field with a focus on English cricket. Featuring ESPNcricinfo's writers and reporters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "305596874": {
+      "topics": [
+        "linguistics"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Torah Class is an in-depth, verse-by-verse study of the entire Bible.",
+      "display_title": "Lessons Archive - Torah Class",
+      "blurb": "Torah Class is an in-depth, verse-by-verse study of the entire Bible. Led by Tom Bradford, this Bible study takes us into many different areas involving Biblical times, customs, languages, timelines,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "306454334": {
+      "topics": [
+        "sports",
+        "food"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Whether you're barely surviving your first triathlon swim or trying to shave seconds off your.",
+      "display_title": "Tri Swim Coach Podcast",
+      "blurb": "Whether you're barely surviving your first triathlon swim or trying to shave seconds off your Ironman split, this podcast's got something for you. It's training tips, real talk, and occasional.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "308614478": {
+      "topics": [
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tom and Dan were once sitting in a hotel room in Daytona Beach, Florida where.",
+      "display_title": "A Mediocre Time with Tom and Dan",
+      "blurb": "Tom and Dan were once sitting in a hotel room in Daytona Beach, Florida where the air-condition didn't work, they were out of beer, and the cable only had 2.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "312094772": {
+      "topics": [
+        "history",
+        "music",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mormon Stories Podcast is the longest-running and most successful podcast in Mormonism.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "312289064": {
+      "topics": [
+        "sports",
+        "nature/ocean-science",
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tune in from 6 a.",
+      "display_title": "Brock and Salk",
+      "blurb": "Tune in from 6 a. m.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "312900254": {
+      "topics": [
+        "space"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Making fun of finance.",
+      "display_title": "Your Money, Your Wealth",
+      "blurb": "Making fun of finance. A US News & World Report \"Top 9 Personal Finance Podcast\" (2025) and \"Top 12 Retirement Podcast\" (2023).",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "317482646": {
+      "topics": [
+        "philosophy"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "www.",
+      "display_title": "John Wesley 44",
+      "blurb": "www. johnwesley44.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "325404506": {
+      "topics": [
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science, pop culture, and comedy collide on StarTalk Radio.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "327034166": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Skeptics with a K is the podcast for science, reason and critical thinking from the.",
+      "display_title": "Skeptics with a K",
+      "blurb": "Skeptics with a K is the podcast for science, reason and critical thinking from the Merseyside Skeptics Society. Each episode features Mike Hall, Michael Marshall, and Dr Alice Howarth chatting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "327760868": {
+      "topics": [
+        "engineering"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "No BS Allowed - Are you sick of empty suits telling you to work harder.",
+      "display_title": "The Brutal Truth about Sales and Selling -",
+      "blurb": "No BS Allowed - Are you sick of empty suits telling you to work harder. - Learn about The Maverick Selling Method, which models the world's best salespeople and what.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "331749062": {
+      "topics": [
+        "medicine"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The weekly gardening programme for keen gardeners, with the latest advice, news and visits to.",
+      "display_title": "Gardeners' Corner",
+      "blurb": "The weekly gardening programme for keen gardeners, with the latest advice, news and visits to gardens large and small around the province. Presented by David Maxwell.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "332516054": {
+      "topics": [
+        "medicine"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Art of Manliness Podcast aims to deepen and improve every area of a man's.",
+      "display_title": "The Art of Manliness",
+      "blurb": "The Art of Manliness Podcast aims to deepen and improve every area of a man's life, from fitness and philosophy, to relationships and productivity. Engaging and edifying interviews with some.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "337502156": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Step into the past with the Old Time Radio Westerns Podcast, where we proudly present.",
+      "display_title": "Old Time Radio Westerns",
+      "blurb": "Step into the past with the Old Time Radio Westerns Podcast, where we proudly present digitally restored classic Western radio dramas in a way that transcends the limitations of their.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "346735400": {
+      "topics": [
+        "sports",
+        "computing",
+        "architecture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.6
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "One of the longest running Pokemon podcasts, PUCL covers the many facets of Pokemon.",
+      "display_title": "PUCL: A Pokemon Podcast",
+      "blurb": "One of the longest running Pokemon podcasts, PUCL covers the many facets of Pokemon. We talk about video games, battling, community news, anime and manga, trainer tips, and more.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "347832278": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Get the “Red Pill” that history books censored.",
+      "display_title": "Aeon Byte Gnostic Radio",
+      "blurb": "Get the “Red Pill” that history books censored. Aeon Byte Gnostic Radio brings the forbidden wisdom of the Gnostics, Hermeticists, and Cathars out of the library and into the modern.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "348650936": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "When tech news breaks, we cover it.",
+      "display_title": "TWiT News (Audio)",
+      "blurb": "When tech news breaks, we cover it. On this podcast, you'll get the latest product announcements from all the tech giants, plus breaking tech news as it happens.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "349091786": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "An award-winning show for fans that celebrates the magic and madness of Leeds United, the.",
+      "display_title": "The Square Ball: Leeds United Podcast",
+      "blurb": "An award-winning show for fans that celebrates the magic and madness of Leeds United, the world's greatest football club. Brought to you by the team behind the award-winning fanzine.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:50:50.775Z"
+    },
+    "350035346": {
+      "topics": [
+        "nature/ocean-science",
+        "craft/filmmaking",
+        "business/founders"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.7
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marathon Talk has returned in 2022 as part of the Abbott World Marathon Majors family.",
+      "display_title": "Marathon Talk",
+      "blurb": "Marathon Talk has returned in 2022 as part of the Abbott World Marathon Majors family. Hosted by Martin Yelling and the great Deena Kastor, every two weeks we'll bring you.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "350181080": {
+      "topics": [
+        "music",
+        "history",
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cliff and Kendall are covering the topics others are too scared or possibly too busy.",
+      "display_title": "Cliff and Kendall: Coast 2 Coast",
+      "blurb": "Cliff and Kendall are covering the topics others are too scared or possibly too busy to. There are countdowns, scripted specials, freaky facts, weird news, bad jokes, perfect pitch, best.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
+    "351096296": {
+      "topics": [
+        "history",
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Director of the British Museum, Neil MacGregor, narrates 100 programmes that retell humanity's histo",
+      "display_title": "A History of the World in 100 Objects",
+      "blurb": "Director of the British Museum, Neil MacGregor, narrates 100 programmes that retell humanity's history through the objects we have made.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-75c2313d",
+      "classified_at": "2026-07-25T16:51:31.280Z"
+    },
     "1459232606": {
       "topics": [
         "news/politics",
@@ -2637,11 +3884,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-25T13:54:10.190Z",
+  "built_at": "2026-07-25T16:51:31.280Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-31acd1c8",
+    "last_batch_id": "fresh-2026-07-25-75c2313d",
     "last_batch_tier": 1
   }
 }
