@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T06:29:57.145Z",
+  "built_at": "2026-07-25T07:29:09.895Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-6d2014d5",
+    "last_batch_id": "fresh-2026-07-25-9d8b2afd",
     "last_batch_tier": 1
   },
   "entries": {
@@ -16809,11 +16809,40 @@
     },
     "912158581": {
       "topics": [
-        "society"
+        "history",
+        "craft/diy-home",
+        "craft/filmmaking",
+        "gaming"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.42
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.41
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.41
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Jung Chicago Radio",
+      "blurb": "jung chicago radio is home to.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "912159660": {
       "topics": [
@@ -16840,11 +16869,40 @@
     },
     "912753163": {
       "topics": [
-        "business/management"
+        "automotive",
+        "history",
+        "computing",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.44
+        },
+        {
+          "node": "history",
+          "confidence": 0.44
+        },
+        {
+          "node": "computing",
+          "confidence": 0.41
+        },
+        {
+          "node": "business",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "The Carey Nieuwhof Leadership Podcast",
+      "blurb": "the carey nieuwhof leadership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "913153082": {
       "topics": [
@@ -16934,11 +16992,35 @@
     },
     "917453719": {
       "topics": [
-        "sports/fantasy"
+        "nature/ocean-science",
+        "history",
+        "psychology/decision-making"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.42
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Fantasy Footballers - Fantasy Football Podcast",
+      "blurb": "fantasy football at its very.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "917516163": {
       "topics": [
@@ -17275,11 +17357,40 @@
     },
     "929743897": {
       "topics": [
-        "culture/design"
+        "craft",
+        "philosophy/ideas",
+        "nature/ocean-science",
+        "comedy/casual-hangs"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.5
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.42
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.41
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Creative Pep Talk",
+      "blurb": "a weekly podcast companion fo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "931361376": {
       "topics": [
@@ -17388,11 +17499,40 @@
     },
     "937940719": {
       "topics": [
-        "gaming"
+        "comedy",
+        "gaming",
+        "sports",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.47
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.44
+        },
+        {
+          "node": "sports",
+          "confidence": 0.42
+        },
+        {
+          "node": "society",
+          "confidence": 0.42
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "The Kinda Funny Podcast",
+      "blurb": "every week 4 best friends gre.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "938040414": {
       "topics": [
@@ -17457,11 +17597,40 @@
     },
     "941219323": {
       "topics": [
-        "computing"
+        "nature/ocean-science",
+        "history",
+        "engineering",
+        "economics"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.43
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.41
+        },
+        {
+          "node": "economics",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "Linear Digressions",
+      "blurb": "demystifying ai for the intel.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "941317634": {
       "topics": [
@@ -17480,11 +17649,40 @@
     },
     "941907967": {
       "topics": [
-        "computing"
+        "psychology/decision-making",
+        "history",
+        "society",
+        "craft"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.47
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "society",
+          "confidence": 0.41
+        },
+        {
+          "node": "craft",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Reply All",
+      "blurb": "\"'a podcast about the interne.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "942052626": {
       "topics": [
@@ -17583,11 +17781,40 @@
     },
     "946895107": {
       "topics": [
-        "history"
+        "history",
+        "medicine/biology",
+        "history/military-modern",
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.43
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.42
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.41
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Ben Franklin's World",
+      "blurb": "this is a multiple award-winn.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "947367245": {
       "topics": [
@@ -17598,11 +17825,40 @@
     },
     "947899573": {
       "topics": [
-        "fiction/comedy"
+        "business/startups",
+        "adventure",
+        "society/law",
+        "math"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.46
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.46
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.44
+        },
+        {
+          "node": "math",
+          "confidence": 0.42
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "The Adventure Zone",
+      "blurb": "justin, travis and griffin mc.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "948976028": {
       "topics": [
@@ -17614,11 +17870,40 @@
     },
     "950689657": {
       "topics": [
-        "science"
+        "space",
+        "space/rockets",
+        "psychology/decision-making",
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.54
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.47
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.41
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "The Orbital Mechanics Podcast",
+      "blurb": "every week we cover the lates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "950882493": {
       "topics": [
@@ -17952,11 +18237,40 @@
     },
     "958179457": {
       "topics": [
-        "education/language-learning"
+        "history",
+        "music",
+        "nature/ocean-science",
+        "food"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.42
+        },
+        {
+          "node": "music",
+          "confidence": 0.42
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.41
+        },
+        {
+          "node": "food",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "Coffee Break Italian",
+      "blurb": "with coffee break italian you.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "958230465": {
       "topics": [
@@ -17975,11 +18289,40 @@
     },
     "958825741": {
       "topics": [
-        "science"
+        "space",
+        "history",
+        "engineering/energy-fusion",
+        "adventure/exploration"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.48
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.41
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "Ask a Spaceman!",
+      "blurb": "you've got questions and astr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "958999703": {
       "topics": [
@@ -18043,11 +18386,40 @@
     },
     "960976813": {
       "topics": [
-        "science"
+        "adventure/exploration",
+        "science",
+        "medicine/biology",
+        "medicine/neuroscience"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.42
+        },
+        {
+          "node": "science",
+          "confidence": 0.41
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.41
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "I Know Dino: The Big Dinosaur Podcast",
+      "blurb": "did you know a new dinosaur i.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "961385822": {
       "topics": [
@@ -18140,11 +18512,40 @@
     },
     "963144241": {
       "topics": [
-        "computing"
+        "history",
+        "craft/photography",
+        "gaming",
+        "espionage"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.42
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.41
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.41
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "AppleInsider Podcast",
+      "blurb": "get the latest iphone, ipad,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "963592988": {
       "topics": [
@@ -18441,11 +18842,40 @@
     },
     "970026307": {
       "topics": [
-        "gaming"
+        "gaming",
+        "sports",
+        "society",
+        "automotive"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.55
+        },
+        {
+          "node": "sports",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.44
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "Board Games Insider",
+      "blurb": "board games insider: where we.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "970486962": {
       "topics": [
@@ -18589,11 +19019,40 @@
     },
     "974299441": {
       "topics": [
-        "news"
+        "history",
+        "economics",
+        "space",
+        "history/military-modern"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "economics",
+          "confidence": 0.43
+        },
+        {
+          "node": "space",
+          "confidence": 0.42
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.42
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "Morning Joe",
+      "blurb": "join joe scarborough, mika br.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "974305006": {
       "topics": [
@@ -18604,11 +19063,40 @@
     },
     "974451613": {
       "topics": [
-        "science"
+        "science",
+        "medicine/biology",
+        "engineering",
+        "history"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.44
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.43
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.43
+        },
+        {
+          "node": "history",
+          "confidence": 0.42
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Real Science Radio",
+      "blurb": "welcome to real science radio.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "974808977": {
       "topics": [
@@ -18680,11 +19168,30 @@
     },
     "976549237": {
       "topics": [
-        "education/language-learning"
+        "history",
+        "nature/ocean-science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Español con Juan",
+      "blurb": "un podcast en español para ap.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "976729350": {
       "topics": [
@@ -18771,11 +19278,40 @@
     },
     "979020229": {
       "topics": [
-        "computing"
+        "business",
+        "medicine",
+        "history",
+        "space"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.42
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.42
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "space",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Talk Python To Me",
+      "blurb": "talk python to me is a weekly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "979051041": {
       "topics": [
@@ -18883,11 +19419,40 @@
     },
     "982863019": {
       "topics": [
-        "business/non-profit"
+        "engineering",
+        "history/technology",
+        "economics",
+        "architecture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.44
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.43
+        },
+        {
+          "node": "economics",
+          "confidence": 0.43
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.42
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Barefoot Innovation Podcast",
+      "blurb": "the barefoot innovation podca.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "983059644": {
       "topics": [
@@ -19061,11 +19626,40 @@
     },
     "988576741": {
       "topics": [
-        "philosophy"
+        "space",
+        "history",
+        "medicine/neuroscience",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.42
+        },
+        {
+          "node": "history",
+          "confidence": 0.42
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.41
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Align Podcast",
+      "blurb": "welcome! i'm aaron, host of t.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "988935339": {
       "topics": [
@@ -19106,11 +19700,40 @@
     },
     "990871441": {
       "topics": [
-        "fiction"
+        "architecture",
+        "space",
+        "psychology/decision-making",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "architecture",
+          "confidence": 0.42
+        },
+        {
+          "node": "space",
+          "confidence": 0.41
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.41
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "Writing Excuses",
+      "blurb": "fifteen minutes long, because.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "990897842": {
       "topics": [
@@ -19122,11 +19745,40 @@
     },
     "991125169": {
       "topics": [
-        "science"
+        "automotive",
+        "medicine",
+        "society/law",
+        "history"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.48
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.45
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.43
+        },
+        {
+          "node": "history",
+          "confidence": 0.42
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "This Week in Cardiology",
+      "blurb": "this podcast delivers dr. joh.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "991129779": {
       "topics": [
@@ -19160,11 +19812,40 @@
     },
     "991621063": {
       "topics": [
-        "hobbies"
+        "craft/instrument-making",
+        "history",
+        "craft",
+        "music"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/instrument-making",
+          "confidence": 0.48
+        },
+        {
+          "node": "history",
+          "confidence": 0.44
+        },
+        {
+          "node": "craft",
+          "confidence": 0.44
+        },
+        {
+          "node": "music",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "Guitar Nerds",
+      "blurb": "guitar nerds is a weekly show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "991739142": {
       "topics": [
@@ -19220,11 +19901,40 @@
     },
     "993002971": {
       "topics": [
-        "business/marketing"
+        "business",
+        "economics/markets",
+        "history",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.46
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.44
+        },
+        {
+          "node": "history",
+          "confidence": 0.43
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "SharkPreneur",
+      "blurb": "welcome to the sharkpreneur p.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "993060740": {
       "topics": [
@@ -19250,11 +19960,40 @@
     },
     "993988537": {
       "topics": [
-        "education/self-improvement"
+        "medicine/neuroscience",
+        "science",
+        "business",
+        "medicine"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.48
+        },
+        {
+          "node": "science",
+          "confidence": 0.42
+        },
+        {
+          "node": "business",
+          "confidence": 0.42
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.42
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "A Changed Mind | Mindset That Matters",
+      "blurb": "a changed mind takes listener.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "994162888": {
       "topics": [
@@ -19326,11 +20065,40 @@
     },
     "996151267": {
       "topics": [
-        "comedy"
+        "food",
+        "history",
+        "business",
+        "craft/filmmaking"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.43
+        },
+        {
+          "node": "history",
+          "confidence": 0.42
+        },
+        {
+          "node": "business",
+          "confidence": 0.41
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Doughboys",
+      "blurb": "the podcast about chain resta.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "997035817": {
       "topics": [
@@ -19656,11 +20424,40 @@
     },
     "1012623331": {
       "topics": [
-        "education/how-to"
+        "engineering",
+        "psychology/decision-making",
+        "engineering/energy-fusion",
+        "engineering/energy-grid"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.42
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.41
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.41
+        },
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "LearnDoBecome Radio",
+      "blurb": "we help people who are overwh.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1012713381": {
       "topics": [
@@ -19737,11 +20534,40 @@
     },
     "1015394113": {
       "topics": [
-        "sports"
+        "space",
+        "sports",
+        "gaming",
+        "nature/ocean-science"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.45
+        },
+        {
+          "node": "sports",
+          "confidence": 0.43
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.42
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.42
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Hittin' Season: A Philadelphia Phillies podcast",
+      "blurb": "a podcast for fans of the phi.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1015738084": {
       "topics": [
@@ -19950,11 +20776,40 @@
     },
     "1021601293": {
       "topics": [
-        "religion/judaism"
+        "society/law",
+        "science",
+        "linguistics",
+        "linguistics/language"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.42
+        },
+        {
+          "node": "science",
+          "confidence": 0.41
+        },
+        {
+          "node": "linguistics",
+          "confidence": 0.41
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "Lessons Archive - Torah Class",
+      "blurb": "torah class is an in-depth, v.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1021703062": {
       "topics": [
@@ -20190,11 +21045,40 @@
     },
     "1029088717": {
       "topics": [
-        "hobbies"
+        "gaming",
+        "sports",
+        "history",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.47
+        },
+        {
+          "node": "sports",
+          "confidence": 0.45
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Weapon Wheel Podcast Network",
+      "blurb": "the weapon wheel podcast netw.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1029121973": {
       "topics": [
@@ -20272,11 +21156,40 @@
     },
     "1031567659": {
       "topics": [
-        "sports/fantasy"
+        "sports",
+        "history/military-ancient",
+        "engineering",
+        "nature"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.41
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.41
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.41
+        },
+        {
+          "node": "nature",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Yahoo Fantasy Forecast",
+      "blurb": "matt harmon and the rest of y.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1031707838": {
       "topics": [
@@ -20378,11 +21291,40 @@
     },
     "1035041995": {
       "topics": [
-        "news/tech"
+        "history",
+        "engineering",
+        "computing",
+        "space"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.44
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.42
+        },
+        {
+          "node": "computing",
+          "confidence": 0.42
+        },
+        {
+          "node": "space",
+          "confidence": 0.42
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "The Information's TITV",
+      "blurb": "the information’s titv is fir.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1035087290": {
       "topics": [
@@ -20416,11 +21358,40 @@
     },
     "1036167679": {
       "topics": [
-        "education/how-to"
+        "engineering",
+        "science",
+        "medicine/neuroscience",
+        "space/rockets"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.43
+        },
+        {
+          "node": "science",
+          "confidence": 0.42
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.42
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.42
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "The Better Leaders Better Schools Podcast | The",
+      "blurb": "better leaders better schools.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1036276968": {
       "topics": [
@@ -20720,11 +21691,35 @@
     },
     "1042361179": {
       "topics": [
-        "comedy"
+        "society",
+        "comedy",
+        "craft/filmmaking"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.41
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.41
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "KILL TONY",
+      "blurb": "kill tony is the #1 live podc.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1042368254": {
       "topics": [
@@ -20752,19 +21747,77 @@
     },
     "1042517353": {
       "topics": [
-        "sports/endurance"
+        "sports",
+        "psychology",
+        "automotive/racing",
+        "history"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.42
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.41
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.41
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "The Effortless Swimming Podcast",
+      "blurb": "faster times and better techn.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1042631089": {
       "topics": [
-        "history"
+        "history",
+        "history/military-modern",
+        "history/military-ancient",
+        "adventure"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.42
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.41
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Dan Snow's History Hit",
+      "blurb": "historian dan snow journeys a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1042673386": {
       "topics": [
@@ -20813,11 +21866,40 @@
     },
     "1044196249": {
       "topics": [
+        "nature/ocean-science",
+        "history",
+        "business",
         "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.44
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "business",
+          "confidence": 0.41
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "My Dad Wrote A Porno",
+      "blurb": "imagine if your dad wrote a d.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1044209457": {
       "topics": [
@@ -21039,19 +22121,77 @@
     },
     "1049169349": {
       "topics": [
-        "sports/basketball"
+        "sports",
+        "music/theory-production",
+        "psychology/decision-making",
+        "history"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.45
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.42
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.41
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Locked On Celtics - Daily Podcast On The",
+      "blurb": "locked on celtics podcast is.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1049183167": {
       "topics": [
-        "fiction/sci-fi"
+        "nature/ocean-science",
+        "medicine",
+        "medicine/neuroscience",
+        "adventure"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.43
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.41
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.41
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "TANIS",
+      "blurb": "tanis is a bi-weekly podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1049412059": {
       "topics": [
@@ -21070,11 +22210,40 @@
     },
     "1049460553": {
       "topics": [
-        "education/how-to"
+        "psychology/decision-making",
+        "history",
+        "engineering",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.41
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.41
+        },
+        {
+          "node": "science",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "writing class radio",
+      "blurb": "writing class radio is for pe.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1050033167": {
       "topics": [
@@ -21221,11 +22390,40 @@
     },
     "1052380039": {
       "topics": [
-        "education/how-to"
+        "space",
+        "history",
+        "society",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.42
+        },
+        {
+          "node": "history",
+          "confidence": 0.42
+        },
+        {
+          "node": "society",
+          "confidence": 0.42
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Foundations of Amateur Radio",
+      "blurb": "starting in the wonderful hob.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1052521113": {
       "topics": [
@@ -21395,11 +22593,40 @@
     },
     "1055206993": {
       "topics": [
-        "medicine"
+        "medicine",
+        "science",
+        "engineering",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.47
+        },
+        {
+          "node": "science",
+          "confidence": 0.45
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.41
+        },
+        {
+          "node": "sports",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "The Dr Vonda Show",
+      "blurb": "the dr vonda show is all abou.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1055347185": {
       "topics": [
@@ -21748,11 +22975,40 @@
     },
     "1064651383": {
       "topics": [
-        "tv-film"
+        "society",
+        "society/law",
+        "cities",
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.42
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.42
+        },
+        {
+          "node": "cities",
+          "confidence": 0.41
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "The Sarah Fraser Show",
+      "blurb": "for twenty years, media perso.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1064701549": {
       "topics": [
@@ -21837,11 +23093,40 @@
     },
     "1065986191": {
       "topics": [
-        "space/rockets"
+        "space",
+        "nature/earth-science",
+        "science",
+        "math"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.47
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.43
+        },
+        {
+          "node": "science",
+          "confidence": 0.42
+        },
+        {
+          "node": "math",
+          "confidence": 0.42
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Orbital Path",
+      "blurb": "astronomer michelle thaller t.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1066024691": {
       "topics": [
@@ -21951,11 +23236,40 @@
     },
     "1068022483": {
       "topics": [
-        "sports/golf"
+        "nature/ocean-science",
+        "history",
+        "space",
+        "food"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.41
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "space",
+          "confidence": 0.41
+        },
+        {
+          "node": "food",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "Golf Channel Podcast with Rex & Lav",
+      "blurb": "golfchannel.com senior writer.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1068281273": {
       "topics": [
@@ -22004,11 +23318,40 @@
     },
     "1069497109": {
       "topics": [
-        "sports/hockey"
+        "sports",
+        "nature/ocean-science",
+        "space",
+        "history"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.44
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.43
+        },
+        {
+          "node": "space",
+          "confidence": 0.42
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "DNVR Colorado Avalanche Podcast",
+      "blurb": "the dnvr avalanche podcast is.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1069757084": {
       "topics": [
@@ -22028,11 +23371,40 @@
     },
     "1070016067": {
       "topics": [
-        "comedy"
+        "comedy",
+        "history",
+        "economics",
+        "economics/markets"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.45
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "economics",
+          "confidence": 0.41
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "The 85 South Show with Karlous Miller, DC",
+      "blurb": "welcome to the 85 south show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1070099369": {
       "topics": [
@@ -22076,19 +23448,77 @@
     },
     "1070649025": {
       "topics": [
-        "business/management"
+        "medicine/neuroscience",
+        "sports",
+        "medicine",
+        "engineering/energy-fusion"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.43
+        },
+        {
+          "node": "sports",
+          "confidence": 0.42
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.41
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Craig Groeschel Leadership Podcast",
+      "blurb": "the craig groeschel leadershi.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1070974651": {
       "topics": [
-        "sports/golf"
+        "history",
+        "sports",
+        "computing",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.43
+        },
+        {
+          "node": "sports",
+          "confidence": 0.42
+        },
+        {
+          "node": "computing",
+          "confidence": 0.41
+        },
+        {
+          "node": "craft",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Fantasy Golf Degenerates",
+      "blurb": "hosted by kenny kim and byron.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1070992338": {
       "topics": [
@@ -22128,11 +23558,30 @@
     },
     "1071549505": {
       "topics": [
-        "espionage"
+        "science",
+        "history/military-modern"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.46
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.42
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "AVEAM — Kent Hovind Official YouTube Podcast",
+      "blurb": "kent hovind of cse and his of.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1071578260": {
       "topics": [
@@ -22199,11 +23648,40 @@
     },
     "1072170823": {
       "topics": [
-        "history"
+        "history",
+        "sports",
+        "medicine/biology",
+        "engineering/energy-fusion"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.43
+        },
+        {
+          "node": "sports",
+          "confidence": 0.42
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.41
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Presidential",
+      "blurb": "the washington post's preside.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1072185017": {
       "topics": [
@@ -22508,11 +23986,40 @@
     },
     "1078207549": {
       "topics": [
-        "fiction/comedy"
+        "music",
+        "nature/ocean-science",
+        "science",
+        "business"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.44
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.42
+        },
+        {
+          "node": "science",
+          "confidence": 0.41
+        },
+        {
+          "node": "business",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "The Lesbian Romantic - Immersive Stories",
+      "blurb": "lesbian romance stories broug.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1078225050": {
       "topics": [
@@ -22524,11 +24031,40 @@
     },
     "1078431985": {
       "topics": [
-        "music"
+        "music",
+        "craft/instrument-making",
+        "history",
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.46
+        },
+        {
+          "node": "craft/instrument-making",
+          "confidence": 0.43
+        },
+        {
+          "node": "history",
+          "confidence": 0.42
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Rolling Stone All Access",
+      "blurb": "step into rolling stone all a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1078657833": {
       "topics": [
@@ -22921,11 +24457,40 @@
     },
     "1084902475": {
       "topics": [
-        "tv-film"
+        "craft/filmmaking",
+        "music",
+        "history",
+        "engineering/disasters"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.43
+        },
+        {
+          "node": "music",
+          "confidence": 0.42
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "engineering/disasters",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "It's Erik Nagel",
+      "blurb": "erik and the crew discuss the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1085539213": {
       "topics": [
@@ -22945,11 +24510,39 @@
     "1086221755": {
       "topics": [
         "society/law",
-        "business/non-profit"
+        "psychology",
+        "history",
+        "automotive"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.45
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.43
+        },
+        {
+          "node": "history",
+          "confidence": 0.43
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.43
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Environmental Law Explored: A Podcast SEERies",
+      "blurb": "top environmental, energy, an.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1086311430": {
       "topics": [
@@ -23050,11 +24643,35 @@
     },
     "1087855153": {
       "topics": [
-        "religion/islam"
+        "psychology",
+        "society",
+        "craft/diy-home"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.41
+        },
+        {
+          "node": "society",
+          "confidence": 0.41
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "Raad Mohammad al Kurdi",
+      "blurb": "raad mohammad al kurdi also s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1087926635": {
       "topics": [
@@ -23135,11 +24752,40 @@
     },
     "1089780289": {
       "topics": [
-        "sports/fantasy"
+        "automotive",
+        "history/military-modern",
+        "history",
+        "space"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.43
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.41
+        },
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "space",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on.",
+      "display_title": "Rotoworld Football Show – Fantasy Football",
+      "blurb": "whether it’s season-long fant.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1090123738": {
       "topics": [
@@ -23186,11 +24832,40 @@
     },
     "1090600339": {
       "topics": [
-        "tv-film"
+        "history",
+        "space/rockets",
+        "craft/filmmaking",
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.41
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.41
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.41
+        },
+        {
+          "node": "sports",
+          "confidence": 0.41
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content centered o.",
+      "display_title": "John Campea Show",
+      "blurb": "the john campea show features.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d8b2afd",
+      "classified_at": "2026-07-25T07:29:09.895Z"
     },
     "1090666976": {
       "topics": [
