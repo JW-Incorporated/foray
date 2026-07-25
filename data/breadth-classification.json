@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T06:37:32.420Z",
+  "built_at": "2026-07-25T07:36:54.053Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-b4edb757",
+    "last_batch_id": "fresh-2026-07-25-0e7b48ee",
     "last_batch_tier": 1
   },
   "entries": {
@@ -16185,11 +16185,40 @@
     },
     "902067712": {
       "topics": [
-        "sports"
+        "sports",
+        "sports/football",
+        "sports/basketball",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.7
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "BYU Sports Nation focuses on sports content.",
+      "display_title": "BYU Sports Nation",
+      "blurb": "Rise and shout, the Cougars are out! Join hosts Jarom Jordan and Spencer Linton every weekday as they give you an exclusive look at the athletes that wear the White...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "902525064": {
       "topics": [
@@ -21433,11 +21462,40 @@
     },
     "1050832450": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "religion",
+        "music",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "BibleProject focuses on christianity content.",
+      "display_title": "BibleProject",
+      "blurb": "The creators of BibleProject have in-depth conversations about the Bible and theology. A companion podcast to BibleProject videos found at bibleproject.com",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1050847009": {
       "topics": [
@@ -21606,11 +21664,35 @@
     },
     "1054135564": {
       "topics": [
-        "music"
+        "music",
+        "computing",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Uplifting Trance Sessions with DJ Phalanx (Trance Podcast) focuses on music content.",
+      "display_title": "Uplifting Trance Sessions with DJ Phalanx (Trance Podcast)",
+      "blurb": "Uplifting Trance Sessions is more than a Trance Podcast- it’s a global movement. As the host of one of the most successful and demanded trance shows on the planet, DJ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1054230417": {
       "topics": [
@@ -21826,11 +21908,40 @@
     },
     "1059619918": {
       "topics": [
-        "personal-journals"
+        "true-crime",
+        "science",
+        "history",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Jeremy Ryan Slate Show focuses on true crime content.",
+      "display_title": "The Jeremy Ryan Slate Show",
+      "blurb": "The Jeremy Ryan Slate Show is a bi-weekly investigation into how power really works—across history, empires, and the modern world. Each episode draws on two core lenses: Hidden forces behind...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1059642487": {
       "topics": [
@@ -21900,11 +22011,43 @@
     },
     "1061222770": {
       "topics": [
-        "nature"
+        "sports",
+        "science",
+        "health",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Outside/In focuses on sports content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1061361026": {
       "topics": [
@@ -21977,11 +22120,40 @@
     },
     "1063149340": {
       "topics": [
-        "education/courses"
+        "history",
+        "computing",
+        "education",
+        "travel"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The HazMat Guys focuses on history content.",
+      "display_title": "The HazMat Guys",
+      "blurb": "From a spark of knowledge on a podcast to a comprehensive training hub, we empower responders of all levels in the ever-evolving world of hazmat response. Through hundreds of episodes,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1063165791": {
       "topics": [
@@ -22028,11 +22200,40 @@
     },
     "1064413714": {
       "topics": [
-        "sports/wrestling"
+        "computing",
+        "news",
+        "culture",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "WhatCulture Wrestling focuses on computing content.",
+      "display_title": "WhatCulture Wrestling",
+      "blurb": "Daily wrestling podcasts from WhatCulture.com bringing you the best insider perspectives, breaking news, interviews, discussions, quizzes and much more! Hosted on Acast. See acast.com/privacy for more information.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1064651383": {
       "topics": [
@@ -22051,11 +22252,40 @@
     },
     "1064978212": {
       "topics": [
-        "tv-film"
+        "computing",
+        "fiction",
+        "travel",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "LadyGang focuses on computing content.",
+      "display_title": "LadyGang",
+      "blurb": "Are you afraid to be alone with your own thoughts? Would you rather hear stories and conversations from three idiots stumbling through womanhood? Well, you’re in the right place! From...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1065005527": {
       "topics": [
@@ -22424,19 +22654,77 @@
     },
     "1071578260": {
       "topics": [
-        "religion/buddhism"
+        "computing",
+        "fiction",
+        "education",
+        "travel"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Secular Buddhism focuses on computing content.",
+      "display_title": "Secular Buddhism",
+      "blurb": "Don't use what you learn from Buddhism to be a Buddhist. Use it to be a better whatever-you-already-are. Hosted on Acast. See acast.com/privacy for more information.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1071620152": {
       "topics": [
-        "hobbies"
+        "health",
+        "news",
+        "culture",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Smart Poker Study Podcast focuses on health & fitness content.",
+      "display_title": "Smart Poker Study Podcast",
+      "blurb": "Sky Matsuhashi discusses poker Cash games, MTT’s and SNG’s for all poker stakes and games like No Limit Hold’em (NLHE), Pot Limit Omaha (PLO) and Stud variations of poker. Lots...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1071632984": {
       "topics": [
@@ -22503,11 +22791,40 @@
     },
     "1072212202": {
       "topics": [
-        "kids-family/parenting"
+        "science",
+        "history",
+        "computing",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Simply Charlotte Mason Homeschooling focuses on science content.",
+      "display_title": "Simply Charlotte Mason Homeschooling",
+      "blurb": "The weekly Simply Charlotte Mason homeschooling audio podcast with Sonya Shafer",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1072228536": {
       "topics": [
@@ -22639,11 +22956,43 @@
     },
     "1074507850": {
       "topics": [
+        "religion/christianity",
+        "religion",
+        "comedy",
         "true-crime"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "My Favorite Murder with Karen Kilgariff and Georgia Hardstark focuses on christianity content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1074528052": {
       "topics": [
@@ -22788,11 +23137,40 @@
     },
     "1078098622": {
       "topics": [
-        "fiction"
+        "religion/christianity",
+        "religion",
+        "comedy",
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "1001 Classic Short Stories & Tales focuses on christianity content.",
+      "display_title": "1001 Classic Short Stories & Tales",
+      "blurb": "A huge collection of beautifully narrated and carefully chosen short stories from golden age authors (1850-1930) who knew how to deliver stories that reach the heart and soul of the...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1078207549": {
       "topics": [
@@ -22960,11 +23338,40 @@
     },
     "1080535798": {
       "topics": [
-        "hobbies"
+        "computing",
+        "travel",
+        "culture",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Grey Nato focuses on computing content.",
+      "display_title": "The Grey Nato",
+      "blurb": "A loose discussion of travel, adventure, diving, driving, gear, and most certainly watches! Hosts Jason Heaton and James Stacey break down their love for adventure, their addiction to watches, and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1080634709": {
       "topics": [
@@ -22985,11 +23392,40 @@
     },
     "1080935752": {
       "topics": [
-        "space"
+        "science",
+        "history",
+        "computing",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "SpaceTime with Stuart Gary focuses on science content.",
+      "display_title": "SpaceTime with Stuart Gary",
+      "blurb": "Join host Stuart Gary for weekly explorations into Astronomy, Space, and Science News, featuring insights from 19 years on Australian Public Radio and industry experts. Become a supporter of this...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1080974028": {
       "topics": [
@@ -23140,11 +23576,40 @@
     },
     "1083410032": {
       "topics": [
-        "sports/endurance"
+        "sports",
+        "comedy",
+        "health",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running Commentary focuses on sports content.",
+      "display_title": "Running Commentary",
+      "blurb": "Comedians Paul Tonkinson and Rob Deering talk about life and comedy - but mainly running. Whilst running.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1083585785": {
       "topics": [
@@ -23155,11 +23620,40 @@
     },
     "1083737218": {
       "topics": [
-        "culture/books"
+        "religion/christianity",
+        "religion",
+        "history",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literature and History focuses on christianity content.",
+      "display_title": "Literature and History",
+      "blurb": "With millions of downloads, hundreds of hours of soundtracked content, and an overall emphasis on the cultural history behind famous works of literature, Literature and History is one of the...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1084020770": {
       "topics": [
@@ -23392,11 +23886,40 @@
     },
     "1089022756": {
       "topics": [
-        "sports/football"
+        "sports",
+        "music",
+        "food",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "food",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pardon My Take focuses on sports content.",
+      "display_title": "Pardon My Take",
+      "blurb": "On \"Pardon My Take,\" Big Cat & PFT Commenter deliver the loudest and most correct sports takes in the history of the spoken word. Daily topics, guests, and an inability...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1089027054": {
       "topics": [
@@ -23513,11 +24036,40 @@
     },
     "1091341048": {
       "topics": [
-        "computing"
+        "business",
+        "history",
+        "computing",
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soft Skills Engineering focuses on business content.",
+      "display_title": "Soft Skills Engineering",
+      "blurb": "It takes more than great code to be a great engineer. Soft Skills Engineering is a weekly advice podcast for software developers about the non-technical stuff that goes into being...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1091363992": {
       "topics": [
@@ -23697,11 +24249,40 @@
     },
     "1094490100": {
       "topics": [
-        "society"
+        "computing",
+        "nature",
+        "culture",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Monsters Among Us focuses on computing content.",
+      "display_title": "Monsters Among Us",
+      "blurb": "True paranormal stories told in the witnesses own voice. Monsters Among Us is a collection of first-hand eye-witness audio recordings made directly from experiencers of the paranormal, curated by host...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1094870430": {
       "topics": [
@@ -24419,11 +25000,40 @@
     },
     "1112425552": {
       "topics": [
-        "sports/hockey"
+        "religion/christianity",
+        "sports",
+        "religion",
+        "music"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spittin Chiclets focuses on christianity content.",
+      "display_title": "Spittin Chiclets",
+      "blurb": "Former NHL vets Ryan Whitney, Paul Bissonnette, Barstool Sports writer Rear Admiral and Producer Mike Grinnell bring their outspoken and irreverent opinions to the masses. Focusing on the NHL but...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1112641452": {
       "topics": [
@@ -24722,11 +25332,40 @@
     },
     "1119389968": {
       "topics": [
-        "society"
+        "music",
+        "food",
+        "history",
+        "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "food",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Revisionist History: The Staten Island Problem focuses on music content.",
+      "display_title": "Revisionist History: The Staten Island Problem",
+      "blurb": "On the 250th anniversary of the United States, Revisionist History investigates the overlooked story of what was, at the time, the biggest secession movement in the U.S. since the Civil...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1119804803": {
       "topics": [
@@ -24759,11 +25398,44 @@
     },
     "1120885936": {
       "topics": [
-        "health/mental"
+        "sports",
+        "science",
+        "health",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Being Well with Forrest Hanson and Dr. Rick Hanson focuses on sports content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1120887936": {
       "topics": [
@@ -24990,11 +25662,43 @@
     },
     "1126301158": {
       "topics": [
-        "health/sexuality"
+        "business",
+        "history",
+        "computing",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "QueerAF | Inspiring LGBTQIA+ stories told by emerging queer creatives focuses on business content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1126543994": {
       "topics": [
@@ -25156,11 +25860,40 @@
     },
     "1131723994": {
       "topics": [
-        "sports/golf"
+        "sports",
+        "business",
+        "history",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Fried Egg Golf Podcast focuses on sports content.",
+      "display_title": "The Fried Egg Golf Podcast",
+      "blurb": "A deeper level of golf: conversations and stories about golf course design, professional golf, and more from the team behind TheFriedEgg.com",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1131754929": {
       "topics": [
@@ -25305,11 +26038,40 @@
     },
     "1135311532": {
       "topics": [
-        "music"
+        "sports",
+        "music",
+        "history",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music Student 101 focuses on sports content.",
+      "display_title": "Music Student 101",
+      "blurb": "We are musicians, composers, engineers, teachers and students alike. The path of a musician can be challenging and uncertain but it can also be enriching and great fun! This is...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1135332109": {
       "topics": [
@@ -25432,11 +26194,40 @@
     },
     "1137465844": {
       "topics": [
-        "hobbies"
+        "music",
+        "health",
+        "computing",
+        "travel"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adventure a Dungeons and Dragons Podcast focuses on music content.",
+      "display_title": "Adventure a Dungeons and Dragons Podcast",
+      "blurb": "Dungeons and Dragons actual play podcast hosted by Bobby Shortle, Jacqui Turner, Brian Verderosa, Justin Reilly, and Bob Reyer. Each episode of Adventure is fully produced with soundscapes, music, and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1137646373": {
       "topics": [
@@ -25615,11 +26406,40 @@
     },
     "1141442116": {
       "topics": [
-        "education/courses"
+        "history",
+        "computing",
+        "nature",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Creative Classroom with John Spencer focuses on history content.",
+      "display_title": "The Creative Classroom with John Spencer",
+      "blurb": "John Spencer is passionate about seeing schools embrace creativity and design thinking. In this podcast, he  the intersection of creative thinking and student learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1141509275": {
       "topics": [
@@ -25661,11 +26481,40 @@
     },
     "1141877104": {
       "topics": [
-        "business/startups"
+        "business",
+        "history",
+        "computing",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Founders focuses on business content.",
+      "display_title": "Founders",
+      "blurb": "Learn from history's greatest entrepreneurs. Every week I read a biography of an entrepreneur and find ideas you can use in your work. This quote explains why: \"There are thousands...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1142013759": {
       "topics": [
@@ -25938,11 +26787,40 @@
     },
     "1147910296": {
       "topics": [
-        "sports/basketball"
+        "sports",
+        "history",
+        "computing",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Warriors Plus Minus: A show about the Golden State Warriors focuses on sports content.",
+      "display_title": "Warriors Plus Minus",
+      "blurb": "Warriors Plus Minus is the definitive weekly podcast on the Golden State Warriors, hosted by Tim Kawakami, Marcus Thompson, and Nick Friedell.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1148115183": {
       "topics": [
@@ -26066,11 +26944,40 @@
     },
     "1150800298": {
       "topics": [
-        "personal-journals"
+        "religion/christianity",
+        "sports",
+        "religion",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Heavyweight focuses on christianity content.",
+      "display_title": "Heavyweight",
+      "blurb": "Maybe you&rsquo;ve laid awake and imagined how it could have been, how it might yet be, but the moment to act was never right. Well, the moment is here and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1150812218": {
       "topics": [
@@ -26279,11 +27186,40 @@
     },
     "1155392992": {
       "topics": [
-        "kids-family/education"
+        "sports",
+        "history",
+        "computing",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bedtime History: Inspirational Stories for Kids and Families focuses on sports content.",
+      "display_title": "Bedtime History: Inspirational Stories for Kids and Families",
+      "blurb": "Bedtime History is a series of educational, relaxing stories for kids and families. Learn about inspirational characters such as Jackie Robinson, Sacajawea, Neil Armstrong, and Maya Angelou. Other topics include...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1155629323": {
       "topics": [
@@ -26398,11 +27334,40 @@
     },
     "1157625604": {
       "topics": [
-        "culture/performing-arts"
+        "music",
+        "science",
+        "history",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stars on Suspense (Old Time Radio) focuses on music content.",
+      "display_title": "Stars on Suspense (Old Time Radio)",
+      "blurb": "Presenting the biggest legends of Hollywood starring in \"Suspense,\" radio's outstanding theater of thrills! Each week, we'll hear two chillers from this old time radio classic featuring one of the...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1157695571": {
       "topics": [
@@ -26737,11 +27702,40 @@
     },
     "1164304576": {
       "topics": [
-        "kids-family"
+        "religion/christianity",
+        "religion",
+        "music",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Past and The Curious: A History Podcast for Kids and Families focuses on christianity content.",
+      "display_title": "The Past and The Curious",
+      "blurb": "A History Podcast for Kids! Parents love us, Teachers love us, and most importantly, kids do too! History can be amazing, inspiring and relevant to anyone. We love to share...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1164374262": {
       "topics": [
@@ -27042,11 +28036,40 @@
     },
     "1171270672": {
       "topics": [
-        "culture/design"
+        "music",
+        "history",
+        "computing",
+        "nature"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Twenty Thousand Hertz focuses on music content.",
+      "display_title": "Twenty Thousand Hertz",
+      "blurb": "The stories behind the world's most recognizable and interesting sounds. Whether you're a professional audio engineer with decades of experience, a fourth grader who loves sound and music, or anyone...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1171438277": {
       "topics": [
@@ -27138,11 +28161,40 @@
     },
     "1172855980": {
       "topics": [
-        "science"
+        "music",
+        "science",
+        "history",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "CrowdScience focuses on music content.",
+      "display_title": "CrowdScience",
+      "blurb": "We take your questions about life, Earth and the universe to researchers hunting for answers at the frontiers of knowledge.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1172927131": {
       "topics": [
@@ -27182,11 +28234,40 @@
     },
     "1174542574": {
       "topics": [
-        "sports/wrestling"
+        "computing",
+        "travel",
+        "engineering/ai-robotics",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.65
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fightful Wrestling Podcast with Sean Ross Sapp focuses on computing content.",
+      "display_title": "Fightful Wrestling Podcast with Sean Ross Sapp",
+      "blurb": "Fightful.com Podcasts bring you the best in MMA, Pro Wrestling and Boxing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1175478134": {
       "topics": [
@@ -27227,11 +28308,40 @@
     },
     "1177040764": {
       "topics": [
-        "relationships"
+        "sports",
+        "computing",
+        "sports/football",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Receipts Podcast focuses on sports content.",
+      "display_title": "The Receipts Podcast",
+      "blurb": "#TheReceiptsPodcast is a fun, honest podcast fronted by Tolly T & Audrey who are willing to talk about anything and everything. From relationships to situationships, to everyday life experiences, you...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1177047617": {
       "topics": [
@@ -27242,11 +28352,40 @@
     },
     "1177068388": {
       "topics": [
-        "society"
+        "comedy",
+        "history",
+        "computing",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Matt and Shane's Secret Podcast focuses on comedy content.",
+      "display_title": "Matt and Shane's Secret Podcast",
+      "blurb": "Grab onto this fast moving train and witness two comedians rise to victory and splendor. This is easily the funniest podcast out there. The rest are pretty meh.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1177744515": {
       "topics": [
@@ -27304,11 +28443,40 @@
     },
     "1179629560": {
       "topics": [
-        "true-crime"
+        "music",
+        "true-crime",
+        "business",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True Crime All The Time focuses on music content.",
+      "display_title": "True Crime All The Time",
+      "blurb": "Hosts Mike Ferguson and Mike Gibson guide you through the most interesting true crime stories. This is a true crime podcast that spares none of the details and s into...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1180010629": {
       "topics": [
@@ -27394,11 +28562,40 @@
     },
     "1182016534": {
       "topics": [
-        "religion/hinduism"
+        "religion/christianity",
+        "religion",
+        "history",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Satsang with Shambhavi focuses on christianity content.",
+      "display_title": "Satsang with Shambhavi",
+      "blurb": "Join Shambhavi Sarasvati for a weekly exploration of self-realization, death, love, devotion, and waking up while living in a messy world. Satsang is an ancient spiritual practice from India. It...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1182265803": {
       "topics": [
@@ -27507,11 +28704,40 @@
     },
     "1185023674": {
       "topics": [
-        "hobbies"
+        "music",
+        "business",
+        "history",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Perpetual Chess Podcast focuses on music content.",
+      "display_title": "Perpetual Chess Podcast",
+      "blurb": "Perpetual Chess features weekly conversations with the chess world's best players, trainers and accomplished amateurs about their careers, current projects, best practices and the latest in chess news. Learn more...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1185048025": {
       "topics": [
@@ -27628,11 +28854,38 @@
     },
     "1187748808": {
       "topics": [
+        "food",
+        "society",
         "society/law"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Oral Arguments for the Court of Appeals for the Seventh Circuit focuses on food content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1187749095": {
       "topics": [
@@ -27773,19 +29026,77 @@
     },
     "1191606694": {
       "topics": [
-        "comedy"
+        "music",
+        "comedy",
+        "computing",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "kPod - The Kidd Kraddick Morning Show focuses on music content.",
+      "display_title": "kPod - The Kidd Kraddick Morning Show",
+      "blurb": "This is the full replay of The Kidd Kraddick Morning Show, featuring, Kellie Rasberry, J-Si Chavez, Big Al Mack, Ana and Part-Time Justin! Live from 6-10am CT weekdays at KiddNation.com!!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1191649738": {
       "topics": [
-        "hobbies"
+        "religion/christianity",
+        "religion",
+        "computing",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Letters Page focuses on christianity content.",
+      "display_title": "The Letters Page",
+      "blurb": "Christopher Badell and Adam Rebottaro discuss characters and events from their hit game, Sentinels of the Multiverse, and answer fan questions regarding the past, present, and future of Sentinel Comics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1191681161": {
       "topics": [
@@ -27797,11 +29108,40 @@
     },
     "1191775648": {
       "topics": [
+        "sports",
+        "science",
+        "health",
         "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tom Bilyeu's Impact Theory focuses on sports content.",
+      "display_title": "Tom Bilyeu's Impact Theory",
+      "blurb": "Uncover the truth behind the headlines and memes in an unbiased pursuit of what’s real. From interviews and reactions to debates on the most important topics of the day, this...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1191831035": {
       "topics": [
@@ -27880,11 +29220,40 @@
     },
     "1192743040": {
       "topics": [
-        "hobbies"
+        "religion/christianity",
+        "religion",
+        "history",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The 40k Badcast focuses on christianity content.",
+      "display_title": "The 40k Badcast",
+      "blurb": "A lighter take on Warhammer 40k. We're bad at 40k, and you can, too!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1192761536": {
       "topics": [
@@ -28254,11 +29623,40 @@
     },
     "1199677372": {
       "topics": [
-        "craft/diy-home"
+        "comedy",
+        "health",
+        "computing",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Decorating Tips and Tricks focuses on comedy content.",
+      "display_title": "Decorating Tips and Tricks",
+      "blurb": "Decorating tips and advice to help you create a beautiful home. Listening is like hiring a decorator, but it is free! Free and fun ~ lots of laughs mixed in...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1199902190": {
       "topics": [
@@ -28293,11 +29691,40 @@
     },
     "1200343264": {
       "topics": [
-        "sports/golf"
+        "sports",
+        "music",
+        "business",
+        "nature"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fore Play focuses on sports content.",
+      "display_title": "Fore Play",
+      "blurb": "\"Fore Play\" is a weekly podcast by common golfers, for common golfers. Trent, Riggs, Frankie, Kevin Kisner, and their wide variety of guests talk about everything golf like normal folks...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1200361736": {
       "topics": [
@@ -28330,11 +29757,40 @@
     },
     "1200953842": {
       "topics": [
-        "health/sexuality"
+        "health",
+        "business",
+        "computing",
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Talk About Gay Sex TAGSPODCAST focuses on health & fitness content.",
+      "display_title": "Talk About Gay Sex TAGSPODCAST",
+      "blurb": "TAGSPODCAST aka Talk About Gay Sex is a Queer podcast offering advice on sex and relationships plus delivers the latest LGBTQ hot topics on health, politics and entertainment to keep...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1201114838": {
       "topics": [
@@ -28389,11 +29845,40 @@
     },
     "1201263130": {
       "topics": [
-        "education/how-to"
+        "religion/christianity",
+        "religion",
+        "science",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "10 Minute Teacher Podcast with Cool Cat Teacher focuses on christianity content.",
+      "display_title": "10 Minute Teacher Podcast with Cool Cat Teacher",
+      "blurb": "A teacher podcast for busy educators—about 10 minutes, every week. Stay current on artificial intelligence in education (plain English), edtech, and what matters in the classroom: culture, instruction, assessment, digital...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1201302391": {
       "topics": [
@@ -28832,11 +30317,40 @@
     },
     "1209320782": {
       "topics": [
-        "education/self-improvement"
+        "science",
+        "health",
+        "computing",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Take a Break from Drinking focuses on science content.",
+      "display_title": "Take a Break from Drinking",
+      "blurb": "Tired of breaking your promise to go easy on the drinks tonight? You know your nightly habit isn't great for your health or waistline, but it's so hard to say...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1209328985": {
       "topics": [
@@ -28892,11 +30406,40 @@
     },
     "1210250626": {
       "topics": [
-        "sports"
+        "sports",
+        "comedy",
+        "food",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "food",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Big Brown Breakdown focuses on sports content.",
+      "display_title": "The Big Brown Breakdown",
+      "blurb": "The Big Brown Breakdown  the intersection of combat sports and life in and outside the sport. Through the eyes of former fighter, comedian, and host Brendan Schaub, the show...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1210294497": {
       "topics": [
@@ -29100,11 +30643,40 @@
     },
     "1212380212": {
       "topics": [
-        "news/politics"
+        "computing",
+        "news",
+        "news/politics",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Five focuses on computing content.",
+      "display_title": "The Five",
+      "blurb": "The hot topics that have everyone talking from the five voices that will have everyone listening. Don't miss 'The Five' as they discuss, debate and at times debunk the hot...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1212468465": {
       "topics": [
@@ -29226,11 +30798,40 @@
     },
     "1215386938": {
       "topics": [
-        "music/classical"
+        "religion/christianity",
+        "religion",
+        "music",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sticky Notes: The Classical Music Podcast focuses on christianity content.",
+      "display_title": "Sticky Notes: The Classical Music Podcast",
+      "blurb": "Sticky Notes is a classical music podcast for everyone, whether you are just getting interested in classical music for the first time, or if you've been listening to it and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1215420422": {
       "topics": [
@@ -29273,11 +30874,40 @@
     },
     "1215760756": {
       "topics": [
-        "health/sexuality"
+        "computing",
+        "culture",
+        "society",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dirty Erotica focuses on computing content.",
+      "display_title": "Dirty Erotica",
+      "blurb": "Time to get your freak on! Wanna hear hot dirty stories that will help you connect with your nasty side, well then subscribe and give us some likes baby!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1215810743": {
       "topics": [
@@ -29567,11 +31197,40 @@
     },
     "1223807254": {
       "topics": [
-        "hobbies"
+        "history",
+        "computing",
+        "fiction",
+        "travel"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome Home: A Disney Parks & DVC Podcast focuses on history content.",
+      "display_title": "Welcome Home: A Disney Parks & DVC Podcast",
+      "blurb": "A Disney Parks & Vacation Club Podcast. Tom and Trevor are Disney enthusiasts who can't stop talking about anything and everything Disney. On Welcome Home, they talk about everything related...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-0e7b48ee",
+      "classified_at": "2026-07-25T07:36:54.053Z"
     },
     "1223815551": {
       "topics": [
