@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T11:57:11.324Z",
+  "built_at": "2026-07-25T12:56:39.776Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-f7f43b72",
+    "last_batch_id": "fresh-2026-07-25-acb81f5e",
     "last_batch_tier": 1
   },
   "entries": {
@@ -50079,8 +50079,22 @@
         "comedy"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about comedy; content-driven classification based on episode titles.",
+      "display_title": "La Cotorrisa",
+      "blurb": "Ricardo Pérez y Slobotzky se ponen a cotorrear como siempre, pero ahora lo están grabando.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1458803180": {
       "topics": [
@@ -51736,11 +51750,25 @@
     },
     "1466670293": {
       "topics": [
-        "comedy"
+        "nature/animal-cognition"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about animal-cognition; content-driven classification based on episode titles.",
+      "display_title": "The BrilliantlyDumb Show",
+      "blurb": "A comedic view on sports and life's day to day, hosted by Instagram star Robby Berger.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1466686717": {
       "topics": [
@@ -53303,11 +53331,30 @@
     },
     "1474007441": {
       "topics": [
-        "personal-journals"
+        "nature",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about nature and science; content-driven classification based on episode titles.",
+      "display_title": "馬克信箱 (Dear Marcy)",
+      "blurb": "「唯一真正的旅行，唯一能讓人重獲青春的方法，不在於造訪陌生的國度，而是擁有不同的視角，能用他人的眼光看世界。」－－《追憶逝水年華》，普魯斯特 《馬克信箱》是一個接收聽眾手寫信件的節目，由廣播主持人歐馬克與瑪麗即興回覆。 節目內容是真實的人生百味，穿越時空；在這個華語版的解憂雜貨店裡，存放著各種情緒與記憶。 希望這個數位樹洞能讓你藉由聆聽與書寫，找到自己、獲得啟發。 若要跟上最新一集的進度，請到 Y",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1474018356": {
       "topics": [
@@ -54942,19 +54989,60 @@
     },
     "1479468209": {
       "topics": [
-        "automotive"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Past Gas",
+      "blurb": "Donut's Nolan Sykes and Joe Weber walk you through incredible stories behind your favorite cars and manufacturers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1479472319": {
       "topics": [
-        "education/self-improvement"
+        "tv-film/history",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1479534250": {
       "topics": [
@@ -54965,11 +55053,28 @@
     },
     "1479554969": {
       "topics": [
-        "sports/hockey"
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about daily; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1479561986": {
       "topics": [
@@ -55010,11 +55115,30 @@
     },
     "1479606317": {
       "topics": [
-        "society/government"
+        "economics/markets",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about markets and startups; content-driven classification based on episode titles.",
+      "display_title": "Babel: Translating the Middle East",
+      "blurb": "Babel will take you beyond the headlines to discuss what’s really happening in the Middle East and North Africa.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1479610314": {
       "topics": [
@@ -55222,11 +55346,30 @@
     },
     "1480199609": {
       "topics": [
-        "gaming"
+        "hobbies",
+        "sports/fantasy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about hobbies and fantasy; content-driven classification based on episode titles.",
+      "display_title": "Third Man Walking",
+      "blurb": "A poker pro&#039;s lonely journey through mid stakes cash games and tournaments. Brought to you by CrushLivePoker",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1480201597": {
       "topics": [
@@ -55252,11 +55395,30 @@
     },
     "1480262657": {
       "topics": [
-        "education/self-improvement"
+        "economics/markets",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about markets and startups; content-driven classification based on episode titles.",
+      "display_title": "Finding Peak w/ Ryan Hanley",
+      "blurb": "Finding Peak with Ryan Hanley: the podcast for founders and executives beating burnout, mastering delegation, and leading with clarity — real conversations on leverage, AI, and peak performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1480263708": {
       "topics": [
@@ -55320,11 +55482,33 @@
     },
     "1480593911": {
       "topics": [
-        "fiction/comedy"
+        "kids-family",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about kids-family and drama; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1480595648": {
       "topics": [
@@ -55882,11 +56066,30 @@
     },
     "1481898329": {
       "topics": [
-        "comedy"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "ShxtsNGigs",
+      "blurb": "ShxtsNGigs is a weekly podcast featuring best friends James and Fuhad. They try to give their full, unfiltered opinion on anything that comes to mind.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1481906274": {
       "topics": [
@@ -56080,12 +56283,30 @@
     },
     "1482360881": {
       "topics": [
-        "nature",
-        "hobbies"
+        "health/sexuality",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about sexuality and relationships; content-driven classification based on episode titles.",
+      "display_title": "Tackle Talk - Bass Fishing Podcast",
+      "blurb": "Fishing Podcast? We've got you covered! Tackle Talk is a weekly bass fishing podcast featuring industry news, in-depth gear reviews, amazing guests, and educational tips.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1482399861": {
       "topics": [
@@ -56133,11 +56354,30 @@
     },
     "1482455669": {
       "topics": [
-        "computing"
+        "tv-film/history",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": "What Bitcoin Did",
+      "blurb": "What Bitcoin Did unpacks Bitcoin’s role in reshaping money, freedom, and the future of finance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1482463498": {
       "topics": [
@@ -56162,11 +56402,30 @@
     },
     "1482575855": {
       "topics": [
-        "medicine/biology"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Short Wave",
+      "blurb": "New discoveries, everyday mysteries, and the science behind the headlines — in just under 15 minutes. It's science for everyone, using a lot of creativity and a little humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1482580830": {
       "topics": [
@@ -56307,9 +56566,23 @@
       "topics": [
         "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about religion; content-driven classification based on episode titles.",
+      "display_title": "Former Adventist",
+      "blurb": "Friends Colleen Tinker and Nikki Stevenson sip coffee and talk about life after Adventism.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1482906139": {
       "topics": [
@@ -56621,11 +56894,33 @@
     },
     "1483654175": {
       "topics": [
-        "society/government"
+        "nature",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about nature and science; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1483692776": {
       "topics": [
@@ -56957,11 +57252,30 @@
     },
     "1484727323": {
       "topics": [
-        "education/courses"
+        "tv-film/history",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": "The GMAT® Strategy Podcast",
+      "blurb": "Taking your GMAT skills to the next level! For more head to https://thegmatstrategy.com/ - Please help us make our free content better with this survey: https://forms.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1484744109": {
       "topics": [
@@ -56988,12 +57302,30 @@
     },
     "1484818403": {
       "topics": [
-        "cities/urbanism",
-        "sports/volleyball"
+        "sports",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about sports and education; content-driven classification based on episode titles.",
+      "display_title": "Dig City - Purdue Volleyball Podcast",
+      "blurb": "Purdue Volleyball coach Dave Shondell and Cory Palm talk about the Boilermakers and the world of college volleyball.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1484821356": {
       "topics": [
@@ -57375,11 +57707,30 @@
     },
     "1485740243": {
       "topics": [
-        "society"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Couple Things with Shawn and Andrew",
+      "blurb": "Former Olympic Gymnast Shawn Johnson and NFL player Andrew East sit down to share their most vulnerable sides and open up like they never have before.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1485757121": {
       "topics": [
@@ -57429,11 +57780,30 @@
     },
     "1485892859": {
       "topics": [
-        "math"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Casual Inference",
+      "blurb": "Keep it casual with the Casual Inference podcast. Your hosts Lucy D'Agostino McGowan and Ellie Murray talk all things epidemiology, statistics, data science, causal inference, and public health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1485898177": {
       "topics": [
@@ -57762,11 +58132,30 @@
     },
     "1487320403": {
       "topics": [
-        "society"
+        "tv-film/history",
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": "The Slow Newscast",
+      "blurb": "The Slow Newscast from The Observer takes the news slowly. We investigate, and every week we focus on stories that really matter in the UK and around the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1487391895": {
       "topics": [
@@ -57800,11 +58189,30 @@
     },
     "1487513861": {
       "topics": [
-        "health/alternative"
+        "nature",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about nature and hobbies; content-driven classification based on episode titles.",
+      "display_title": "Get Sleepy: Sleep meditation and stories",
+      "blurb": "Come relax with the #1 Sleep Podcast. Our unique stories help calm the mind and relax the body. Press play, it's time to Get Sleepy...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1487530250": {
       "topics": [
@@ -57876,11 +58284,30 @@
     },
     "1487854841": {
       "topics": [
-        "business/non-profit"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Your Path to Nonprofit Leadership",
+      "blurb": "Ranked #1 on FeedSpot's Nonprofit Leadership and Philanthropy podcast lists, Your Path to Nonprofit Leadership is the go-to resource for current and aspiring nonprofit leaders. Hosted by Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1487863873": {
       "topics": [
@@ -58106,11 +58533,30 @@
     },
     "1488521447": {
       "topics": [
-        "sports"
+        "economics/markets",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about markets and startups; content-driven classification based on episode titles.",
+      "display_title": "The Athletic FC Podcast",
+      "blurb": "The Athletic's flagship football podcast is with you six days a week, bringing unrivalled analysis from the biggest stories in world football.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1488521732": {
       "topics": [
@@ -58233,19 +58679,57 @@
     },
     "1489061681": {
       "topics": [
-        "education/self-improvement"
+        "economics/markets",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about markets and startups; content-driven classification based on episode titles.",
+      "display_title": "The Trent Shelton Podcast",
+      "blurb": "The Trent Shelton Podcast is your weekly journey to mindset mastery, inner peace, and living in your full power.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1489061831": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.5
+        },
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about non-profit and society; content-driven classification based on episode titles.",
+      "display_title": "Change Church Podcast",
+      "blurb": "Thank you for subscribing to Change Church's Podcast. Enjoy the messages of Pastor Dharius Daniels. Visit our website at www.lifechange.org",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1489075772": {
       "topics": [
@@ -58495,11 +58979,30 @@
     },
     "1490067713": {
       "topics": [
-        "fiction"
+        "tv-film/history",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": "Acephale: Horror Fiction",
+      "blurb": "Stories of cosmic and existential horror. Written and performed by Jeffrey Walker. No AI is used in the creation of this podcast. Patreon: https://www.patreon.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1490116368": {
       "topics": [
@@ -58884,12 +59387,30 @@
     },
     "1491840893": {
       "topics": [
-        "tv-film",
-        "tv-film/reviews"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Across the Movie Aisle",
+      "blurb": "Here’s the elevator pitch: It’s “Left, Right, and Center” meets “Siskel and Ebert.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1491957394": {
       "topics": [
@@ -58901,11 +59422,30 @@
     },
     "1492004207": {
       "topics": [
-        "education/courses"
+        "psychology",
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about psychology and mental; content-driven classification based on episode titles.",
+      "display_title": "The Thinking Practitioner",
+      "blurb": "For the practitioner who’s never stopped being curious. Til Luchau and Whitney Lowe bring together leading researchers, master clinicians, and big questions from across bodywork, massage, and manual t",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1492008134": {
       "topics": [
@@ -59119,11 +59659,30 @@
     },
     "1492766207": {
       "topics": [
-        "tv-film/history"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Surely You Can't Be Serious Podcast",
+      "blurb": "The pinnacle of infotainment! Crazy stuff you didn’t know about the greatest movies and music of the 80’s, 90’s, and beyond.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1492797340": {
       "topics": [
@@ -59205,11 +59764,30 @@
     },
     "1493002505": {
       "topics": [
-        "health/nutrition"
+        "health",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about health and psychology; content-driven classification based on episode titles.",
+      "display_title": "Be Well by Kelly Leveque",
+      "blurb": "Be Well By Kelly is on a mission to simplify the science of nutrition. I want to make choices, not cheats.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1493019972": {
       "topics": [
@@ -59235,11 +59813,38 @@
     },
     "1493055485": {
       "topics": [
-        "religion/hinduism"
+        "personal-journals",
+        "relationships",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about personal-journals and relationships; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1493061969": {
       "topics": [
@@ -59424,8 +60029,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about judaism; content-driven classification based on episode titles.",
+      "display_title": "Daf Yomi for Women - Hadran",
+      "blurb": "Hadran.org.il is the portal for Daf Yomi studies for women. Hadran.org.il is the first and only site where one can hear a daily Talmud class taught by a woman.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1493414021": {
       "topics": [
@@ -59570,12 +60189,25 @@
     },
     "1493745353": {
       "topics": [
-        "medicine/neuroscience",
         "education/courses"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about courses; content-driven classification based on episode titles.",
+      "display_title": "Neurology Exam Prep Podcast",
+      "blurb": "Study materials for in-service and certification examinations in neurology residency.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1493757042": {
       "topics": [
@@ -59781,12 +60413,30 @@
     },
     "1494372527": {
       "topics": [
-        "psychology",
-        "society"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "THE PSYCHOLOGY WORLD PODCAST",
+      "blurb": "Welcome to The Psychology World Podcast with me, Connor Whiteley GMBPsS, psychology graduate and bestselling author.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1494388156": {
       "topics": [
@@ -59805,11 +60455,33 @@
     },
     "1494439019": {
       "topics": [
+        "music",
         "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about music and culture; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 38w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1494490229": {
       "topics": [
@@ -60014,11 +60686,30 @@
     },
     "1494780335": {
       "topics": [
-        "science"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "The Medbullets Step 2 & 3 Podcast",
+      "blurb": "A Daily High-Yield review podcast for USMLE Step 2 and Step 3 by Medbullets—the Free Learning & Collaboration Community for Medical Education.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1494789051": {
       "topics": [
@@ -60030,11 +60721,30 @@
     },
     "1494812579": {
       "topics": [
-        "computing"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "What's Next｜科技早知道",
+      "blurb": "原「硅谷早知道」，全新改版的「What's Next｜科技早知道」我们会继续放眼全球，不仅聚焦纯科技的话题，也会关注科技引领世界以及商业格局变化等新话题。 新一季我们的节目会由多个模块共同组成，除了延续我们以往不同科技领域新技术新动向的话题，我们也会加入出海、多视角解读科技行业大事件。 本节目由声动活泼制作播出。",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1494825405": {
       "topics": [
@@ -60323,11 +61033,30 @@
     },
     "1495710329": {
       "topics": [
-        "medicine"
+        "health/sexuality",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about sexuality and relationships; content-driven classification based on episode titles.",
+      "display_title": "You Are Not Broken",
+      "blurb": "Welcome to the podcast that rewrites everything you thought you knew about sex, hormones, and midlife.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1495714614": {
       "topics": [
@@ -60437,11 +61166,33 @@
     },
     "1496216315": {
       "topics": [
-        "tv-film"
+        "tv-film/history",
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1496247619": {
       "topics": [
@@ -60452,11 +61203,30 @@
     },
     "1496265971": {
       "topics": [
-        "comedy/stand-up"
+        "psychology",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about psychology and mental; content-driven classification based on episode titles.",
+      "display_title": "Bad Friends",
+      "blurb": "Andrew Santino and Bobby Lee present BAD FRIENDS. New episodes every Monday! FOLLOW BAD FRIENDS! https://www.instagram.com/badfriendspod https://patreon.com/badfriends https://www.tiktok.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1496346061": {
       "topics": [
@@ -60576,11 +61346,30 @@
     },
     "1496651303": {
       "topics": [
-        "gaming"
+        "hobbies",
+        "sports/fantasy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about hobbies and fantasy; content-driven classification based on episode titles.",
+      "display_title": "Low Limit Cash Games Poker Podcast",
+      "blurb": "Low Stakes Poker Podcast teaching players how to win at low limit poker in live cash games, with a focus on $1/$2 and $1/$3 no limit hold’em cash games.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1496654134": {
       "topics": [
@@ -60668,12 +61457,33 @@
     },
     "1496847791": {
       "topics": [
-        "space",
-        "science"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 34w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1496866360": {
       "topics": [
@@ -60751,11 +61561,30 @@
     },
     "1497168845": {
       "topics": [
-        "hobbies"
+        "culture/fashion",
+        "health"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about fashion and health; content-driven classification based on episode titles.",
+      "display_title": "Mill House Podcast",
+      "blurb": "With a passion for storytelling, Mill House is more than a fishing podcast. Comprised of in-depth conversations with innovators, legends, and pioneers of the outdoors, we expose untold and compelling",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1497168868": {
       "topics": [
@@ -60961,11 +61790,33 @@
     },
     "1497785843": {
       "topics": [
-        "society/government"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1497791107": {
       "topics": [
@@ -61078,9 +61929,23 @@
       "topics": [
         "hobbies"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about hobbies; content-driven classification based on episode titles.",
+      "display_title": "自我进化论",
+      "blurb": "《自我进化论》一档由颜晓静创作，持续分享「自我探索」和「自我养育」内容的播客。通过分享真实的人生经历和成长领悟，启发更多人自我觉醒和向内探索，拥抱真实自我，活出丰盛人生。 欢迎在小宇宙、苹果播客和喜马拉雅等平台订阅，全平台同步更新中 : ) 官方账号：自我进化论播客（抖音/小红书/视频号） 主播：颜晓静Athena（公众号/小红书/抖音）",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1498172564": {
       "topics": [
@@ -61173,11 +62038,30 @@
     },
     "1498396103": {
       "topics": [
-        "religion/islam"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Life of the Prophet Muhammad",
+      "blurb": "A detailed narrative on the life and times of the greatest man who ever lived, the Prophet Muhammad (Peace and Blessings of Allah be upon him).",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1498396876": {
       "topics": [
@@ -61254,11 +62138,33 @@
     },
     "1498625027": {
       "topics": [
-        "sports/golf"
+        "sports/golf",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about golf and hobbies; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1498637804": {
       "topics": [
@@ -61427,19 +62333,57 @@
     },
     "1499255585": {
       "topics": [
-        "sports/rugby"
+        "nature",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about nature and science; content-driven classification based on episode titles.",
+      "display_title": "Rugby League Guru Podcast",
+      "blurb": "The Rugby League Guru brings you weekly podcasts centred solely on the greatest game of all, Rugby League.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1499271317": {
       "topics": [
-        "society/government"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Political Theory 101",
+      "blurb": "A podcast about political theory. Freely available to all, but we'd love your support on Patreon: https://www.patreon.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1499294498": {
       "topics": [
@@ -61585,11 +62529,30 @@
     },
     "1499709329": {
       "topics": [
-        "business/non-profit"
+        "psychology",
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about psychology and mental; content-driven classification based on episode titles.",
+      "display_title": "Black girls go to therapy",
+      "blurb": "Black girl going to therapy!! Come listen to what a “normal” black girl goes through🤷🏾‍♀️or just come listen to what I go through lol",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1499745733": {
       "topics": [
@@ -61788,11 +62751,30 @@
     },
     "1500442697": {
       "topics": [
-        "nature"
+        "health",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about health and psychology; content-driven classification based on episode titles.",
+      "display_title": "Native Plants, Healthy Planet",
+      "blurb": "Hosts Fran Chismar and Tom Knezick interview some of the top minds in ecology, restoration, conservation, and of course, native plants.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1500452264": {
       "topics": [
@@ -61894,11 +62876,30 @@
     },
     "1500763931": {
       "topics": [
-        "food"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "A Hot Dog Is a Sandwich",
+      "blurb": "Mythical Chefs Josh Scherer and Nicole Enayati discuss, debate, and dissect the web’s most hilariously controversial culinary quandaries.Check out more on https://www.youtube.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1500774232": {
       "topics": [
@@ -61974,11 +62975,30 @@
     },
     "1501029683": {
       "topics": [
-        "health/mental"
+        "health",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about health and psychology; content-driven classification based on episode titles.",
+      "display_title": "Chasing Life",
+      "blurb": "All over the world, there are people who are living extraordinary lives, full of happiness and health – and with hardly any heart disease, cancer or diabetes. Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-acb81f5e",
+      "classified_at": "2026-07-25T12:56:39.776Z"
     },
     "1501052684": {
       "topics": [

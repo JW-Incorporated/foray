@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-const batchPath = '/home/user/foray/data-local/classify-batch-fresh-2026-07-25-cf102e75.json';
+const batchPath = '/home/user/foray/data-local/classify-batch-fresh-2026-07-25-acb81f5e.json';
 const taxonomyPath = '/home/user/foray/data/taxonomy.json';
 
 const batch = JSON.parse(fs.readFileSync(batchPath, 'utf-8'));
@@ -237,7 +237,7 @@ batch.shows.forEach(show => {
   results.results[show.apple_collection_id] = analyzeShow(show);
 });
 
-fs.writeFileSync('/home/user/foray/data-local/classify-results-fresh-2026-07-25-cf102e75.json',
+fs.writeFileSync('/home/user/foray/data-local/classify-results-fresh-2026-07-25-acb81f5e.json',
   JSON.stringify(results, null, 2));
 
 console.log(`✓ Classified ${Object.keys(results.results).length} shows`);
