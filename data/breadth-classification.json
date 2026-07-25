@@ -1,6 +1,1474 @@
 {
   "version": 1,
   "entries": {
+    "73329284": {
+      "topics": [
+        "science",
+        "medicine/biology",
+        "nature"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly science news covering research, technology, space, health, and natural world.",
+      "display_title": "Science Friday",
+      "blurb": "Weekly science news and interviews covering research, technology, and the natural world from outer space to microbes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "73329404": {
+      "topics": [
+        "news/tech",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly tech news roundtable discussing AI, policy, hardware, and business implications.",
+      "display_title": "This Week in Tech",
+      "blurb": "Weekly tech roundtable exploring AI, business, policy, and Silicon Valley news from Leo Laporte and insiders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "73329548": {
+      "topics": [
+        "travel",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Las Vegas-focused podcast covering entertainment venues, shows, casinos, and travel.",
+      "display_title": "Las Vegas Podcast: Five Hundy",
+      "blurb": "Podcast covering Las Vegas entertainment, venues, casinos, travel, and entertainment news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "73330112": {
+      "topics": [
+        "tv-film/reviews",
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-running film review podcast analyzing new and classic movies with critical analysis.",
+      "display_title": "Filmspotting",
+      "blurb": "Weekly film reviews and analysis of new and classic movies from hosts Adam Kempenaar and Josh Larsen.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "73331636": {
+      "topics": [
+        "news/politics",
+        "news/daily"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Local and national politics conversation show covering current affairs and policy.",
+      "display_title": "The Brian Lehrer Show",
+      "blurb": "WNYC's daily program exploring local and national politics, community issues, and current affairs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "74171648": {
+      "topics": [
+        "science",
+        "medicine/biology",
+        "medicine/neuroscience"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lighthearted science show covering breakthroughs, interviews, and at-home experiments.",
+      "display_title": "The Naked Scientists Podcast",
+      "blurb": "Science show with interviews, news on breakthroughs, and accessible explanations of current research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "74840240": {
+      "topics": [
+        "news/commentary",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBC's longest-running TV news show with journalism discussion and current affairs.",
+      "display_title": "Meet the Press",
+      "blurb": "NBC's longest-running news show featuring journalists analyzing the week's major stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "75195584": {
+      "topics": [
+        "gaming",
+        "gaming/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Twice-weekly gaming podcast covering news, reviews, and exclusive interviews since 2005.",
+      "display_title": "Gamertag Radio",
+      "blurb": "Twice-weekly gaming podcast with breaking news, reviews, and exclusive interviews from industry leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "78459818": {
+      "topics": [
+        "paranormal",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host interviews experts on UFOs, ghosts, cryptids, and unexplained phenomena.",
+      "display_title": "The Paranormal Podcast",
+      "blurb": "Jim Harold interviews paranormal experts on UFOs, ghosts, Bigfoot, and unexplained phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "79155128": {
+      "topics": [
+        "nature",
+        "nature/animal-cognition",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.6
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily short episodes about birds, nature observation, and natural world imagery.",
+      "display_title": "BirdNote Daily",
+      "blurb": "Daily short episodes exploring bird behavior, nature observation, and the natural world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "79681292": {
+      "topics": [
+        "news/daily"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "California-focused public radio news covering state policy, trends, and population.",
+      "display_title": "The California Report",
+      "blurb": "Statewide daily radio news covering California policy, trends, and diverse communities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "79906946": {
+      "topics": [
+        "hobbies",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly genealogy podcast with news, reviews, interviews, and family history discussion.",
+      "display_title": "The Genealogy Guys",
+      "blurb": "Weekly genealogy podcast with community news, software reviews, and family history tips.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "82354094": {
+      "topics": [
+        "news/daily",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French talk show debating current affairs with varied voices from civil society.",
+      "display_title": "Les Grandes Gueules",
+      "blurb": "French talk show featuring debates on current affairs with guests from diverse backgrounds.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "83324702": {
+      "topics": [
+        "news/commentary",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "50-year-old PBS journalism program with journalists discussing weekly news stories.",
+      "display_title": "Washington Week",
+      "blurb": "PBS journalism program featuring journalists analyzing the week's important news and politics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "90253586": {
+      "topics": [
+        "craft",
+        "craft/diy-home",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.6
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Knitting podcast about creative process, making projects, and carving creative time.",
+      "display_title": "Cast On",
+      "blurb": "Knitting podcast exploring creative process, finding inspiration, and making projects.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "90983408": {
+      "topics": [
+        "culture/art",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly comic book podcast discussing current releases and craft of comics.",
+      "display_title": "iFanboy - Comic Books",
+      "blurb": "Weekly podcast discussing current comic book releases and the craft of comic storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "100424810": {
+      "topics": [
+        "tv-film/animation",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dragon Ball podcast with discussions, reviews, and news from fan archive site.",
+      "display_title": "Kanzenshuu - Dragon Ball Podcast",
+      "blurb": "Dragon Ball podcast with reviews, news, and discussions from Kanzenshuu archive staff.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "107541824": {
+      "topics": [
+        "music",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live performance and interview program featuring musicians and music conversation.",
+      "display_title": "World Cafe Words and Music",
+      "blurb": "Live music and interview program from WXPN featuring performers and music discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "110916650": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Christian teaching and scripture study podcast from Ligonier Ministries.",
+      "display_title": "Renewing Your Mind",
+      "blurb": "Daily Christian teaching helping believers understand Scripture and deepen faith.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "120034448": {
+      "topics": [
+        "news",
+        "business",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese business and economics news podcast covering global economic events.",
+      "display_title": "Round Up World Now!",
+      "blurb": "Japanese-language podcast explaining weekly economic, social, and political events globally.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "120867842": {
+      "topics": [
+        "news/tech",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Apple news podcast covering Apple products and related technology news.",
+      "display_title": "Mac OS Ken",
+      "blurb": "Daily Apple news podcast covering iPhones, Macs, and Apple ecosystem developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "121275452": {
+      "topics": [
+        "nature/earth-science",
+        "science",
+        "nature/weather"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        },
+        {
+          "node": "nature/weather",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weather podcast hosted by meteorologists discussing storms, climate, and hydrology.",
+      "display_title": "WeatherBrains",
+      "blurb": "Weekly weather podcast with meteorologists discussing storms, climate, and weather science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "121493804": {
+      "topics": [
+        "comedy",
+        "news/daily"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NPR's weekly news quiz show with comedians and celebrity guests.",
+      "display_title": "Wait Wait... Don't Tell Me!",
+      "blurb": "NPR's weekly news quiz with comedians testing knowledge on current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "122477102": {
+      "topics": [
+        "automotive/racing",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NASCAR podcast with in-depth weekly analysis and expert discussion.",
+      "display_title": "PRN - Fast Talk Podcast",
+      "blurb": "Weekly NASCAR podcast with expert analysis and deep discussion of racing news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "135067274": {
+      "topics": [
+        "news/daily",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "BBC's global news podcast with breaking stories, analysis, and current affairs.",
+      "display_title": "Global News Podcast",
+      "blurb": "BBC global news podcast delivering breaking stories and analysis from around the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "137329814": {
+      "topics": [
+        "business",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily economics and business news show covering economy without anxiety.",
+      "display_title": "Marketplace Morning Report",
+      "blurb": "Daily economics podcast making business and economic news accessible and clear.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "137471654": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic radio detective drama episodes featuring investigators and crime stories.",
+      "display_title": "Radio Detective Story Hour",
+      "blurb": "Classic radio detective dramas featuring investigators, crime, and mystery from golden age.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "137699414": {
+      "topics": [
+        "sports/baseball",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MLB insider discussing baseball analysis, trades, and expert commentary.",
+      "display_title": "Baseball Tonight",
+      "blurb": "ESPN baseball podcast with insider analysis, trade discussion, and expert commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "146224928": {
+      "topics": [
+        "philosophy",
+        "religion/spirituality",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.6
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Self-awareness podcast exploring why we think, feel, and act through meditation.",
+      "display_title": "The Ageless Wisdom Mystery School",
+      "blurb": "Self-awareness podcast exploring human consciousness through guided meditation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "150892556": {
+      "topics": [
+        "philosophy",
+        "religion/spirituality",
+        "culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual inquiry, science, and poetry conversations with luminaries and thinkers.",
+      "display_title": "On Being",
+      "blurb": "Conversations exploring spirituality, science, social healing, and poetry with thought leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "152564324": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Christian teaching from Joyce Meyer on living faith and spiritual growth.",
+      "display_title": "Joyce Meyer Enjoying Everyday Life",
+      "blurb": "Daily Christian teaching from Joyce Meyer on spiritual growth and practical faith.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "160904630": {
+      "topics": [
+        "education",
+        "science",
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.6
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        },
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily audio TED talks covering ideas from science to technology to human experience.",
+      "display_title": "TED Talks Daily",
+      "blurb": "Daily TED Talks audio featuring thought leaders on science, ideas, and human progress.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "162722276": {
+      "topics": [
+        "news/politics",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "British Parliament news and features covering legislative activity and debate.",
+      "display_title": "Today in Parliament",
+      "blurb": "BBC coverage of British Parliament with news and features on legislative debates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "168365960": {
+      "topics": [
+        "culture/art",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comic book podcast discussing current releases with rotating panel of guests.",
+      "display_title": "Comic Timing Podcast",
+      "blurb": "Comic book podcast discussing releases and comic storytelling with guest panel.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "170258744": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Church worship services offering both traditional and contemporary styles.",
+      "display_title": "St. Luke's United Methodist",
+      "blurb": "Sunday worship services from St. Luke's United Methodist Church in traditional and contemporary styles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "178083008": {
+      "topics": [
+        "sports/fantasy",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football podcast with draft strategy and NFL analysis from experts.",
+      "display_title": "The Audible",
+      "blurb": "Fantasy football podcast with strategy, draft analysis, and NFL expert commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "190516844": {
+      "topics": [
+        "hobbies",
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gun rights and firearms podcast covering Second Amendment issues and shooting.",
+      "display_title": "Gun Talk",
+      "blurb": "Podcast on gun rights, Second Amendment issues, shooting sports, and firearms.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "190658822": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sunday church sermons from Central Church in Charlotte with biblical teaching.",
+      "display_title": "Central Church",
+      "blurb": "Weekly sermons from Central Church in Charlotte covering biblical teaching.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "196050704": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian teaching and biblical commentary from Desiring God ministry team.",
+      "display_title": "Messages by Desiring God",
+      "blurb": "Christian teaching messages from Desiring God exploring Scripture and faith.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "201671138": {
+      "topics": [
+        "culture",
+        "society",
+        "personal-journals"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Story-driven podcast with true personal narratives and surprising plot twists.",
+      "display_title": "This American Life",
+      "blurb": "Pulitzer-winning podcast with true stories, personal narratives, and surprising plot twists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "201853034": {
+      "topics": [
+        "business",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily business and economics news show helping listeners understand economic news.",
+      "display_title": "Marketplace",
+      "blurb": "Daily business and economics podcast helping listeners understand economic news and trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "202795382": {
+      "topics": [
+        "economics/markets",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly investing program helping Americans build and protect wealth long-term.",
+      "display_title": "WEALTHTRACK",
+      "blurb": "Weekly investing program with interviews on long-term wealth building strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "205892240": {
+      "topics": [
+        "sports/cricket"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket podcast with analysis, interviews, and reaction to matches and news.",
+      "display_title": "Test Match Special",
+      "blurb": "Cricket podcast with expert analysis, interviews, and reaction to matches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "206603090": {
+      "topics": [
+        "education/language-learning",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business English lessons covering meetings, presentations, negotiations, and interviews.",
+      "display_title": "Business English Pod",
+      "blurb": "Business English lessons on communication, meetings, presentations, and negotiations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "207505466": {
+      "topics": [
+        "culture",
+        "personal-journals",
+        "history"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "First-person diaries and sound portraits exploring ordinary lives and hidden history.",
+      "display_title": "Radio Diaries",
+      "blurb": "First-person diary stories and sound portraits of ordinary people and hidden history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "208643372": {
+      "topics": [
+        "sports",
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/baseball",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily ESPN sports show covering Yankees and other sports news.",
+      "display_title": "The Michael Kay Show",
+      "blurb": "Daily sports show from ESPN's Michael Kay covering Yankees and major sports.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "209377688": {
+      "topics": [
+        "news/commentary",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conservative talk radio commentary on daily news and political events.",
+      "display_title": "Mark Levin Podcast",
+      "blurb": "Conservative commentary on daily news, politics, and current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "216793682": {
+      "topics": [
+        "fiction",
+        "fiction/comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly audio fiction magazine featuring strange and creative short stories.",
+      "display_title": "The Drabblecast",
+      "blurb": "Weekly audio fiction magazine with strange and creative short stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "217580108": {
+      "topics": [
+        "tv-film/after-shows",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Doctor Who podcast with news, analysis, and entertaining discussion from Canadian hosts.",
+      "display_title": "Radio Free Skaro",
+      "blurb": "Doctor Who podcast with news, analysis, and entertaining discussion of the series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "218916008": {
+      "topics": [
+        "news/daily"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ABC's evening news show covering major stories from around the country and world.",
+      "display_title": "World News Tonight",
+      "blurb": "ABC's evening news covering major stories and events from around the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "219708992": {
+      "topics": [
+        "fiction/drama",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golden age radio crime drama episodes with detectives and mystery stories.",
+      "display_title": "Case Closed!",
+      "blurb": "Golden age radio crime dramas featuring detectives and mystery stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "251471480": {
+      "topics": [
+        "craft/woodworking",
+        "craft",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft",
+          "confidence": 0.5
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Woodworking podcast discussing techniques, tools, news, and maker projects.",
+      "display_title": "Wood Talk",
+      "blurb": "Woodworking podcast covering techniques, tools, news, and maker projects.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "251507798": {
+      "topics": [
+        "music",
+        "music/theory-production"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DJ Tiësto's weekly dance music show featuring best tracks from around world.",
+      "display_title": "PRISMATIC",
+      "blurb": "Weekly dance music show from DJ Tiësto featuring the best tracks globally.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "253191824": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Acclaimed actors read short stories weekly exploring diverse themes and voices.",
+      "display_title": "Selected Shorts",
+      "blurb": "Acclaimed actors reading short stories exploring diverse themes and literary voices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-31acd1c8",
+      "classified_at": "2026-07-25T13:54:10.190Z"
+    },
     "1459232606": {
       "topics": [
         "news/politics",
@@ -1169,11 +2637,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-25T12:55:28.057Z",
+  "built_at": "2026-07-25T13:54:10.190Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-b12e2c4c",
+    "last_batch_id": "fresh-2026-07-25-31acd1c8",
     "last_batch_tier": 1
   }
 }
