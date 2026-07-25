@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T12:15:28.338Z",
+  "built_at": "2026-07-25T13:15:55.155Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-1ef6e2e8",
+    "last_batch_id": "fresh-2026-07-25-5c6f8293",
     "last_batch_tier": 1
   },
   "entries": {
@@ -60447,11 +60447,30 @@
     },
     "1494869058": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on sexual addiction recovery, couples therapy, and betrayal trauma.",
+      "display_title": "Porn, Betrayal, Sex and the Experts — PBSE",
+      "blurb": "Two sex addicts in long-term successful recovery are ALSO world-class Counselors who specialize in porn and sex addiction recovery.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1494880178": {
       "topics": [
@@ -60477,11 +60496,30 @@
     },
     "1494989268": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Teaches effective communication techniques for professionals.",
+      "display_title": "Think Fast Talk Smart: Communication Techniques",
+      "blurb": "One of the most essential ingredients to success in business and life is effective communication.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1495047937": {
       "topics": [
@@ -60750,8 +60788,25 @@
         "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Relationship and marriage coaching for couples.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1495821413": {
       "topics": [
@@ -60777,11 +60832,30 @@
     },
     "1495971324": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/stand-up",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedy focused on ancient Greek and Roman history.",
+      "display_title": "Natalie Haynes Stands Up for the Classics",
+      "blurb": "Natalie Haynes takes a fresh look at the ancient world, creating stand-up routines about figures from ancient Greece and Rome.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1496034764": {
       "topics": [
@@ -60923,11 +60997,30 @@
     },
     "1496557812": {
       "topics": [
-        "tv-film"
+        "tv-film/interviews",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity interviews and pop culture entertainment gossip.",
+      "display_title": "BEHIND THE VELVET ROPE",
+      "blurb": "Come step ‘Behind The Velvet Rope’ with all your favorite TV stars and pop culture icons with host David Yontef as he asks his guests all the pressing questions YOU",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1496560528": {
       "topics": [
@@ -61001,11 +61094,30 @@
     },
     "1496674902": {
       "topics": [
-        "society/government"
+        "society/government",
+        "economics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Development policy, global economics, and sustainability data.",
+      "display_title": "World Bank | The Development Podcast",
+      "blurb": "The Development Podcast brings together the latest data, research and cutting-edge solutions that can pave the way to a sustainable future.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1496686780": {
       "topics": [
@@ -61257,11 +61369,25 @@
     },
     "1497576822": {
       "topics": [
-        "religion"
+        "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Catholic theology, philosophy, arts, and cultural commentary.",
+      "display_title": "Catholicism and Culture",
+      "blurb": "In these bi-weekly episodes, Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1497580401": {
       "topics": [
@@ -61272,12 +61398,25 @@
     },
     "1497584634": {
       "topics": [
-        "culture/books",
-        "culture"
+        "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book club discussions and literary analysis.",
+      "display_title": "The Readheads Book Club",
+      "blurb": "Welcome to The Readheads Book Club, your new favorite book club and podcast!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1497611931": {
       "topics": [
@@ -61432,11 +61571,30 @@
     },
     "1498106610": {
       "topics": [
-        "news/daily"
+        "health/sexuality",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on sexual addiction recovery, couples therapy, and betrayal trauma.",
+      "display_title": "The Clay Travis and Buck Sexton Show",
+      "blurb": "The Clay Travis and Buck Sexton Show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1498114990": {
       "topics": [
@@ -61448,11 +61606,25 @@
     },
     "1498116036": {
       "topics": [
-        "sports"
+        "sports/endurance"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swimming coaching and athletic performance insights.",
+      "display_title": "Inside with Brett Hawke",
+      "blurb": "Take an intimate look inside the minds of swimming's highest achievers with one of the world's best swim coaches, Brett Hawke.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1498142155": {
       "topics": [
@@ -61614,8 +61786,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily stand-up comedy jokes from Netflix comedians.",
+      "display_title": "Netflix Is A Daily Joke",
+      "blurb": "It's simple: a joke a day featuring your favorite Netflix comedians.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1498541229": {
       "topics": [
@@ -61693,11 +61879,30 @@
     },
     "1498802610": {
       "topics": [
-        "business/startups"
+        "business/startups",
+        "business/founders"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business, technology, startups, and entrepreneurship commentary.",
+      "display_title": "The Prof G Pod with Scott Galloway",
+      "blurb": "Scott Galloway — bestselling author, professor, entrepreneur — doesn't pull punches on business, tech, culture, or life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1498805983": {
       "topics": [
@@ -61915,8 +62120,22 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home and domestic life restoration.",
+      "display_title": "Homemaker Chic",
+      "blurb": "Rescuing the art of homemaking from the daily grind with red lips (and no jumpers).",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1499587701": {
       "topics": [
@@ -61934,11 +62153,25 @@
     },
     "1499630556": {
       "topics": [
-        "religion"
+        "religion/spirituality"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual teachings and religious philosophy.",
+      "display_title": "EdenRules.com (Audio)",
+      "blurb": "Welcome to EdenRules -- Supreme Master Ching Hai's inspiring and spiritually uplifting digital collection – all audio and video downloads are free of charge.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1499631337": {
       "topics": [
@@ -62016,11 +62249,30 @@
     },
     "1499880546": {
       "topics": [
-        "education"
+        "education",
+        "philosophy/ideas"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Education and philosophical discourse about truth.",
+      "display_title": "New Discourses",
+      "blurb": "Pursuing the light of objective truth in subjective darkness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1499897111": {
       "topics": [
@@ -62136,11 +62388,30 @@
     },
     "1500338916": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society/law"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Non-profit work addressing human trafficking and exploitation.",
+      "display_title": "Elijah Rising",
+      "blurb": "The mission of Elijah Rising is to end sex trafficking through prayer, awareness, intervention, and restoration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1500354709": {
       "topics": [
@@ -62276,8 +62547,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist philosophy and spiritual practice for beginners.",
+      "display_title": "Buddhism for Beginners",
+      "blurb": "The Buddhism for Beginners Podcast is brought to you by Kunzang Palyul Choling (KPC).",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1500697965": {
       "topics": [
@@ -62435,9 +62720,26 @@
       "topics": [
         "education/how-to"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Teaching techniques and strategies for K-12 educators.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1501366983": {
       "topics": [
@@ -62457,9 +62759,23 @@
       "topics": [
         "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror fiction stories and creepypastas.",
+      "display_title": "Scary Horror Stories by Dr. NoSleep",
+      "blurb": "Welcome to Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1501433969": {
       "topics": [
@@ -62641,11 +62957,30 @@
     },
     "1501964274": {
       "topics": [
-        "society/government"
+        "society/government",
+        "news/politics"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Political commentary on government policies and history.",
+      "display_title": "Macroaggressions",
+      "blurb": "Ever get the feeling that your government is out to get you?",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1501975271": {
       "topics": [
@@ -62701,11 +63036,30 @@
     },
     "1502178774": {
       "topics": [
-        "society"
+        "history",
+        "news/politics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical analysis of American foreign policy and imperialism.",
+      "display_title": "Blowback",
+      "blurb": "A podcast about the American E",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1502193756": {
       "topics": [
@@ -62873,17 +63227,53 @@
       "topics": [
         "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep historical analysis of key moments in American history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1502739330": {
       "topics": [
-        "psychology"
+        "psychology",
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Exploration of fringe topics and alternative research perspectives.",
+      "display_title": "Dangerous World Podcast",
+      "blurb": "It&#39;s a dangerous world out there, and even more so with host Ryan Dean.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1502765577": {
       "topics": [
@@ -62955,12 +63345,32 @@
     "1502853894": {
       "topics": [
         "hobbies",
-        "nature",
-        "nature/ocean-science"
+        "nature"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Saltwater fishing techniques and outdoor recreation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1502871393": {
       "topics": [
@@ -63004,9 +63414,23 @@
       "topics": [
         "religion/judaism"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish personalities, culture, and life stories.",
+      "display_title": "Meaningful People",
+      "blurb": "There are so many Jewish personalities and big people in the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1502954097": {
       "topics": [
@@ -63273,9 +63697,23 @@
       "topics": [
         "sports/cricket"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily cricket analysis and sports commentary.",
+      "display_title": "Good Areas Podcast",
+      "blurb": "Good Areas is a daily cricket podcast from Jarrod Kimber.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1503887245": {
       "topics": [
@@ -63286,11 +63724,30 @@
     },
     "1503897906": {
       "topics": [
-        "science"
+        "health/fitness",
+        "health/nutrition"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Health, fitness, and wellness for women.",
+      "display_title": "Live Like a Girl with Dr. Mindy Pelz",
+      "blurb": "We were taught that doing anything \"like a girl\" was a weakness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1503902212": {
       "topics": [
@@ -63310,12 +63767,25 @@
     },
     "1503931590": {
       "topics": [
-        "education/how-to",
         "craft/photography"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wildlife and nature photography techniques and tips.",
+      "display_title": "The Wild Photographer",
+      "blurb": "Learn techniques, tips, and tricks for improving your wildlife, travel, landscape, and general nature photography with Court Whelan.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1503951481": {
       "topics": [
@@ -63466,9 +63936,23 @@
       "topics": [
         "religion"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Religious prayer and faith-based spiritual practice.",
+      "display_title": "Give Him 15 Plus | Insights with Dutch",
+      "blurb": "What would happen if 50 million people were praying the same prayer and declaring God’s promises together every day?",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1504592760": {
       "topics": [
@@ -63599,12 +64083,25 @@
     },
     "1505007720": {
       "topics": [
-        "tv-film/reviews",
-        "tv-film"
+        "tv-film/reviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Detailed film reviews and critique focused on horror movies.",
+      "display_title": "Pod Mortem: A Horror Podcast",
+      "blurb": "Salutations!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1505049559": {
       "topics": [
@@ -64219,11 +64716,30 @@
     },
     "1506519162": {
       "topics": [
-        "nature"
+        "science",
+        "medicine"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science journalism covering epidemiology and pandemic topics.",
+      "display_title": "Pandemia",
+      "blurb": "Pandemia ist ein Wissenschaftspodcast von Laura Salm-Reifferscheidt und Kai Kupferschmidt.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1506525179": {
       "topics": [
@@ -64377,9 +64893,23 @@
       "topics": [
         "kids-family/stories"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's stories and entertainment.",
+      "display_title": "Thomas & Friends™ Storytime (US)",
+      "blurb": "Join Thomas and his friends on a new adventure in Thomas & Friends™ Storytime, a new kids' podcast series featuring stories from the magical island of Sodor!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1506832307": {
       "topics": [
@@ -64846,12 +65376,29 @@
     "1508122332": {
       "topics": [
         "education/courses",
-        "philosophy",
         "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational exploration of Freudian psychoanalytic theory.",
+      "display_title": "Philosophy of Psychoanalysis",
+      "blurb": "Freud famously said that the aim of psychoanalysis was to enable us to work, love and play with minimum conflict.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1508135544": {
       "topics": [
@@ -64966,11 +65513,30 @@
     },
     "1508450538": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "education/self-improvement"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership coaching and career development for managers.",
+      "display_title": "Workday Playdate",
+      "blurb": "TOP 1% GLOBAL PODCAST for People-First Leaders Formerly the \"improve it!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1508522747": {
       "topics": [
@@ -64995,11 +65561,30 @@
     },
     "1508567250": {
       "topics": [
-        "psychology"
+        "philosophy/ideas",
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Persian-language philosophical discourse on politics and society.",
+      "display_title": "Res publica/Demos/جمهور/ دموس",
+      "blurb": "خوانش‌هایی از «متون مؤثر» در فلسفه، سیاست و جامعه‌شناسی فکرهایی درباره‌ی برخی دغدغه‌های وقت و بی‌وقت .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1508572777": {
       "topics": [
@@ -65066,11 +65651,30 @@
     },
     "1508892492": {
       "topics": [
-        "space"
+        "space",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amateur astronomy observation and sky-watching tips.",
+      "display_title": "The Actual Astronomy Podcast",
+      "blurb": "Join amateur astronomers, Chris and Shane, as they share their experiences of observing the night sky.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1508898501": {
       "topics": [
@@ -65510,11 +66114,30 @@
     },
     "1510254570": {
       "topics": [
-        "nature"
+        "nature/earth-science",
+        "hobbies"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.75
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Agriculture, hunting, fishing, and outdoor lifestyle.",
+      "display_title": "6 Ranch Podcast",
+      "blurb": "Stories from folks with calloused hands.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1510255547": {
       "topics": [
@@ -65541,11 +66164,28 @@
     },
     "1510288662": {
       "topics": [
-        "culture"
+        "paranormal"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "True ghost stories and paranormal accounts.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1510289401": {
       "topics": [
@@ -65594,12 +66234,25 @@
     },
     "1510471758": {
       "topics": [
-        "sports/tennis",
-        "economics/markets"
+        "sports/tennis"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis coaching and strategies for recreational players.",
+      "display_title": "Second Serve Tennis",
+      "blurb": "Second Serve Podcast is the only tennis podcast created exclusively for adult recreational players by everyday tennis players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1510472957": {
       "topics": [
@@ -65641,19 +66294,57 @@
     },
     "1510623480": {
       "topics": [
-        "food"
+        "food",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Southern food, culture, and music history.",
+      "display_title": "Biscuits & Jam",
+      "blurb": "In the South, food and music go hand in hand.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1510638084": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/interviews",
+        "craft/filmmaking"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cinematography techniques and film production discussion.",
+      "display_title": "Team Deakins",
+      "blurb": "The Team Deakins podcast is an ongoing conversation between acclaimed cinematographer Roger Deakins and James Deakins, his collaborator, about cinematography, the film business and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1510639391": {
       "topics": [
@@ -65972,9 +66663,23 @@
       "topics": [
         "religion/buddhism"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist philosophy and spiritual lifestyle guidance.",
+      "display_title": "The Daily Dharma",
+      "blurb": "Welcome to the Daily Dharma, a podcast where we draw inspiration from Buddhist philosophy on how to fix and better our lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1511646621": {
       "topics": [
@@ -66040,11 +66745,30 @@
     },
     "1511827218": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aesthetics, beauty, and wellness lifestyle.",
+      "display_title": "The blondEST",
+      "blurb": "Savanna Boda, better known as The Dallas Aesthetician, is a Medical Aesthetician who focuses on ethical and results driven aesthetics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1511919057": {
       "topics": [
@@ -66164,11 +66888,30 @@
     },
     "1512702672": {
       "topics": [
-        "education/self-improvement"
+        "psychology",
+        "relationships"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal development, dating, and lifestyle coaching.",
+      "display_title": "Quality Queen Control",
+      "blurb": "Faith, Sophistication, Psychology, Dating, and Lifestyle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1512721188": {
       "topics": [
@@ -66264,11 +67007,30 @@
     },
     "1513102098": {
       "topics": [
-        "education/courses"
+        "education/how-to",
+        "health"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paramedic training and emergency medical services education.",
+      "display_title": "EMS 20/20",
+      "blurb": "EMS 20/20 is podcast hosted by two experienced Paramedics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1513139424": {
       "topics": [
@@ -66303,11 +67065,30 @@
     },
     "1513178238": {
       "topics": [
-        "religion"
+        "religion",
+        "philosophy/ideas"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Religion, faith, and ethical living discussion.",
+      "display_title": "No Small Endeavor with Lee C. Camp",
+      "blurb": "What does it really mean to live a good life—in our politics, our faith, our work, and our relationships?",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1513213967": {
       "topics": [
@@ -66363,11 +67144,30 @@
     },
     "1513369812": {
       "topics": [
-        "business"
+        "news/daily",
+        "news/commentary"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese daily news and current events analysis.",
+      "display_title": "辛坊治郎 ズーム そこまで言うか！【最新回のみ】",
+      "blurb": "毎週月－木曜 15時30分～17時30分に ニッポン放送で生放送中のラジオ番組『辛坊治郎 ズーム そこまで言うか！』の公式アカウントです。辛坊治郎が政治・経済・文化・社会・芸能まで、今日一日のニュースの中から独自の視点でズーム！し、ニュースの見方や本質を解説。リスナーが「なるほど」と感じるニュースワイド番組です。番組ハッシュタグは「#辛坊治郎ズーム」です！ ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1513391500": {
       "topics": [
@@ -66400,12 +67200,25 @@
     },
     "1513430808": {
       "topics": [
-        "religion",
-        "religion/christianity"
+        "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Seventh-day Adventist religious teaching and Bible study.",
+      "display_title": "3ABN Sabbath School Panel",
+      "blurb": "Join our panel of pastors and teachers as we discuss the Sabbath School Lesson each week.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1513477929": {
       "topics": [
@@ -67094,11 +67907,30 @@
     },
     "1515786216": {
       "topics": [
-        "computing"
+        "computing",
+        "education/self-improvement"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology impact on society and focused work philosophy.",
+      "display_title": "Deep Questions with Cal Newport",
+      "blurb": "Cal Newport is a computer science professor and a New York Times bestselling author who writes about the impact of technology on society, and the struggle to work and live",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1515799529": {
       "topics": [
@@ -67267,11 +68099,30 @@
     },
     "1516104108": {
       "topics": [
-        "sports/endurance"
+        "sports/endurance",
+        "adventure"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Water sports and personal transformation narratives.",
+      "display_title": "Stories from the Water",
+      "blurb": "Where land meets water, an invitation lingers—not just between elements, but between versions of yourself.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1516180720": {
       "topics": [
@@ -67328,11 +68179,30 @@
     },
     "1516326666": {
       "topics": [
-        "tv-film/animation"
+        "tv-film/animation",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cancelled manga series discussion and anime culture analysis.",
+      "display_title": "Shonen Flop",
+      "blurb": "Not every manga can make it in Shonen Jump like Dragonball Z, One Piece, or Naruto.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1516336058": {
       "topics": [
@@ -67575,9 +68445,23 @@
       "topics": [
         "business/non-profit"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive industry association news and expertise.",
+      "display_title": "AAMVAcast",
+      "blurb": "Welcome to AAMVAcast, featuring news, information and expertise for the AAMVA Community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1517116280": {
       "topics": [
@@ -67891,11 +68775,30 @@
     },
     "1518326010": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Construction techniques, training, and industry interviews.",
+      "display_title": "Elevate Construction",
+      "blurb": "Elevating construction with interviews, training, and techniques that will make the build environment better for workers, our customers, companies, and the industry as a whole.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1518376121": {
       "topics": [
@@ -67906,12 +68809,25 @@
     },
     "1518409554": {
       "topics": [
-        "society/government",
         "society/law"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Law enforcement and legal education for officers.",
+      "display_title": "Law for VA LEOs",
+      "blurb": "Podcast by E from UE",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5c6f8293",
+      "classified_at": "2026-07-25T13:15:55.155Z"
     },
     "1518475264": {
       "topics": [
