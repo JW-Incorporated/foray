@@ -16,6 +16,12 @@ depth-based learning paths.
   filter spec, never to select content), the step-by-step recommender evolution,
   the right metrics, and the open decisions for the founders.
 
+- **[persona-catalogue-fit.md](persona-catalogue-fit.md)** — preliminary check on
+  Decision #2: candidate default personas and whether the catalogue actually
+  serves them (finding: the taxonomy architecture fits; content is founder-skewed,
+  with software/computing and true-crime the notable gaps). Full persona research
+  is delegated to Joey's lane via a tracking issue.
+
 Background these build on: `docs/brief/03_CURATION_SPEC.md` (the original,
 excellent — but single-user — curation design) and the product principles in
 `CLAUDE.md` (curiosity-first, anti-echo-chamber, observed-not-declared, no dark
