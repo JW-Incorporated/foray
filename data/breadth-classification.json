@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T04:15:43.954Z",
+  "built_at": "2026-07-25T04:24:58.398Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-477484e6",
+    "last_batch_id": "fresh-2026-07-25-dbdc2637",
     "last_batch_tier": 1
   },
   "entries": {
@@ -1525,11 +1525,25 @@
     },
     "90983408": {
       "topics": [
-        "tv-film/animation"
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly comic book discussion with professional creators.",
+      "display_title": "Comic Book Podcast",
+      "blurb": "Lifelong friends discuss current comic releases from major publishers, exploring craft and what makes storytelling work.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "91235908": {
       "topics": [
@@ -1543,16 +1557,49 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biblical teaching ministry focused on daily Christian application.",
+      "display_title": "Bible Teaching",
+      "blurb": "Alistair Begg teaches scripture with clarity and relevance to help believers apply timeless truth daily.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "91689834": {
       "topics": [
-        "space"
+        "space",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep space exploration news and science interviews with NASA scientists and astronomers.",
+      "display_title": "Space Exploration News",
+      "blurb": "Weekly conversations with scientists and astronauts exploring our solar system and beyond.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "91959525": {
       "topics": [
@@ -1593,9 +1640,23 @@
       "topics": [
         "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two rock critics discuss current music releases, trends and exclusive interviews.",
+      "display_title": "Music Criticism",
+      "blurb": "Rock critics Jim DeRogatis and Greg Kot debate new music, interviews, and classic albums.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "95185416": {
       "topics": [
@@ -1606,11 +1667,25 @@
     },
     "98746009": {
       "topics": [
-        "religion/islam"
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly political and cultural commentary with guests and audience Q&A.",
+      "display_title": "Political Commentary",
+      "blurb": "Bill Maher discusses politics and culture with guests in a weekly talk show format.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "100424810": {
       "topics": [
@@ -1628,19 +1703,47 @@
     },
     "105924375": {
       "topics": [
-        "gaming"
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Board game discussion, design critique, and stories from tabletop gaming community.",
+      "display_title": "Board Game Show",
+      "blurb": "Tom Vasel and team discuss board games, design, gaming culture and player experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "107541824": {
       "topics": [
         "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live performance and artist interviews from NPR's music program.",
+      "display_title": "Music Interviews",
+      "blurb": "Musicians discuss their craft and latest projects in intimate studio conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "107629726": {
       "topics": [
@@ -1670,8 +1773,22 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Christian teaching focused on biblical understanding and spiritual growth.",
+      "display_title": "Christian Teaching",
+      "blurb": "R.C. Sproul's Ligonier Ministries examines scripture to help Christians understand God deeper.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "111065122": {
       "topics": [
@@ -1708,16 +1825,44 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily biblical teaching on faith, love, and Christian living.",
+      "display_title": "Bible Teaching Daily",
+      "blurb": "Dr. Charles Stanley applies biblical principles to everyday Christian life and relationships.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "118290367": {
       "topics": [
-        "space"
+        "education/courses"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "University course lecture series on stars, galaxies and cosmology.",
+      "display_title": "Astronomy Course",
+      "blurb": "Ohio State University lectures introducing astronomy concepts for non-science majors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "118334327": {
       "topics": [
@@ -1769,49 +1914,138 @@
       "topics": [
         "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Curated DJ sets and music from electronic and house record label.",
+      "display_title": "Electronic Music Radio",
+      "blurb": "DJ sets from Defected Records featuring house, garage, and electronic dance music.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "120315179": {
       "topics": [
         "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly discussion of top books and literary trends from New York Times editors.",
+      "display_title": "Book Discussion",
+      "blurb": "NYT Book Review editors and critics discuss the week's best books and literary world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "120315823": {
       "topics": [
         "music"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pop music criticism and trends from New York Times music critics.",
+      "display_title": "Pop Music Criticism",
+      "blurb": "NYT pop critics analyze music news, trends, and interviews with major artists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "120329020": {
       "topics": [
         "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly science news and interviews from Science journal researchers.",
+      "display_title": "Science News",
+      "blurb": "Coverage of latest discoveries and research from the world's premier science journal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "120867842": {
       "topics": [
-        "computing"
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Apple technology news and industry updates.",
+      "display_title": "Apple News Daily",
+      "blurb": "Ken Ray delivers brief, timely coverage of Apple products and tech industry news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "120906714": {
       "topics": [
-        "business/startups"
+        "computing",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional software engineering education through tutorials and expert interviews.",
+      "display_title": "Software Engineering",
+      "blurb": "Educational resource with tutorials and interviews on software development topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "120975641": {
       "topics": [
@@ -1823,20 +2057,50 @@
     },
     "121275452": {
       "topics": [
-        "nature/weather"
+        "nature/earth-science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep weather and meteorology discussion with expert forecasters.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "121362031": {
       "topics": [
-        "economics/markets",
-        "business"
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal finance and wealth-building strategies for financial independence.",
+      "display_title": "Wealth Building",
+      "blurb": "Financial advisors teach wealth-building fundamentals and investment strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "121393815": {
       "topics": [
@@ -1850,16 +2114,44 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics/language",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Linguistics and language exploration with caller questions and word history.",
+      "display_title": "Language & Words",
+      "blurb": "Martha Barnette and Grant Barrett discuss language, etymology, and caller word questions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "121493675": {
       "topics": [
         "news/daily"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hourly updated news briefing covering top stories worldwide.",
+      "display_title": "Daily News Brief",
+      "blurb": "Five-minute news updates with latest headlines from around the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "121493688": {
       "topics": [
@@ -1872,25 +2164,67 @@
       "topics": [
         "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy news quiz show with comedians and celebrity guests.",
+      "display_title": "Comedy News Quiz",
+      "blurb": "NPR's weekly news quiz where comedians discuss current events with humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "121534955": {
       "topics": [
-        "news"
+        "news/commentary"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth current affairs and social topics with contextual analysis.",
+      "display_title": "Current Affairs",
+      "blurb": "Meghna Chakrabarti examines news stories with historical context and expert insight.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "121809318": {
       "topics": [
-        "education/how-to"
+        "craft/diy-home"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home improvement advice, renovation tips and maintenance guidance.",
+      "display_title": "Home Improvement",
+      "blurb": "Practical guidance on home repair, remodeling and maintenance from experienced hosts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "122477102": {
       "topics": [
@@ -1918,8 +2252,22 @@
         "craft/photography"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intimate conversations with photographers about their practice and vision.",
+      "display_title": "Photography Conversations",
+      "blurb": "Host Ibarionex Perello examines photographers' creative practice and artistic philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "128497079": {
       "topics": [
@@ -1945,11 +2293,25 @@
     },
     "129584472": {
       "topics": [
-        "sports"
+        "sports/soccer"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live listener calls on football matches and World Cup coverage.",
+      "display_title": "Football Call-In",
+      "blurb": "BBC call-in show for football fans to discuss matches and World Cup games.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "129625085": {
       "topics": [
@@ -1968,11 +2330,25 @@
     },
     "132125271": {
       "topics": [
-        "medicine/biology"
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science and philosophy debate on evolution and intelligent design theory.",
+      "display_title": "Science Debate",
+      "blurb": "Exploration of evolution debate with interviews and commentary from scholars.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "133542489": {
       "topics": [
@@ -1990,19 +2366,47 @@
     },
     "135066958": {
       "topics": [
-        "economics"
+        "education/courses"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversational learning with economists, authors and thinkers on diverse topics.",
+      "display_title": "Conversation & Learning",
+      "blurb": "Award-winning interviews with economists, authors and thinkers on varied subjects.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "135067274": {
       "topics": [
         "news/daily"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Breaking international news with expert analysis on global affairs.",
+      "display_title": "World News",
+      "blurb": "BBC delivers breaking global news with analysis from international correspondents.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "135353439": {
       "topics": [
@@ -2031,17 +2435,44 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Inspirational and motivational Christian teaching on faith and personal growth.",
+      "display_title": "Christian Inspiration",
+      "blurb": "Joel and Victoria Osteen inspire listeners to reach dreams and live better lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "137329814": {
       "topics": [
-        "economics/markets",
         "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily business and economic news without anxiety or complexity.",
+      "display_title": "Business News Daily",
+      "blurb": "Kimberly Adams delivers economic news with context in a brief daily format.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "137471654": {
       "topics": [
@@ -2052,11 +2483,25 @@
     },
     "137699414": {
       "topics": [
-        "sports"
+        "sports/baseball"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MLB analysis and discussion from ESPN baseball insiders.",
+      "display_title": "Baseball Analysis",
+      "blurb": "ESPN analysts discuss daily MLB news, trades and player performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "138752347": {
       "topics": [
@@ -2069,25 +2514,67 @@
       "topics": [
         "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily curated standout songs with new artist discoveries.",
+      "display_title": "Song Discovery",
+      "blurb": "KCRW's daily selection of standout songs featuring new and advance releases.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "140644703": {
       "topics": [
         "sports/soccer"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French football debate show with analysis and guest commentary.",
+      "display_title": "Football Debate",
+      "blurb": "20-year French show where football professionals debate the sport's latest news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "142870459": {
       "topics": [
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.94
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teaching focused on socially engaged practice and compassion.",
+      "display_title": "Buddhist Teaching",
+      "blurb": "Upaya Center shares dharma talks on Buddhist practice and engaged spirituality.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "142891498": {
       "topics": [
@@ -2107,18 +2594,45 @@
       "topics": [
         "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports discussion and debate on news from multiple athletic leagues.",
+      "display_title": "Sports Commentary",
+      "blurb": "Kornheiser and Wilbon debate current sports topics across multiple leagues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "147247199": {
       "topics": [
-        "economics/markets",
-        "business"
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.94
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stock market guidance and investing advice from Wall Street perspective.",
+      "display_title": "Stock Market Guide",
+      "blurb": "Jim Cramer guides listeners through investing with stock picks and market analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "148759439": {
       "topics": [
@@ -2129,11 +2643,30 @@
     },
     "150892556": {
       "topics": [
+        "philosophy/ideas",
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual inquiry and social healing through conversations with thinkers.",
+      "display_title": "Wisdom & Reflection",
+      "blurb": "Krista Tippett examines consciousness, faith and meaning with luminaries and thinkers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-dbdc2637",
+      "classified_at": "2026-07-25T04:24:58.398Z"
     },
     "151230264": {
       "topics": [
