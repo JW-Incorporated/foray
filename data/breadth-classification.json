@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T10:57:35.058Z",
+  "built_at": "2026-07-25T11:57:11.324Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-946a888e",
+    "last_batch_id": "fresh-2026-07-25-f7f43b72",
     "last_batch_tier": 1
   },
   "entries": {
@@ -41068,8 +41068,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality dating show after-show with villa gossip and interviews.",
+      "display_title": "Love Island: The Debrief",
+      "blurb": "Daily debrief podcast following Love Island with fan reactions and islander interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1389858029": {
       "topics": [
@@ -47083,11 +47097,30 @@
     },
     "1448532887": {
       "topics": [
-        "society"
+        "comedy/casual-hangs",
+        "culture/pop-culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual daily banter show covering varied topics from cons to movie reviews.",
+      "display_title": "The Dog Walk",
+      "blurb": "Quick-hitting comedy show with casual conversations, drafts, and pop culture commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1448539528": {
       "topics": [
@@ -47142,11 +47175,30 @@
     },
     "1448662475": {
       "topics": [
-        "comedy"
+        "comedy/casual-hangs",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians discussing anything with guests plus cooking segments.",
+      "display_title": "Stuff Island",
+      "blurb": "Comedians chat freely with guests about pop culture, life, and experiments with food.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1448663986": {
       "topics": [
@@ -47196,11 +47248,25 @@
     },
     "1448872151": {
       "topics": [
-        "tv-film"
+        "news/commentary"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Commentary podcast covering politics, race, and current events.",
+      "display_title": "Phillip Scott Podcast",
+      "blurb": "Political and cultural commentary addressing current events and social issues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1448885852": {
       "topics": [
@@ -47463,9 +47529,23 @@
       "topics": [
         "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep historical analysis of civilizational collapses across world history.",
+      "display_title": "Fall of Civilizations Podcast",
+      "blurb": "Historical podcast examining the collapse and fall of past civilizations worldwide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1449924733": {
       "topics": [
@@ -47649,9 +47729,23 @@
       "topics": [
         "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese history podcast exploring historical figures and events entertainingly.",
+      "display_title": "歴史を面白く学ぶコテンラジオ （COTEN RADIO）",
+      "blurb": "Japanese history podcast with humor and accessible storytelling about historical topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1450526166": {
       "topics": [
@@ -47737,11 +47831,30 @@
     },
     "1450892501": {
       "topics": [
-        "education/courses"
+        "religion/judaism",
+        "religion/spirituality"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish Torah and Tanya lectures exploring spirituality and philosophy.",
+      "display_title": "SoulWords- Full Library",
+      "blurb": "Rabbi lectures on Torah, Jewish spirituality, and Chassidic philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1450935718": {
       "topics": [
@@ -47759,11 +47872,30 @@
     },
     "1450994021": {
       "topics": [
-        "health/mental"
+        "health/mental",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wellness interviews with celebrities and experts on mental health and growth.",
+      "display_title": "On Purpose with Jay Shetty",
+      "blurb": "Celebrity wellness interviews exploring mental health, relationships, and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1450998120": {
       "topics": [
@@ -47878,8 +48010,25 @@
         "culture/art"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Two artists discuss creative practice, studios, and art world topics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1451558706": {
       "topics": [
@@ -48144,11 +48293,33 @@
     },
     "1452608225": {
       "topics": [
-        "music"
+        "music",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fan podcast analyzing Taylor Swift's music, career, and cultural impact.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1452673276": {
       "topics": [
@@ -48308,11 +48479,25 @@
     },
     "1453436915": {
       "topics": [
-        "fiction"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep historical analysis of civilizational collapses across world history.",
+      "display_title": "SCP Archives",
+      "blurb": "Historical podcast examining the collapse and fall of past civilizations worldwide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1453473062": {
       "topics": [
@@ -48455,11 +48640,25 @@
     },
     "1454042483": {
       "topics": [
-        "health/fitness"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese history podcast exploring historical figures and events entertainingly.",
+      "display_title": "Dave Tate's Table Talk",
+      "blurb": "Japanese history podcast with humor and accessible storytelling about historical topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1454045768": {
       "topics": [
@@ -48485,11 +48684,30 @@
     },
     "1454097755": {
       "topics": [
-        "business"
+        "business/startups",
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Startup founder discussions on entrepreneurship, AI, and building companies.",
+      "display_title": "Naval",
+      "blurb": "Founder conversations exploring startups, AI, technology, and business strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1454104735": {
       "topics": [
@@ -48576,11 +48794,30 @@
     },
     "1454424563": {
       "topics": [
+        "culture",
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Native American podcast on sovereignty, land, education, and tribal issues.",
+      "display_title": "All My Relations Podcast",
+      "blurb": "Native American host discussions on tribal sovereignty, education, and contemporary issues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1454430628": {
       "topics": [
@@ -48621,11 +48858,30 @@
     },
     "1454680607": {
       "topics": [
+        "news/tech",
         "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "TechCrunch Daily Crunch",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1454714520": {
       "topics": [
@@ -48705,11 +48961,30 @@
     },
     "1454989811": {
       "topics": [
-        "education/courses"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "The Structural Engineering Podcast",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1455020179": {
       "topics": [
@@ -48786,11 +49061,33 @@
     },
     "1455257747": {
       "topics": [
-        "education/how-to"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1455361893": {
       "topics": [
@@ -49026,19 +49323,55 @@
     },
     "1456068419": {
       "topics": [
-        "science"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese history podcast exploring historical figures and events entertainingly.",
+      "display_title": "HOLOSKY PODCAST",
+      "blurb": "Japanese history podcast with humor and accessible storytelling about historical topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1456137677": {
       "topics": [
-        "education/how-to"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1456182249": {
       "topics": [
@@ -49057,12 +49390,30 @@
     },
     "1456202399": {
       "topics": [
-        "computing",
-        "society/government"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "NISPOM Central-Working with National Industrial Security Program",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1456258919": {
       "topics": [
@@ -49207,11 +49558,33 @@
     },
     "1457137457": {
       "topics": [
-        "education/courses"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1457146003": {
       "topics": [
@@ -49291,12 +49664,25 @@
     },
     "1457501963": {
       "topics": [
-        "fiction",
-        "society"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese history podcast exploring historical figures and events entertainingly.",
+      "display_title": "Mysteries and Monsters",
+      "blurb": "Japanese history podcast with humor and accessible storytelling about historical topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1457516002": {
       "topics": [
@@ -49744,11 +50130,30 @@
     },
     "1458992375": {
       "topics": [
-        "health/alternative"
+        "health/mental",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wellness interviews with celebrities and experts on mental health and growth.",
+      "display_title": "Well with Arielle Lorre",
+      "blurb": "Celebrity wellness interviews exploring mental health, relationships, and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1459017088": {
       "topics": [
@@ -49767,11 +50172,30 @@
     },
     "1459065653": {
       "topics": [
-        "tv-film"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Winter Is Crappening",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1459175606": {
       "topics": [
@@ -49837,12 +50261,30 @@
     },
     "1459416461": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Outrage + Optimism: The Climate Podcast",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1459422444": {
       "topics": [
@@ -49853,11 +50295,30 @@
     },
     "1459538891": {
       "topics": [
-        "religion"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Living in the Light",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1459600791": {
       "topics": [
@@ -49922,11 +50383,30 @@
     },
     "1459899275": {
       "topics": [
-        "society"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "The Shrink Next Door",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1459899327": {
       "topics": [
@@ -49959,12 +50439,30 @@
     },
     "1459952501": {
       "topics": [
-        "true-crime",
-        "society"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Stolen Lives True Crime",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1459979848": {
       "topics": [
@@ -50242,11 +50740,30 @@
     },
     "1461494159": {
       "topics": [
-        "health"
+        "health/mental",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wellness interviews with celebrities and experts on mental health and growth.",
+      "display_title": "Life Kit: Health",
+      "blurb": "Celebrity wellness interviews exploring mental health, relationships, and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1461506762": {
       "topics": [
@@ -50394,11 +50911,25 @@
     },
     "1462213019": {
       "topics": [
-        "culture/fashion"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep historical analysis of civilizational collapses across world history.",
+      "display_title": "Let's Get Dressed",
+      "blurb": "Historical podcast examining the collapse and fall of past civilizations worldwide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1462214964": {
       "topics": [
@@ -50801,11 +51332,30 @@
     },
     "1464212261": {
       "topics": [
-        "gaming"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Quiz Quiz Bang Bang Trivia Podcast",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1464240720": {
       "topics": [
@@ -50832,11 +51382,30 @@
     },
     "1464577811": {
       "topics": [
-        "kids-family"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "The Official Average Boy Podcast",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1464578544": {
       "topics": [
@@ -50864,12 +51433,30 @@
     },
     "1464765509": {
       "topics": [
-        "nature",
-        "science"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "So You Want to Be a Marine Biologist",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1464766741": {
       "topics": [
@@ -51275,11 +51862,30 @@
     },
     "1467374705": {
       "topics": [
-        "hobbies"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Casual Watch Talk Podcast",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1467432231": {
       "topics": [
@@ -51306,11 +51912,30 @@
     },
     "1467481703": {
       "topics": [
-        "science/physics"
+        "news/tech",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "The Origins Podcast with Lawrence Krauss",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1467517796": {
       "topics": [
@@ -51405,11 +52030,30 @@
     },
     "1468249055": {
       "topics": [
-        "hobbies"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "发发大王",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1468305112": {
       "topics": [
@@ -51571,11 +52215,25 @@
     },
     "1469113217": {
       "topics": [
-        "tv-film"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese history podcast exploring historical figures and events entertainingly.",
+      "display_title": "Game of Roses",
+      "blurb": "Japanese history podcast with humor and accessible storytelling about historical topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1469153910": {
       "topics": [
@@ -51818,11 +52476,25 @@
     },
     "1470248027": {
       "topics": [
-        "hobbies"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese history podcast exploring historical figures and events entertainingly.",
+      "display_title": "The Gun Rack",
+      "blurb": "Japanese history podcast with humor and accessible storytelling about historical topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1470283431": {
       "topics": [
@@ -51941,11 +52613,30 @@
     },
     "1470607073": {
       "topics": [
-        "society/government"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Politics in Question",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1470654450": {
       "topics": [
@@ -52105,11 +52796,30 @@
     },
     "1471581521": {
       "topics": [
-        "science"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "DarkHorse Podcast",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1471585701": {
       "topics": [
@@ -52301,11 +53011,30 @@
     },
     "1472939543": {
       "topics": [
-        "sports/baseball"
+        "news/tech",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Talkin' Baseball (MLB Podcast)",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1472945003": {
       "topics": [
@@ -52643,11 +53372,30 @@
     },
     "1474429475": {
       "topics": [
+        "news/tech",
         "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Waveform: The MKBHD Podcast",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1474491043": {
       "topics": [
@@ -52778,11 +53526,30 @@
     },
     "1475116211": {
       "topics": [
-        "news"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Squawk on the Street",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1475117736": {
       "topics": [
@@ -52815,11 +53582,30 @@
     },
     "1475414717": {
       "topics": [
-        "medicine"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Well Beyond Medicine: The Nemours Children's Health Podcast",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1475422095": {
       "topics": [
@@ -52943,11 +53729,30 @@
     },
     "1475835329": {
       "topics": [
-        "education/how-to"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Old Fashioned On Purpose",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1475845728": {
       "topics": [
@@ -53155,11 +53960,25 @@
     },
     "1476734813": {
       "topics": [
-        "sports"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese history podcast exploring historical figures and events entertainingly.",
+      "display_title": "talkSPORT Daily",
+      "blurb": "Japanese history podcast with humor and accessible storytelling about historical topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1476744233": {
       "topics": [
@@ -53379,11 +54198,30 @@
     },
     "1477555097": {
       "topics": [
-        "tv-film"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Reality Gays with Mattie and Poodle",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1477567359": {
       "topics": [
@@ -53394,11 +54232,30 @@
     },
     "1477578107": {
       "topics": [
-        "craft"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Stitch Please",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1477588695": {
       "topics": [
@@ -53611,12 +54468,30 @@
     },
     "1478272793": {
       "topics": [
-        "nature",
-        "education/how-to"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Backyard Gardens - Vegetable Gardening & Growing Food",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1478275646": {
       "topics": [
@@ -53702,11 +54577,30 @@
     },
     "1478580185": {
       "topics": [
-        "education/self-improvement"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Breakthrough with Thais Gibson Podcast",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1478660220": {
       "topics": [
@@ -53733,11 +54627,30 @@
     },
     "1478746415": {
       "topics": [
-        "comedy/interviews"
+        "news/tech",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "Zane and Heath: Unfiltered",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1478754051": {
       "topics": [
@@ -53994,11 +54907,30 @@
     },
     "1479444959": {
       "topics": [
-        "fiction"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news roundup covering AI, companies, and industry developments.",
+      "display_title": "The Edge of Sleep",
+      "blurb": "Daily tech news digest covering AI, startups, and major industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-f7f43b72",
+      "classified_at": "2026-07-25T11:57:11.324Z"
     },
     "1479455008": {
       "topics": [
