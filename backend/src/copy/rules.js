@@ -49,4 +49,19 @@ function wordCount(text) {
 const MAX_WHY_LINE_WORDS = 18;
 const MAX_HOOK_WORDS = 16;
 
-module.exports = { BANNED, wordCount, MAX_WHY_LINE_WORDS, MAX_HOOK_WORDS };
+// Breadth-catalog classification's Foray-authored display fields (ADR-0006,
+// docs/curation/breadth-classification-methodology-plan.md): a tile header
+// and a 1-2 sentence tile blurb, captured at classification time for a
+// future tile UI (not surfaced anywhere yet). No prior copy surface matches
+// either shape, so these are new constants, not a reuse of an existing one.
+const MAX_DISPLAY_TITLE_WORDS = 8;
+const MAX_BLURB_WORDS = 30;
+
+module.exports = {
+  BANNED,
+  wordCount,
+  MAX_WHY_LINE_WORDS,
+  MAX_HOOK_WORDS,
+  MAX_DISPLAY_TITLE_WORDS,
+  MAX_BLURB_WORDS
+};

@@ -2,10 +2,22 @@
 
 *2026-07-24. Companion to `docs/adr/0006-podcast-classification-methodology.md`.
 The ADR records the decision and rationale; this doc carries the detail that
-would otherwise bloat it — the full cascade spec, the cost model with real
-numbers, and the pilot design. **Design only. No LLM call has been made, no
-code has been written, no dollar has been spent.** Everything below awaits
-explicit founder go-ahead before any implementation or spend.*
+would otherwise bloat it — the full cascade spec, the (now-superseded) dollar
+cost model, and the original pilot design.*
+
+**Execution-engine update (read this first):** the plan below was approved
+with classification calls running through the Anthropic API — that's the
+context for §2's dollar cost model and §3's pilot design as written. Before
+any run happened, the founders moved execution to **Claude Max-plan Claude
+Code cron routines** (no API key, no per-token cost; constraint is weekly
+usage, paced over ~2 weeks). The methodology, signals, and output schema
+below are all still accurate and were **not** rewritten — only §2 and §3's
+"how do we spend money running this" framing is now moot. See ADR-0006's
+"Execution engine" and "Usage/pacing model" sections for the operative
+version, and `tools/classify/README.md` for the tooling this plan became
+(`tools/classify/prepare-batch.mjs`, `tools/classify/merge-results.mjs`,
+`docs/agents/runner-prompts/classify-batch.md`). §2 and §3 are left as
+written below as the honest historical record of what was proposed.
 
 ## 0. Why this exists
 
@@ -223,7 +235,7 @@ observed (Science Friday, the fusion/fission cluster) are resolvable from
 description + episode titles alone — transcripts buy diminishing marginal
 signal at a cost the founders have not been asked to approve.
 
-## 2. Cost model
+## 2. Cost model (superseded — API-era estimate, kept for the record; see ADR-0006 "Usage/pacing model" for the operative version)
 
 All figures use current pricing (`claude-haiku-4-5`: $1.00/$5.00 per MTok;
 `claude-sonnet-5`: $3.00/$15.00, or $2.00/$10.00 intro through 2026-08-31).
@@ -326,7 +338,7 @@ quietly raising the production cap for an unrelated reason). Instead:
   is queryable/auditable exactly like any other LLM call in the system —
   no parallel, unaudited spending path.
 
-## 3. Pilot design
+## 3. Pilot design (superseded — written for an API pilot that was never run; see `tools/classify/README.md` for what actually got built)
 
 **Goal:** measure (a) agreement/disagreement vs. the current
 genre-map/opus-refinement output, (b) correctness where a human can judge

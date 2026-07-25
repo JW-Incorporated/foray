@@ -1,10 +1,14 @@
 # ADR 0006: Podcast Classification Methodology (Breadth Tier)
 
 ## Status
-Proposed — **design only**. No classification run, no LLM spend, in this
-pass. Awaiting founder go-ahead per the task that commissioned this ADR.
-Implementation (pilot run, then scaled run) is a separate, explicitly
-approved follow-up.
+Accepted. Methodology approved; tooling built
+(`tools/classify/prepare-batch.mjs`, `tools/classify/merge-results.mjs`,
+`docs/agents/runner-prompts/classify-batch.md`). **Execution engine
+changed after initial approval** — see "Execution engine" below: this
+runs as Claude Max-plan Claude Code cron routines, not the Anthropic API,
+so the cost model is a weekly-usage pacing plan, not a dollar figure. No
+classification batch has been run yet; the orchestrator runs the first
+test batches and paces the scheduled rollout using this tooling.
 
 ## Context
 The breadth tier (`data/catalog-breadth.json`, 19,787 US shows;
@@ -44,14 +48,53 @@ cannot distinguish adjacent nodes** (fusion vs. fission vs. general
 engineering vs. energy-grid), and that the failure mode is not random
 noise but systematic node-pollution from coarse signal.
 
+## Execution engine (superseding note)
+This ADR's methodology was approved with the classification calls
+running through the Anthropic API (`claude-haiku-4-5` Tier 1, Sonnet 5
+Tier 2, budget-guard-gated, per-call `cost_events` rows). Before any run
+happened, the founders changed the execution engine: **all classification
+runs on the Claude Max plan via Claude Code cron routines**, the same
+pattern already established for the nightly content refresh
+(`docs/nightly-refresh-cloud.md`) — a scheduled Claude Code agent *is* the
+classifier, reasoning directly over a batch of shows, rather than a
+script calling a model API. There is no per-token dollar cost; the
+constraint is the plan's **weekly usage limits**, paced by the
+orchestrator across multiple runs (see "Usage/pacing model" below).
+
+**Everything about the methodology below is unchanged** — the signals
+(RSS description + 5–10 recent episode titles/descriptions, never full
+transcripts by default), the cheap-first cascade shape, the multi-label
++ per-node-confidence + `needs_review` output, and the `display_title`/
+`blurb` fields. Only the *invocation* changed: read the sections below
+as "a classification agent does this reasoning," not "an API call with
+this model does this reasoning" — the two model names below
+(`claude-haiku-4-5`, Sonnet 5) describe the *intended reasoning quality*
+at each tier and no longer name a specific billed API call. The API-
+specific mechanics (prompt caching, Message Batches API, `BudgetGuard`
+routing) that follow are **retained in this document as design
+rationale that no longer applies operationally** — struck through in
+place rather than deleted, so a future reader understands what was
+decided and why the ground shifted, per CLAUDE.md's "knowledge lives in
+the repo" instruction.
+
+**Tooling built to this design**: `tools/classify/prepare-batch.mjs`
+(Tier 0 + Tier 0.5, deterministic, keyless), `tools/classify/merge-results.mjs`
+(schema + copy-rule validation, merge, idempotent), and
+`docs/agents/runner-prompts/classify-batch.md` (the classification
+agent's instructions — Tier 1 and Tier 2 both, see below). Full contract:
+`tools/classify/README.md`.
+
 ## Decision
 Adopt a three-tier cheap-first cascade for **show-level** classification,
 mirroring `02_ARCHITECTURE.md`'s enrichment pipeline pattern
-(Tier 0 free → Tier 1 cheap LLM → Tier 2 gated escalation) and reusing
-`backend/src/enrich/`'s existing conventions (budget-guard-gated,
-schema-validated JSON output, `claude-haiku-4-5` as the Tier-1 model,
-per-call `cost_events` audit row) rather than inventing a parallel
-pattern.
+(Tier 0 free → Tier 1 cheap classification → Tier 2 gated escalation).
+~~Originally specified as reusing `backend/src/enrich/`'s API-call
+conventions (budget-guard-gated, schema-validated JSON output,
+`claude-haiku-4-5` as the Tier-1 model, per-call `cost_events` audit
+row).~~ Under the Claude Code cron execution engine, the classification
+*agent itself* is the reasoning step (no API call, no `Enricher`
+interface involved) — schema validation and audit-trail duties move to
+`tools/classify/merge-results.mjs` instead.
 
 **Tier 0 (free, deterministic) — prior, never final.**
 `data/genre-taxonomy-map.json` (Apple genre → taxonomy node, already
@@ -74,21 +117,24 @@ timeouts, malformed XML must degrade to Tier-0-only + `needs_review`,
 not crash the batch). This step is a prerequisite this ADR flags as new
 scope, not something `classify-breadth.mjs` does today.
 
-**Tier 1 (cheap LLM) — the default final answer for most shows.**
-`claude-haiku-4-5` ($1.00/$5.00 per MTok), given: show title, Tier-0
-genre prior, fetched description (truncated), and the fetched episode
-sample (titles + truncated descriptions). Multi-label output: an array
-of `{node, confidence}` pairs (not a single node — a show can legitimately
-span `science` + `medicine/biology` + `education`), a `needs_review`
-boolean, and a short rationale string (cheap, aids human audit of the
-pilot and any later spot-check). The full taxonomy node list is placed
+**Tier 1 (cheap classification) — the default final answer for most
+shows.** A Claude Code classification agent
+(`docs/agents/runner-prompts/classify-batch.md`), given: show title,
+Tier-0 genre prior, fetched description (truncated), and the fetched
+episode sample (titles + truncated descriptions). Multi-label output: an
+array of `{node, confidence}` pairs (not a single node — a show can
+legitimately span `science` + `medicine/biology` + `education`), a
+`needs_review` boolean, and a short rationale string (cheap, aids human
+audit of any spot-check). ~~The full taxonomy node list was to be placed
 in a cached system block (`cache_control: {type: "ephemeral"}`) since it
-is byte-identical across all ~20k calls — this is a straightforward,
-free-to-adopt cost reduction the current per-episode `AnthropicEnricher`
-doesn't need (it classifies one episode at a time with no shared
-system-level catalog) but a 20k-show batch clearly benefits from. The
-Message Batches API (50% off standard pricing, appropriate since this is
-non-interactive) is the default execution mode.
+is byte-identical across all ~20k calls, and the Message Batches API
+(50% off standard pricing) was the default execution mode.~~ Neither
+applies under the Claude Code execution engine — the agent reads
+`data/taxonomy.json` directly each run (see the runner prompt), and
+there is no batch-API concept for an agent invocation. `tools/classify/prepare-batch.mjs`
+selects a batch of shows per run (`--batch-size`, tunable) so the unit
+of work stays exactly as designed — only *how* a batch gets classified
+changed.
 
 **Tier 2 (escalation, gated) — reserved, not default.**
 Escalates only when Tier-1 confidence on every candidate node is below a
@@ -96,12 +142,19 @@ threshold (e.g. 0.6), or Tier-1's top node conflicts with a
 high-confidence Tier-0 genre prior (the exact signature of the fusion/
 fission confusion in issue #12), or the show is a `chart_rank` top-N
 show in its genre (higher stakes — more listeners are exposed to a wrong
-tag). Tier 2 uses a stronger model (Sonnet 5) with the same fetched
-signal plus, only if `<podcast:transcript>` is already present in the
-RSS feed for 2–3 recent episodes (ADR-0004's tier-1 transcript
-source — already free, zero additional fetch), truncated transcript
-excerpts. **Full transcripts for every show are explicitly rejected as
-the default** — see Rejected Alternatives below.
+tag). `tools/classify/prepare-batch.mjs --mode escalate` selects exactly
+these shows (source `classify-agent-tier1`, `needs_review: true`) into a
+dedicated Tier-2 batch, carrying the Tier-1 result as context plus,
+only if `<podcast:transcript>` is already present in the RSS feed for
+2–3 recent episodes (ADR-0004's tier-1 transcript source — already free,
+zero additional fetch), a truncated transcript excerpt. ~~Tier 2 was
+specified to run on a stronger API model (Sonnet 5).~~ Under the Claude
+Code execution engine, "stronger" means the orchestrator can route
+Tier-2 (`--mode escalate`) batches to a routine configured for deeper
+reasoning (a Cloud-agent config knob, not something this ADR's tooling
+controls) — the runner prompt instructs extra diligence regardless of
+which routine runs it. **Full transcripts for every show are explicitly
+rejected as the default** — see Rejected Alternatives below.
 
 **Output never silently guesses.** Every show gets a `needs_review: true`
 flag when confidence is low after Tier 2 (or Tier 2 wasn't reached and
@@ -139,41 +192,52 @@ is Joey's product call, later, informed by the future tile UI work. This
 pass only captures the data at classification time (cheap, same call) so
 that decision isn't blocked on a second reclassification pass later.
 
-## Cost model summary
-The display-fields addition above does not change the cost estimate
-materially (a few dozen extra output tokens per show at Tier-1 pricing).
-See the pilot/cost-model report accompanying this ADR (delivered to the
-founders alongside this file, not duplicated here to avoid the two
-drifting) for the full token/dollar breakdown. Headline numbers: Tier 1
-alone across all 19,787 US shows is roughly $25–$85 depending on
-batch/cache adoption; a full Tier 1 + Tier 2 pass (assuming ~15–25% of
-shows escalate) lands in the **$100–$200** range. The pilot (50–100
-shows) costs under $5. The 121,786-show international batch is **not
-in scope for this pass** — extrapolated at roughly 6x the US cost
-(~$700–900) and explicitly deferred pending a founder scope decision,
-separately from cross-lingual classification-quality risk (the taxonomy
-is English-labeled; non-English show descriptions add an open question
-this ADR does not resolve).
+## Usage/pacing model (supersedes the original dollar cost model)
+No per-token dollar cost under the Claude Code cron execution engine —
+the constraint is the Claude Max plan's **weekly usage limit**, shared
+with every other Claude Code use on the account (including the nightly
+refresh routine). The relevant variable is wall-clock/reasoning budget
+per routine invocation, not dollars, and the founders are pacing the
+rollout across roughly **two weeks** rather than running it in one shot.
 
-## Budget-guard routing
-The existing `BudgetGuard`/`costEvents` machinery
-(`backend/src/cost/budgetGuard.ts`) already tier-routes by operation-name
-prefix (`tier1_*` / `tier2_*`) with no code change needed — this batch
-job's calls use operation names `tier1_classify_breadth_show` /
-`tier2_classify_breadth_show_escalate` so they fall into the existing
-cutoff logic. The **production runtime daily cap** (`DAILY_BUDGET_USD`,
-default $2.00) is deliberately not the ceiling for this job — a
-one-time ~$120–200 batch spend would take years to clear at $2/day, and
-conflating the two would either block the batch indefinitely or require
-inflating the production cap for a one-off, both wrong. Instead, the
-classification tool constructs its own `BudgetGuard` instance with an
-explicit `--budget-usd` CLI flag (the constructor already accepts a
-`dailyBudgetUsd` override — no interface change), so a founder-approved
-one-off ceiling is enforced structurally without touching the runtime
-guard other engine code paths rely on. Every call still writes a
-`cost_events` row (synthetic `userId: "system:catalog-breadth-classify"`)
-so the batch's actual spend is auditable exactly like any other LLM call
-in the system.
+**Sizing math** (the orchestrator's call to tune, not fixed by this ADR):
+```
+shows_covered = batch_size × runs_per_day × days
+19,787 (US breadth catalog) ≈ batch_size × runs_per_day × 14
+```
+e.g. a batch size of 40 shows/run at 2–3 runs/day covers the full US
+catalog in roughly 12–18 days — in the same range as the orchestrator's
+~2-week pacing target, with headroom for Tier-2 escalation runs (a
+smaller batch size, since each show gets deeper scrutiny and, on shows
+with a transcript tag, extra fetch+read time) layered on top of the
+Tier-1 runs. `--batch-size` on `tools/classify/prepare-batch.mjs` is the
+single knob — **scaling the rollout up or down is a config flip, not a
+rewrite**, per the explicit design goal.
+
+**Original API-era cost model, retained for context, not operative:**
+the design (see `docs/curation/breadth-classification-methodology-plan.md`
+for the full breakdown) estimated $70–$185 for a Tier-1+Tier-2 pass
+across the full US catalog via the Anthropic API — a real number that
+would have needed founder budget approval before any spend. That
+approval question is now moot (no per-call billing), but the estimate
+is left in the plan doc as the honest record of what was proposed before
+the execution engine changed, not scrubbed to look like this was always
+usage-based.
+
+**International (121,786 shows)**: still explicitly out of scope, per
+the founders' 2026-07-24 decision — "US breadth only" for now,
+independent of the execution-engine question.
+
+## Budget-guard routing (superseded — not used by this pipeline)
+~~The original design routed every classification call through
+`backend/src/cost/budgetGuard.ts` (`BudgetGuard`/`costEvents`,
+tier-prefix cutoff logic, a founder-approved `--budget-usd` ceiling).~~
+None of that applies — there is no API call for it to gate. This section
+is kept, struck through, as the record of the pre-pivot design; the
+functioning equivalent under the new execution engine is
+`data/classify-progress.json` (which shows are done/in-flight/failed) and
+the orchestrator's routine-scheduling config (how often, how large a
+batch) — a scheduling/pacing concern, not a dollar-metering one.
 
 ## Options considered
 
@@ -220,33 +284,55 @@ in the system.
    if that's what it is) behind a single dominant tag.
 
 ## Consequences
-- **New scope this ADR creates but does not implement yet**: the RSS
-  description/episode-sample fetch step (Tier 0.5) does not exist in any
-  committed tool today; `tools/classify-breadth.mjs` only ever consumed
-  fields already present in `catalog-breadth.json`. Building it is
-  in-scope for the implementation phase, gated on founder go-ahead.
+- **Tooling built, matching the nightly-refresh two-tier shape**
+  (`docs/nightly-refresh-cloud.md`'s pattern, adapted from a two-stage
+  Action+Cloud-agent split to a single-stage cron routine since there's
+  no keyless/judgment split needed here): `tools/classify/prepare-batch.mjs`
+  (Tier 0 genre-map prior + Tier 0.5 RSS fetch, deterministic, keyless),
+  `docs/agents/runner-prompts/classify-batch.md` (the classification
+  agent's contract, Tier 1 and Tier 2), `tools/classify/merge-results.mjs`
+  (schema + copy-rule validation, idempotent merge into
+  `data/breadth-classification.json`). Verified end-to-end against the
+  real breadth catalog (RSS fetch working, Science Friday's fetched
+  signal confirmed to actually fix the documented misclassification, copy-
+  rule gate confirmed catching banned phrasing, invalid-taxonomy-node
+  rejection confirmed, idempotent re-merge confirmed) — no LLM/agent step
+  was invoked in this verification, only the deterministic surrounding
+  scripts.
+- **Backward-compatible schema**: `data/breadth-classification.json`
+  entries keep the existing flat `topics: string[]` + `confidence` bucket
+  fields (so `tools/topic-coverage-report.mjs` and any other consumer
+  reading the old shape keep working unchanged) and add
+  `topic_confidences: [{node, confidence}]`, `needs_review`, `rationale`,
+  `display_title`, `blurb`, `display_copy_ok`, `source`, `tier`,
+  `batch_id`, `classified_at` alongside. Additive, not a breaking
+  migration.
+- **Curated-tier precedence is structural, not enforced by a runtime
+  check**: this pipeline's tooling has no write path to
+  `data/catalog.json`/`data/discover.json` at all — the founders'
+  "curated tier always wins" rule (2026-07-24) holds by construction, not
+  by a rule someone has to remember to apply at merge time.
 - **Taxonomy governance gap, not resolved here**: shows that fit no
   existing node well (the multi-label output legitimately returns
   `topics: [], needs_review: true`) surface a taxonomy-coverage gap the
   same way the 2026-07-09 "new_nodes" expansion in `data/taxonomy.json`
-  did (60+ nodes added at `confidence: 0.3`, i.e., provisional). This
-  ADR does not define the process for reviewing `needs_review` output
-  and deciding "add a taxonomy node" vs. "force into the nearest
-  existing node" vs. "leave untagged" — flagged as an open question for
-  the founders, not a silent default either way.
-- **The existing `AnthropicEnricher`/`Enricher` interface is
-  episode-level** (`ClassificationInput` takes `episodeId`,
-  `showTitle`, `title`, `descriptionText`, `durationSeconds`) and is not
-  reused verbatim — a **new**, parallel show-level classification
-  function is needed (same conventions: budget-guard-gated, zod-schema-
-  validated JSON, `StubEnricher`-style dry-run path for tests) rather
-  than overloading the episode interface with show-shaped inputs.
-- **Batch API adoption is new** — nothing in the codebase currently uses
-  `client.messages.batches.*`; this is the first use, and the
-  implementation phase should treat "does the SDK version pinned in
-  `backend/package.json` support Batches + prompt caching cleanly"
-  as a pre-flight check, not an assumption.
-- Re-running this pass is idempotent by design (content-hash-keyed
-  cache, per `02_ARCHITECTURE.md`'s Tier-1 caching convention) so a
-  partial run, a taxonomy update, or a re-harvest of `catalog-breadth.json`
-  can re-trigger only the shows whose input signal actually changed.
+  did (60+ nodes added at `confidence: 0.3`, i.e., provisional). Per the
+  founders' explicit decision: `needs_review` output is **never
+  auto-applied** — it's held for a human pass. This ADR still does not
+  define *what that human pass does* (add a taxonomy node vs. force into
+  the nearest existing node vs. leave untagged) — flagged as an open
+  question, not a silent default either way. `data/classify-progress.json`
+  plus a query over `breadth-classification.json`'s `needs_review: true`
+  entries is enough to quantify the pile's size once real batches run;
+  the review *process* itself is still undesigned.
+- **The existing `AnthropicEnricher`/`Enricher` interface is not used at
+  all** by this pipeline (superseded by the execution-engine pivot — see
+  above) — no new `Enricher` implementation was needed, since there is no
+  model API call to wrap.
+- Re-running this pipeline is idempotent by design:
+  `merge-results.mjs` skips a batch already merged under its `batch_id`,
+  and `prepare-batch.mjs` never re-selects a show whose current entry's
+  `source` already starts with `classify-agent-` — so a taxonomy update
+  or a re-harvest of `catalog-breadth.json` doesn't require any manual
+  bookkeeping to avoid duplicate work, it just naturally re-queues
+  whatever the founders explicitly reset.
