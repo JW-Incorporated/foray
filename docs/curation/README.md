@@ -26,6 +26,15 @@ depth-based learning paths.
   from observed history (never declared), and surface it as an additive badge
   — not yet implemented; `app.js`/`sw.js` are untouched pending a dedicated
   client-integration pass.
+- **[search-coverage-gaps.md](search-coverage-gaps.md)** — §7's search promise
+  (deterministic query over tags/concepts, no runtime LLM) cross-referenced
+  against `data/top-topics.json` (155 topics a general user actually searches
+  for): most catalogue gaps are a breadth-tier *promotion* problem, not a
+  sourcing problem (19.7k shows already harvested and genre-mapped, barely
+  promoted into the curated tier); the semantic index also has a systemic
+  concept-misrouting bug (8 flagged concepts, incl. true-crime search
+  silently routing into history). Full machine-readable cross-reference:
+  `data/topic-coverage-report.json` (built by `tools/topic-coverage-report.mjs`).
 
 Background these build on: `docs/brief/03_CURATION_SPEC.md` (the original,
 excellent — but single-user — curation design) and the product principles in
