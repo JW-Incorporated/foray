@@ -1,0 +1,2070 @@
+{
+  "version": 1,
+  "built_at": "2026-07-25T02:53:25.311Z",
+  "notes": "Ranked list of the top ~150 podcast topics/queries a GENERAL user would search, grounded in real podcast-market genre share (Apple Podcasts' own genre tree via data/genre-taxonomy-map.json, plus Edison Research 2025-26 genre-popularity data: true crime/comedy/news/society-culture/sports lead U.S. listening). tier: 1 = mega-genre, 2 = popular subgenre/league/format, 3 = long-tail-but-real. taxonomy_nodes: [] means no existing data/taxonomy.json node fits -- per personalization-and-depth-plan.md sec.5, node additions require an ADR and are NOT created here; see notes on those entries. STARTING POINT for Joey to sanity-check, same caveat as data/personas.json -- this is a data-grounded first pass, not a final ranked taxonomy.",
+  "method": "Apple Podcasts genre tree (see data/genre-taxonomy-map.json, 110 genres) as the structural backbone + Edison Research / Apple & Spotify chart genre-share for tiering + example query phrasings (genre words, intent phrasings, and franchise/personality-style queries) reasoned from general podcast-market knowledge, not scraped search-console data (Foray has none yet).",
+  "needs_adr_count": 13,
+  "topics": [
+    {
+      "id": "true-crime",
+      "label": "True crime",
+      "category": "True Crime",
+      "tier": 1,
+      "example_queries": [
+        "true crime",
+        "true crime podcast",
+        "murder mystery podcast",
+        "crime junkie"
+      ],
+      "taxonomy_nodes": [
+        "true-crime"
+      ]
+    },
+    {
+      "id": "unsolved-mysteries-cold-cases",
+      "label": "Unsolved mysteries & cold cases",
+      "category": "True Crime",
+      "tier": 2,
+      "example_queries": [
+        "unsolved mysteries",
+        "cold case",
+        "missing persons"
+      ],
+      "taxonomy_nodes": [
+        "true-crime"
+      ]
+    },
+    {
+      "id": "serial-killers",
+      "label": "Serial killers",
+      "category": "True Crime",
+      "tier": 2,
+      "example_queries": [
+        "serial killer",
+        "serial killer podcast"
+      ],
+      "taxonomy_nodes": [
+        "true-crime"
+      ]
+    },
+    {
+      "id": "cults",
+      "label": "Cults",
+      "category": "True Crime",
+      "tier": 3,
+      "example_queries": [
+        "cult documentary",
+        "cults podcast"
+      ],
+      "taxonomy_nodes": [
+        "true-crime"
+      ]
+    },
+    {
+      "id": "wrongful-convictions-forensics",
+      "label": "Wrongful convictions & forensics",
+      "category": "True Crime",
+      "tier": 3,
+      "example_queries": [
+        "wrongful conviction",
+        "forensics podcast",
+        "dna evidence"
+      ],
+      "taxonomy_nodes": [
+        "true-crime"
+      ]
+    },
+    {
+      "id": "financial-fraud-scams",
+      "label": "Financial fraud & scams",
+      "category": "True Crime",
+      "tier": 3,
+      "example_queries": [
+        "ponzi scheme",
+        "financial fraud",
+        "scam podcast"
+      ],
+      "taxonomy_nodes": [
+        "true-crime"
+      ]
+    },
+    {
+      "id": "comedy",
+      "label": "Comedy",
+      "category": "Comedy",
+      "tier": 1,
+      "example_queries": [
+        "comedy podcast",
+        "funny podcast",
+        "something funny",
+        "joe rogan"
+      ],
+      "taxonomy_nodes": [
+        "comedy"
+      ]
+    },
+    {
+      "id": "stand-up-comedy",
+      "label": "Stand-up comedy",
+      "category": "Comedy",
+      "tier": 2,
+      "example_queries": [
+        "stand up comedy",
+        "stand-up specials"
+      ],
+      "taxonomy_nodes": [
+        "comedy/stand-up"
+      ]
+    },
+    {
+      "id": "comedy-interviews-hangs",
+      "label": "Comedy interviews & hangs",
+      "category": "Comedy",
+      "tier": 2,
+      "example_queries": [
+        "comedy interview",
+        "smartless",
+        "celebrity hang podcast"
+      ],
+      "taxonomy_nodes": [
+        "comedy/interviews",
+        "comedy/casual-hangs"
+      ]
+    },
+    {
+      "id": "improv-comedy",
+      "label": "Improv comedy",
+      "category": "Comedy",
+      "tier": 3,
+      "example_queries": [
+        "improv podcast",
+        "improv comedy"
+      ],
+      "taxonomy_nodes": [
+        "comedy"
+      ]
+    },
+    {
+      "id": "sketch-satire",
+      "label": "Sketch & satire",
+      "category": "Comedy",
+      "tier": 3,
+      "example_queries": [
+        "sketch comedy",
+        "satire podcast",
+        "the onion style"
+      ],
+      "taxonomy_nodes": [
+        "comedy"
+      ]
+    },
+    {
+      "id": "news",
+      "label": "News",
+      "category": "News",
+      "tier": 1,
+      "example_queries": [
+        "news podcast",
+        "daily news briefing",
+        "the daily",
+        "current events"
+      ],
+      "taxonomy_nodes": [
+        "news"
+      ]
+    },
+    {
+      "id": "politics",
+      "label": "Politics",
+      "category": "News",
+      "tier": 1,
+      "example_queries": [
+        "politics podcast",
+        "election news",
+        "political commentary"
+      ],
+      "taxonomy_nodes": [
+        "news/politics"
+      ]
+    },
+    {
+      "id": "daily-news-briefing",
+      "label": "Daily news briefing",
+      "category": "News",
+      "tier": 2,
+      "example_queries": [
+        "daily news",
+        "morning news briefing"
+      ],
+      "taxonomy_nodes": [
+        "news/daily"
+      ]
+    },
+    {
+      "id": "news-commentary-analysis",
+      "label": "News commentary & analysis",
+      "category": "News",
+      "tier": 2,
+      "example_queries": [
+        "news commentary",
+        "news analysis show"
+      ],
+      "taxonomy_nodes": [
+        "news/commentary"
+      ]
+    },
+    {
+      "id": "tech-news",
+      "label": "Tech news",
+      "category": "News",
+      "tier": 2,
+      "example_queries": [
+        "tech news podcast",
+        "technology news"
+      ],
+      "taxonomy_nodes": [
+        "news/tech"
+      ]
+    },
+    {
+      "id": "government-policy",
+      "label": "Government & policy",
+      "category": "News",
+      "tier": 3,
+      "example_queries": [
+        "government podcast",
+        "policy explainer"
+      ],
+      "taxonomy_nodes": [
+        "society/government"
+      ]
+    },
+    {
+      "id": "society-culture",
+      "label": "Society & culture",
+      "category": "Society & Culture",
+      "tier": 1,
+      "example_queries": [
+        "society and culture podcast",
+        "cultural commentary"
+      ],
+      "taxonomy_nodes": [
+        "society"
+      ]
+    },
+    {
+      "id": "personal-journals-storytelling",
+      "label": "Personal journals & storytelling",
+      "category": "Society & Culture",
+      "tier": 2,
+      "example_queries": [
+        "personal story podcast",
+        "storytelling podcast",
+        "life story"
+      ],
+      "taxonomy_nodes": [
+        "personal-journals"
+      ]
+    },
+    {
+      "id": "relationships",
+      "label": "Relationships",
+      "category": "Society & Culture",
+      "tier": 2,
+      "example_queries": [
+        "relationship advice podcast",
+        "dating podcast",
+        "marriage advice"
+      ],
+      "taxonomy_nodes": [
+        "relationships"
+      ]
+    },
+    {
+      "id": "philosophy-big-ideas",
+      "label": "Philosophy & big ideas",
+      "category": "Society & Culture",
+      "tier": 2,
+      "example_queries": [
+        "philosophy podcast",
+        "big ideas",
+        "ethics explained"
+      ],
+      "taxonomy_nodes": [
+        "philosophy",
+        "philosophy/ideas"
+      ]
+    },
+    {
+      "id": "mythology-folklore",
+      "label": "Mythology & folklore",
+      "category": "Society & Culture",
+      "tier": 3,
+      "example_queries": [
+        "mythology podcast",
+        "folklore stories",
+        "greek mythology"
+      ],
+      "taxonomy_nodes": [
+        "culture/mythology"
+      ]
+    },
+    {
+      "id": "fashion-beauty",
+      "label": "Fashion & beauty",
+      "category": "Society & Culture",
+      "tier": 3,
+      "example_queries": [
+        "fashion podcast",
+        "beauty industry"
+      ],
+      "taxonomy_nodes": [
+        "culture/fashion"
+      ]
+    },
+    {
+      "id": "law-the-legal-system",
+      "label": "Law & the legal system",
+      "category": "Society & Culture",
+      "tier": 3,
+      "example_queries": [
+        "law podcast",
+        "legal system explained",
+        "courts"
+      ],
+      "taxonomy_nodes": [
+        "society/law"
+      ]
+    },
+    {
+      "id": "immigrant-diaspora-stories",
+      "label": "Immigrant & diaspora stories",
+      "category": "Society & Culture",
+      "tier": 3,
+      "example_queries": [
+        "immigrant stories podcast"
+      ],
+      "taxonomy_nodes": [],
+      "notes": "no dedicated node; folds under personal-journals today but not tagged as such"
+    },
+    {
+      "id": "lgbtq-stories-culture",
+      "label": "LGBTQ+ stories & culture",
+      "category": "Society & Culture",
+      "tier": 3,
+      "example_queries": [
+        "lgbtq podcast",
+        "queer stories"
+      ],
+      "taxonomy_nodes": [],
+      "notes": "no dedicated node"
+    },
+    {
+      "id": "sports",
+      "label": "Sports",
+      "category": "Sports",
+      "tier": 1,
+      "example_queries": [
+        "sports podcast",
+        "sports talk",
+        "sports news"
+      ],
+      "taxonomy_nodes": [
+        "sports"
+      ]
+    },
+    {
+      "id": "football-nfl",
+      "label": "Football (NFL)",
+      "category": "Sports",
+      "tier": 1,
+      "example_queries": [
+        "nfl podcast",
+        "football podcast",
+        "nfl football"
+      ],
+      "taxonomy_nodes": [
+        "sports/football"
+      ]
+    },
+    {
+      "id": "basketball-nba",
+      "label": "Basketball (NBA)",
+      "category": "Sports",
+      "tier": 1,
+      "example_queries": [
+        "nba podcast",
+        "basketball podcast"
+      ],
+      "taxonomy_nodes": [
+        "sports/basketball"
+      ]
+    },
+    {
+      "id": "baseball-mlb",
+      "label": "Baseball (MLB)",
+      "category": "Sports",
+      "tier": 2,
+      "example_queries": [
+        "mlb podcast",
+        "baseball podcast"
+      ],
+      "taxonomy_nodes": [
+        "sports/baseball"
+      ]
+    },
+    {
+      "id": "soccer-football-world",
+      "label": "Soccer / football (world)",
+      "category": "Sports",
+      "tier": 1,
+      "example_queries": [
+        "soccer podcast",
+        "football podcast (soccer)",
+        "premier league"
+      ],
+      "taxonomy_nodes": [
+        "sports/soccer"
+      ]
+    },
+    {
+      "id": "hockey-nhl",
+      "label": "Hockey (NHL)",
+      "category": "Sports",
+      "tier": 2,
+      "example_queries": [
+        "nhl podcast",
+        "hockey podcast"
+      ],
+      "taxonomy_nodes": [
+        "sports/hockey"
+      ]
+    },
+    {
+      "id": "golf",
+      "label": "Golf",
+      "category": "Sports",
+      "tier": 3,
+      "example_queries": [
+        "golf podcast",
+        "pga tour"
+      ],
+      "taxonomy_nodes": [
+        "sports/golf"
+      ]
+    },
+    {
+      "id": "tennis",
+      "label": "Tennis",
+      "category": "Sports",
+      "tier": 3,
+      "example_queries": [
+        "tennis podcast",
+        "grand slam tennis"
+      ],
+      "taxonomy_nodes": [
+        "sports/tennis"
+      ]
+    },
+    {
+      "id": "wrestling-wwe",
+      "label": "Wrestling (WWE)",
+      "category": "Sports",
+      "tier": 3,
+      "example_queries": [
+        "wwe podcast",
+        "pro wrestling podcast"
+      ],
+      "taxonomy_nodes": [
+        "sports/wrestling"
+      ]
+    },
+    {
+      "id": "mma-ufc",
+      "label": "MMA / UFC",
+      "category": "Sports",
+      "tier": 2,
+      "example_queries": [
+        "ufc podcast",
+        "mma podcast"
+      ],
+      "taxonomy_nodes": [],
+      "notes": "no dedicated node — closest is sports (general); frequent query, worth a node"
+    },
+    {
+      "id": "cricket",
+      "label": "Cricket",
+      "category": "Sports",
+      "tier": 3,
+      "example_queries": [
+        "cricket podcast",
+        "ipl cricket"
+      ],
+      "taxonomy_nodes": [
+        "sports/cricket"
+      ]
+    },
+    {
+      "id": "rugby",
+      "label": "Rugby",
+      "category": "Sports",
+      "tier": 3,
+      "example_queries": [
+        "rugby podcast"
+      ],
+      "taxonomy_nodes": [
+        "sports/rugby"
+      ]
+    },
+    {
+      "id": "fantasy-sports",
+      "label": "Fantasy sports",
+      "category": "Sports",
+      "tier": 2,
+      "example_queries": [
+        "fantasy football",
+        "fantasy sports podcast"
+      ],
+      "taxonomy_nodes": [
+        "sports/fantasy"
+      ]
+    },
+    {
+      "id": "motorsport-f1",
+      "label": "Motorsport / F1",
+      "category": "Sports",
+      "tier": 2,
+      "example_queries": [
+        "f1 podcast",
+        "formula 1 podcast",
+        "motorsport"
+      ],
+      "taxonomy_nodes": [
+        "automotive/racing"
+      ]
+    },
+    {
+      "id": "endurance-running",
+      "label": "Endurance & running",
+      "category": "Sports",
+      "tier": 3,
+      "example_queries": [
+        "marathon training podcast",
+        "running podcast",
+        "endurance sports"
+      ],
+      "taxonomy_nodes": [
+        "sports/endurance"
+      ]
+    },
+    {
+      "id": "sports-science-biomechanics",
+      "label": "Sports science & biomechanics",
+      "category": "Sports",
+      "tier": 3,
+      "example_queries": [
+        "sports science podcast",
+        "biomechanics"
+      ],
+      "taxonomy_nodes": [
+        "sports/biomechanics"
+      ]
+    },
+    {
+      "id": "business",
+      "label": "Business",
+      "category": "Business & Money",
+      "tier": 1,
+      "example_queries": [
+        "business podcast",
+        "how i built this"
+      ],
+      "taxonomy_nodes": [
+        "business"
+      ]
+    },
+    {
+      "id": "startups-entrepreneurship",
+      "label": "Startups & entrepreneurship",
+      "category": "Business & Money",
+      "tier": 1,
+      "example_queries": [
+        "startup podcast",
+        "entrepreneurship",
+        "founder stories"
+      ],
+      "taxonomy_nodes": [
+        "business/startups",
+        "business/founders"
+      ]
+    },
+    {
+      "id": "investing-the-stock-market",
+      "label": "Investing & the stock market",
+      "category": "Business & Money",
+      "tier": 1,
+      "example_queries": [
+        "investing podcast",
+        "stock market podcast",
+        "how to invest"
+      ],
+      "taxonomy_nodes": [
+        "economics/markets"
+      ]
+    },
+    {
+      "id": "personal-finance",
+      "label": "Personal finance",
+      "category": "Business & Money",
+      "tier": 2,
+      "example_queries": [
+        "personal finance podcast",
+        "money advice",
+        "budgeting"
+      ],
+      "taxonomy_nodes": [
+        "economics/markets"
+      ]
+    },
+    {
+      "id": "careers-job-advice",
+      "label": "Careers & job advice",
+      "category": "Business & Money",
+      "tier": 2,
+      "example_queries": [
+        "career advice podcast",
+        "job interview tips"
+      ],
+      "taxonomy_nodes": [
+        "business/careers"
+      ]
+    },
+    {
+      "id": "marketing",
+      "label": "Marketing",
+      "category": "Business & Money",
+      "tier": 3,
+      "example_queries": [
+        "marketing podcast",
+        "growth marketing"
+      ],
+      "taxonomy_nodes": [
+        "business/marketing"
+      ]
+    },
+    {
+      "id": "management-leadership",
+      "label": "Management & leadership",
+      "category": "Business & Money",
+      "tier": 3,
+      "example_queries": [
+        "management podcast",
+        "leadership podcast"
+      ],
+      "taxonomy_nodes": [
+        "business/management"
+      ]
+    },
+    {
+      "id": "cryptocurrency",
+      "label": "Cryptocurrency",
+      "category": "Business & Money",
+      "tier": 2,
+      "example_queries": [
+        "crypto podcast",
+        "bitcoin podcast",
+        "cryptocurrency"
+      ],
+      "taxonomy_nodes": [],
+      "notes": "no dedicated node; closest is economics/markets but crypto content is largely absent"
+    },
+    {
+      "id": "health-fitness",
+      "label": "Health & fitness",
+      "category": "Health & Fitness",
+      "tier": 1,
+      "example_queries": [
+        "health podcast",
+        "fitness podcast",
+        "wellness"
+      ],
+      "taxonomy_nodes": [
+        "health"
+      ]
+    },
+    {
+      "id": "mental-health",
+      "label": "Mental health",
+      "category": "Health & Fitness",
+      "tier": 1,
+      "example_queries": [
+        "mental health podcast",
+        "anxiety podcast",
+        "therapy talk"
+      ],
+      "taxonomy_nodes": [
+        "health/mental"
+      ]
+    },
+    {
+      "id": "nutrition-diet",
+      "label": "Nutrition & diet",
+      "category": "Health & Fitness",
+      "tier": 2,
+      "example_queries": [
+        "nutrition podcast",
+        "diet advice",
+        "what to eat"
+      ],
+      "taxonomy_nodes": [
+        "health/nutrition"
+      ]
+    },
+    {
+      "id": "fitness-workouts",
+      "label": "Fitness & workouts",
+      "category": "Health & Fitness",
+      "tier": 2,
+      "example_queries": [
+        "workout podcast",
+        "strength training podcast"
+      ],
+      "taxonomy_nodes": [
+        "health/fitness"
+      ]
+    },
+    {
+      "id": "sleep",
+      "label": "Sleep",
+      "category": "Health & Fitness",
+      "tier": 2,
+      "example_queries": [
+        "sleep podcast",
+        "how to sleep better"
+      ],
+      "taxonomy_nodes": [
+        "health/mental"
+      ]
+    },
+    {
+      "id": "meditation-mindfulness",
+      "label": "Meditation & mindfulness",
+      "category": "Health & Fitness",
+      "tier": 2,
+      "example_queries": [
+        "meditation podcast",
+        "mindfulness practice"
+      ],
+      "taxonomy_nodes": [],
+      "notes": "no dedicated node; closest is health/mental"
+    },
+    {
+      "id": "alternative-holistic-health",
+      "label": "Alternative & holistic health",
+      "category": "Health & Fitness",
+      "tier": 3,
+      "example_queries": [
+        "alternative medicine podcast",
+        "holistic health"
+      ],
+      "taxonomy_nodes": [
+        "health/alternative"
+      ]
+    },
+    {
+      "id": "sexuality-intimacy",
+      "label": "Sexuality & intimacy",
+      "category": "Health & Fitness",
+      "tier": 3,
+      "example_queries": [
+        "sexuality podcast",
+        "intimacy advice"
+      ],
+      "taxonomy_nodes": [
+        "health/sexuality"
+      ]
+    },
+    {
+      "id": "history",
+      "label": "History",
+      "category": "History",
+      "tier": 1,
+      "example_queries": [
+        "history podcast",
+        "history explained"
+      ],
+      "taxonomy_nodes": [
+        "history"
+      ]
+    },
+    {
+      "id": "world-war-ii",
+      "label": "World War II",
+      "category": "History",
+      "tier": 1,
+      "example_queries": [
+        "ww2 podcast",
+        "world war 2 history"
+      ],
+      "taxonomy_nodes": [
+        "history/military-modern"
+      ]
+    },
+    {
+      "id": "ancient-rome-greece",
+      "label": "Ancient Rome & Greece",
+      "category": "History",
+      "tier": 1,
+      "example_queries": [
+        "ancient rome podcast",
+        "roman history",
+        "ancient greece"
+      ],
+      "taxonomy_nodes": [
+        "history/military-ancient"
+      ]
+    },
+    {
+      "id": "military-history-modern",
+      "label": "Military history (modern)",
+      "category": "History",
+      "tier": 2,
+      "example_queries": [
+        "military history podcast",
+        "war history"
+      ],
+      "taxonomy_nodes": [
+        "history/military-modern"
+      ]
+    },
+    {
+      "id": "archaeology",
+      "label": "Archaeology",
+      "category": "History",
+      "tier": 2,
+      "example_queries": [
+        "archaeology podcast",
+        "ancient ruins",
+        "lost civilizations"
+      ],
+      "taxonomy_nodes": [
+        "history/archaeology"
+      ]
+    },
+    {
+      "id": "history-of-technology",
+      "label": "History of technology",
+      "category": "History",
+      "tier": 3,
+      "example_queries": [
+        "history of technology",
+        "invention history"
+      ],
+      "taxonomy_nodes": [
+        "history/technology"
+      ]
+    },
+    {
+      "id": "espionage-cold-war",
+      "label": "Espionage & Cold War",
+      "category": "History",
+      "tier": 3,
+      "example_queries": [
+        "spy history podcast",
+        "cold war podcast",
+        "espionage"
+      ],
+      "taxonomy_nodes": [
+        "espionage/cold-war-tech"
+      ]
+    },
+    {
+      "id": "science",
+      "label": "Science",
+      "category": "Science & Tech",
+      "tier": 1,
+      "example_queries": [
+        "science podcast",
+        "science explained"
+      ],
+      "taxonomy_nodes": [
+        "science"
+      ]
+    },
+    {
+      "id": "space-astronomy",
+      "label": "Space & astronomy",
+      "category": "Science & Tech",
+      "tier": 1,
+      "example_queries": [
+        "space podcast",
+        "astronomy podcast",
+        "nasa",
+        "spacex"
+      ],
+      "taxonomy_nodes": [
+        "space",
+        "space/rockets"
+      ]
+    },
+    {
+      "id": "physics",
+      "label": "Physics",
+      "category": "Science & Tech",
+      "tier": 2,
+      "example_queries": [
+        "physics podcast",
+        "quantum physics explained"
+      ],
+      "taxonomy_nodes": [
+        "science/physics"
+      ]
+    },
+    {
+      "id": "artificial-intelligence",
+      "label": "Artificial intelligence",
+      "category": "Science & Tech",
+      "tier": 1,
+      "example_queries": [
+        "ai podcast",
+        "artificial intelligence",
+        "chatgpt",
+        "machine learning"
+      ],
+      "taxonomy_nodes": [
+        "engineering/ai-robotics"
+      ]
+    },
+    {
+      "id": "computing-software",
+      "label": "Computing & software",
+      "category": "Science & Tech",
+      "tier": 1,
+      "example_queries": [
+        "computing podcast",
+        "software engineering",
+        "programming podcast"
+      ],
+      "taxonomy_nodes": [
+        "computing",
+        "computing/history"
+      ]
+    },
+    {
+      "id": "cybersecurity",
+      "label": "Cybersecurity",
+      "category": "Science & Tech",
+      "tier": 3,
+      "example_queries": [
+        "cybersecurity podcast",
+        "hacking podcast"
+      ],
+      "taxonomy_nodes": [],
+      "notes": "no dedicated node; closest is computing"
+    },
+    {
+      "id": "chemistry",
+      "label": "Chemistry",
+      "category": "Science & Tech",
+      "tier": 3,
+      "example_queries": [
+        "chemistry podcast"
+      ],
+      "taxonomy_nodes": [
+        "science/chemistry"
+      ]
+    },
+    {
+      "id": "biology-medicine",
+      "label": "Biology & medicine",
+      "category": "Science & Tech",
+      "tier": 2,
+      "example_queries": [
+        "biology podcast",
+        "medicine podcast",
+        "how the body works"
+      ],
+      "taxonomy_nodes": [
+        "medicine/biology",
+        "medicine"
+      ]
+    },
+    {
+      "id": "neuroscience-the-brain",
+      "label": "Neuroscience & the brain",
+      "category": "Science & Tech",
+      "tier": 2,
+      "example_queries": [
+        "neuroscience podcast",
+        "brain science"
+      ],
+      "taxonomy_nodes": [
+        "medicine/neuroscience"
+      ]
+    },
+    {
+      "id": "math-puzzles",
+      "label": "Math & puzzles",
+      "category": "Science & Tech",
+      "tier": 3,
+      "example_queries": [
+        "math podcast",
+        "math puzzles"
+      ],
+      "taxonomy_nodes": [
+        "math/puzzles"
+      ]
+    },
+    {
+      "id": "climate-clean-energy",
+      "label": "Climate & clean energy",
+      "category": "Science & Tech",
+      "tier": 2,
+      "example_queries": [
+        "climate change podcast",
+        "clean energy",
+        "renewable energy"
+      ],
+      "taxonomy_nodes": [
+        "engineering/energy-grid"
+      ],
+      "notes": "engineering/energy-fusion is the closer node in taxonomy but is the known-mistag node (issue #12) — mapped to energy-grid instead where possible"
+    },
+    {
+      "id": "tv-film",
+      "label": "TV & film",
+      "category": "TV & Film",
+      "tier": 1,
+      "example_queries": [
+        "tv and film podcast",
+        "movie podcast"
+      ],
+      "taxonomy_nodes": [
+        "tv-film"
+      ]
+    },
+    {
+      "id": "movie-tv-reviews",
+      "label": "Movie & TV reviews",
+      "category": "TV & Film",
+      "tier": 2,
+      "example_queries": [
+        "movie review podcast",
+        "tv show reviews"
+      ],
+      "taxonomy_nodes": [
+        "tv-film/reviews"
+      ]
+    },
+    {
+      "id": "film-history",
+      "label": "Film history",
+      "category": "TV & Film",
+      "tier": 3,
+      "example_queries": [
+        "film history podcast",
+        "classic hollywood"
+      ],
+      "taxonomy_nodes": [
+        "tv-film/history"
+      ]
+    },
+    {
+      "id": "pop-culture-recaps",
+      "label": "Pop culture recaps",
+      "category": "TV & Film",
+      "tier": 2,
+      "example_queries": [
+        "pop culture podcast",
+        "celebrity gossip podcast"
+      ],
+      "taxonomy_nodes": [
+        "culture/pop-culture"
+      ]
+    },
+    {
+      "id": "animation-anime",
+      "label": "Animation & anime",
+      "category": "TV & Film",
+      "tier": 3,
+      "example_queries": [
+        "anime podcast",
+        "animation podcast"
+      ],
+      "taxonomy_nodes": [
+        "tv-film/animation"
+      ]
+    },
+    {
+      "id": "after-shows-recaps",
+      "label": "After-shows & recaps",
+      "category": "TV & Film",
+      "tier": 3,
+      "example_queries": [
+        "after show podcast",
+        "episode recap podcast"
+      ],
+      "taxonomy_nodes": [
+        "tv-film/after-shows"
+      ]
+    },
+    {
+      "id": "music",
+      "label": "Music",
+      "category": "Music",
+      "tier": 1,
+      "example_queries": [
+        "music podcast",
+        "music interview"
+      ],
+      "taxonomy_nodes": [
+        "music"
+      ]
+    },
+    {
+      "id": "jazz",
+      "label": "Jazz",
+      "category": "Music",
+      "tier": 2,
+      "example_queries": [
+        "jazz podcast",
+        "jazz history"
+      ],
+      "taxonomy_nodes": [],
+      "notes": "no dedicated node; jazz sits inside music/theory-production undifferentiated"
+    },
+    {
+      "id": "hip-hop-rap",
+      "label": "Hip-hop & rap",
+      "category": "Music",
+      "tier": 2,
+      "example_queries": [
+        "hip hop podcast",
+        "rap podcast"
+      ],
+      "taxonomy_nodes": [],
+      "notes": "no dedicated node"
+    },
+    {
+      "id": "classical-music",
+      "label": "Classical music",
+      "category": "Music",
+      "tier": 3,
+      "example_queries": [
+        "classical music podcast",
+        "opera"
+      ],
+      "taxonomy_nodes": [
+        "music/classical"
+      ]
+    },
+    {
+      "id": "music-theory-production",
+      "label": "Music theory & production",
+      "category": "Music",
+      "tier": 3,
+      "example_queries": [
+        "music theory podcast",
+        "music production"
+      ],
+      "taxonomy_nodes": [
+        "music/theory-production"
+      ]
+    },
+    {
+      "id": "self-improvement",
+      "label": "Self-improvement",
+      "category": "Education",
+      "tier": 1,
+      "example_queries": [
+        "self improvement podcast",
+        "personal development"
+      ],
+      "taxonomy_nodes": [
+        "education/self-improvement"
+      ]
+    },
+    {
+      "id": "language-learning",
+      "label": "Language learning",
+      "category": "Education",
+      "tier": 2,
+      "example_queries": [
+        "language learning podcast",
+        "learn spanish podcast"
+      ],
+      "taxonomy_nodes": [
+        "education/language-learning"
+      ]
+    },
+    {
+      "id": "how-to-explainers",
+      "label": "How-to / explainers",
+      "category": "Education",
+      "tier": 2,
+      "example_queries": [
+        "how to podcast",
+        "how does it work",
+        "explainer podcast"
+      ],
+      "taxonomy_nodes": [
+        "education/how-to"
+      ]
+    },
+    {
+      "id": "online-courses-lectures",
+      "label": "Online courses & lectures",
+      "category": "Education",
+      "tier": 3,
+      "example_queries": [
+        "course podcast",
+        "lecture series"
+      ],
+      "taxonomy_nodes": [
+        "education/courses"
+      ]
+    },
+    {
+      "id": "productivity",
+      "label": "Productivity",
+      "category": "Education",
+      "tier": 3,
+      "example_queries": [
+        "productivity podcast",
+        "productivity hacks"
+      ],
+      "taxonomy_nodes": [
+        "education/self-improvement"
+      ]
+    },
+    {
+      "id": "parenting",
+      "label": "Parenting",
+      "category": "Kids & Family",
+      "tier": 1,
+      "example_queries": [
+        "parenting podcast",
+        "parenting advice"
+      ],
+      "taxonomy_nodes": [
+        "kids-family/parenting"
+      ]
+    },
+    {
+      "id": "stories-for-kids",
+      "label": "Stories for kids",
+      "category": "Kids & Family",
+      "tier": 2,
+      "example_queries": [
+        "kids story podcast",
+        "bedtime stories"
+      ],
+      "taxonomy_nodes": [
+        "kids-family/stories"
+      ]
+    },
+    {
+      "id": "education-for-kids",
+      "label": "Education for kids",
+      "category": "Kids & Family",
+      "tier": 3,
+      "example_queries": [
+        "kids learning podcast",
+        "educational podcast for kids"
+      ],
+      "taxonomy_nodes": [
+        "kids-family/education"
+      ]
+    },
+    {
+      "id": "christianity",
+      "label": "Christianity",
+      "category": "Religion",
+      "tier": 2,
+      "example_queries": [
+        "christian podcast",
+        "bible study podcast"
+      ],
+      "taxonomy_nodes": [
+        "religion/christianity"
+      ]
+    },
+    {
+      "id": "spirituality",
+      "label": "Spirituality",
+      "category": "Religion",
+      "tier": 2,
+      "example_queries": [
+        "spirituality podcast",
+        "spiritual growth"
+      ],
+      "taxonomy_nodes": [
+        "religion/spirituality"
+      ]
+    },
+    {
+      "id": "buddhism",
+      "label": "Buddhism",
+      "category": "Religion",
+      "tier": 3,
+      "example_queries": [
+        "buddhism podcast",
+        "buddhist teachings"
+      ],
+      "taxonomy_nodes": [
+        "religion/buddhism"
+      ]
+    },
+    {
+      "id": "judaism",
+      "label": "Judaism",
+      "category": "Religion",
+      "tier": 3,
+      "example_queries": [
+        "jewish podcast",
+        "judaism explained"
+      ],
+      "taxonomy_nodes": [
+        "religion/judaism"
+      ]
+    },
+    {
+      "id": "islam",
+      "label": "Islam",
+      "category": "Religion",
+      "tier": 3,
+      "example_queries": [
+        "islam podcast",
+        "muslim podcast"
+      ],
+      "taxonomy_nodes": [
+        "religion/islam"
+      ]
+    },
+    {
+      "id": "hinduism",
+      "label": "Hinduism",
+      "category": "Religion",
+      "tier": 3,
+      "example_queries": [
+        "hinduism podcast",
+        "hindu philosophy"
+      ],
+      "taxonomy_nodes": [
+        "religion/hinduism"
+      ]
+    },
+    {
+      "id": "cooking",
+      "label": "Cooking",
+      "category": "Food",
+      "tier": 1,
+      "example_queries": [
+        "cooking podcast",
+        "recipes podcast",
+        "chef interview"
+      ],
+      "taxonomy_nodes": [
+        "food/cooking-science"
+      ]
+    },
+    {
+      "id": "bbq-grilling",
+      "label": "BBQ & grilling",
+      "category": "Food",
+      "tier": 2,
+      "example_queries": [
+        "how bbq works",
+        "bbq podcast",
+        "barbecue",
+        "grilling tips"
+      ],
+      "taxonomy_nodes": [
+        "food/cooking-science"
+      ]
+    },
+    {
+      "id": "fermentation-brewing",
+      "label": "Fermentation & brewing",
+      "category": "Food",
+      "tier": 3,
+      "example_queries": [
+        "fermentation podcast",
+        "home brewing",
+        "beer brewing"
+      ],
+      "taxonomy_nodes": [
+        "food/fermentation"
+      ]
+    },
+    {
+      "id": "coffee",
+      "label": "Coffee",
+      "category": "Food",
+      "tier": 3,
+      "example_queries": [
+        "coffee podcast",
+        "specialty coffee"
+      ],
+      "taxonomy_nodes": [],
+      "notes": "no dedicated node; closest is food/cooking-science"
+    },
+    {
+      "id": "diy-home-improvement",
+      "label": "DIY & home improvement",
+      "category": "Craft & Hobbies",
+      "tier": 2,
+      "example_queries": [
+        "diy podcast",
+        "home improvement podcast"
+      ],
+      "taxonomy_nodes": [
+        "craft/diy-home"
+      ]
+    },
+    {
+      "id": "woodworking",
+      "label": "Woodworking",
+      "category": "Craft & Hobbies",
+      "tier": 3,
+      "example_queries": [
+        "woodworking podcast"
+      ],
+      "taxonomy_nodes": [
+        "craft/woodworking"
+      ]
+    },
+    {
+      "id": "photography",
+      "label": "Photography",
+      "category": "Craft & Hobbies",
+      "tier": 3,
+      "example_queries": [
+        "photography podcast",
+        "photography tips"
+      ],
+      "taxonomy_nodes": [
+        "craft/photography"
+      ]
+    },
+    {
+      "id": "filmmaking",
+      "label": "Filmmaking",
+      "category": "Craft & Hobbies",
+      "tier": 3,
+      "example_queries": [
+        "filmmaking podcast",
+        "how movies are made"
+      ],
+      "taxonomy_nodes": [
+        "craft/filmmaking"
+      ]
+    },
+    {
+      "id": "instrument-making-lutherie",
+      "label": "Instrument making & lutherie",
+      "category": "Craft & Hobbies",
+      "tier": 3,
+      "example_queries": [
+        "instrument making podcast",
+        "guitar building"
+      ],
+      "taxonomy_nodes": [
+        "craft/instrument-making"
+      ]
+    },
+    {
+      "id": "video-games",
+      "label": "Video games",
+      "category": "Craft & Hobbies",
+      "tier": 2,
+      "example_queries": [
+        "video game podcast",
+        "gaming podcast",
+        "game design"
+      ],
+      "taxonomy_nodes": [
+        "gaming",
+        "gaming/design"
+      ]
+    },
+    {
+      "id": "esports",
+      "label": "Esports",
+      "category": "Craft & Hobbies",
+      "tier": 3,
+      "example_queries": [
+        "esports podcast",
+        "competitive gaming"
+      ],
+      "taxonomy_nodes": [],
+      "notes": "no dedicated node"
+    },
+    {
+      "id": "board-games-tabletop",
+      "label": "Board games & tabletop",
+      "category": "Craft & Hobbies",
+      "tier": 3,
+      "example_queries": [
+        "board game podcast",
+        "tabletop rpg",
+        "dungeons and dragons"
+      ],
+      "taxonomy_nodes": [],
+      "notes": "no dedicated node"
+    },
+    {
+      "id": "travel",
+      "label": "Travel",
+      "category": "Travel",
+      "tier": 3,
+      "example_queries": [
+        "travel podcast",
+        "travel stories"
+      ],
+      "taxonomy_nodes": [
+        "travel"
+      ]
+    },
+    {
+      "id": "adventure-exploration",
+      "label": "Adventure & exploration",
+      "category": "Travel",
+      "tier": 3,
+      "example_queries": [
+        "adventure podcast",
+        "exploration stories"
+      ],
+      "taxonomy_nodes": [
+        "adventure/exploration"
+      ]
+    },
+    {
+      "id": "cities-urbanism",
+      "label": "Cities & urbanism",
+      "category": "Travel",
+      "tier": 3,
+      "example_queries": [
+        "urbanism podcast",
+        "city planning podcast"
+      ],
+      "taxonomy_nodes": [
+        "cities/urbanism"
+      ]
+    },
+    {
+      "id": "cars-racing",
+      "label": "Cars & racing",
+      "category": "Automotive",
+      "tier": 2,
+      "example_queries": [
+        "car podcast",
+        "racing podcast",
+        "automotive"
+      ],
+      "taxonomy_nodes": [
+        "automotive/racing"
+      ]
+    },
+    {
+      "id": "aviation",
+      "label": "Aviation",
+      "category": "Automotive",
+      "tier": 2,
+      "example_queries": [
+        "aviation podcast",
+        "plane crash podcast",
+        "aircraft"
+      ],
+      "taxonomy_nodes": [
+        "aviation/accidents"
+      ]
+    },
+    {
+      "id": "trains",
+      "label": "Trains",
+      "category": "Automotive",
+      "tier": 3,
+      "example_queries": [
+        "trains podcast",
+        "railway history"
+      ],
+      "taxonomy_nodes": [
+        "transport/trains"
+      ]
+    },
+    {
+      "id": "maritime-ships",
+      "label": "Maritime & ships",
+      "category": "Automotive",
+      "tier": 3,
+      "example_queries": [
+        "maritime podcast",
+        "shipping industry",
+        "naval history"
+      ],
+      "taxonomy_nodes": [
+        "transport/maritime"
+      ]
+    },
+    {
+      "id": "nature-animals",
+      "label": "Nature & animals",
+      "category": "Nature",
+      "tier": 2,
+      "example_queries": [
+        "nature podcast",
+        "animals podcast",
+        "wildlife"
+      ],
+      "taxonomy_nodes": [
+        "nature"
+      ]
+    },
+    {
+      "id": "ocean-marine-science",
+      "label": "Ocean & marine science",
+      "category": "Nature",
+      "tier": 3,
+      "example_queries": [
+        "ocean podcast",
+        "marine biology"
+      ],
+      "taxonomy_nodes": [
+        "nature/ocean-science"
+      ]
+    },
+    {
+      "id": "dinosaurs-paleontology",
+      "label": "Dinosaurs & paleontology",
+      "category": "Nature",
+      "tier": 3,
+      "example_queries": [
+        "dinosaur podcast",
+        "paleontology"
+      ],
+      "taxonomy_nodes": [
+        "nature/paleontology"
+      ]
+    },
+    {
+      "id": "weather-earth-science",
+      "label": "Weather & earth science",
+      "category": "Nature",
+      "tier": 3,
+      "example_queries": [
+        "weather podcast",
+        "earth science",
+        "geology"
+      ],
+      "taxonomy_nodes": [
+        "nature/weather",
+        "nature/earth-science"
+      ]
+    },
+    {
+      "id": "paranormal-ghost-stories",
+      "label": "Paranormal & ghost stories",
+      "category": "Paranormal & Fiction",
+      "tier": 2,
+      "example_queries": [
+        "paranormal podcast",
+        "ghost stories",
+        "conspiracy theories"
+      ],
+      "taxonomy_nodes": [
+        "paranormal"
+      ]
+    },
+    {
+      "id": "science-fiction",
+      "label": "Science fiction",
+      "category": "Paranormal & Fiction",
+      "tier": 3,
+      "example_queries": [
+        "sci fi podcast",
+        "science fiction stories"
+      ],
+      "taxonomy_nodes": [
+        "fiction/sci-fi"
+      ]
+    },
+    {
+      "id": "audio-drama",
+      "label": "Audio drama",
+      "category": "Paranormal & Fiction",
+      "tier": 3,
+      "example_queries": [
+        "audio drama podcast",
+        "fiction podcast"
+      ],
+      "taxonomy_nodes": [
+        "fiction/drama"
+      ]
+    },
+    {
+      "id": "comedy-fiction",
+      "label": "Comedy fiction",
+      "category": "Paranormal & Fiction",
+      "tier": 3,
+      "example_queries": [
+        "comedy fiction podcast"
+      ],
+      "taxonomy_nodes": [
+        "fiction/comedy"
+      ]
+    },
+    {
+      "id": "engineering-how-things-work",
+      "label": "Engineering & how things work",
+      "category": "Engineering",
+      "tier": 2,
+      "example_queries": [
+        "engineering podcast",
+        "how things are built"
+      ],
+      "taxonomy_nodes": [
+        "engineering"
+      ]
+    },
+    {
+      "id": "robotics",
+      "label": "Robotics",
+      "category": "Engineering",
+      "tier": 3,
+      "example_queries": [
+        "robotics podcast"
+      ],
+      "taxonomy_nodes": [
+        "engineering/ai-robotics"
+      ]
+    },
+    {
+      "id": "manufacturing-precision-machining",
+      "label": "Manufacturing & precision machining",
+      "category": "Engineering",
+      "tier": 3,
+      "example_queries": [
+        "manufacturing podcast",
+        "machining podcast"
+      ],
+      "taxonomy_nodes": [
+        "engineering/precision-mfg"
+      ]
+    },
+    {
+      "id": "engineering-disasters",
+      "label": "Engineering disasters",
+      "category": "Engineering",
+      "tier": 3,
+      "example_queries": [
+        "engineering disaster podcast",
+        "why buildings collapse"
+      ],
+      "taxonomy_nodes": [
+        "engineering/disasters"
+      ]
+    },
+    {
+      "id": "architecture-infrastructure",
+      "label": "Architecture & infrastructure",
+      "category": "Engineering",
+      "tier": 3,
+      "example_queries": [
+        "architecture podcast",
+        "infrastructure podcast",
+        "bridges and tunnels"
+      ],
+      "taxonomy_nodes": [
+        "architecture/infrastructure"
+      ]
+    },
+    {
+      "id": "psychology",
+      "label": "Psychology",
+      "category": "Psychology",
+      "tier": 2,
+      "example_queries": [
+        "psychology podcast",
+        "behavioral psychology"
+      ],
+      "taxonomy_nodes": [
+        "psychology"
+      ]
+    },
+    {
+      "id": "decision-making-behavioral-economics",
+      "label": "Decision-making & behavioral economics",
+      "category": "Psychology",
+      "tier": 3,
+      "example_queries": [
+        "decision making podcast",
+        "behavioral economics"
+      ],
+      "taxonomy_nodes": [
+        "psychology/decision-making"
+      ]
+    },
+    {
+      "id": "grief-loss",
+      "label": "Grief & loss",
+      "category": "Health & Fitness",
+      "tier": 3,
+      "example_queries": [
+        "grief podcast",
+        "coping with loss"
+      ],
+      "taxonomy_nodes": [
+        "health/mental"
+      ]
+    },
+    {
+      "id": "addiction-recovery",
+      "label": "Addiction & recovery",
+      "category": "Health & Fitness",
+      "tier": 3,
+      "example_queries": [
+        "addiction recovery podcast",
+        "sobriety podcast"
+      ],
+      "taxonomy_nodes": [
+        "health/mental"
+      ]
+    },
+    {
+      "id": "veterans-military-life",
+      "label": "Veterans & military life",
+      "category": "Society & Culture",
+      "tier": 3,
+      "example_queries": [
+        "veterans podcast",
+        "military life"
+      ],
+      "taxonomy_nodes": [
+        "history/military-modern"
+      ]
+    },
+    {
+      "id": "minimalism-simple-living",
+      "label": "Minimalism & simple living",
+      "category": "Education",
+      "tier": 3,
+      "example_queries": [
+        "minimalism podcast",
+        "simple living"
+      ],
+      "taxonomy_nodes": [
+        "education/self-improvement"
+      ]
+    },
+    {
+      "id": "real-estate-property-investing",
+      "label": "Real estate & property investing",
+      "category": "Business & Money",
+      "tier": 3,
+      "example_queries": [
+        "real estate podcast",
+        "property investing"
+      ],
+      "taxonomy_nodes": [
+        "economics/markets"
+      ]
+    },
+    {
+      "id": "negotiation",
+      "label": "Negotiation",
+      "category": "Business & Money",
+      "tier": 3,
+      "example_queries": [
+        "negotiation podcast",
+        "how to negotiate"
+      ],
+      "taxonomy_nodes": [
+        "business/management"
+      ]
+    },
+    {
+      "id": "book-club-literary-fiction",
+      "label": "Book club & literary fiction",
+      "category": "Society & Culture",
+      "tier": 2,
+      "example_queries": [
+        "book club podcast",
+        "literary fiction discussion"
+      ],
+      "taxonomy_nodes": [
+        "culture/books"
+      ]
+    },
+    {
+      "id": "poetry",
+      "label": "Poetry",
+      "category": "Society & Culture",
+      "tier": 3,
+      "example_queries": [
+        "poetry podcast"
+      ],
+      "taxonomy_nodes": [
+        "culture/books"
+      ]
+    },
+    {
+      "id": "late-night-topical-comedy",
+      "label": "Late-night & topical comedy",
+      "category": "Comedy",
+      "tier": 3,
+      "example_queries": [
+        "late night comedy podcast",
+        "topical comedy"
+      ],
+      "taxonomy_nodes": [
+        "comedy/interviews"
+      ]
+    },
+    {
+      "id": "semiconductors-chips",
+      "label": "Semiconductors & chips",
+      "category": "Science & Tech",
+      "tier": 3,
+      "example_queries": [
+        "semiconductor podcast",
+        "chip industry",
+        "nvidia"
+      ],
+      "taxonomy_nodes": [
+        "science/materials"
+      ]
+    },
+    {
+      "id": "electric-vehicles",
+      "label": "Electric vehicles",
+      "category": "Automotive",
+      "tier": 3,
+      "example_queries": [
+        "electric vehicle podcast",
+        "ev podcast",
+        "tesla"
+      ],
+      "taxonomy_nodes": [
+        "automotive/racing"
+      ]
+    },
+    {
+      "id": "wine-cocktails",
+      "label": "Wine & cocktails",
+      "category": "Food",
+      "tier": 3,
+      "example_queries": [
+        "wine podcast",
+        "cocktail podcast",
+        "mixology"
+      ],
+      "taxonomy_nodes": [
+        "food/cooking-science"
+      ]
+    },
+    {
+      "id": "gardening",
+      "label": "Gardening",
+      "category": "Craft & Hobbies",
+      "tier": 3,
+      "example_queries": [
+        "gardening podcast",
+        "home garden tips"
+      ],
+      "taxonomy_nodes": [
+        "craft/diy-home"
+      ]
+    },
+    {
+      "id": "interior-design",
+      "label": "Interior design",
+      "category": "Society & Culture",
+      "tier": 3,
+      "example_queries": [
+        "interior design podcast",
+        "home decor"
+      ],
+      "taxonomy_nodes": [
+        "culture/design"
+      ]
+    },
+    {
+      "id": "chess",
+      "label": "Chess",
+      "category": "Craft & Hobbies",
+      "tier": 3,
+      "example_queries": [
+        "chess podcast",
+        "chess strategy"
+      ],
+      "taxonomy_nodes": [
+        "math/puzzles"
+      ]
+    },
+    {
+      "id": "pets-animal-companionship",
+      "label": "Pets & animal companionship",
+      "category": "Nature",
+      "tier": 3,
+      "example_queries": [
+        "pets podcast",
+        "dog training podcast"
+      ],
+      "taxonomy_nodes": [
+        "nature/pets"
+      ]
+    },
+    {
+      "id": "non-profit-philanthropy",
+      "label": "Non-profit & philanthropy",
+      "category": "Business & Money",
+      "tier": 3,
+      "example_queries": [
+        "nonprofit podcast",
+        "philanthropy podcast"
+      ],
+      "taxonomy_nodes": [
+        "business/non-profit"
+      ]
+    },
+    {
+      "id": "k-pop-global-pop-music",
+      "label": "K-pop & global pop music",
+      "category": "Music",
+      "tier": 3,
+      "example_queries": [
+        "kpop podcast",
+        "global pop music"
+      ],
+      "taxonomy_nodes": [],
+      "notes": "no dedicated node"
+    },
+    {
+      "id": "combat-sports-boxing",
+      "label": "Combat sports (boxing)",
+      "category": "Sports",
+      "tier": 3,
+      "example_queries": [
+        "boxing podcast",
+        "combat sports"
+      ],
+      "taxonomy_nodes": [],
+      "notes": "no dedicated node — see also MMA/UFC entry"
+    },
+    {
+      "id": "design",
+      "label": "Design",
+      "category": "Society & Culture",
+      "tier": 3,
+      "example_queries": [
+        "design podcast",
+        "product design",
+        "graphic design"
+      ],
+      "taxonomy_nodes": [
+        "culture/design"
+      ]
+    }
+  ]
+}
