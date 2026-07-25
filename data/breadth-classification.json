@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T13:36:42.913Z",
+  "built_at": "2026-07-25T14:37:18.824Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-2045534d",
+    "last_batch_id": "fresh-2026-07-25-8d6e9307",
     "last_batch_tier": 1
   },
   "entries": {
@@ -89131,11 +89131,35 @@
     },
     "1573111162": {
       "topics": [
-        "nature/earth-science"
+        "nature/earth-science",
+        "food",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers earth science content with expert commentary.",
+      "display_title": "Real Organic Podcast",
+      "blurb": "Farmers interview scientists, activists, politicians, and authors engaged in protecting USDA organic food against an active corporate takeover",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1573116128": {
       "topics": [
@@ -89221,11 +89245,30 @@
     },
     "1573299076": {
       "topics": [
-        "culture/art"
+        "culture/fashion",
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers fashion content with expert commentary.",
+      "display_title": "Fool Coverage with Manny MUA and Laura Lee",
+      "blurb": "Light coverage, medium coverage, full coverage",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1573398072": {
       "topics": [
@@ -89487,11 +89530,35 @@
     },
     "1574214154": {
       "topics": [
-        "education"
+        "education",
+        "education/how-to",
+        "society/law"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers education content with expert commentary.",
+      "display_title": "LSAT Demon Daily",
+      "blurb": "Join the LSAT Demon team Tuesday through Sunday as they discuss a broad range of topics related to the LSAT and law school admissions",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1574219306": {
       "topics": [
@@ -89546,11 +89613,35 @@
     },
     "1574382232": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "religion",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers non profit content with expert commentary.",
+      "display_title": "Nonprofit Missionary Podcast with Ken McQuiller",
+      "blurb": "We help empower small to mid-sized churches to become true missionaries to your communities by helping establish faith-based nonprofits, secure funding, and focus on impactful outreach",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1574448401": {
       "topics": [
@@ -89659,12 +89750,25 @@
     },
     "1574802514": {
       "topics": [
-        "psychology",
-        "society"
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers news content with expert commentary.",
+      "display_title": "Stanford Psychology Podcast",
+      "blurb": "The student-led Stanford Psychology Podcast invites leading psychologists to talk about what’s on their mind lately",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1574821838": {
       "topics": [
@@ -89911,11 +90015,30 @@
     },
     "1576266622": {
       "topics": [
-        "education"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "The Preamble",
+      "blurb": "The world feels complicated",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1576310050": {
       "topics": [
@@ -89979,12 +90102,30 @@
     },
     "1576496602": {
       "topics": [
-        "religion/christianity",
-        "religion"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "The Salty Saint (a salty Mormon perspective)",
+      "blurb": "Mormons are known for being happy, friendly, and taking the phrase “killing with kindness” to a new level",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1576507503": {
       "topics": [
@@ -90010,11 +90151,25 @@
     },
     "1576594336": {
       "topics": [
-        "news/daily"
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers news content with expert commentary.",
+      "display_title": "Morning Wire",
+      "blurb": "Trust in the media is at an all-time low",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1576614213": {
       "topics": [
@@ -90277,11 +90432,35 @@
     },
     "1577790844": {
       "topics": [
-        "education/courses"
+        "business/non-profit",
+        "religion",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers non profit content with expert commentary.",
+      "display_title": "Real World NP",
+      "blurb": "Hi, I’m Liz Rohr: family nurse practitioner, wife, parent, and founder of Real World NP, a continuing education company for new nurse practitioners in primary care",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1577797587": {
       "topics": [
@@ -90306,11 +90485,30 @@
     },
     "1577848888": {
       "topics": [
-        "tv-film"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Beyond The Blinds",
+      "blurb": "\"The thing with blind items is that we don't often see what's right in front of our eyes\" - Gossip Girl Troy and Kelli are here for all of your",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1577849126": {
       "topics": [
@@ -90321,11 +90519,25 @@
     },
     "1577852614": {
       "topics": [
-        "personal-journals"
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers news content with expert commentary.",
+      "display_title": "Cancelled with Tana Mongeau & Brooke Schofield",
+      "blurb": "EXTRA",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1577852884": {
       "topics": [
@@ -90336,11 +90548,30 @@
     },
     "1577864998": {
       "topics": [
-        "economics/markets"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Money For Couples with Ramit Sethi",
+      "blurb": "Get Ramit's new book, Money for Couples at iwt",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1577866889": {
       "topics": [
@@ -90471,11 +90702,25 @@
     },
     "1578534520": {
       "topics": [
-        "health/sexuality"
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers news content with expert commentary.",
+      "display_title": "Sex, Body, and Soul",
+      "blurb": "Let's talk about the marvel that is our bodies, all they can do and what they need to thrive",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1578559817": {
       "topics": [
@@ -90591,11 +90836,30 @@
     },
     "1579094638": {
       "topics": [
-        "religion"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Uncommen: Man to Man",
+      "blurb": "Man to Man is a podcast for men striving to be exceptional in their roles as husbands, fathers, and leaders",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1579122752": {
       "topics": [
@@ -90759,11 +91023,30 @@
     },
     "1579707358": {
       "topics": [
-        "health/sexuality"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "ask a sub",
+      "blurb": "Ask a Sub is an advice podcast for the kink-curious to take themselves from dreaming to doing",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1579734265": {
       "topics": [
@@ -90811,11 +91094,30 @@
     },
     "1579900012": {
       "topics": [
-        "education/self-improvement"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "JIM ROHN",
+      "blurb": "Timeless Jim Rohn wisdom on discipline, success, personal growth, and daily execution",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1579904169": {
       "topics": [
@@ -90842,11 +91144,30 @@
     },
     "1579961692": {
       "topics": [
-        "sports/endurance"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Trail Society",
+      "blurb": "Keely Henninger, Corrine Malcolm, and Hillary Allen are three professional trail runners looking to utilize their experience as athletes and scientists to foster community and discussion around new and challenging",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1579977660": {
       "topics": [
@@ -90962,19 +91283,47 @@
     },
     "1580422750": {
       "topics": [
-        "craft"
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers music content with expert commentary.",
+      "display_title": "The World of Women Create Podcast",
+      "blurb": "Join the Women Create team on our podcast series The WORLD OF WOMEN CREATE",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1580439220": {
       "topics": [
-        "history"
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers music content with expert commentary.",
+      "display_title": "Right Answers Mostly",
+      "blurb": "History is just gossip",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1580449965": {
       "topics": [
@@ -91000,11 +91349,25 @@
     },
     "1580605564": {
       "topics": [
-        "gaming"
+        "travel"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers travel content with expert commentary.",
+      "display_title": "Homestuck Made This World",
+      "blurb": "Thinking critically about Homestuck",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1580607361": {
       "topics": [
@@ -91141,11 +91504,35 @@
     },
     "1581190636": {
       "topics": [
-        "society"
+        "business/non-profit",
+        "religion",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers non profit content with expert commentary.",
+      "display_title": "Never a straight answer",
+      "blurb": "Become a Paid Subscriber: https://podcasters",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1581208730": {
       "topics": [
@@ -91634,11 +92021,30 @@
     },
     "1583709988": {
       "topics": [
-        "math"
+        "culture/fashion",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers fashion content with expert commentary.",
+      "display_title": "Ten Minute Math",
+      "blurb": "Ten Minute Math helps parents purposefully build strong number sense in everyday routines so that their children can find the joy, wonder and beauty of mathematics because confidence in math",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1583771945": {
       "topics": [
@@ -91707,12 +92113,30 @@
     },
     "1583961142": {
       "topics": [
-        "religion/spirituality",
-        "religion"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Pagan Coffee Talk",
+      "blurb": "Pagan Coffee Talk is a modern paganism & witchcraft podcast exploring spiritual practice, community, and clergy experience weekly",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1583992532": {
       "topics": [
@@ -91731,11 +92155,30 @@
     },
     "1584195610": {
       "topics": [
-        "business/management"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Create Magic At Work®",
+      "blurb": "Create Magic At Work® is a leadership podcast exploring spiritual intelligence, conscious leadership, and the future of work",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1584214055": {
       "topics": [
@@ -92087,12 +92530,35 @@
     },
     "1585499926": {
       "topics": [
-        "space",
-        "society"
+        "business/non-profit",
+        "religion",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers non profit content with expert commentary.",
+      "display_title": "Making Space with Hoda Kotb",
+      "blurb": "Life gets busy",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1585520577": {
       "topics": [
@@ -92223,11 +92689,30 @@
     },
     "1585883398": {
       "topics": [
-        "tv-film"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Morgan's Pop Talks",
+      "blurb": "Welcome to Morgan's Pop Talks – your weekly VIP pass into the world of reality TV and pop culture",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1585943594": {
       "topics": [
@@ -92301,11 +92786,30 @@
     },
     "1586269186": {
       "topics": [
-        "business"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "The Powers That Be: Daily",
+      "blurb": "Join Emmy Award-winning journalist Peter Hamby, along with the team of expert journalists at Puck, as they let you in on the real conversations insiders are having across the four",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1586302997": {
       "topics": [
@@ -92338,11 +92842,30 @@
     },
     "1586378518": {
       "topics": [
-        "kids-family/education"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Who, When, Wow!",
+      "blurb": "Who, When, Wow",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1586380272": {
       "topics": [
@@ -92427,11 +92950,35 @@
     },
     "1586636668": {
       "topics": [
-        "space"
+        "business/non-profit",
+        "religion",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers non profit content with expert commentary.",
+      "display_title": "The Space Policy Show",
+      "blurb": "The Aerospace Corporation’s Center for Space Policy and Strategy hosts this series to bring our policy experts together with thought leaders, government, academia and professionals from throughout the space community",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1586679298": {
       "topics": [
@@ -92543,11 +93090,25 @@
     },
     "1587046024": {
       "topics": [
-        "education/self-improvement"
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers news content with expert commentary.",
+      "display_title": "How to Touch Grass",
+      "blurb": "It may be time to rethink our relationships with our devices",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1587064706": {
       "topics": [
@@ -92745,11 +93306,30 @@
     },
     "1587816694": {
       "topics": [
-        "science"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Let's Learn Everything!",
+      "blurb": "Science communicators Ella Hubber, Tom Lum, and Caroline Roper learn about anything and everything interesting",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1587954336": {
       "topics": [
@@ -93132,11 +93712,30 @@
     },
     "1589717836": {
       "topics": [
-        "education/self-improvement"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Moments Podcast",
+      "blurb": "A place for you to feel understood, a place for you to know you’re never alone, a place to escape",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1589833252": {
       "topics": [
@@ -93236,12 +93835,33 @@
     },
     "1590406336": {
       "topics": [
-        "religion/christianity",
-        "religion"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1590428205": {
       "topics": [
@@ -93429,11 +94049,30 @@
     },
     "1591089070": {
       "topics": [
-        "religion"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Rezo del Santo Rosario",
+      "blurb": "Te invitamos a rezar con nosotros el Santo Rosario",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1591095413": {
       "topics": [
@@ -93829,11 +94468,30 @@
     },
     "1592855440": {
       "topics": [
-        "science"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "The Hamilton Morris Podcast",
+      "blurb": "Hamilton Morris creates and shares content with his followers on Patreon",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1592888750": {
       "topics": [
@@ -93895,11 +94553,25 @@
     },
     "1593039688": {
       "topics": [
-        "kids-family/education"
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers music content with expert commentary.",
+      "display_title": "Flip and Mozi",
+      "blurb": "After crash landing on Earth, travel-blogging aliens Flip and Mozi, are spending the next few thousand light years discovering what it means to be an “earthling” in this hit podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1593050083": {
       "topics": [
@@ -93925,11 +94597,35 @@
     },
     "1593203014": {
       "topics": [
-        "computing"
+        "business/non-profit",
+        "religion",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers non profit content with expert commentary.",
+      "display_title": "The Green Blueprint",
+      "blurb": "We already have many of the climate solutions we need",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1593204897": {
       "topics": [
@@ -93955,11 +94651,35 @@
     },
     "1593349570": {
       "topics": [
-        "society"
+        "psychology",
+        "society",
+        "economics"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.45
+        },
+        {
+          "node": "society",
+          "confidence": 0.45
+        },
+        {
+          "node": "economics",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show covers psychology content with expert commentary.",
+      "display_title": "دغدغه ایران",
+      "blurb": "دغدغه ایران پادکستی بر محور اندیشه توسعه است که در آن کتاب‌ها و گفت‌وگوهای با اندیشمندان بر محور توسعه و مسائل ایران منتشر می‌شود",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1593419631": {
       "topics": [
@@ -94383,12 +95103,30 @@
     },
     "1595878492": {
       "topics": [
-        "nature/ocean-science",
-        "hobbies"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "The Scuba Diving Podcast",
+      "blurb": "Never before has the entire underwater industry come together in one place & without barriers",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1595963324": {
       "topics": [
@@ -94668,11 +95406,25 @@
     },
     "1597620394": {
       "topics": [
-        "kids-family/stories"
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers music content with expert commentary.",
+      "display_title": "Koala Moon: Kids Bedtime Stories & Sleep Stories",
+      "blurb": "Transform bedtime into the most magical part of the day with Koala Moon: Kids Bedtime Stories, the number one kids podcast trusted by families around the world",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1597628439": {
       "topics": [
@@ -94836,11 +95588,25 @@
     },
     "1598400112": {
       "topics": [
-        "tv-film"
+        "comedy"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers comedy content with expert commentary.",
+      "display_title": "Pop Culture Crisis",
+      "blurb": "Your daily source of sanity while navigating the insane world of pop culture, hosted by Brett Dasovic and Mary Morgan",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1598413266": {
       "topics": [
@@ -95035,12 +95801,35 @@
     },
     "1599771334": {
       "topics": [
-        "history/military-modern",
-        "tv-film/interviews"
+        "business/non-profit",
+        "religion",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers non profit content with expert commentary.",
+      "display_title": "Urban Valor: the podcast",
+      "blurb": "Welcome to Urban Valor, where we hear the stories of our veteran heroes in their own words",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1599782608": {
       "topics": [
@@ -95143,12 +95932,30 @@
     },
     "1600496638": {
       "topics": [
-        "religion/christianity",
-        "education/courses"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "The Scriptures Are Real",
+      "blurb": "The Scriptures Are Real (TSAR) with Kerry Muhlestein is a podcast where we look at elements of the scriptures that have become real to us",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1600528975": {
       "topics": [
@@ -95280,11 +96087,30 @@
     },
     "1601531428": {
       "topics": [
-        "comedy"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "War of the Roses - To Catch a",
+      "blurb": "Think your partner might be up to something shady",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1601611493": {
       "topics": [
@@ -95311,11 +96137,25 @@
     },
     "1601659576": {
       "topics": [
-        "comedy/casual-hangs"
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers news content with expert commentary.",
+      "display_title": "Jubal Phone Pranks from The Jubal Show",
+      "blurb": "The wildest, most hilarious prank call podcast from The Jubal Show",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1601680150": {
       "topics": [
@@ -95356,11 +96196,25 @@
     },
     "1602160612": {
       "topics": [
-        "comedy/stand-up"
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers comedy content with expert commentary.",
+      "display_title": "Teachers Off Duty",
+      "blurb": "Your favorite teacher-comedians from the Bored Teachers Comedy Tours sharing stories and experiences from the classroom and beyond, brought to you by Bored Teachers",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1602174138": {
       "topics": [
@@ -95650,11 +96504,25 @@
     },
     "1603695814": {
       "topics": [
-        "tv-film"
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers news content with expert commentary.",
+      "display_title": "The Royal Report",
+      "blurb": "From Buckingham Palace to Windsor Castle, and King Charles and Camilla to Meghan and Harry, Newsweek's podcast The Royal Report brings you all the royal news",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1603713280": {
       "topics": [
@@ -95731,11 +96599,35 @@
     },
     "1604012230": {
       "topics": [
-        "hobbies"
+        "business/non-profit",
+        "religion",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers non profit content with expert commentary.",
+      "display_title": "Get Piped Podcast",
+      "blurb": "GPP looks to satisfy the philosophical and fantastical realm of smoking pipe content",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1604034708": {
       "topics": [
@@ -95777,11 +96669,30 @@
     },
     "1604255980": {
       "topics": [
-        "tv-film/animation"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "One Piece at a Time",
+      "blurb": "One Piece at a Time is a One Piece Podcast where Derrick Bitner, of Good Vibes Gaming, and Brandon Bovia, freelance letterer at Shonen Jump, read through 5 chapters of",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1604296096": {
       "topics": [
@@ -96688,12 +97599,38 @@
     },
     "1607949880": {
       "topics": [
-        "engineering/ai-robotics",
-        "society/government"
+        "education",
+        "education/how-to",
+        "society/law"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show covers education content with expert commentary.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1607965860": {
       "topics": [
@@ -96808,11 +97745,25 @@
     },
     "1608211048": {
       "topics": [
-        "tv-film"
+        "comedy"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers comedy content with expert commentary.",
+      "display_title": "The Parting Shot with H. Alan Scott",
+      "blurb": "Newsweek’s H",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1608224209": {
       "topics": [
@@ -96890,11 +97841,35 @@
     },
     "1608682810": {
       "topics": [
-        "education/how-to"
+        "education",
+        "education/how-to",
+        "society/law"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers education content with expert commentary.",
+      "display_title": "The College Admissions Process Podcast",
+      "blurb": "Welcome to \"The College Admissions Process Podcast,\" your ultimate resource for navigating the journey to higher education while receiving application tips and other college advice",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1608689666": {
       "topics": [
@@ -97209,11 +98184,30 @@
     },
     "1609802758": {
       "topics": [
-        "religion"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Mapping the Doctrine of Discovery",
+      "blurb": "The Mapping the Doctrine of Discovery podcast, hosted by Philip P",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1609805414": {
       "topics": [
@@ -97232,11 +98226,30 @@
     },
     "1609909822": {
       "topics": [
-        "history"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Redacted History",
+      "blurb": "Redacted (verb): censor or obscure for legal or security purposes",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1609982656": {
       "topics": [
@@ -97247,11 +98260,25 @@
     },
     "1609986124": {
       "topics": [
-        "society"
+        "comedy"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers comedy content with expert commentary.",
+      "display_title": "The Comment Section with Drew Afualo",
+      "blurb": "Each week, Drew Afualo is joined by a special guest to dive headfirst into pop culture takes and the comedy of life both on and offline",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1609986281": {
       "topics": [
@@ -97381,11 +98408,30 @@
     },
     "1610466028": {
       "topics": [
-        "education/how-to"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Coaching the Whole Educator",
+      "blurb": "Coaching the Whole Educator, hosted by education consultant and author Becca Silver, is a podcast on instructional coaching, teacher leadership, and school leadership for anyone who wants to strengthen their",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1610476816": {
       "topics": [
@@ -97466,12 +98512,30 @@
     },
     "1610946388": {
       "topics": [
-        "culture/mythology",
-        "personal-journals"
+        "computing",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers computing content with expert commentary.",
+      "display_title": "Scary | A Paranormal Podcast",
+      "blurb": "Scary | A Paranormal Podcast features true paranormal stories submitted by listeners from around the world",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1610950506": {
       "topics": [
@@ -97530,11 +98594,35 @@
     },
     "1611097600": {
       "topics": [
-        "society"
+        "business/non-profit",
+        "religion",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers non profit content with expert commentary.",
+      "display_title": "The Cognitive Dissonance Podcast",
+      "blurb": "Attempting to fill the gap between entertainment and academic interests, The Cognitive Dissonance Podcast hopes to present deeper explorations of the human experience",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-8d6e9307",
+      "classified_at": "2026-07-25T14:37:18.824Z"
     },
     "1611118279": {
       "topics": [
