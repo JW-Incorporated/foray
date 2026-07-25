@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T10:11:22.503Z",
+  "built_at": "2026-07-25T11:12:20.637Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-e6f2889c",
+    "last_batch_id": "fresh-2026-07-25-2a828a85",
     "last_batch_tier": 1
   },
   "entries": {
@@ -44448,11 +44448,30 @@
     },
     "1440513300": {
       "topics": [
-        "personal-journals"
+        "society",
+        "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Survivors share abuse stories within Amish, Mennonite, Anabaptist high-control religious communities.",
+      "display_title": "The Plain People's Podcast",
+      "blurb": "Underbelly survivor stories of abuse and escape from high-control Amish and Mennonite communities. Features first-hand accounts from current and former members.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1440526574": {
       "topics": [
@@ -44661,8 +44680,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host Brady Haran interviews mathematicians and specialists about numbers, fields medals, and math personalities.",
+      "display_title": "The Numberphile Podcast",
+      "blurb": "Interviews with mathematicians and number enthusiasts on Fields Medal winners, prime numbers, and the people behind mathematics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1441538919": {
       "topics": [
@@ -44798,12 +44835,30 @@
     },
     "1441884090": {
       "topics": [
-        "nature",
+        "craft/diy-home",
         "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two passionate gardeners discuss flowers, vegetables, garden design, and practical gardening advice.",
+      "display_title": "The Gardenangelists: Flowers, Veggies",
+      "blurb": "Carol Michel and Dee Nash chat about flowers, vegetables, and gardening wisdom. Casual conversations for both beginners and experienced gardeners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1441969737": {
       "topics": [
@@ -44858,8 +44913,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedian Des Bishop and guests respond to listener voicemails with advice and comedy.",
+      "display_title": "Berner Phone",
+      "blurb": "Comedian Des Bishop hosts a call-in hotline where callers leave voicemails with advice requests and confessions. Comedians riff on listener problems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1442273607": {
       "topics": [
@@ -45000,11 +45069,30 @@
     },
     "1444227264": {
       "topics": [
-        "math"
+        "math",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host presents contrarian takes on mathematics history from Archimedes to Einstein, rejecting propaganda versions.",
+      "display_title": "Opinionated History of Mathematics",
+      "blurb": "History of mathematics with iconoclastic twists, debunking common narratives about mathematical discoveries and their true origins.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1444357023": {
       "topics": [
@@ -45039,12 +45127,25 @@
     },
     "1444464816": {
       "topics": [
-        "economics/markets",
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Julian Simpson creates mystery-thriller audio drama based on H.P. Lovecraft's Cthulhu Mythos stories.",
+      "display_title": "The Lovecraft Investigations",
+      "blurb": "Julian Simpson's serialized audio mystery thriller based on H.P. Lovecraft stories and the Cthulhu Mythos. Full-cast dramatic production.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1444490547": {
       "topics": [
@@ -45070,11 +45171,30 @@
     },
     "1444559244": {
       "topics": [
-        "tv-film"
+        "tv-film/interviews",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amanda Hirsch sits down with celebrities, reality stars, and TV personalities for casual interviews.",
+      "display_title": "Not Skinny But Not Fat",
+      "blurb": "Amanda Hirsch interviews celebrities, reality stars, and TV personalities in laid-back, conversational episodes. Weekly celebrity hangouts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1444667419": {
       "topics": [
@@ -45243,12 +45363,30 @@
     },
     "1445762076": {
       "topics": [
-        "space",
+        "psychology",
         "education/self-improvement"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amanda Pua Walsh hosts astrology professionals discussing zodiac transits, birth charts, and living with purpose.",
+      "display_title": "Astrology Hub Podcast",
+      "blurb": "Professional astrologers discuss zodiac transits, birth charts, and practical strategies for living with cosmic awareness and intention.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1445812977": {
       "topics": [
@@ -45268,20 +45406,52 @@
     },
     "1445900544": {
       "topics": [
-        "culture"
+        "religion/christianity"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Catholic prayers, scripture readings, and Rosary meditations under 25 minutes for morning listening.",
+      "display_title": "Daily Rosary Meditations",
+      "blurb": "Quick daily Catholic prayers, scripture, and Rosary meditations designed for morning routines. All episodes under 25 minutes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1445901378": {
       "topics": [
-        "economics/markets",
-        "society/government"
+        "economics",
+        "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nick Hanauer and economists discuss trickle-down mythology, wage suppression, and middle-out economics alternatives.",
+      "display_title": "Pitchfork Economics Nick Hanauer",
+      "blurb": "Economist Nick Hanauer and thinkers examine how the economy actually works beyond trickle-down myths. Focus on policy, wages, and inequality.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1445929750": {
       "topics": [
@@ -45308,17 +45478,45 @@
       "topics": [
         "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hosts read dramatic one-star reviews of products and places with comedic flair.",
+      "display_title": "Beach Too Sandy, Water Too Wet",
+      "blurb": "Siblings Xandy and Christine Schiefer read dramatic one-star reviews aloud. Comedy through real customer complaints.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1446116424": {
       "topics": [
         "culture/books"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sarah interviews book guests weekly about favorites, new releases, and publishing industry trends.",
+      "display_title": "Sarah's Bookshelves Live",
+      "blurb": "Sarah interviews guests bi-weekly about books they love, new releases, and publishing trends. Candid book criticism and recommendations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1446211545": {
       "topics": [
@@ -45367,11 +45565,30 @@
     },
     "1446333312": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paul and Erika revisit beloved childhood movies and TV shows to examine how they've aged.",
+      "display_title": "That Aged Well",
+      "blurb": "Hosts revisit beloved childhood films and TV to examine their cultural impact and aging. Nostalgia meets critical retrospection.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1446336657": {
       "topics": [
@@ -45422,11 +45639,30 @@
     },
     "1446527874": {
       "topics": [
-        "comedy"
+        "comedy",
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians ThatChickAngel and KevOnStage banter about current events, culture, and life.",
+      "display_title": "Here's The Thing",
+      "blurb": "Comedians ThatChickAngel and KevOnStage discuss culture, news, and life with unfiltered humor and banter.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1446537332": {
       "topics": [
@@ -45498,12 +45734,30 @@
     },
     "1447014030": {
       "topics": [
-        "math",
-        "education/how-to"
+        "education/how-to",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kyle and Jon guide K-12 math educators on lesson design, student engagement, and curriculum implementation.",
+      "display_title": "Making Math Moments Matter",
+      "blurb": "Kyle and Jon help K-12 math teachers transform lessons through engagement strategies, curriculum design, and student-centered practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1447029317": {
       "topics": [
@@ -45655,12 +45909,30 @@
     },
     "1447793202": {
       "topics": [
-        "space",
-        "education/self-improvement"
+        "psychology",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dr. Dom and Terri have authentic conversations on health, relationships, and mental wellness for Black women.",
+      "display_title": "Cultivating H.E.R. Space",
+      "blurb": "Dr. Dom and Terri create safe space for Black women to discuss mental health, relationships, and healing. Candid, vulnerable conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1447851481": {
       "topics": [
@@ -46041,11 +46313,30 @@
     },
     "1448973714": {
       "topics": [
-        "science"
+        "science",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host Sam covers MCAT exam topics, test-taking strategies, and interviews MCAT tutors and experts.",
+      "display_title": "MCAT Basics",
+      "blurb": "Sam breaks down MCAT exam content including physics, chemistry, biology, and psychology. Features tutors and prep strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1449000632": {
       "topics": [
@@ -46126,11 +46417,30 @@
     },
     "1449291636": {
       "topics": [
-        "education/how-to"
+        "relationships",
+        "psychology/decision-making"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brett and Sally answer questions from 20/30-somethings about relationships, finances, career, and life.",
+      "display_title": "The Mail-In Podcast",
+      "blurb": "Brett Merriman and Sally deFries answer submitted questions from young adults on relationships, money, career, and life decisions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1449293528": {
       "topics": [
@@ -46223,19 +46533,52 @@
     },
     "1449669906": {
       "topics": [
-        "music"
+        "music",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Toby Morse, H2O frontman, has authentic conversations with musicians and friends about life and creativity.",
+      "display_title": "One Life One Chance Toby Morse",
+      "blurb": "Toby Morse, H2O frontman, interviews musicians and friends in raw, therapeutic conversations about life and creative practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1449678510": {
       "topics": [
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians Trevor Wallace and Michael Blaustein do weird activities and discuss the resulting absurdity.",
+      "display_title": "Stiff Socks",
+      "blurb": "Trevor Wallace and Michael Blaustein do weird activities then discuss how odd the experiences were. Stand-up comedy philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1449687140": {
       "topics": [
@@ -46364,12 +46707,30 @@
     },
     "1450241676": {
       "topics": [
-        "gaming",
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "gaming"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Four comedians play D&D 5e as dads transported to fantasy realm trying to rescue their sons.",
+      "display_title": "Dungeons and Daddies",
+      "blurb": "Four comedians play D&D as middle-aged fathers transported to a fantasy world on a quest to rescue their sons.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1450267467": {
       "topics": [
@@ -46506,11 +46867,30 @@
     },
     "1450599780": {
       "topics": [
-        "tv-film"
+        "hobbies",
+        "culture/pop-culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Theme park enthusiasts Sean and Alex discuss roller coasters, parks, and amusement industry trends globally.",
+      "display_title": "Coaster Kings",
+      "blurb": "Enthusiasts discuss theme parks and roller coasters worldwide with history, philosophy, and humor. Coverage from Orlando to Asia.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1450664435": {
       "topics": [
@@ -46610,11 +46990,30 @@
     },
     "1451026260": {
       "topics": [
-        "craft"
+        "craft",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jennifer Wilson interviews scrapbookers about memory-keeping approaches, techniques, and creative practices.",
+      "display_title": "Scrapbook Your Way",
+      "blurb": "Jennifer Wilson interviews memory-keepers about modern scrapbooking, digital approaches, and creative memory-keeping without guilt.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1451082652": {
       "topics": [
@@ -46658,11 +47057,30 @@
     },
     "1451224710": {
       "topics": [
-        "education"
+        "business/startups",
+        "education/self-improvement"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jackie interviews entrepreneurs and experts on business, manifestation, energy, and purpose-driven work.",
+      "display_title": "Business Alchemy Jackie Minsky",
+      "blurb": "Jackie Minsky interviews entrepreneurs and thought leaders on purpose-driven business, ethical marketing, and personal transformation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1451230227": {
       "topics": [
@@ -46704,11 +47122,30 @@
     },
     "1451558706": {
       "topics": [
-        "history"
+        "history",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hosts cover 1980s pop culture: movies, music, toys, TV shows, and cultural moments that defined the decade.",
+      "display_title": "Everything 80s",
+      "blurb": "Dive into 1980s pop culture covering iconic movies, music, toys, and TV shows. Gen X nostalgia with historical depth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1451560910": {
       "topics": [
@@ -46800,11 +47237,30 @@
     },
     "1451763486": {
       "topics": [
-        "automotive"
+        "automotive",
+        "automotive/racing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spurgeon Dunbar and Zack Courts discuss motorcycle industry trends, gear, and riders in depth.",
+      "display_title": "Highside/Lowside Motorcycle Podcast",
+      "blurb": "Motorcycle enthusiasts and industry insiders discuss the culture, technology, and personalities shaping modern motorcycling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1451866593": {
       "topics": [
@@ -46928,11 +47384,30 @@
     },
     "1452382842": {
       "topics": [
+        "science",
         "nature/earth-science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bite-sized science lessons explaining complex topics from physics to money to history for easy listening.",
+      "display_title": "ELI5 Explain Like I'm 5",
+      "blurb": "Accessible mini-episodes breaking down complex science, history, and everyday topics into understandable explanations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1452401035": {
       "topics": [
@@ -47144,11 +47619,30 @@
     },
     "1453555416": {
       "topics": [
-        "comedy/interviews"
+        "comedy/interviews",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Shayne Topp and Amanda Lehan-Canto discuss internet trends, absurd ideas, and pop culture with rotating guests.",
+      "display_title": "Smosh Mouth",
+      "blurb": "Smosh comedians discuss internet culture, weird finds, and dumb ideas with rotating guest stars. Pure comedy hangs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1453564609": {
       "topics": [
@@ -47159,11 +47653,30 @@
     },
     "1453571424": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hosts discuss cinema issues, review films and TV shows, and recap current series episodes.",
+      "display_title": "Frames Per Second",
+      "blurb": "In-depth discussions of cinema and TV, including weekly show recaps, film reviews, and industry analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1453591627": {
       "topics": [
@@ -47268,11 +47781,30 @@
     },
     "1454036760": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cameron Ford interviews detection dog handlers on training, operational tactics, and working with K9s.",
+      "display_title": "K9s Talking Scents",
+      "blurb": "Detection dog handlers discuss training methods, real operational stories, and canine scent work for law enforcement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1454042483": {
       "topics": [
@@ -47412,11 +47944,30 @@
     },
     "1454548968": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Laura and Rachel review ethical adult content and discuss sexual wellness from an enthusiast perspective.",
+      "display_title": "Girls on Porn",
+      "blurb": "Laura and Rachel review ethical adult content and discuss sexual wellness and relationships with candor and humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1454555052": {
       "topics": [
@@ -47453,8 +48004,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jack Hope, Max Rowe-Brown, and Ross Legg provide topical cricket analysis, World Cup coverage, and IPL insights.",
+      "display_title": "The Cricket Podcast",
+      "blurb": "Topical cricket podcast covering international matches, World Cups, IPL, and Ashes cricket with analysis and humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1454748884": {
       "topics": [
@@ -47473,11 +48038,30 @@
     },
     "1454811552": {
       "topics": [
-        "health"
+        "health",
+        "psychology"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Becky Hayter shares vulnerability-focused stories about resilience, grief, trauma, and survival with guests.",
+      "display_title": "For The Hayters Stories We Survive",
+      "blurb": "Personal stories of resilience, grief, trauma, and survival. Vulnerable conversations connecting listeners through shared human experience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1454816308": {
       "topics": [
@@ -47543,12 +48127,30 @@
     },
     "1455031182": {
       "topics": [
-        "engineering/ai-robotics",
-        "business/marketing"
+        "business/marketing",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Greg Kihlström interviews marketing and tech leaders on AI adoption, customer data, and brand strategy.",
+      "display_title": "The Agile Brand Greg Kihlström",
+      "blurb": "Greg Kihlström discusses marketing technology, AI adoption, and customer experience with brand executives and tech leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1455031218": {
       "topics": [
@@ -47629,11 +48231,30 @@
     },
     "1455386910": {
       "topics": [
+        "science",
         "nature/earth-science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MIT experts break down climate science, technologies, and policies in quick, accessible episodes.",
+      "display_title": "Ask MIT Climate",
+      "blurb": "Award-winning MIT podcast explaining climate science, clean energy, and policy. Quick episodes from real climate scientists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1455395163": {
       "topics": [
@@ -48104,11 +48725,30 @@
     },
     "1457402220": {
       "topics": [
-        "health/alternative"
+        "education",
+        "science/storytelling"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Benjamin Boster reads slow-paced, fact-filled content on history, science, and philosophy to help listeners sleep.",
+      "display_title": "I Can't Sleep",
+      "blurb": "Host reads calm, fact-filled content on science, history, and oddities with zero plot urgency. Perfect for sleep.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1457501963": {
       "topics": [
@@ -48136,12 +48776,30 @@
     },
     "1457552694": {
       "topics": [
-        "history/military-modern",
-        "history"
+        "history",
+        "history/military-modern"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Al Murray and James Holland explore WWII history, battles, and untold stories with humor and expertise.",
+      "display_title": "WW2 Pod We Have Ways",
+      "blurb": "Comedian Al Murray and historian James Holland dive into WWII history with detailed battle analysis and forgotten stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1457601137": {
       "topics": [
@@ -48480,11 +49138,30 @@
     },
     "1458675168": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Alex O'Connor interviews philosophers, scientists, and thinkers on consciousness, ethics, religion, and meaning.",
+      "display_title": "Within Reason",
+      "blurb": "Alex O'Connor interviews philosophers and thinkers on consciousness, ethics, and philosophy. Features guests like Richard Dawkins.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1458675998": {
       "topics": [
@@ -48620,11 +49297,30 @@
     },
     "1459273902": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Four D&D players act out a campaign story with game mechanics, quests, and character drama.",
+      "display_title": "Halfway to Heroes D&D",
+      "blurb": "D&D 5e actual play podcast following four characters from a closing fantasy academy on quests and adventures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1459322652": {
       "topics": [
@@ -48645,9 +49341,27 @@
         "craft/woodworking",
         "hobbies"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.7
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Shannon discusses wood species, lumber industry history, and practical woodworking knowledge.",
+      "display_title": "Shannon's Lumber Industry Update",
+      "blurb": "8/4 kiln-dried episodes exploring wood species, lumber history, and practical woodworking knowledge. Dispelling timber myths.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1459399711": {
       "topics": [
@@ -48819,11 +49533,30 @@
     },
     "1460036160": {
       "topics": [
+        "culture",
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.65
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lila Rose explores questions on relationships, faith, health, identity, and cultural commentary.",
+      "display_title": "The Lila Rose Show",
+      "blurb": "Conversations on relationships, faith, health, identity, and cultural commentary with political and social perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1460036325": {
       "topics": [
@@ -49018,11 +49751,30 @@
     },
     "1460805372": {
       "topics": [
-        "education/self-improvement"
+        "education/self-improvement",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Katy Wells teaches holistic decluttering, mental load reduction, and creating long-term home organization systems.",
+      "display_title": "Maximized Minimalist Podcast",
+      "blurb": "Katy Wells teaches decluttering and home organization from physical, mental, and emotional perspectives for lasting results.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1460834956": {
       "topics": [
@@ -49055,11 +49807,30 @@
     },
     "1461493560": {
       "topics": [
-        "education/self-improvement"
+        "education/self-improvement",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marielle Segarra talks with experts on sleep, money, parenting, relationships, and practical life skills.",
+      "display_title": "Life Kit",
+      "blurb": "NPR's podcast on life skills from sleep to money to parenting. Expert advice for adulting better.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1461494159": {
       "topics": [
@@ -49231,11 +50002,30 @@
     },
     "1462216572": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tonya Mosley revisits favorite episodes on rest, racial trauma, body image, and social justice.",
+      "display_title": "Truth Be Told Time to Thrive",
+      "blurb": "Rebroadcast collection from Truth Be Told featuring conversations on rest, justice, trauma, and resilience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1462226534": {
       "topics": [
@@ -49299,11 +50089,30 @@
     },
     "1462418412": {
       "topics": [
-        "science"
+        "science",
+        "medicine/biology"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dr. Patrick Short analyzes genetics research, interviews experts, and discusses breakthroughs in genetic medicine.",
+      "display_title": "The Genetics Podcast",
+      "blurb": "Dr. Patrick Short and experts discuss genetics research, precision medicine, and latest findings in genomic science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1462472251": {
       "topics": [
@@ -49606,11 +50415,30 @@
     },
     "1464086460": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Yehuda Geberer shares Eastern European Jewish history, personalities, and cultural heritage from pre-war era.",
+      "display_title": "Jewish History Soundbites",
+      "blurb": "Tour guide Yehuda Geberer brings pre-war Eastern European Jewish life alive with historical narratives and personal accounts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1464094232": {
       "topics": [
@@ -49630,11 +50458,30 @@
     },
     "1464240720": {
       "topics": [
-        "sports/football"
+        "sports/football",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL players Will Compton and Taylor Lewan interview guests about sports, life, and culture.",
+      "display_title": "Bussin' With The Boys",
+      "blurb": "NFL players Will Compton and Taylor Lewan interview athletes, celebrities, and friends on sports and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1464478802": {
       "topics": [
@@ -49783,11 +50630,30 @@
     },
     "1465273008": {
       "topics": [
-        "comedy"
+        "comedy",
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bunnie XO hosts comedy discussions on relationships, trauma, confessions, and current events.",
+      "display_title": "Dumb Blonde",
+      "blurb": "Bunnie XO discusses relationships, embarrassing moments, and life's chaos with humor and vulnerability. Pure comedy conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1465291335": {
       "topics": [
@@ -49800,11 +50666,30 @@
     },
     "1465299678": {
       "topics": [
-        "kids-family"
+        "kids-family/stories",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mrs. Honeybee tells mindful bedtime stories featuring the listener as protagonist in magical adventures.",
+      "display_title": "Honeybee Bedtime Stories",
+      "blurb": "Teacher and mother Mrs. Honeybee tells personalized bedtime stories with mindfulness woven throughout for children.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1465404635": {
       "topics": [
@@ -49903,11 +50788,30 @@
     },
     "1466286684": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians Heather Anne Campbell, Nick Wiger, and Matt Apodaca discuss video games they play.",
+      "display_title": "Get Played",
+      "blurb": "Comedians discuss video games with humor, analyzing both good and bad games across all genres.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1466299501": {
       "topics": [
@@ -49934,11 +50838,30 @@
     },
     "1466445204": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "society"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fight the New Drug podcast covers pornography's harmful effects using science, facts, and personal testimony.",
+      "display_title": "Consider Before Consuming",
+      "blurb": "Non-religious examination of pornography's harmful impacts using research, facts, and survivor stories from harm.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1466446583": {
       "topics": [
@@ -50088,11 +51011,30 @@
     },
     "1467317304": {
       "topics": [
-        "computing"
+        "computing",
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two brothers discuss computer hardware, PC gaming, and tech industry rumors with humor.",
+      "display_title": "Broken Silicon",
+      "blurb": "Engineer and scientist brothers discuss PC hardware, gaming tech, and industry developments with deep expertise.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1467374705": {
       "topics": [
@@ -50112,11 +51054,30 @@
     },
     "1467438756": {
       "topics": [
-        "comedy"
+        "comedy",
+        "news/commentary"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kirk Minihane delivers raw, uncensored commentary on sports, culture, and entertainment.",
+      "display_title": "The Kirk Minihane Show",
+      "blurb": "Kirk Minihane's uncensored commentary on sports, politics, and culture from a unique media perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1467454828": {
       "topics": [
@@ -50265,11 +51226,30 @@
     },
     "1468510314": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/interviews",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Krista Smith interviews Netflix actors and filmmakers about their projects and creative processes.",
+      "display_title": "Skip Intro Krista Smith",
+      "blurb": "Award-winning interviewer Krista Smith has intimate conversations with Netflix creators and actors about their work.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1468518223": {
       "topics": [
@@ -50302,11 +51282,30 @@
     },
     "1468550568": {
       "topics": [
+        "relationships",
         "health/sexuality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Alli and Melisa share experiences leaving heterosexual marriages to explore their authentic lesbian identities.",
+      "display_title": "Lesbian Chronicles Coming Out Later",
+      "blurb": "Alli and Melisa share personal stories of coming out later in life and leaving heterosexual marriages.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2a828a85",
+      "classified_at": "2026-07-25T11:12:20.637Z"
     },
     "1468564406": {
       "topics": [
