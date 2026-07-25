@@ -398,14 +398,23 @@ function touchPlaylistPlayed(id) {
    sparse/empty answer beats padding a list with off-topic filler). Tiering
    rule itself lives in SearchEngine.classifyResults — one definition shared
    with tools/test-search.mjs so the harness validates exactly what ships. */
+/* Shows the user has already picked from (cp_history) -- diversify() gently
+   down-weights these so results favor discovery over what's already
+   familiar (CLAUDE.md principle #1). poolFiltered() below populates
+   state.itemIndex as a side effect, so this must run after that call. */
+function listenedShows() {
+  return new Set(pickedHistory().map(id => state.itemIndex[id]?.show).filter(Boolean));
+}
+
 function buildPlaylist(query) {
   const ctx = searchCtx();
   const interp = SearchEngine.interpretQuery(query, ctx);
   if (!interp.groups.length && !interp.filters.length) {
     return { status: "empty", suggestions: [] };
   }
-  const { results } = SearchEngine.searchWithRelaxation(poolFiltered(), interp, 2, state.itemTags, interestScore);
-  const { status, picks } = SearchEngine.classifyResults(results);
+  const pool = poolFiltered();
+  const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
+  const { status, picks } = SearchEngine.classifyResults(results, { listenedShows: listenedShows() });
 
   if (status === "empty") {
     return { status: "empty", suggestions: SearchEngine.suggestAdjacentTopics(interp, ctx) };
