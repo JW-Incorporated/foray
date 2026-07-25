@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T05:11:10.043Z",
+  "built_at": "2026-07-25T05:52:58.222Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-4292d1cd",
+    "last_batch_id": "fresh-2026-07-25-5ebeeb08",
     "last_batch_tier": 1
   },
   "entries": {
@@ -4958,9 +4958,23 @@
       "topics": [
         "nature"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scottish outdoor exploration covering wildlife, nature reserves, and landscapes.",
+      "display_title": "Scotland Outdoors",
+      "blurb": "Exploration of Scottish natural landscapes and wildlife through field interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "261779765": {
       "topics": [
@@ -5092,8 +5106,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist meditation teacher offering guided meditations and mindfulness talks.",
+      "display_title": "Tara Brach",
+      "blurb": "Guided meditations and talks on mindfulness and healing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "265307843": {
       "topics": [
@@ -5170,11 +5198,30 @@
     },
     "267300884": {
       "topics": [
-        "math"
+        "math/puzzles",
+        "news/daily"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math/puzzles",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Debunking and explaining statistics used in political debate and news.",
+      "display_title": "More or Less",
+      "blurb": "Fact-checking statistics in politics, news, and everyday life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "267721005": {
       "topics": [
@@ -5261,9 +5308,23 @@
       "topics": [
         "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and commentary featuring multiple tech-focused shows.",
+      "display_title": "All TWiT.tv Shows",
+      "blurb": "Tech news, product reviews, and industry discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "270037732": {
       "topics": [
@@ -5445,27 +5506,69 @@
     },
     "276268070": {
       "topics": [
-        "gaming"
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Scientific interviews but insufficient signal for confident categorization.",
+      "display_title": "Beyond",
+      "blurb": "Scientific discussions and research conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "276268226": {
       "topics": [
-        "gaming"
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game news, reviews, and industry coverage.",
+      "display_title": "Game Scoop!",
+      "blurb": "Weekly video game news and reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "276268454": {
       "topics": [
-        "gaming"
+        "society/law"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Legal or policy content but insufficient signal for precise categorization.",
+      "display_title": "Unlocked",
+      "blurb": "Legal and policy analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "276268457": {
       "topics": [
@@ -5492,11 +5595,25 @@
     },
     "277975394": {
       "topics": [
-        "business"
+        "society/law"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Legal commentary and analysis on corporate law and business.",
+      "display_title": "Bloomberg Law",
+      "blurb": "Legal analysis affecting business and regulation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "278093331": {
       "topics": [
@@ -5710,9 +5827,23 @@
       "topics": [
         "economics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio lectures on Marx Capital and Marxist economic theory.",
+      "display_title": "Reading Marx's Capital",
+      "blurb": "Analysis of Marxist economic and political theory.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "283605519": {
       "topics": [
@@ -5786,11 +5917,25 @@
     },
     "284675702": {
       "topics": [
-        "society/government"
+        "news/commentary"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Late-night radio but content focus remains unclear.",
+      "display_title": "Red Eye Radio",
+      "blurb": "Late-night radio commentary and conversation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "284922000": {
       "topics": [
@@ -5804,17 +5949,45 @@
       "topics": [
         "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Electronic dance music podcast featuring DJ sets.",
+      "display_title": "Toolroom Radio",
+      "blurb": "Electronic and house music mixes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "285259130": {
       "topics": [
-        "hobbies"
+        "craft/diy-home"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home repair and DIY maintenance advice from contractor.",
+      "display_title": "HouseSmarts Radio",
+      "blurb": "Home repair, maintenance, and improvement advice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "285260960": {
       "topics": [
@@ -5923,11 +6096,25 @@
     },
     "290618642": {
       "topics": [
-        "hobbies"
+        "aviation"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aircraft safety and accident prevention through pilot lessons.",
+      "display_title": "AOPA Never Again",
+      "blurb": "Pilot safety lessons from aircraft accident studies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "290783428": {
       "topics": [
@@ -6060,11 +6247,25 @@
     },
     "295908830": {
       "topics": [
-        "space"
+        "space/rockets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily astronomy facts and celestial phenomena.",
+      "display_title": "365 Days of Astronomy",
+      "blurb": "Daily astronomy facts and celestial observations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "296092576": {
       "topics": [
@@ -6148,16 +6349,44 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist dharma talks and guided meditation instruction.",
+      "display_title": "Dharma Seed",
+      "blurb": "Buddhist dharma talks and meditation instruction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "300973784": {
       "topics": [
-        "medicine/biology"
+        "medicine"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Virology research and pandemic discussion from experts.",
+      "display_title": "This Week in Virology",
+      "blurb": "Expert virology research and pandemic discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "301405577": {
       "topics": [
@@ -6168,11 +6397,25 @@
     },
     "301444064": {
       "topics": [
-        "psychology"
+        "sports/biomechanics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis psychology and mental skills training for athletes.",
+      "display_title": "The Tennis Psychology",
+      "blurb": "Mental performance strategies for tennis players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "301683725": {
       "topics": [
@@ -6227,11 +6470,25 @@
     },
     "304534298": {
       "topics": [
-        "sports/cricket"
+        "sports/endurance"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Baseball podcast but detail insufficient for precise classification.",
+      "display_title": "Switch Hit Podcast",
+      "blurb": "Baseball analysis and player discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "304863991": {
       "topics": [
@@ -6262,8 +6519,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Torah study and Jewish religious education and analysis.",
+      "display_title": "Torah Class",
+      "blurb": "Torah study and interpretation from tradition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "306106212": {
       "topics": [
@@ -6410,19 +6681,47 @@
     },
     "312094772": {
       "topics": [
-        "religion"
+        "religion/christianity"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mormon theology and lived experiences in faith community.",
+      "display_title": "Mormon Stories Podcast",
+      "blurb": "Personal narratives and theology from community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "312289064": {
       "topics": [
-        "sports"
+        "sports/endurance"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sports discussion but specific focus remains unclear.",
+      "display_title": "Brock and Salk",
+      "blurb": "Sports and lifestyle commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "312900254": {
       "topics": [
@@ -6616,11 +6915,25 @@
     },
     "325404506": {
       "topics": [
-        "space"
+        "space/rockets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astrophysics and space science from prominent scientist.",
+      "display_title": "StarTalk Radio",
+      "blurb": "Astrophysics and space science from scientist.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "325814385": {
       "topics": [
@@ -6671,9 +6984,23 @@
       "topics": [
         "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Skeptical analysis and critical thinking on scientific claims.",
+      "display_title": "Skeptics with a K",
+      "blurb": "Scientific skepticism and critical claim examination.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "327055102": {
       "topics": [
@@ -6783,11 +7110,25 @@
     },
     "332516054": {
       "topics": [
-        "philosophy"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Life wisdom and self-improvement covering culture and philosophy.",
+      "display_title": "The Art of Manliness",
+      "blurb": "Essays on self-improvement, culture, and life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "333016788": {
       "topics": [
@@ -6874,11 +7215,25 @@
     },
     "337502156": {
       "topics": [
-        "fiction/drama"
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Archive of vintage radio drama and western fiction.",
+      "display_title": "Old Time Radio Westerns",
+      "blurb": "Classic vintage radio drama and western fiction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "337713843": {
       "topics": [
@@ -7183,9 +7538,23 @@
       "topics": [
         "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "World history told through individual cultural objects.",
+      "display_title": "A History of World",
+      "blurb": "Global history through individual artifacts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "351953012": {
       "topics": [
@@ -7244,9 +7613,23 @@
       "topics": [
         "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language science podcast on physics and biology.",
+      "display_title": "Cienciaes.com",
+      "blurb": "Spanish-language science podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "354628391": {
       "topics": [
@@ -7302,11 +7685,25 @@
     },
     "357537542": {
       "topics": [
-        "comedy"
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians discussing pop culture and current events.",
+      "display_title": "Tell Em Steve-Dave",
+      "blurb": "Comedy discussion of entertainment and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "358195817": {
       "topics": [
@@ -7332,11 +7729,25 @@
     },
     "360084272": {
       "topics": [
-        "comedy"
+        "news/commentary"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Long-form conversations with mixed topics lack clear focus.",
+      "display_title": "The Joe Rogan Experience",
+      "blurb": "Long-form conversations with various guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "360234201": {
       "topics": [
@@ -7369,11 +7780,25 @@
     },
     "361910564": {
       "topics": [
-        "religion/spirituality"
+        "religion"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Spiritual teaching but tradition or school remains unclear.",
+      "display_title": "Psychic Teachers",
+      "blurb": "Spiritual guidance and teachings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "363368392": {
       "topics": [
@@ -7520,11 +7945,25 @@
     },
     "370993748": {
       "topics": [
-        "music"
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians discussing entertainment and pop culture.",
+      "display_title": "Woody & Wilcox",
+      "blurb": "Comedy and entertainment discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "371045355": {
       "topics": [
@@ -7601,11 +8040,25 @@
     },
     "375767948": {
       "topics": [
-        "religion"
+        "religion/christianity"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Evangelical Christian preaching and religious instruction.",
+      "display_title": "Immanuel Nashville",
+      "blurb": "Christian teaching and sermons.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "376674442": {
       "topics": [
@@ -7665,8 +8118,22 @@
         "economics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio reading of Austrian economics foundational text.",
+      "display_title": "Human Action",
+      "blurb": "Austrian school economic theory and markets.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "380996798": {
       "topics": [
@@ -7796,11 +8263,25 @@
     },
     "386547290": {
       "topics": [
-        "science/physics"
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Electronics engineering and hardware design discussion.",
+      "display_title": "The Amp Hour",
+      "blurb": "Electronics engineering and hardware design.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "387042247": {
       "topics": [
@@ -7820,9 +8301,23 @@
       "topics": [
         "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Electronic music DJ sets and production from artist.",
+      "display_title": "Resident by Hernan",
+      "blurb": "Electronic and house music mixes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "387564734": {
       "topics": [
@@ -7841,11 +8336,25 @@
     },
     "387601688": {
       "topics": [
-        "history"
+        "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian education on American history and values.",
+      "display_title": "The WallBuilders Show",
+      "blurb": "Christian education and American history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "387755113": {
       "topics": [
@@ -7967,11 +8476,25 @@
     },
     "394775318": {
       "topics": [
-        "culture/design"
+        "architecture/infrastructure"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "architecture/infrastructure",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hidden architectural and design history in cities.",
+      "display_title": "99% Invisible",
+      "blurb": "Stories of hidden architecture and design.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "395114976": {
       "topics": [
@@ -8074,9 +8597,23 @@
       "topics": [
         "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Progressive political commentary and news analysis.",
+      "display_title": "The David Pakman Show",
+      "blurb": "Political news and commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "402266053": {
       "topics": [
@@ -8119,9 +8656,23 @@
       "topics": [
         "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized horror fiction through narrative storytelling.",
+      "display_title": "Knifepoint Horror",
+      "blurb": "Serialized horror fiction and dark stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "406782386": {
       "topics": [
@@ -8211,8 +8762,22 @@
         "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chronological English history from medieval to modern.",
+      "display_title": "The History of England",
+      "blurb": "Chronological history of England over centuries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "412457621": {
       "topics": [
@@ -8428,8 +8993,22 @@
         "economics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Recent academic books on economic theory and policy.",
+      "display_title": "New Books in Economics",
+      "blurb": "Academic interviews on economics and policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "425195053": {
       "topics": [
@@ -8441,11 +9020,25 @@
     },
     "425223410": {
       "topics": [
-        "science"
+        "nature/earth-science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Recent academic books on environmental science.",
+      "display_title": "New Books Environmental",
+      "blurb": "Academic interviews on environmental science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "425328515": {
       "topics": [
@@ -8466,17 +9059,45 @@
       "topics": [
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Gender studies but insufficient signal for confident categorization.",
+      "display_title": "New Books in Gender",
+      "blurb": "Academic interviews on gender studies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "425414426": {
       "topics": [
-        "society"
+        "news/politics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Recent academic books on political theory and governance.",
+      "display_title": "New Books Political",
+      "blurb": "Academic interviews on political science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "425468151": {
       "topics": [
@@ -8502,11 +9123,25 @@
     },
     "425700062": {
       "topics": [
-        "society"
+        "news/politics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Recent academic books on public policy and government.",
+      "display_title": "New Books Public Policy",
+      "blurb": "Academic interviews on public policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "425715938": {
       "topics": [
@@ -8682,12 +9317,25 @@
     },
     "431167790": {
       "topics": [
-        "economics/markets",
-        "business"
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal finance and investing advice from journalist.",
+      "display_title": "Jill on Money",
+      "blurb": "Personal finance and investing advice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "431180569": {
       "topics": [
@@ -8773,17 +9421,45 @@
       "topics": [
         "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime storytelling and criminal case analysis.",
+      "display_title": "Last Podcast On Left",
+      "blurb": "True crime and historical mystery storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "437608292": {
       "topics": [
-        "music"
+        "sports/endurance"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sports discussion but specific focus remains unclear.",
+      "display_title": "The Rise Guys Podcast",
+      "blurb": "Sports and lifestyle discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "437751010": {
       "topics": [
@@ -9020,11 +9696,25 @@
     },
     "456906266": {
       "topics": [
-        "sports/soccer"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soccer and Liverpool Football Club dedicated analysis.",
+      "display_title": "The Anfield Wrap",
+      "blurb": "Liverpool Football Club analysis and discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "457946327": {
       "topics": [
@@ -9196,8 +9886,22 @@
         "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Numismatics and coin collecting history and value.",
+      "display_title": "The Coin Show Podcast",
+      "blurb": "Numismatics and coin collecting discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "468609197": {
       "topics": [
@@ -9466,8 +10170,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist dharma teachings and meditation instruction.",
+      "display_title": "Thich Nhat Hanh",
+      "blurb": "Buddhist dharma talks and meditation teaching.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "481087877": {
       "topics": [
@@ -9639,8 +10357,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Torah study and Jewish religious education and analysis.",
+      "display_title": "Torah Class Archive",
+      "blurb": "Torah study and interpretation lessons.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "495954973": {
       "topics": [
@@ -9822,8 +10554,22 @@
         "craft/woodworking"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Woodworking techniques and project guidance from makers.",
+      "display_title": "MWA Podcast",
+      "blurb": "Woodworking techniques and project guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "502689992": {
       "topics": [
@@ -9848,11 +10594,25 @@
     },
     "503482646": {
       "topics": [
-        "comedy/interviews"
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast with casual conversation from comedians.",
+      "display_title": "Your Mom's House",
+      "blurb": "Comedy and casual conversation from comedians.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "505516789": {
       "topics": [
@@ -9931,11 +10691,25 @@
     },
     "508937378": {
       "topics": [
-        "gaming"
+        "news/daily"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "South African podcast but content specificity unclear.",
+      "display_title": "GI Joburg",
+      "blurb": "News and cultural commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "508943027": {
       "topics": [
@@ -10141,11 +10915,25 @@
     },
     "523121474": {
       "topics": [
-        "computing"
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Curated TED talks on science, technology, and ideas.",
+      "display_title": "TED Radio Hour",
+      "blurb": "TED talks on science, technology, and ideas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5ebeeb08",
+      "classified_at": "2026-07-25T05:52:58.222Z"
     },
     "523132467": {
       "topics": [
