@@ -192,10 +192,21 @@ function scoreMatch(item, interp, itemTags) {
   const topics = (item.topics || []).join(" ").toLowerCase();
   const tags = itemTags?.tags?.[item.id] || [];
 
+  /* Terms >=4 chars used to match via plain substring (text.includes(t)),
+     which collides on an unrelated word that happens to CONTAIN the term:
+     "fusion" inside "diffusion", "roman" inside "romance"/"romantic",
+     "team" inside "steam". All three known collisions add extra letters
+     BEFORE the term, never after -- so instead of a blanket switch to
+     word-boundary matching (which would also break legitimate plural
+     matches some concepts rely on, e.g. a term "rocket" matching text
+     "rockets"), this requires no letter/digit immediately before the
+     match and allows an optional trailing "s". Blocks all three known
+     collisions, keeps plural matching, touches nothing else. */
+  const longTermPattern = (t) => new RegExp("(?<![a-z0-9])" + t + "s?(?![a-z0-9])");
   const hitText = (text, t) =>
-    t.length < 4 ? new RegExp("\\b" + t + "\\b").test(text) : text.includes(t);
+    t.length < 4 ? new RegExp("\\b" + t + "\\b").test(text) : longTermPattern(t).test(text);
   const hitTag = (tag, t) =>
-    t.length < 4 ? (tag === t || tag.split("-").includes(t)) : tag.includes(t);
+    t.length < 4 ? (tag === t || tag.split("-").includes(t)) : longTermPattern(t).test(tag);
 
   let sum = 0;
   let matchedGroups = 0;
@@ -283,15 +294,67 @@ function searchWithRelaxation(pool, interp, minScore, itemTags, rankFallback) {
 const STRONG_RATIO = 0.5;
 const RICH_MIN = 6;
 
-function classifyResults(results, { cap = 10 } = {}) {
+/* ---------- diversity ----------
+   Anti-echo-chamber (CLAUDE.md principle #1): a result shouldn't be
+   dominated by the one or two biggest shows the catalog happens to carry
+   the most episodes of -- "nuclear fusion energy" returning Lex Fridman
+   twice, "true crime" returning Casefile/Crime Junkie twice each, etc.
+   Relevance stays authoritative (this never changes `sum`/`matched`, and
+   classifyResults' rich/sparse/empty tiering above is computed BEFORE this
+   runs, on pure relevance) -- diversify() only re-ranks/selects WITHIN an
+   already-qualified candidate set. It can reorder or defer a candidate; it
+   can never introduce one that didn't already pass the relevance bar. */
+const PER_SHOW_CAP = 2;
+const LISTENED_PENALTY = 0.85; // 15% gentle down-weight, not exclusion
+
+/* Greedy per-show cap with a backfill pass, over candidates already sorted
+   by relevance (matched desc, then a listened-history-adjusted sum). Takes
+   up to `perShowCap` per show on the first pass; if that leaves fewer than
+   `cap` picks (not enough distinct shows to diversify with), backfills the
+   deferred over-cap items back in their original order -- so capping can
+   only ever REORDER/SPREAD an already-diverse-enough set; it never shrinks
+   a genuinely sparse or single-show (e.g. a show-name query like
+   "smartless") result. That backfill is what keeps this honest: capping
+   bbq's 4 same-show episodes down to 2 and calling it "sparse" would be
+   exactly the padding-vs-honesty problem this whole engine exists to avoid. */
+function diversify(candidates, { cap = 10, perShowCap = PER_SHOW_CAP, listenedShows = new Set() } = {}) {
+  const ranked = candidates
+    .map((c, idx) => ({ c, idx, adjusted: c.sum * (listenedShows.has(c.i.show) ? LISTENED_PENALTY : 1) }))
+    .sort((a, b) => (b.c.matched - a.c.matched) || (b.adjusted - a.adjusted) || (a.idx - b.idx));
+
+  const showCounts = new Map();
+  const picked = [];
+  const deferred = [];
+  for (const r of ranked) {
+    const show = r.c.i.show;
+    const n = showCounts.get(show) || 0;
+    if (n < perShowCap) {
+      picked.push(r.c);
+      showCounts.set(show, n + 1);
+      if (picked.length === cap) return picked;
+    } else {
+      deferred.push(r.c);
+    }
+  }
+  for (const c of deferred) {
+    picked.push(c);
+    if (picked.length === cap) break;
+  }
+  return picked;
+}
+
+function classifyResults(results, { cap = 10, perShowCap = PER_SHOW_CAP, listenedShows = new Set() } = {}) {
   if (!results.length) return { status: "empty", picks: [] };
   const bar = results[0].sum * STRONG_RATIO;
   const strong = results.filter(x => x.sum >= bar);
   if (strong.length < 2) return { status: "empty", picks: [] };
   const sparse = strong.length < RICH_MIN;
   // Sparse: only the strong matches make the cut -- never pad toward `cap`
-  // with sub-bar results just to look like a fuller playlist.
-  const picks = (sparse ? strong : results).slice(0, cap);
+  // with sub-bar results just to look like a fuller playlist. Diversity is
+  // applied to whichever candidate set would have been sliced, so it can
+  // reorder within "strong"/"results" but never reach outside either.
+  const candidates = sparse ? strong : results;
+  const picks = diversify(candidates, { cap, perShowCap, listenedShows });
   if (picks.length < 2) return { status: "empty", picks: [] };
   return { status: sparse ? "sparse" : "ok", picks };
 }
@@ -327,9 +390,9 @@ function prettyConceptLabel(id) {
 
 const SearchEngine = {
   STOPWORDS, GENERIC_WORDS, ALIASES, BROAD_DF_THRESHOLD,
-  STRONG_RATIO, RICH_MIN,
+  STRONG_RATIO, RICH_MIN, PER_SHOW_CAP, LISTENED_PENALTY,
   tokenize, branchOf, tagDF, corpusDF,
-  interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults,
+  interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
   suggestAdjacentTopics, prettyConceptLabel,
 };
 
