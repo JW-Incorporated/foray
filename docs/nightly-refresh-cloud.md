@@ -17,7 +17,7 @@ split by whether they need credentials or judgment (the Swift2 two-tier model).
 │    → merge.mjs → copy-rule + pool-integrity tests → open PR to main                            │
 └───────────────────────────────────────────────┬───────────────────────────────────────────────┘
                                                  │
-                              human / integrity gate merges PR → main
+                    auto-merge on green checks (automerge-nightly.yml) → main
                                                  │
                                     GitHub Pages deploys the site
 ```
