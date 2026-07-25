@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T12:37:19.547Z",
+  "built_at": "2026-07-25T13:36:42.913Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-14f41007",
+    "last_batch_id": "fresh-2026-07-25-2045534d",
     "last_batch_tier": 1
   },
   "entries": {
@@ -80404,11 +80404,33 @@
     },
     "1548757282": {
       "topics": [
-        "nature/earth-science"
+        "nature/earth-science",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show focuses on earth science and science",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1548775783": {
       "topics": [
@@ -80610,11 +80632,30 @@
     },
     "1549575586": {
       "topics": [
-        "gaming"
+        "gaming",
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on gaming and casual hangs",
+      "display_title": "Bards of New York",
+      "blurb": "The actual-play Dungeons & Dragons podcast… where sometimes we actually play D&D (and other TTRPGs) A story-driven show from a party of NYC-based acto...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1549581778": {
       "topics": [
@@ -80782,11 +80823,30 @@
     },
     "1550243290": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on courses and science",
+      "display_title": "ゆる言語学ラジオ",
+      "blurb": "ゆるく楽しく言語の話をするラジオです。「springはなぜ春もバネも意味するの？」「『象は鼻が長い』の主語は象？鼻？」などの身近なトピックから、コトバの奥深さを感じましょう！「言語学の二歩くらい手前の知識が身につくラジオ」を目指しています。 YouTubeとPodcastで配信中！ 第3回Podca...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1550258833": {
       "topics": [
@@ -80804,11 +80864,25 @@
     },
     "1550347186": {
       "topics": [
-        "computing"
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on business",
+      "display_title": "The Paul Barron Crypto Show",
+      "blurb": "Unlock the Future of Crypto with Paul Barron – The Fastest-Growing Crypto & Technology Show Step into the world of crypto investing, blockchain techno...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1550371222": {
       "topics": [
@@ -81280,9 +81354,23 @@
       "topics": [
         "sports/fantasy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on fantasy sports",
+      "display_title": "FantasyPros Dynasty Football Podcast",
+      "blurb": "There's fantasy football and then there's dynasty fantasy football This isn't your run-of-the-mill show that just lightly touches on the topic, this i...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1551619891": {
       "topics": [
@@ -81310,9 +81398,23 @@
       "topics": [
         "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on government",
+      "display_title": "The Overton Window",
+      "blurb": "Have you noticed that politicians struggle to enact the things they run on They find themselves bound by what is popular, or at least their sense of i...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1551661895": {
       "topics": [
@@ -81419,11 +81521,26 @@
     },
     "1551860812": {
       "topics": [
-        "religion/islam"
+        "nature/earth-science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General earth science content",
+      "display_title": "Stories of the Prophets",
+      "blurb": "Visit for more Islamic podcast https://islamicpodcast.weebly....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1551882555": {
       "topics": [
@@ -81532,12 +81649,25 @@
     },
     "1552235284": {
       "topics": [
-        "gaming",
-        "space"
+        "gaming"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on gaming",
+      "display_title": "Decision Space",
+      "blurb": "Decision Space is a board game podcast about the decisions in games",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1552237401": {
       "topics": [
@@ -81727,11 +81857,25 @@
     },
     "1552771084": {
       "topics": [
-        "education/courses"
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General science content",
+      "display_title": "MCAT Content review",
+      "blurb": "Review of MCAT content material with clever mnemonics. *Disclaimer: Unaffiliated with AAMC or any MCAT company.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1552772082": {
       "topics": [
@@ -81829,11 +81973,35 @@
     },
     "1552917994": {
       "topics": [
-        "sports/golf"
+        "gaming",
+        "science",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on gaming and science and history",
+      "display_title": "The Sweet Spot - Golf Podcast",
+      "blurb": "A deeper look into golf improvement Adam Young and Jon Sherman provide real, actionable game-improvement advice for golfers of all levels",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1552918442": {
       "topics": [
@@ -82103,11 +82271,25 @@
     },
     "1553576974": {
       "topics": [
-        "culture/art"
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on science",
+      "display_title": "Yours Truly, Johnny Dollar | Old Time Radio",
+      "blurb": "Discover every episode of Yours Truly, Johnny Dollar currently available Audio Credit: \"Yours Truly, Johnny Dollar\" by The Old Time Radio Researchers ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1553577047": {
       "topics": [
@@ -82396,11 +82578,35 @@
     },
     "1554406108": {
       "topics": [
-        "comedy/casual-hangs"
+        "gaming",
+        "sports/fantasy"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.7,
+          "matches": 2
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General gaming and fantasy sports content",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1554431464": {
       "topics": [
@@ -82480,11 +82686,30 @@
     },
     "1554567118": {
       "topics": [
-        "society"
+        "science",
+        "society/government"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.95
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on science and government",
+      "display_title": "ReThinking",
+      "blurb": "As an organizational psychologist, Adam Grant believes that great minds don't think alike; they challenge each other to think differently In Re:Thinki...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1554578197": {
       "topics": [
@@ -82511,11 +82736,25 @@
     },
     "1554628870": {
       "topics": [
-        "health/sexuality"
+        "gaming"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on gaming",
+      "display_title": "My Friend's Erotic Stories",
+      "blurb": "I also make spicy captions you might like ee/writerofrealife I know I&#39;ve been gone for a while",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1554652653": {
       "topics": [
@@ -82650,11 +82889,33 @@
     },
     "1554984790": {
       "topics": [
-        "gaming"
+        "gaming",
+        "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show focuses on gaming and government",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1554996153": {
       "topics": [
@@ -82982,11 +83243,26 @@
     },
     "1556032684": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/casual-hangs"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General casual hangs content",
+      "display_title": "Stand up Comedy",
+      "blurb": "Welcome 🎉 to my Stand up comedy show🎙.....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1556053641": {
       "topics": [
@@ -83102,11 +83378,25 @@
     },
     "1556353792": {
       "topics": [
-        "psychology"
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General science content",
+      "display_title": "وقایع اقتصادیه",
+      "blurb": "در این پادکست، دکتر پویا ناظران، با زبانی ساده و شفاف مسائل مربوط به حکم‌رانی اقتصادی را بررسی می‌کند. (اپیزودهای قدیمی‌تر به مرور به همین فید اضافه خواهند شد.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1556355542": {
       "topics": [
@@ -83365,13 +83655,44 @@
     },
     "1557468814": {
       "topics": [
-        "fiction",
-        "nature",
-        "kids-family/parenting"
+        "gaming",
+        "education/courses",
+        "sports/fantasy",
+        "nature/earth-science"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.7,
+          "matches": 2
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.7,
+          "matches": 2
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.55,
+          "matches": 1
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": false,
+      "rationale": "General gaming and courses content",
+      "display_title": "Kids Animal Stories",
+      "blurb": "Welcome to \"Kids Animal Stories,\" the captivating kids podcast where education meets entertainment through the exploration of the animal kingdom. Hosted by the engaging Mr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1557471374": {
       "topics": [
@@ -83437,11 +83758,29 @@
     },
     "1557786484": {
       "topics": [
-        "business/startups"
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show focuses on business",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1557798148": {
       "topics": [
@@ -83672,11 +84011,25 @@
     },
     "1558483834": {
       "topics": [
-        "comedy"
+        "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on history",
+      "display_title": "The Downside with Gianmarco Soresi",
+      "blurb": "Stand up comedian and lifelong cynic Gianmarco Soresi interviews people more famous than him about all the downsides to their life If you like looking...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1558484497": {
       "topics": [
@@ -83732,11 +84085,40 @@
     },
     "1558608802": {
       "topics": [
-        "society/government"
+        "nature/earth-science",
+        "gaming",
+        "business",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.95
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on earth science and gaming and business and history",
+      "display_title": "The Jedburgh Podcast",
+      "blurb": "The Jedburgh Podcast empowers leaders to achieve success on their journey to transform themselves and their organizations Creator, Host and Special Fo...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1558640567": {
       "topics": [
@@ -83770,12 +84152,26 @@
     },
     "1558775482": {
       "topics": [
-        "hobbies",
-        "nature"
+        "education/courses"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General courses content",
+      "display_title": "Calling All Birds",
+      "blurb": "The Podcast where we learn the art of birding-by-ear together through in-depth discussion, memorable.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1558793990": {
       "topics": [
@@ -83802,11 +84198,30 @@
     },
     "1558906432": {
       "topics": [
-        "gaming"
+        "gaming",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on gaming and history",
+      "display_title": "Dojo Talks: A Chess Podcast",
+      "blurb": "The official podcast of ChessDojo (IM Kostya Kavutskiy, IM David Pruess, & GM Jesse Kraai) Most episodes are streamed live to twitch",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1558918378": {
       "topics": [
@@ -84131,11 +84546,32 @@
     "1559865448": {
       "topics": [
         "society/government",
-        "space"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show focuses on government and history",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1559888338": {
       "topics": [
@@ -84191,11 +84627,30 @@
     },
     "1560010348": {
       "topics": [
-        "business/careers"
+        "science",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on science and business",
+      "display_title": "The Build Show Podcast",
+      "blurb": "Follow Matt Risinger on the Build Show Podcast as he discusses Building Science, Craftsmanship, & Best Practices for Building & Remodeling Matt is a B...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1560027068": {
       "topics": [
@@ -84277,11 +84732,30 @@
     },
     "1560389818": {
       "topics": [
-        "business/non-profit"
+        "science",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on science and business",
+      "display_title": "CURE SYNGAP1 PODCAST aka SYNGAP10",
+      "blurb": "Over 1,600 families are caring for a loved one with the rare disease ”SynGAP” resulting from a variant of the SYNGAP1 gene This weekly podcast is for ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1560394221": {
       "topics": [
@@ -84314,19 +84788,50 @@
     },
     "1560531490": {
       "topics": [
-        "education/language-learning"
+        "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show focuses on science",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1560542362": {
       "topics": [
-        "tv-film/animation"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on history",
+      "display_title": "Anime x Listener and Comfort Audios",
+      "blurb": "I'm closing this podcast on September 19th for good Thank you everyone so much for listening",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1560558452": {
       "topics": [
@@ -84403,11 +84908,38 @@
     },
     "1560751222": {
       "topics": [
-        "economics/markets"
+        "gaming",
+        "society/government",
+        "education/courses"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.55,
+          "matches": 1
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.55,
+          "matches": 1
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General gaming and government content",
+      "display_title": "All the Hacks: Money, Points & Life",
+      "blurb": "Never leave money on the table. This is your shortcut to upgrading your life, money and travel—all while spending less and saving more.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1560755363": {
       "topics": [
@@ -84658,19 +85190,57 @@
     },
     "1561242280": {
       "topics": [
-        "health/fitness"
+        "science",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on science and history",
+      "display_title": "The Dr. Shannon Show",
+      "blurb": "Whether it's a research-based solo episode, a detailed expert interview, or a casual coffee chat, you'll learn what is true (and what isn't) regarding...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1561252894": {
       "topics": [
-        "society/government"
+        "society/government",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on government and history",
+      "display_title": "From the Crows' Nest",
+      "blurb": "Featuring interviews, analysis, and discussions covering leading issues of the day related to electromagnetic spectrum operations (EMSO) Topics includ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1561255300": {
       "topics": [
@@ -84895,11 +85465,35 @@
     },
     "1561861786": {
       "topics": [
-        "kids-family"
+        "gaming",
+        "education/courses"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.7,
+          "matches": 2
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General gaming and courses content",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1561874960": {
       "topics": [
@@ -85006,11 +85600,25 @@
     },
     "1562240320": {
       "topics": [
-        "business/non-profit"
+        "society/government"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on government",
+      "display_title": "The TTPOA Podcast",
+      "blurb": "The TTPOA Podcast is hosted by two active duty police officers who are serving as team leaders on SWAT teams in Texas The podcast will cover tactics, ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1562353823": {
       "topics": [
@@ -85044,11 +85652,30 @@
     },
     "1562412016": {
       "topics": [
-        "sports/wrestling"
+        "business",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on business and history",
+      "display_title": "My World with Jeff Jarrett",
+      "blurb": "'My World' with Jeff Jarrett takes listeners on a journey through Jarrett's illustrious Hall of Fame career as an in-the ring, main-event professional...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1562433071": {
       "topics": [
@@ -85164,11 +85791,25 @@
     },
     "1562723482": {
       "topics": [
-        "business/non-profit"
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General science content",
+      "display_title": "The BIG Conversation",
+      "blurb": "The Big Conversation is a digital/virtual platform where we capture emerging voices & refreshing per.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1562764710": {
       "topics": [
@@ -85390,12 +86031,25 @@
     },
     "1563475714": {
       "topics": [
-        "psychology",
-        "society/law"
+        "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on government",
+      "display_title": "For Better or Worse: A Family Law Podcast",
+      "blurb": "Welcome to For Better or Worse: A Family Law Podcast Our host, Tenny Amin, a family law attorney at The Amin Law Group in Irvine, CA, sits down to ans...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1563490772": {
       "topics": [
@@ -85598,11 +86252,25 @@
     },
     "1564583104": {
       "topics": [
-        "education/how-to"
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on science",
+      "display_title": "How to PhD - your academic survival guide",
+      "blurb": "This is How to PhD, the show dedicated to sharing those key, practical skills for University success Perhaps you’ve just decided to embark on a PhD, M...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1564636667": {
       "topics": [
@@ -85621,11 +86289,25 @@
     },
     "1564682548": {
       "topics": [
-        "tv-film"
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General science content",
+      "display_title": "Poppin' Off (About Pop Culture)",
+      "blurb": "A podcast by two pals with too much pop culture knowledge to know what to do with....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1564687024": {
       "topics": [
@@ -85867,11 +86549,35 @@
     },
     "1565584690": {
       "topics": [
-        "culture/fashion"
+        "science",
+        "sports/fantasy",
+        "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.65
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on science and fantasy sports and history",
+      "display_title": "Perfume Room",
+      "blurb": "Hosted by perfumehead & comedian Emma Vernon, Perfume Room is your #1 safe space to obsess over all things scent Enjoy intimate, never-before-told sto...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1565589494": {
       "topics": [
@@ -85926,11 +86632,35 @@
     },
     "1565833096": {
       "topics": [
-        "business/careers"
+        "science",
+        "business",
+        "society/government"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on science and business and government",
+      "display_title": "Mile High FI Podcast",
+      "blurb": "Real talk about Financial Independence and life after corporate jobs Doug Cunnington and Carl Jensen talk about FI, lifestyle, side hustles, health, a...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1565850616": {
       "topics": [
@@ -86116,11 +86846,26 @@
     },
     "1566371326": {
       "topics": [
-        "nature"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General history content",
+      "display_title": "サイエントーク",
+      "blurb": "🧬 サイエントークとは 🧬 おしゃべりな研究者レンとイギリス駐在員エマが科学をエンタメっぽく語るポッドキャストです。 学校では教わらない科学の歴史や個性豊かな研究者のストーリーなど、科学の魅力を夫.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1566385702": {
       "topics": [
@@ -86139,11 +86884,40 @@
     },
     "1566472174": {
       "topics": [
-        "kids-family/stories"
+        "science",
+        "gaming",
+        "nature/earth-science",
+        "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.65
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on science and gaming and earth science and government",
+      "display_title": "Whose Amazing Life?",
+      "blurb": "You venture deep into the jungle to solve its greatest mysteries You gaze at Earth from the surface of the moon",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1566494543": {
       "topics": [
@@ -86162,11 +86936,25 @@
     },
     "1566589270": {
       "topics": [
-        "education/courses"
+        "gaming"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on gaming",
+      "display_title": "CE Podcasts for Nurses",
+      "blurb": "Listen, Learn, and Earn CE Hours with Elite Learning Elite Learning is among the first to bring you nursing podcasts that are part of an accredited co...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1566602927": {
       "topics": [
@@ -86357,11 +87145,25 @@
     },
     "1567064098": {
       "topics": [
-        "history"
+        "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General science content",
+      "display_title": "پادکست راوکده",
+      "blurb": "روایتگر سرگذشت‌ها و رویدادهای ماندگارِ تاریخ ایران و جهان | کاری از محمدعلی نامه ای هر ماه با ۲ اپیز.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1567073183": {
       "topics": [
@@ -86734,11 +87536,25 @@
     },
     "1568287960": {
       "topics": [
-        "culture"
+        "society/government"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on government",
+      "display_title": "UFO - Extraterrestrial Reality",
+      "blurb": "Reporter Jim Quirk discusses UFOs and other mysterious topics and some current affairs Please check out my YouTube channel, as well: https://www",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1568289153": {
       "topics": [
@@ -86868,11 +87684,25 @@
     },
     "1568927074": {
       "topics": [
-        "religion"
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General science content",
+      "display_title": "Salmos Que Curan El Alma Hoy El 27",
+      "blurb": "Salmos que curan el alma y fortalecen el espíritu.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1568930682": {
       "topics": [
@@ -86915,11 +87745,38 @@
     },
     "1569056584": {
       "topics": [
-        "sports"
+        "sports/fantasy",
+        "gaming",
+        "comedy/casual-hangs"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.7,
+          "matches": 2
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.55,
+          "matches": 1
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": false,
+      "rationale": "General fantasy sports and gaming content",
+      "display_title": "Fearless with Jason Whitlock",
+      "blurb": "Celebrated journalist Jason Whitlock and his cast of \"Fearless Soldiers\" protect the realm of common sense and challenge the groupthink mandated by elites.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1569099167": {
       "topics": [
@@ -87020,12 +87877,38 @@
     },
     "1569279148": {
       "topics": [
-        "fiction/sci-fi",
-        "tv-film"
+        "gaming",
+        "education/courses",
+        "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.55,
+          "matches": 1
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.55,
+          "matches": 1
+        },
+        {
+          "node": "history",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General gaming and courses content",
+      "display_title": "The Warning Woods | Horror Stories",
+      "blurb": "Enter The Warning Woods. Nightmares lurk behind every tree. Disturbing encounters await. From the creepy to the downright depraved, my stories are sure to leave you unsettled yet craving more.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1569279602": {
       "topics": [
@@ -87358,11 +88241,30 @@
     },
     "1570737028": {
       "topics": [
-        "hobbies"
+        "gaming",
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on gaming and history",
+      "display_title": "The Nextlander Podcast",
+      "blurb": "Longtime friends and games media colleagues Vinny Caravella, Brad Shoemaker, and Alex Navarro share their combined decades of knowledge, expertise, an...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1570747490": {
       "topics": [
@@ -87395,11 +88297,32 @@
     },
     "1570813696": {
       "topics": [
-        "personal-journals"
+        "gaming",
+        "education/courses"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.55,
+          "matches": 1
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General gaming and courses content",
+      "display_title": "Forever is a Long Time",
+      "blurb": "When Ian Coss decided to get married, every living member of his family who had ever been married ha.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1570820660": {
       "topics": [
@@ -87424,11 +88347,25 @@
     },
     "1570846618": {
       "topics": [
-        "religion"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on history",
+      "display_title": "Standard of Truth",
+      "blurb": "The purpose of this podcast is to help Latter-Day Saints better understand their history and increase their faith The podcast hosted by Dr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1570870737": {
       "topics": [
@@ -87543,11 +88480,29 @@
     },
     "1571190562": {
       "topics": [
-        "education/how-to"
+        "education/courses"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.7,
+          "matches": 2
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General courses content",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1571197500": {
       "topics": [
@@ -87558,13 +88513,38 @@
     },
     "1571275084": {
       "topics": [
-        "religion",
-        "culture/books",
-        "religion/christianity"
+        "nature/earth-science",
+        "education/courses",
+        "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.55,
+          "matches": 1
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.55,
+          "matches": 1
+        },
+        {
+          "node": "history",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General earth science and courses content",
+      "display_title": "The Bible: Book Of Our Fathers",
+      "blurb": "The Bible has the solution to our people’s problems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1571285630": {
       "topics": [
@@ -87651,12 +88631,30 @@
     },
     "1571791000": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "science",
+        "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on science and history",
+      "display_title": "¡Cuéntame! | Learn Spanish with Comprehensible Input",
+      "blurb": "Marta Ruiz Yedinak, a Spanish National Board Certified Teacher, uses basic to intermediate level Spanish to tell stories and talk about everyday topic...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1571792783": {
       "topics": [
@@ -87706,12 +88704,33 @@
     },
     "1572087418": {
       "topics": [
-        "psychology",
-        "math/puzzles"
+        "science",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show focuses on science and history",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1572096885": {
       "topics": [
@@ -87793,11 +88812,26 @@
     },
     "1572335842": {
       "topics": [
-        "religion"
+        "gaming"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General gaming content",
+      "display_title": "Good News for Jehovah’s Witnesses",
+      "blurb": "This podcast has been created to help answer any questions Jehovah’s Witnesses or ex-Jehovah’s Witnesses have about God, the Bible, Christianity, ethics and religion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1572356745": {
       "topics": [
@@ -87830,11 +88864,26 @@
     },
     "1572491560": {
       "topics": [
-        "business/non-profit"
+        "society/government"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.55,
+          "matches": 1
+        }
+      ],
+      "needs_review": true,
+      "rationale": "General government content",
+      "display_title": "VHFN's Veteran Outdoors",
+      "blurb": "Veterans Hunting and Fishing podcast. Discussing topics ranging from fishing techniques to Gun reviews as well as other outdoor veteran related topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:42.913Z"
     },
     "1572495128": {
       "topics": [
@@ -87899,9 +88948,23 @@
       "topics": [
         "sports/fantasy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show focuses on fantasy sports",
+      "display_title": "Establish the Edge Fantasy Football",
+      "blurb": "Looking to step out and compete beyond your home fantasy football league Mike Leone and guests cover a wide range of topics for serious players, inclu...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-2045534d",
+      "classified_at": "2026-07-25T13:36:25.001Z"
     },
     "1572709915": {
       "topics": [
