@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T14:37:18.824Z",
+  "built_at": "2026-07-25T16:37:44.476Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-8d6e9307",
+    "last_batch_id": "fresh-2026-07-25-5db21c07",
     "last_batch_tier": 1
   },
   "entries": {
@@ -98648,11 +98648,30 @@
     },
     "1611216298": {
       "topics": [
-        "health/nutrition"
+        "health/nutrition",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based health and nutrition guidance with expert interviews.",
+      "display_title": "ZOE Science & Nutrition",
+      "blurb": "The world’s top scientists explain the latest health, nutrition, and gut health research and transla...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1611224505": {
       "topics": [
@@ -98744,11 +98763,30 @@
     },
     "1611397750": {
       "topics": [
+        "psychology",
         "health/sexuality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychology-focused exploration of relationships and human sexuality.",
+      "display_title": "Men, Sex & Tantra",
+      "blurb": "What parents, porn, and religion never taught you about being a man and having an extraordinary sex ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1611404664": {
       "topics": [
@@ -98759,11 +98797,30 @@
     },
     "1611424174": {
       "topics": [
-        "health/sexuality"
+        "health/nutrition",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based health and nutrition guidance with expert interviews.",
+      "display_title": "The Kink Perspective",
+      "blurb": "The Kink Perspective looks at BDSM through psychology, not performance. It’s an honest examination o...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1611469997": {
       "topics": [
@@ -98805,9 +98862,23 @@
       "topics": [
         "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Bloomberg Tech",
+      "blurb": "Listen for news and analysis on global technology companies and investors. Ed Ludlow brings you the ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1611809225": {
       "topics": [
@@ -98891,12 +98962,25 @@
     },
     "1612090432": {
       "topics": [
-        "health/sexuality",
-        "history"
+        "health/sexuality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion of sexuality, relationships, and intimate connection.",
+      "display_title": "Betwixt The Sheets: The History of Sex, Scandal",
+      "blurb": "Join sex historian Dr Kate Lister on Betwixt the Sheets as she gets intimate with the stories that w...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1612131897": {
       "topics": [
@@ -99005,11 +99089,25 @@
     },
     "1612424182": {
       "topics": [
-        "news/daily"
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Ukraine: The Latest",
+      "blurb": "The world’s #1 most listened-to podcast on the Russia-Ukraine war. Trusted by over 140 million liste...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1612441858": {
       "topics": [
@@ -99213,11 +99311,25 @@
     },
     "1613242360": {
       "topics": [
-        "food"
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Be My Guest with Ina Garten",
+      "blurb": "Join the party as Ina Garten invites friends old and new into her East Hampton home for good food an...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1613340657": {
       "topics": [
@@ -99843,11 +99955,25 @@
     },
     "1615596808": {
       "topics": [
-        "gaming"
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "3d6 Down The Line",
+      "blurb": "3d6 Down the Line is a group of friends who enjoy playing and showcasing a variety of independent ta...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1615623952": {
       "topics": [
@@ -99985,11 +100111,30 @@
     },
     "1616519878": {
       "topics": [
-        "health/mental"
+        "health/nutrition",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based health and nutrition guidance with expert interviews.",
+      "display_title": "We're All Insane",
+      "blurb": "A podcast where real people share raw, unfiltered stories about their lives, challenges, and traumas...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1616537711": {
       "topics": [
@@ -100051,11 +100196,25 @@
     },
     "1616700934": {
       "topics": [
-        "business/marketing"
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Marketing Against The Grain",
+      "blurb": "Kipp Bodnar (HubSpot’s CMO) and Kieran Flanagan (Hubspot's SVP of Marketing), lead you down the rabb...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1616710225": {
       "topics": [
@@ -100073,12 +100232,25 @@
     },
     "1616725732": {
       "topics": [
-        "psychology",
-        "society"
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "Heal NPD",
+      "blurb": "Dr. Ettensohn is a clinical psychologist who specializes in treating narcissism and related disorder...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1616730755": {
       "topics": [
@@ -100171,12 +100343,28 @@
     },
     "1617276298": {
       "topics": [
-        "history/military-modern",
-        "history"
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1617284351": {
       "topics": [
@@ -100311,11 +100499,25 @@
     },
     "1617974770": {
       "topics": [
-        "personal-journals"
+        "education"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show category unclear from available signal.",
+      "display_title": "여둘톡",
+      "blurb": "여자 둘이 토크하고 있습니다 : [여자 둘이 살고 있습니다]의 김하나, 황선우가 좋아하는 것에 대해 좋다고 말합니다...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1618050230": {
       "topics": [
@@ -100335,11 +100537,25 @@
     },
     "1618071214": {
       "topics": [
-        "tv-film/history"
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "Too Much Information",
+      "blurb": "'Too Much Information' is a new iHeartRadio podcast that gives you the secret history, behind-the-sc...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1618084297": {
       "topics": [
@@ -100371,11 +100587,25 @@
     },
     "1618445014": {
       "topics": [
-        "news"
+        "health/sexuality"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion of sexuality, relationships, and intimate connection.",
+      "display_title": "Piers Morgan Uncensored",
+      "blurb": "Piers Morgan Uncensored is the global arena for fearless debate, bold opinions and major interviews....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1618515146": {
       "topics": [
@@ -100386,11 +100616,25 @@
     },
     "1618607704": {
       "topics": [
-        "business/non-profit"
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "The Art of Volunteering",
+      "blurb": "Connecting volunteers worldwide through conversations with individuals, leaders, and organizations t...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1618610395": {
       "topics": [
@@ -100446,12 +100690,30 @@
     },
     "1618854568": {
       "topics": [
-        "transport/trains",
-        "hobbies"
+        "health/nutrition",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based health and nutrition guidance with expert interviews.",
+      "display_title": "Around The Layout - A Model Railroad Podcast",
+      "blurb": "Join us as we bring you stories from model railroaders just like you. We talk to enthusiasts across ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1618958655": {
       "topics": [
@@ -100522,12 +100784,25 @@
     },
     "1619213596": {
       "topics": [
-        "medicine",
-        "education/courses"
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show category unclear from available signal.",
+      "display_title": "Anatomy & Physiology On The Go",
+      "blurb": "Enhance your Anatomy and Physiology knowledge while enjoying life to its fullest...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1619227156": {
       "topics": [
@@ -100826,11 +101101,30 @@
     },
     "1620562792": {
       "topics": [
-        "history"
+        "history",
+        "history/archaeology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ancient history and archaeological discoveries.",
+      "display_title": "Cool People Who Did Cool Stuff",
+      "blurb": "As long as there’s been oppression, there’ve been people fighting it. This weekly podcast dives into...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1620578740": {
       "topics": [
@@ -100981,9 +101275,23 @@
       "topics": [
         "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Risky Bulletin",
+      "blurb": "Regular cybersecurity news updates from the Risky Business team......",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1621349314": {
       "topics": [
@@ -101009,11 +101317,25 @@
     },
     "1621583098": {
       "topics": [
-        "tv-film"
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "The Big Conn: The Official Podcast",
+      "blurb": "If you’re from eastern Kentucky, you know the name Eric C. Conn—a lawyer better known as “Mr. Social...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1621649253": {
       "topics": [
@@ -101040,11 +101362,25 @@
     },
     "1621877452": {
       "topics": [
-        "personal-journals"
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "Missing Pieces - NPE Life",
+      "blurb": "🎧 Missing Pieces – NPE Life Every Secret Has a Story Every family has secrets. Some are whispered. ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1621903583": {
       "topics": [
@@ -101084,11 +101420,25 @@
     },
     "1621971310": {
       "topics": [
-        "business/non-profit"
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Learning for Good | L&D Solutions and Leadership",
+      "blurb": "As nonprofit learning and development leaders, we want a seat at the table. We want to be viewed as ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1622094597": {
       "topics": [
@@ -101378,11 +101728,25 @@
     },
     "1623825652": {
       "topics": [
-        "business/non-profit"
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "New York Farm Bureau News Bytes",
+      "blurb": "Each month, News Bytes highlights a program or issue affecting New York farmers. We talk to a wide v...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1623855270": {
       "topics": [
@@ -101422,12 +101786,30 @@
     },
     "1624156714": {
       "topics": [
-        "medicine",
-        "education/how-to"
+        "health/nutrition",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based health and nutrition guidance with expert interviews.",
+      "display_title": "The Newborn Nurse™️ Podcast",
+      "blurb": "This podcast covers all things about NEWBORNS! We interview experts in the Newborn and Mother-Baby c...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1624254511": {
       "topics": [
@@ -101477,11 +101859,25 @@
     },
     "1624495804": {
       "topics": [
-        "gaming"
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "Crap Vegas: A Gambling Podcast",
+      "blurb": "A podcast for craps and gambling enthusiasts from the perspective of two gambling fans living the hi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1624535566": {
       "topics": [
@@ -101796,11 +102192,25 @@
     },
     "1626525760": {
       "topics": [
-        "business/non-profit"
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Business Analysis Live!",
+      "blurb": "Business analysis is one of the top trending skills today. From problem solvers to change agents to ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1626527232": {
       "topics": [
@@ -101819,11 +102229,25 @@
     },
     "1626668320": {
       "topics": [
-        "sports/cricket"
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "The Telegraph Cricket Podcast",
+      "blurb": "The Telegraph Cricket Podcast is back this summer! Join Nick Hoult, Will Macpherson and Jake Goodwil...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1626752846": {
       "topics": [
@@ -101977,11 +102401,25 @@
     },
     "1627813804": {
       "topics": [
-        "kids-family/education"
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Breaking news and analysis of military conflict and geopolitics.",
+      "display_title": "WeWow",
+      "blurb": "From the award-winning creators behind the #1 science podcast for kids and families, Wow in the Worl...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1627891759": {
       "topics": [
@@ -102121,12 +102559,25 @@
     },
     "1628598382": {
       "topics": [
-        "kids-family/stories",
-        "fiction"
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "Night Falls: Bedtime Story, Sleep Story, Sleep Podcast",
+      "blurb": "Welcome to Night Falls 🌕🦌 a sleep podcast of calming bedtime stories for adults. If your thoughts ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1628637883": {
       "topics": [
@@ -102228,11 +102679,30 @@
     },
     "1629167542": {
       "topics": [
-        "news/daily"
+        "health/nutrition",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based health and nutrition guidance with expert interviews.",
+      "display_title": "Mo News",
+      "blurb": "A daily breakdown of the biggest news headlines from around the world -- from the essential to the e...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1629188591": {
       "topics": [
@@ -102834,11 +103304,30 @@
     },
     "1632259054": {
       "topics": [
-        "kids-family/parenting"
+        "health/nutrition",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based health and nutrition guidance with expert interviews.",
+      "display_title": "Previa Alliance Podcast",
+      "blurb": "There are few experiences as universal to human existence as pregnancy and childbirth, and yet its m...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1632259928": {
       "topics": [
@@ -102865,12 +103354,25 @@
     },
     "1632472054": {
       "topics": [
-        "gaming",
-        "sports/tennis"
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports news and fan discussion.",
+      "display_title": "Tennis Gambling Podcast",
+      "blurb": "The Tennis Gambling Podcast on the Sports Gambling Podcast Network is your home for everything tenni...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1632497533": {
       "topics": [
@@ -103271,11 +103773,25 @@
     },
     "1634726836": {
       "topics": [
-        "fiction/sci-fi"
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Desert Skies",
+      "blurb": "On a lonely highway between life and the next life there's one last stop that we all have to make. D...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1634744035": {
       "topics": [
@@ -103355,11 +103871,25 @@
     },
     "1635013492": {
       "topics": [
-        "society"
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "Cults to Consciousness",
+      "blurb": "Survivor stories of claiming independence after leaving high-control groups & people. Cults to Consc...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1635060285": {
       "topics": [
@@ -103475,9 +104005,23 @@
       "topics": [
         "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives exploring social and personal history.",
+      "display_title": "SNAFU with Ed Helms",
+      "blurb": "SNAFU with Ed Helms, America&rsquo;s favorite podcast about history&rsquo;s greatest screwups, retur...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1635418897": {
       "topics": [
@@ -103586,11 +104130,30 @@
     },
     "1635926128": {
       "topics": [
-        "health/nutrition"
+        "health/nutrition",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based health and nutrition guidance with expert interviews.",
+      "display_title": "The Primal Podcast",
+      "blurb": "The Primal Podcast (previously known as 5 Minute Body) is hosted by Rina Ahluwalia, who has over 25 ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1635984015": {
       "topics": [
@@ -103784,11 +104347,25 @@
     },
     "1636866448": {
       "topics": [
-        "personal-journals"
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "Spooky Appalachia",
+      "blurb": "Deep in the heart of the world’s oldest mountains lies a silence that isn’t empty. Welcome to Spooky...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1636889625": {
       "topics": [
@@ -103892,11 +104469,30 @@
     },
     "1637284186": {
       "topics": [
-        "education/self-improvement"
+        "health/nutrition",
+        "health"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based health and nutrition guidance with expert interviews.",
+      "display_title": "Sad to Savage",
+      "blurb": "Sad to Savage is a podcast focused on teaching habits that improve your mental and physical health. ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1637295456": {
       "topics": [
@@ -103968,11 +104564,25 @@
     },
     "1637476174": {
       "topics": [
-        "society"
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Vibe Check",
+      "blurb": "A weekly podcast where Saeed Jones and Zach Stafford make sense of what’s going on in news and cultu...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1637478937": {
       "topics": [
@@ -104261,11 +104871,28 @@
     },
     "1638860158": {
       "topics": [
-        "education/how-to"
+        "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Computing and technology trends and innovation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /delve/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1638918169": {
       "topics": [
@@ -104482,19 +105109,52 @@
     },
     "1640142466": {
       "topics": [
-        "sports/endurance"
+        "health/nutrition",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based health and nutrition guidance with expert interviews.",
+      "display_title": "The Trailhead",
+      "blurb": "The Trailhead isn't your typical trail running podcast—we're not dissecting splits or debating race ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1640156422": {
       "topics": [
-        "society"
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "Good Guys",
+      "blurb": "Hosted by actor & writer, Josh Peck, and entrepreneur & social media icon, Ben Soffer. Check back in...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1640172049": {
       "topics": [
@@ -104521,11 +105181,25 @@
     },
     "1640310598": {
       "topics": [
-        "fiction/comedy"
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "Connor Pugs",
+      "blurb": "Here are all the storytime videos from Connor Pugs. Connor Pugs makes stories on a variety of topics...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1640311112": {
       "topics": [
@@ -104544,11 +105218,25 @@
     },
     "1640331646": {
       "topics": [
-        "sports/football"
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "Iowa Everywhere",
+      "blurb": "Re-inventing sports talk in the state of Iowa. Welcome to Iowa Everywhere, a locally owned, modern, ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1640357958": {
       "topics": [
@@ -104748,12 +105436,25 @@
     },
     "1641539908": {
       "topics": [
-        "religion/christianity",
-        "sports/golf"
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Bible Caddie Podcast",
+      "blurb": "The Bible Caddie Podcast aims to carry the good news about Jesus to the world of golf! Multi-time PG...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1641568639": {
       "topics": [
@@ -104780,11 +105481,25 @@
     },
     "1641657298": {
       "topics": [
-        "education/how-to"
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "The CRNA Club Podcast",
+      "blurb": "Wish you knew exactly what you needed to do to get into CRNA school? Need help coming up with a stra...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1641709619": {
       "topics": [
@@ -104818,11 +105533,33 @@
     },
     "1641756508": {
       "topics": [
-        "nature"
+        "health/nutrition",
+        "health"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science-based health and nutrition guidance with expert interviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1641761623": {
       "topics": [
@@ -104870,12 +105607,25 @@
     },
     "1642082866": {
       "topics": [
-        "religion/christianity",
-        "education/courses"
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "Introduction to the Theology and Apologetics of Cornelius",
+      "blurb": "Dr. Lane G. Tipton teaches a thorough introduction to the theology and innovative apologetic method ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1642091664": {
       "topics": [
@@ -104901,20 +105651,47 @@
     },
     "1642245118": {
       "topics": [
-        "religion/christianity",
-        "religion"
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and robotics development and applications.",
+      "display_title": "Preach My Gospel Podcast",
+      "blurb": "The Preach My Gospel Podcast is hosted by Sean Dixon, Brian Patterson, and John Gonzalez. They are e...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1642258990": {
       "topics": [
-        "space"
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Astronomy Daily: Space News Updates",
+      "blurb": "Join hosts Anna & Avery for daily Space & Astronomy news, insights, and discoveries. Give us 15 minu...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1642278031": {
       "topics": [
@@ -105032,11 +105809,25 @@
     },
     "1642760632": {
       "topics": [
-        "society"
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Hoaxed",
+      "blurb": "Introducing... Hoaxed, the new series from Alexi Mostrous and Tortoise, who brought you Sweet Bobby....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1642787926": {
       "topics": [
@@ -105077,11 +105868,25 @@
     },
     "1643026594": {
       "topics": [
-        "science/physics"
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Tinfoil Tales",
+      "blurb": "Tinfoil Tales is a paranormal podcast featuring true eyewitness accounts of the strange, unexplained...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1643053152": {
       "topics": [
@@ -105949,11 +106754,25 @@
     },
     "1647482386": {
       "topics": [
-        "hobbies"
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content and learning resources.",
+      "display_title": "安住紳一郎の日曜天国",
+      "blurb": "テレビでは語らない安住アナのホンネがたっぷり楽しめる「オープニングトーク」やリスナーの皆さんのメッセージに安住アナが毒ッ気たっぷりでコメントする応えるコーナーなど、ランダムにお送りします。TBSラジオ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1647518076": {
       "topics": [
@@ -106063,12 +106882,30 @@
     },
     "1648107550": {
       "topics": [
-        "medicine",
-        "society"
+        "health/nutrition",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based health and nutrition guidance with expert interviews.",
+      "display_title": "Symptomatic: A Medical Mystery Podcast",
+      "blurb": "How terrifying would it be to fight an unknown enemy? One you don’t recognize and didn’t see coming?...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1648149849": {
       "topics": [
@@ -106214,11 +107051,25 @@
     },
     "1648663774": {
       "topics": [
-        "tv-film"
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Off Air with Jane & Fi",
+      "blurb": "Two friends, too many opinions. Get an unfiltered look at the ups and downs of life with Jane Garvey...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1648692487": {
       "topics": [
@@ -106244,11 +107095,25 @@
     },
     "1648832044": {
       "topics": [
-        "sports/hockey"
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and market analysis for business and investors.",
+      "display_title": "Empty Netters Podcast",
+      "blurb": "Ice is ready and welcome to the Empty Netters Podcast! We're brothers who played hockey in global sh...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1648885530": {
       "topics": [
@@ -106715,11 +107580,28 @@
     },
     "1650396130": {
       "topics": [
-        "religion"
+        "health/sexuality"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Discussion of sexuality, relationships, and intimate connection.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-5db21c07",
+      "classified_at": "2026-07-25T16:37:44.476Z"
     },
     "1650407051": {
       "topics": [
