@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T10:37:44.738Z",
+  "built_at": "2026-07-25T11:36:09.669Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-06eada78",
+    "last_batch_id": "fresh-2026-07-25-7f43cc10",
     "last_batch_tier": 1
   },
   "entries": {
@@ -58505,11 +58505,30 @@
     },
     "1490318356": {
       "topics": [
-        "business"
+        "business",
+        "business/founders"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Network marketing and home business interviews since 1999.",
+      "display_title": "Legacy Leadership",
+      "blurb": "Long-running show featuring network marketing leaders and entrepreneurs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1490362437": {
       "topics": [
@@ -58563,11 +58582,30 @@
     },
     "1490693338": {
       "topics": [
+        "news",
         "tv-film"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily coverage of British royal family news and scandals.",
+      "display_title": "Palace Intrigue :  King Charles, Meghan Markle",
+      "blurb": "Daily royal family news, politics, feuds, and palace gossip.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1490703799": {
       "topics": [
@@ -58889,11 +58927,30 @@
     },
     "1492124590": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment gossip and celebrity news from a columnist.",
+      "display_title": "Naughty But Nice with Rob Shuter",
+      "blurb": "Daily Hollywood celebrity gossip and entertainment news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1492135529": {
       "topics": [
@@ -59068,11 +59125,30 @@
     },
     "1492764286": {
       "topics": [
-        "society"
+        "news",
+        "tv-film"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily coverage of British royal family news and scandals.",
+      "display_title": "Jungle Prince",
+      "blurb": "Daily royal family news, politics, feuds, and palace gossip.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1492766207": {
       "topics": [
@@ -59084,11 +59160,30 @@
     },
     "1492797340": {
       "topics": [
-        "history"
+        "news",
+        "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep-dive national security conversations with military and intelligence professionals.",
+      "display_title": "The Team House",
+      "blurb": "National security, geopolitics, and defense strategy discussions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1492819721": {
       "topics": [
@@ -59490,11 +59585,30 @@
     },
     "1493689936": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Course lectures on nonprofit management practices and governance.",
+      "display_title": "Nonprofit Management and Leadership",
+      "blurb": "Nonprofit management, leadership, fundraising, and governance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1493713982": {
       "topics": [
@@ -59590,9 +59704,23 @@
       "topics": [
         "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Progressive and melodic house music DJ mix show.",
+      "display_title": "Sultan + Shepard present Dialekt Radio",
+      "blurb": "Weekly progressive house music mixes and new releases.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1494056579": {
       "topics": [
@@ -59796,8 +59924,22 @@
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion culture and style commentary from industry insiders.",
+      "display_title": "Throwing Fits",
+      "blurb": "Fashion culture, style trends, and industry conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1494522474": {
       "topics": [
@@ -60203,12 +60345,30 @@
     },
     "1495557562": {
       "topics": [
-        "automotive/racing",
-        "sports"
+        "tv-film",
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment gossip and celebrity news from a columnist.",
+      "display_title": "The Race F1 Podcast",
+      "blurb": "Daily Hollywood celebrity gossip and entertainment news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1495563595": {
       "topics": [
@@ -60229,8 +60389,22 @@
         "news/politics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political news and analysis from conservative perspective.",
+      "display_title": "Verdict with Ted Cruz",
+      "blurb": "Daily political news and conservative political analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1495602444": {
       "topics": [
@@ -60440,11 +60614,30 @@
     },
     "1496428378": {
       "topics": [
-        "aviation"
+        "aviation",
+        "history/military-modern"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Military aviation stories and defense technology coverage.",
+      "display_title": "The Afterburn Podcast",
+      "blurb": "Military aviation operations, pilot stories, and defense tech.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1496431053": {
       "topics": [
@@ -60812,11 +61005,25 @@
     },
     "1497539452": {
       "topics": [
-        "personal-journals"
+        "education/language-learning"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese language learning for casual listeners.",
+      "display_title": "日本語を大切にしたい Slow Japanese Podcast",
+      "blurb": "Slow-paced Japanese language and cultural content for learners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1497576822": {
       "topics": [
@@ -61003,11 +61210,25 @@
     },
     "1498114990": {
       "topics": [
-        "religion"
+        "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian teachings and spiritual life guidance.",
+      "display_title": "Apóstol German Ponce",
+      "blurb": "Christian teachings focused on spiritual life and family values.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1498116036": {
       "topics": [
@@ -61078,11 +61299,30 @@
     },
     "1498261768": {
       "topics": [
-        "fiction/comedy"
+        "fiction/comedy",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy stories and everyday anecdotes from Brazilian creator.",
+      "display_title": "Não Inviabilize",
+      "blurb": "Comedy stories, anecdotes, and interactive fiction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1498270180": {
       "topics": [
@@ -61276,8 +61516,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Supernatural sci-fi audio drama series.",
+      "display_title": "The Left Right Game",
+      "blurb": "Supernatural sci-fi drama following paranormal explorers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1498840151": {
       "topics": [
@@ -61417,11 +61671,30 @@
     },
     "1499409058": {
       "topics": [
-        "computing"
+        "computing",
+        "economics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cryptocurrency, DeFi, and blockchain technology coverage.",
+      "display_title": "Bankless",
+      "blurb": "Cryptocurrency, DeFi, and blockchain finance analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1499411102": {
       "topics": [
@@ -61564,11 +61837,30 @@
     },
     "1499785732": {
       "topics": [
+        "news",
         "tv-film"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Internet culture and social media viral trends.",
+      "display_title": "infinite scroll",
+      "blurb": "Internet culture, viral trends, and social media news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1499872498": {
       "topics": [
@@ -61827,12 +62119,30 @@
     },
     "1500667648": {
       "topics": [
-        "fiction",
-        "society"
+        "paranormal",
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mysterious unexplained phenomena and paranormal stories.",
+      "display_title": "So Supernatural",
+      "blurb": "Paranormal mysteries, unexplained phenomena, and strange cases.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1500682242": {
       "topics": [
@@ -62258,9 +62568,23 @@
       "topics": [
         "personal-journals"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal stories of redemption and worst moments from guests.",
+      "display_title": "The Confessional with Nadia Bolz-Weber",
+      "blurb": "Personal stories about worst moments and how people changed.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1502178774": {
       "topics": [
@@ -62486,12 +62810,25 @@
     },
     "1502782720": {
       "topics": [
-        "computing",
-        "engineering/ai-robotics"
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly summary and analysis of AI news and developments.",
+      "display_title": "Last Week in AI",
+      "blurb": "Weekly AI news, updates, and industry analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1502796518": {
       "topics": [
@@ -63049,11 +63386,30 @@
     },
     "1504682770": {
       "topics": [
-        "gaming"
+        "gaming",
+        "culture/mythology"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "D&D lore, news, and tabletop roleplaying game culture.",
+      "display_title": "Dungeons & Dragons Lorecast",
+      "blurb": "Dungeons & Dragons lore, news, and gaming coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1504713161": {
       "topics": [
@@ -63087,11 +63443,30 @@
     },
     "1504732282": {
       "topics": [
-        "tv-film/history"
+        "tv-film/history",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film history and behind-the-scenes stories from Hollywood.",
+      "display_title": "The Plot Thickens",
+      "blurb": "Hollywood film history and behind-the-scenes stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1504752194": {
       "topics": [
@@ -63568,11 +63943,30 @@
     },
     "1506227206": {
       "topics": [
-        "psychology"
+        "psychology",
+        "science/storytelling"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychology of opinion formation and persuasion.",
+      "display_title": "Opinion Science",
+      "blurb": "Psychology of opinions, persuasion, and behavior change.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1506230012": {
       "topics": [
@@ -63593,8 +63987,22 @@
         "comedy"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Bonanas for Bonanza",
+      "blurb": "In the first podcast ever to b",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1506247097": {
       "topics": [
@@ -63684,11 +64092,30 @@
     },
     "1506395878": {
       "topics": [
-        "psychology"
+        "news",
+        "society/government"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep-dive national security conversations with military and intelligence professionals.",
+      "display_title": "Teamcast",
+      "blurb": "National security, geopolitics, and defense strategy discussions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1506403751": {
       "topics": [
@@ -64449,9 +64876,23 @@
       "topics": [
         "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "The Daily Beast Podcast",
+      "blurb": "The Daily Beast Podcast is as ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1508215641": {
       "topics": [
@@ -64476,12 +64917,25 @@
     },
     "1508270932": {
       "topics": [
-        "religion",
-        "religion/christianity"
+        "religion"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Let The Bible Speak OR.",
+      "blurb": "Let The Bible Speak OR. is a P",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1508341634": {
       "topics": [
@@ -64600,9 +65054,23 @@
       "topics": [
         "education/courses"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "SCOPE of Pain (Safer/Competent Opioid Prescribing Education)",
+      "blurb": "The SCOPE of Pain Podcast seri",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1508682193": {
       "topics": [
@@ -64961,11 +65429,30 @@
     },
     "1509989788": {
       "topics": [
-        "tv-film/history"
+        "tv-film/history",
+        "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.5
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "It Was A Sh*t Show",
+      "blurb": "Why did it take so long to mak",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1510000265": {
       "topics": [
@@ -65282,11 +65769,30 @@
     },
     "1510853470": {
       "topics": [
+        "society",
         "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.5
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Chris Chan: A Comprehensive History",
+      "blurb": "A detailed look into the life ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1510861233": {
       "topics": [
@@ -65391,11 +65897,30 @@
     },
     "1511166208": {
       "topics": [
+        "science",
         "nature"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.5
+        },
+        {
+          "node": "nature",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Permaculture P.I.M.P.cast",
+      "blurb": "The one and only Permaculture ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1511169751": {
       "topics": [
@@ -65459,12 +65984,25 @@
     },
     "1511448958": {
       "topics": [
-        "religion",
-        "culture/books"
+        "religion"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "The Leader’s Notebook with Dr. Mark Rutland",
+      "blurb": "Impacting lives through effect",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1511456063": {
       "topics": [
@@ -65752,9 +66290,23 @@
       "topics": [
         "health"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "I Love Being Sober",
+      "blurb": "Hello my friends, and welcome ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1512840260": {
       "topics": [
@@ -65772,11 +66324,30 @@
     },
     "1512847066": {
       "topics": [
-        "tv-film/history"
+        "tv-film/history",
+        "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.5
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "WHAT WENT WRONG",
+      "blurb": "What Went Wrong covers Hollywo",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1512861386": {
       "topics": [
@@ -66075,19 +66646,52 @@
     },
     "1513781128": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.5
+        },
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "The Common Good Data Podcast",
+      "blurb": "The podcast for nonprofit and ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1513782802": {
       "topics": [
         "tv-film/animation"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Gateway to Anime",
+      "blurb": "Gateway to Anime is a podcast ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1513787271": {
       "topics": [
@@ -66254,12 +66858,25 @@
     },
     "1514489746": {
       "topics": [
-        "education/courses",
-        "medicine/neuroscience"
+        "education/courses"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Born to Be Free: Supporting Neurodivergent Clients to",
+      "blurb": "A podcast for professionals lo",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1514494866": {
       "topics": [
@@ -66349,9 +66966,23 @@
       "topics": [
         "hobbies"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Shop Sounds Podcast",
+      "blurb": "A woodworking podcast about no",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1514880062": {
       "topics": [
@@ -66523,12 +67154,25 @@
     },
     "1515326224": {
       "topics": [
-        "education/courses",
-        "computing"
+        "education/courses"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Ask Paul | National Electrical Code",
+      "blurb": "Welcome to Ask Paul the podcas",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1515341022": {
       "topics": [
@@ -66556,8 +67200,22 @@
         "business/careers"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "A Bit of Optimism",
+      "blurb": "My career is an accident. It s",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1515399733": {
       "topics": [
@@ -66593,9 +67251,23 @@
       "topics": [
         "education/courses"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Agents of Change Social Work Test Prep",
+      "blurb": "Hi there! I am a Licensed Clin",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1515559267": {
       "topics": [
@@ -66688,12 +67360,25 @@
     },
     "1515827446": {
       "topics": [
-        "philosophy",
-        "religion/spirituality"
+        "philosophy"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Conspirituality",
+      "blurb": "Dismantling New Age cults, wel",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1515834398": {
       "topics": [
@@ -67308,9 +67993,23 @@
       "topics": [
         "sports/golf"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Long Shots: VSiN's Golf Betting Podcast",
+      "blurb": "VSiN's Long Shots is the compl",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1517684710": {
       "topics": [
@@ -67539,11 +68238,30 @@
     },
     "1518666256": {
       "topics": [
+        "news",
         "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        },
+        {
+          "node": "business",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "HousingWire Daily",
+      "blurb": "The HousingWire Daily podcast ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1518671589": {
       "topics": [
@@ -68062,20 +68780,52 @@
     },
     "1520368162": {
       "topics": [
-        "gaming"
+        "gaming",
+        "culture/mythology"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "D&D lore, news, and tabletop roleplaying game culture.",
+      "display_title": "Three Black Halflings | A Dungeons & Dragons",
+      "blurb": "Dungeons & Dragons lore, news, and gaming coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1520403988": {
       "topics": [
-        "history",
-        "history/military-ancient"
+        "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "The Ancients",
+      "blurb": "A podcast for all ancient hist",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1520426877": {
       "topics": [
@@ -68087,13 +68837,25 @@
     },
     "1520444026": {
       "topics": [
-        "kids-family/education",
-        "kids-family/parenting",
-        "health/mental"
+        "kids-family/education"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Sleep Tight Science - A Bedtime Science Podcast",
+      "blurb": "We’ve got bedtime down to a (S",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1520464284": {
       "topics": [
@@ -68548,8 +69310,22 @@
         "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Everything Everywhere Daily: History, Science, Geography & More",
+      "blurb": "Everything Everywhere Daily is",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1521872795": {
       "topics": [
@@ -68611,11 +69387,30 @@
     },
     "1522055902": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.5
+        },
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Bravo! We're Black",
+      "blurb": "We're just two black people wh",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1522058082": {
       "topics": [
@@ -68659,8 +69454,22 @@
         "religion/islam"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "The Firsts",
+      "blurb": "The Firsts: The Forerunners of",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1522154616": {
       "topics": [
@@ -68923,11 +69732,25 @@
     },
     "1522912456": {
       "topics": [
-        "tv-film"
+        "culture/fashion"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion culture and style commentary from industry insiders.",
+      "display_title": "It's A Hawaii Thing",
+      "blurb": "Fashion culture, style trends, and industry conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1522914723": {
       "topics": [
@@ -69017,20 +69840,55 @@
     },
     "1523174914": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.5
+        },
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1523181124": {
       "topics": [
-        "religion",
-        "religion/christianity"
+        "religion"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "365 Christian Men",
+      "blurb": "365 Christian Men are inspirat",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1523196010": {
       "topics": [
@@ -69043,9 +69901,23 @@
       "topics": [
         "personal-journals"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "The Dark Paranormal",
+      "blurb": "True Stories, from terrified p",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1523226942": {
       "topics": [
@@ -69176,8 +70048,22 @@
         "health/alternative"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "The Dr. K Show",
+      "blurb": "Looking for a functional medic",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1523419430": {
       "topics": [
@@ -69384,11 +70270,30 @@
     },
     "1523922106": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.5
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "The Open Bedroom Podcast",
+      "blurb": "Welcome to the world of open d",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1523972332": {
       "topics": [
@@ -69606,12 +70511,25 @@
     },
     "1524689002": {
       "topics": [
-        "sports/fantasy",
-        "sports/endurance"
+        "sports/fantasy"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "Beyond the Peloton Podcast",
+      "blurb": "Cycling writer Spencer Martin ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1524730109": {
       "topics": [
@@ -69775,11 +70693,30 @@
     },
     "1525233430": {
       "topics": [
-        "society/government"
+        "society/government",
+        "news/politics"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.5
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine specific classification; using prior genre guess.",
+      "display_title": "The Trident Room Podcast",
+      "blurb": "Stochastic optimization … sub-",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-7f43cc10",
+      "classified_at": "2026-07-25T11:36:09.669Z"
     },
     "1525255800": {
       "topics": [
