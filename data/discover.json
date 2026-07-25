@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-07-24T11:47:14.754Z",
+  "built_at": "2026-07-25T11:41:49.115Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -15512,6 +15512,54 @@
       ],
       "hook": "Guy and Mindy share surprising facts about cats in this kid-friendly science quiz.",
       "explicit": false
+    },
+    {
+      "id": "amicus-dahlia-lithwick--by-the-people-for-the-children",
+      "show": "Amicus With Dahlia Lithwick | Law, justice, and the courts",
+      "title": "By the People | For the Children",
+      "apple_collection_id": 928790786,
+      "apple_track_id": 1000778258263,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/by-the-people-for-the-children/id928790786?i=1000778258263&uo=4",
+      "release_date": "2026-07-25",
+      "duration_min": 41,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e8/52/9b/e8529b7b-21fe-9692-48fd-7696d23a8807/mza_17089514366859568033.jpeg/600x600bb.jpg",
+      "topics": [
+        "society/law"
+      ],
+      "hook": "A Reconstruction-era test case: an 8-year-old's re-indenture after Maryland abolished slavery.",
+      "explicit": false
+    },
+    {
+      "id": "happier-gretchen-rubin--more-happier-easing-painful-moments-with",
+      "show": "Happier with Gretchen Rubin",
+      "title": "More Happier : Easing Painful Moments with Humor, Plus, Are Coasters Outdated?",
+      "apple_collection_id": 969519520,
+      "apple_track_id": 1000777782199,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/more-happier-easing-painful-moments-with-humor-plus/id969519520?i=1000777782199&uo=4",
+      "release_date": "2026-07-25",
+      "duration_min": 24,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ed/da/5d/edda5d2d-01f9-e843-0017-7332297aa0e0/mza_1310242592343334298.jpeg/600x600bb.jpg",
+      "topics": [
+        "education/self-improvement"
+      ],
+      "hook": "Two Knicks teammates turn a painful playoff moment into humor, plus: are coasters outdated?",
+      "explicit": false
+    },
+    {
+      "id": "casefile--casefile-extra-greg-fleniken",
+      "show": "Casefile True Crime",
+      "title": "Casefile Extra: Greg Fleniken",
+      "apple_collection_id": 998568017,
+      "apple_track_id": 1000777091233,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/casefile-extra-greg-fleniken/id998568017?i=1000777091233&uo=4",
+      "release_date": "2026-07-25",
+      "duration_min": 47,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/32/81/a3/3281a345-6fa5-1d0d-b0bc-f02b0850a0ae/mza_17562537467118278179.jpeg/600x600bb.jpg",
+      "topics": [
+        "true-crime"
+      ],
+      "hook": "A Beaumont hotel death looked natural, until an autopsy revealed catastrophic internal injuries.",
+      "explicit": true
     }
   ]
 }
