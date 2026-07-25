@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T07:58:27.855Z",
+  "built_at": "2026-07-25T08:56:47.036Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-89fc93b3",
+    "last_batch_id": "fresh-2026-07-25-cf102e75",
     "last_batch_tier": 1
   },
   "entries": {
@@ -25101,11 +25101,38 @@
     },
     "1111796513": {
       "topics": [
-        "education"
+        "education/self-improvement",
+        "education",
+        "personal-journals"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about self-improvement and education; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1111803118": {
       "topics": [
@@ -25242,11 +25269,30 @@
     },
     "1114632629": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about hobbies and fantasy; content-driven classification based on episode titles.",
+      "display_title": "PokerNews Podcast",
+      "blurb": "The PokerNews Podcast, the longest-running news show in the poker world with over 800 episodes, releases new episodes every Friday! Each episode includes the latest news, stories, debates, and gossip",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1114667498": {
       "topics": [
@@ -25611,19 +25657,70 @@
     },
     "1123347203": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/after-shows",
+        "culture/pop-culture",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.98
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about after-shows and pop-culture; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1123372859": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "relationships",
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about personal-journals and relationships; content-driven classification based on episode titles.",
+      "display_title": "Adoptees On",
+      "blurb": "The podcast where adoptees discuss the adoption experience. This is not the usual adoption talk. You will find real, raw, and deep feelings addressed in these interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1123488172": {
       "topics": [
@@ -25656,11 +25753,30 @@
     },
     "1124379551": {
       "topics": [
-        "tv-film/history"
+        "tv-film/history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": "Kill By Kill",
+      "blurb": "In each episode, Patrick Hamilton and Gena Radcliffe unpack all the gory details of horror cinema's least discussed topic: the characters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1124549378": {
       "topics": [
@@ -25793,11 +25909,30 @@
     },
     "1129127759": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about non-profit and markets; content-driven classification based on episode titles.",
+      "display_title": "America's Credit Unions",
+      "blurb": "America's Credit Unions is a weekly podcast featuring credit union people and credit union ideas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1129323212": {
       "topics": [
@@ -25867,11 +26002,30 @@
     },
     "1131408917": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "sports/baseball"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/baseball",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about fantasy and baseball; content-driven classification based on episode titles.",
+      "display_title": "Pitcher List Fantasy Baseball",
+      "blurb": "Award-winning daily and weekly Fantasy Baseball analysis from the Pitcher List staff.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1131463879": {
       "topics": [
@@ -25882,11 +26036,30 @@
     },
     "1131628553": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about fashion and health; content-driven classification based on episode titles.",
+      "display_title": "Naked Beauty",
+      "blurb": "Unfiltered talk about beauty trends, selfcare journeys, skincare, wellness tips and the products we love, hosted by Brooke DeVard Ozaydinli, with the women I admire. Hosted on Acast. See acast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1131723994": {
       "topics": [
@@ -25965,11 +26138,30 @@
     },
     "1133618045": {
       "topics": [
-        "sports/golf"
+        "sports/golf",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about golf and hobbies; content-driven classification based on episode titles.",
+      "display_title": "TrapDraw Podcast – No Laying Up",
+      "blurb": "The TrapDraw is No Laying Up’s podcast playground for all topics beyond the world of golf.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1133865220": {
       "topics": [
@@ -25980,11 +26172,30 @@
     },
     "1134154895": {
       "topics": [
+        "news/commentary",
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about commentary and society; content-driven classification based on episode titles.",
+      "display_title": "Next Question with Katie Couric",
+      "blurb": "Tired of political headlines that feel like d&eacute;j&agrave; vu? Wondering if you actually need to care about every controversy? This season, Katie&rsquo;s asking those same questions&mdash;and talk",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1134814365": {
       "topics": [
@@ -26077,11 +26288,30 @@
     },
     "1135598495": {
       "topics": [
-        "nature"
+        "nature",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about nature and hobbies; content-driven classification based on episode titles.",
+      "display_title": "The Gestalt Gardener",
+      "blurb": "Each week, horticulturalist Felder Rushing shares stories, answers questions and just talks gardening.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1135688404": {
       "topics": [
@@ -26176,9 +26406,23 @@
       "topics": [
         "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about casual-hangs; content-driven classification based on episode titles.",
+      "display_title": "supermegashow",
+      "blurb": "Venture into the two minds of America's brightest young men. Matt Watson & Ryan Magee are here with a ground-breaking podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1138061190": {
       "topics": [
@@ -26220,11 +26464,30 @@
     },
     "1138942145": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "sports/football"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.98
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about fantasy and football; content-driven classification based on episode titles.",
+      "display_title": "FantasyPros - Fantasy Football Podcast",
+      "blurb": "FantasyPros provides hard-hitting fantasy football analysis while keeping you entertained. Get the tips needed to win your league from a trusted network of 100+ experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1139115219": {
       "topics": [
@@ -26357,12 +26620,30 @@
     },
     "1141509275": {
       "topics": [
-        "society/law",
-        "tv-film/after-shows"
+        "tv-film/history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": "...These Are Their Stories",
+      "blurb": "Kevin Flynn and Rebecca Lavoie invite special guests to talk about ripped-from-the-headlines episodes of Law & Order, SVU, and Criminal Intent.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1141591437": {
       "topics": [
@@ -26717,11 +26998,30 @@
     },
     "1148650883": {
       "topics": [
-        "sports"
+        "sports/golf",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about golf and hobbies; content-driven classification based on episode titles.",
+      "display_title": "The Tony Kornheiser Show",
+      "blurb": "\"The Tony Kornheiser Show\" (now available exclusively on-demand) is a topical, daily talk show that starts with sports and quickly moves into politics, current events, entertainment and, really, whate",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1148679972": {
       "topics": [
@@ -26903,11 +27203,30 @@
     },
     "1152853871": {
       "topics": [
-        "psychology"
+        "psychology",
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about psychology and mental; content-driven classification based on episode titles.",
+      "display_title": "The Thoughtful Counselor",
+      "blurb": "The Thoughtful Counselor is a podcast that is dedicated to producing great conversations around current topics in counseling and psychotherapy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1153019457": {
       "topics": [
@@ -26968,19 +27287,63 @@
     },
     "1154105909": {
       "topics": [
-        "economics/markets"
+        "economics/markets",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about markets and startups; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1154304419": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about sexuality and relationships; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1154758766": {
       "topics": [
@@ -27094,11 +27457,30 @@
     },
     "1156763561": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about sexuality and relationships; content-driven classification based on episode titles.",
+      "display_title": "The Dildorks",
+      "blurb": "Sex nerds and best friends Billy (billylore.com) and Kate (katesloan.com) talk about all things sex, dating, and masturbating.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1157097612": {
       "topics": [
@@ -27140,11 +27522,30 @@
     },
     "1157695571": {
       "topics": [
-        "society/government"
+        "society/government",
+        "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about government and politics; content-driven classification based on episode titles.",
+      "display_title": "Wildland Fire Lessons Learned Center",
+      "blurb": "Learning in the Wildland Fire Service",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1157719963": {
       "topics": [
@@ -27155,11 +27556,30 @@
     },
     "1158031787": {
       "topics": [
+        "kids-family",
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about kids-family and drama; content-driven classification based on episode titles.",
+      "display_title": "The Unexplainable Disappearance of Mars Patel",
+      "blurb": "The Unexplainable Disappearance of Mars Patel is a mystery adventure show for kids that the whole family will enjoy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1158699464": {
       "topics": [
@@ -27313,9 +27733,26 @@
       "topics": [
         "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about religion; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1163094296": {
       "topics": [
@@ -27392,8 +27829,22 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about gaming; content-driven classification based on episode titles.",
+      "display_title": "For Azeroth!: A World of Warcraft Podcast",
+      "blurb": "A podcast featuring the news, lore, resources, and community feedback about Blizzard's premier World of Warcraft MMORPG.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1163852618": {
       "topics": [
@@ -27405,11 +27856,25 @@
     },
     "1163966747": {
       "topics": [
-        "religion/christianity"
+        "religion/judaism"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about judaism; content-driven classification based on episode titles.",
+      "display_title": "The Parsha Podcast - With Rabbi Yaakov Wolbe",
+      "blurb": "The Parsha Podcast with Rabbi Yaakov Wolbe was started in 2016 with the goal of making the weekly Parsha accessible and useful.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1163966749": {
       "topics": [
@@ -27449,11 +27914,33 @@
     },
     "1164228167": {
       "topics": [
-        "fiction/drama"
+        "tv-film/history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 15w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1164272877": {
       "topics": [
@@ -27516,11 +28003,25 @@
     },
     "1166015603": {
       "topics": [
-        "education"
+        "education/language-learning"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about language-learning; content-driven classification based on episode titles.",
+      "display_title": "Españolistos | Learn Spanish With Fun Conversations!",
+      "blurb": "Españolistos is a Spanish language learning Podcast spoken in clear Latin American Spanish geared towards intermediate to advanced language learners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1166109768": {
       "topics": [
@@ -27835,11 +28336,30 @@
     },
     "1172101607": {
       "topics": [
-        "education/how-to"
+        "hobbies",
+        "adventure"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about hobbies and adventure; content-driven classification based on episode titles.",
+      "display_title": "Prepping Academy",
+      "blurb": "The Prepping Academy Radio Show is a live broadcast aimed at discussing various topics related to prepping, survival, and self-reliance, while also serving as a platform for preppers to unite.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1172351002": {
       "topics": [
@@ -28164,11 +28684,30 @@
     },
     "1182867683": {
       "topics": [
-        "tv-film/after-shows"
+        "health/sexuality",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about sexuality and relationships; content-driven classification based on episode titles.",
+      "display_title": "Reality Steve Podcast",
+      "blurb": "The #1 source on the internet for all your \"Bachelor,\" \"Bachelorette,\" and \"Bachelor in Paradise\" spoilers, Reality Steve talks about each episode, answers your emails, and covers everything you need",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1183017174": {
       "topics": [
@@ -28203,11 +28742,30 @@
     },
     "1184022695": {
       "topics": [
-        "education"
+        "philosophy",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about philosophy and psychology; content-driven classification based on episode titles.",
+      "display_title": "The Jordan B. Peterson Podcast",
+      "blurb": "Join intellectual phenomenon Dr. Jordan Peterson for enlightening discourse that will change the way you think.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1184615147": {
       "topics": [
@@ -28226,11 +28784,30 @@
     },
     "1184957849": {
       "topics": [
-        "health"
+        "health",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about health and psychology; content-driven classification based on episode titles.",
+      "display_title": "Brain over Binge Podcast",
+      "blurb": "A Simple, Brain-Based Approach to Help You Stop Binge Eating and Get on with Your Life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1185013324": {
       "topics": [
@@ -28301,11 +28878,33 @@
     },
     "1186480811": {
       "topics": [
-        "engineering/ai-robotics"
+        "economics/markets",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about markets and startups; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1186824033": {
       "topics": [
@@ -28523,11 +29122,30 @@
     },
     "1191681161": {
       "topics": [
-        "society/government"
+        "economics/markets",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about markets and startups; content-driven classification based on episode titles.",
+      "display_title": "Energy Policy Now",
+      "blurb": "Energy Policy Now offers clear talk on the policy issues that define our relationship to energy and its impact on society and the environment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1191775648": {
       "topics": [
@@ -28539,11 +29157,30 @@
     },
     "1191831035": {
       "topics": [
-        "religion/spirituality"
+        "psychology",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about psychology and mental; content-driven classification based on episode titles.",
+      "display_title": "Everything Is Energy with Cathy Heller",
+      "blurb": "At the deepest level of who you are, you are not separate from the Divine. You are a vessel through which the Light of the Creator longs to flow.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1191872952": {
       "topics": [
@@ -28720,11 +29357,30 @@
     },
     "1194470795": {
       "topics": [
-        "sports/cricket"
+        "health/sexuality",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about sexuality and relationships; content-driven classification based on episode titles.",
+      "display_title": "The Analyst Inside Cricket",
+      "blurb": "Proper cricketing analysis, opinion and insight from former Middlesex bowler Simon Hughes, aka The Analyst, the BBC's Simon Mann, and former England keeper and Ashes winner Matt Prior.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1194659367": {
       "topics": [
@@ -28736,11 +29392,33 @@
     },
     "1194755213": {
       "topics": [
-        "true-crime"
+        "tv-film/history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1194834764": {
       "topics": [
@@ -28759,11 +29437,30 @@
     },
     "1195001633": {
       "topics": [
-        "computing"
+        "tv-film/history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": "Smashing Security",
+      "blurb": "Stories from the world of hacking, cybersecurity, and rogue AI. Smashing Security isn’t your typical tech podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1195206601": {
       "topics": [
@@ -28928,11 +29625,30 @@
     },
     "1197924737": {
       "topics": [
-        "music"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "And The Writer Is...with Ross Golan",
+      "blurb": "Every week, we sit down with an acclaimed and venerable songwriter to intimately discuss what happens behind closed doors in the music industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1197955534": {
       "topics": [
@@ -29320,11 +30036,30 @@
     },
     "1204492895": {
       "topics": [
-        "nature"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Strange Animals Podcast",
+      "blurb": "A podcast about living, extinct, and imaginary animals!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1204506559": {
       "topics": [
@@ -29428,11 +30163,33 @@
     },
     "1206175991": {
       "topics": [
-        "science"
+        "economics/markets",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about markets and startups; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1206416686": {
       "topics": [
@@ -29520,11 +30277,33 @@
     },
     "1208276423": {
       "topics": [
-        "sports/wrestling"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 35w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1209129231": {
       "topics": [
@@ -29574,11 +30353,33 @@
     },
     "1209328985": {
       "topics": [
-        "nature"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1209543187": {
       "topics": [
@@ -29811,11 +30612,30 @@
     },
     "1212155999": {
       "topics": [
-        "history"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Queens Podcast",
+      "blurb": "Tune in to hear Katy and Nathan pair cocktails with amazing women of history. Cheers!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1212165069": {
       "topics": [
@@ -29849,11 +30669,33 @@
     },
     "1212558767": {
       "topics": [
-        "personal-journals"
+        "economics/markets",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about markets and startups; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 35w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1212571693": {
       "topics": [
@@ -30015,12 +30857,33 @@
     },
     "1215810743": {
       "topics": [
-        "kids-family/parenting",
-        "sports/tennis"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1215885562": {
       "topics": [
@@ -30053,11 +30916,25 @@
     },
     "1216741721": {
       "topics": [
-        "tv-film/after-shows"
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about sports; content-driven classification based on episode titles.",
+      "display_title": "Bad TV | A Reality TV Recap Program",
+      "blurb": "Breaking down Below Deck, Real Housewives, Love is Blind and all that's good about Bad T.V.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1216879060": {
       "topics": [
@@ -30216,12 +31093,33 @@
     },
     "1221406139": {
       "topics": [
-        "food",
-        "music"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 34w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1221460035": {
       "topics": [
@@ -30233,11 +31131,33 @@
     },
     "1222114325": {
       "topics": [
-        "news/daily"
+        "tv-film/history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 35w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1222440767": {
       "topics": [
@@ -30348,11 +31268,33 @@
     },
     "1224239045": {
       "topics": [
-        "comedy"
+        "health/sexuality",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about sexuality and relationships; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1224373139": {
       "topics": [
@@ -30572,11 +31514,33 @@
     },
     "1230090911": {
       "topics": [
-        "nature"
+        "nature",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about nature and hobbies; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1230116944": {
       "topics": [
@@ -30679,11 +31643,33 @@
     },
     "1231828055": {
       "topics": [
-        "nature"
+        "tv-film/history",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1232009882": {
       "topics": [
@@ -30708,11 +31694,30 @@
     },
     "1232428553": {
       "topics": [
-        "comedy"
+        "music",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about music and culture; content-driven classification based on episode titles.",
+      "display_title": "The Breakfast Club",
+      "blurb": "The World's Most Dangerous Morning Show, The Breakfast Club, With DJ Envy, Jess Hilarious, And Charlamagne Tha God!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1232498158": {
       "topics": [
@@ -30921,11 +31926,30 @@
     },
     "1236907421": {
       "topics": [
-        "business/startups"
+        "tv-film/history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": "Y Combinator Startup Podcast",
+      "blurb": "We help founders make something people want. The Y Combinator Podcast is where builders talk about building.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1236963001": {
       "topics": [
@@ -30959,11 +31983,33 @@
     },
     "1237636223": {
       "topics": [
-        "health/fitness"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1237796990": {
       "topics": [
@@ -31074,11 +32120,30 @@
     },
     "1241054855": {
       "topics": [
-        "education/how-to"
+        "health",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about health and psychology; content-driven classification based on episode titles.",
+      "display_title": "The Spark Creativity Teacher Podcast | ELA",
+      "blurb": "Want to love walking into your ELA classroom each day? Excited about innovative strategies like PBL, escape rooms, hexagonal thinking, sketchnotes, one-pagers, student podcasting, genius hour, and mor",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1241094874": {
       "topics": [
@@ -31276,11 +32341,34 @@
     },
     "1245331505": {
       "topics": [
-        "nature"
+        "nature",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about nature and hobbies; content-driven classification based on episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 17w > 8",
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1245353218": {
       "topics": [
@@ -31400,11 +32488,30 @@
     },
     "1247526593": {
       "topics": [
-        "education/self-improvement"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "SOLVED with Mark Manson",
+      "blurb": "New episodes every month. Life advice that doesn’t suck by a 3x #1 NYT bestselling author.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-cf102e75",
+      "classified_at": "2026-07-25T08:56:47.036Z"
     },
     "1247619396": {
       "topics": [
