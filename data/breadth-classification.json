@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T08:32:16.584Z",
+  "built_at": "2026-07-25T09:29:56.265Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-a4f82cd8",
+    "last_batch_id": "fresh-2026-07-25-9d80f8e5",
     "last_batch_tier": 1
   },
   "entries": {
@@ -32697,11 +32697,74 @@
     },
     "1240420549": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "comedy",
+        "computing",
+        "adventure/exploration",
+        "relationships",
+        "business",
+        "psychology",
+        "nature",
+        "nature/pets",
+        "comedy/casual-hangs",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Off The Vine with Kaitlyn Bristowe focuses on tv-film, comedy, computing, adventure/exploration, relationships, business, psychology, nature, nature/pets, comedy/casual-hangs, education; based on show",
+      "display_title": "Off The Vine with Kaitlyn Bristowe",
+      "blurb": "On the charts since 2017, Off The Vine isn’t just a podcast—it’s a full-bodied pour of unfiltered conversations, s, and downright ridiculous moments. Hosted by Kaitlyn Bristowe—former Bachelorette, DWTS champ,...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1240482999": {
       "topics": [
@@ -32802,11 +32865,89 @@
     },
     "1242537529": {
       "topics": [
-        "society/law"
+        "religion/buddhism",
+        "society/government",
+        "tv-film",
+        "history",
+        "computing",
+        "true-crime",
+        "adventure/exploration",
+        "news/politics",
+        "relationships",
+        "business",
+        "nature",
+        "nature/pets",
+        "history/military-ancient",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "What Trump Can Teach Us About Con Law focuses on religion/buddhism, society/government, tv-film, history, computing, true-crime, adventure/exploration, news/politics, relationships, business, nature, ",
+      "display_title": "What Trump Can Teach Us About Con Law",
+      "blurb": "Professor Elizabeth Joh teaches Intro to Constitutional Law and most of the time this is a pretty straight forward job. But when Trump came into office, everything changed. During the...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1242630512": {
       "topics": [
@@ -32861,11 +33002,49 @@
     },
     "1243939195": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "tv-film",
+        "history",
+        "computing",
+        "adventure/exploration",
+        "history/military-ancient"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dungeons & Dragons & Daughters focuses on hobbies, tv-film, history, computing, adventure/exploration, history/military-ancient; based on show description and episode content.",
+      "display_title": "Dungeons & Dragons & Daughters",
+      "blurb": "A 5th edition D&D actual play podcast of a dad playing Dungeons & Dragons with his daughters for the last eight years. The podcast started when the girls were eight-years-old,...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1244210763": {
       "topics": [
@@ -32907,11 +33086,64 @@
     },
     "1244926765": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "kids-family",
+        "tv-film",
+        "computing",
+        "relationships",
+        "sports/football",
+        "nature",
+        "nature/pets",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "What Would The Smart Party Do? focuses on hobbies, kids-family, tv-film, computing, relationships, sports/football, nature, nature/pets, education; based on show description and episode content.",
+      "display_title": "What Would The Smart Party Do?",
+      "blurb": "The UK's Premier RPG Podcast",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1245002955": {
       "topics": [
@@ -32984,11 +33216,59 @@
     },
     "1246009609": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "tv-film",
+        "computing",
+        "adventure/exploration",
+        "relationships",
+        "sports/football",
+        "psychology",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Authentic Sex with Juliet Allen focuses on health/sexuality, tv-film, computing, adventure/exploration, relationships, sports/football, psychology, education; based on show description and episode con",
+      "display_title": "Authentic Sex with Juliet Allen",
+      "blurb": "Authentic sex is a podcast about all-things sex, pleasure and relationships and is hosted by Australia's leading sexologist, Juliet Allen. With a reputation for her bold and straight-to-the-point manner, Juliet...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1246042223": {
       "topics": [
@@ -33007,11 +33287,59 @@
     },
     "1246443751": {
       "topics": [
-        "kids-family"
+        "kids-family",
+        "tv-film",
+        "history",
+        "computing",
+        "adventure/exploration",
+        "music",
+        "nature",
+        "history/military-ancient"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Circle Round focuses on kids-family, tv-film, history, computing, adventure/exploration, music, nature, history/military-ancient; based on show description and episode content.",
+      "display_title": "Circle Round",
+      "blurb": "WBUR's Circle Round adapts carefully selected folktales from around the world into sound- and music-rich radio plays for kids ages 3-103. Each 15 to 25-minute episode important issues like kindness,...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1246494475": {
       "topics": [
@@ -33085,11 +33413,64 @@
     },
     "1247628265": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "tv-film",
+        "history",
+        "computing",
+        "adventure/exploration",
+        "psychology",
+        "nature",
+        "history/military-ancient",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vedanta Talks - Swami Sarvapriyananda focuses on religion/hinduism, tv-film, history, computing, adventure/exploration, psychology, nature, history/military-ancient, education; based on show descripti",
+      "display_title": "Vedanta Talks",
+      "blurb": "Swami Sarvapriyananda delivers insightful talks on Vedanta at the Vedanta Society of New York, an institution founded by Swami Vivekananda in 1894. Vedanta, rooted in the ancient Vedas, is one...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1247672946": {
       "topics": [
@@ -33276,11 +33657,39 @@
     },
     "1252637797": {
       "topics": [
-        "comedy/casual-hangs"
+        "kids-family",
+        "computing",
+        "sports/football",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brooke and Jeffrey: Phone Taps focuses on kids-family, computing, sports/football, education; based on show description and episode content.",
+      "display_title": "Brooke and Jeffrey: Phone Taps",
+      "blurb": "If you missed Brooke & Jeffrey's latest Phone Tap or just want to hear them again, we got your back! Just press play.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1252638476": {
       "topics": [
@@ -33301,9 +33710,22 @@
       "topics": [
         "music"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Know Your Gear Podcast focuses on music; based on show description and episode content.",
+      "display_title": "Know Your Gear Podcast",
+      "blurb": "The Know Your Gear Podcast with Phillip McKnight is a weekly show where he answers about 30 to 40 guitar related questions while keeping it fun and informative.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1252878262": {
       "topics": [
@@ -33410,11 +33832,59 @@
     },
     "1253599771": {
       "topics": [
-        "education/self-improvement"
+        "comedy",
+        "history",
+        "computing",
+        "business",
+        "music",
+        "nature",
+        "nature/pets",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bedros Keuilian Podcast Show focuses on comedy, history, computing, business, music, nature, nature/pets, education; based on show description and episode content.",
+      "display_title": "Bedros Keuilian Podcast Show",
+      "blurb": "The official podcast of American entrepreneur Bedros Keuilian. A show that’s unapologetically unfiltered that will make you think, make you laugh and inspire you to become an even better human.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1253678242": {
       "topics": [
@@ -33448,11 +33918,54 @@
     },
     "1254370585": {
       "topics": [
-        "culture"
+        "history",
+        "computing",
+        "true-crime",
+        "sports/football",
+        "nature",
+        "nature/pets",
+        "history/military-ancient"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "THEMOVE focuses on history, computing, true-crime, sports/football, nature, nature/pets, history/military-ancient; based on show description and episode content.",
+      "display_title": "THEMOVE",
+      "blurb": "A rotating cast of Lance Armstrong, George Hincapie, Johan Bruyneel, Spencer Martin and Sir Bradley Wiggins break down the biggest races, storylines and moments from across professional cycling. Together, they...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1254461823": {
       "topics": [
@@ -33492,19 +34005,120 @@
     },
     "1255388551": {
       "topics": [
-        "hobbies"
+        "tv-film",
+        "computing",
+        "sports/fantasy",
+        "relationships",
+        "sports/football",
+        "nature",
+        "nature/pets",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lords of Limited focuses on tv-film, computing, sports/fantasy, relationships, sports/football, nature, nature/pets, education; based on show description and episode content.",
+      "display_title": "Lords of Limited",
+      "blurb": "Lords of Limited is a podcast about Magic: the Gathering strategy. It is primarily focused on playing Limited, including both draft and sealed. The podcast is designed to help listeners...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1255413349": {
       "topics": [
-        "hobbies"
+        "religion/buddhism",
+        "history",
+        "computing",
+        "adventure/exploration",
+        "relationships",
+        "psychology",
+        "nature",
+        "nature/pets",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Legendary Creature - Podcast focuses on religion/buddhism, history, computing, adventure/exploration, relationships, psychology, nature, nature/pets, education; based on show description and episode c",
+      "display_title": "Legendary Creature",
+      "blurb": "We are the Legendary Creature Podcast. Personal perspectives on EDH with a home grown playgroup vibe.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1256002667": {
       "topics": [
@@ -33545,11 +34159,69 @@
     },
     "1256754097": {
       "topics": [
-        "tv-film"
+        "society/government",
+        "tv-film",
+        "comedy",
+        "history",
+        "computing",
+        "sports/football",
+        "business",
+        "music",
+        "comedy/casual-hangs",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Inside of You with Michael Rosenbaum focuses on society/government, tv-film, comedy, history, computing, sports/football, business, music, comedy/casual-hangs, history/military-ancient; based on show ",
+      "display_title": "Inside of You with Michael Rosenbaum",
+      "blurb": "I’m Michael Rosenbaum, I’ve spent the better part of the last two decades in and out of film and television - mostly known for playing the bald dude on the...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1256829899": {
       "topics": [
@@ -33561,11 +34233,44 @@
     },
     "1256857855": {
       "topics": [
-        "hobbies"
+        "comedy",
+        "computing",
+        "sports/football",
+        "psychology",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Constructed Criticism focuses on comedy, computing, sports/football, psychology, education; based on show description and episode content.",
+      "display_title": "Constructed Criticism",
+      "blurb": "Constructed Criticism is the parent show of the network. A Weekly podcast that focuses on Constructed Magic and how to improve at the game each and every week. Constructed Criticism...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1257126028": {
       "topics": [
@@ -33616,11 +34321,64 @@
     },
     "1257913963": {
       "topics": [
-        "sports/football"
+        "tv-film",
+        "history",
+        "computing",
+        "sports/football",
+        "psychology",
+        "nature",
+        "nature/pets",
+        "history/military-ancient",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cover 3 College Football focuses on tv-film, history, computing, sports/football, psychology, nature, nature/pets, history/military-ancient, education; based on show description and episode content.",
+      "display_title": "Cover 3 College Football",
+      "blurb": "The 'Cover 3 College Football' Podcast is the perfect call for any die-hard fan. Join hosts Chip Patterson, Tom Fornelli, Danny Kanell and Bud Elliott as they take you from...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1257957660": {
       "topics": [
@@ -33648,11 +34406,74 @@
     },
     "1258388821": {
       "topics": [
-        "relationships"
+        "tv-film",
+        "comedy",
+        "history",
+        "computing",
+        "adventure/exploration",
+        "relationships",
+        "sports/football",
+        "business",
+        "nature",
+        "nature/pets",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "For The Love With Jen Hatmaker Podcast focuses on tv-film, comedy, history, computing, adventure/exploration, relationships, sports/football, business, nature, nature/pets, comedy/casual-hangs; based ",
+      "display_title": "For The Love With Jen Hatmaker Podcast",
+      "blurb": "New York Times bestselling author Jen Hatmaker has arrived in the middle years, and she couldn't be happier about it.Jen has navigated the ins and outs of life, from career...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1258525394": {
       "topics": [
@@ -33694,11 +34515,49 @@
     },
     "1259581345": {
       "topics": [
-        "society"
+        "history",
+        "computing",
+        "true-crime",
+        "business",
+        "nature",
+        "nature/pets"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rover's Morning Glory focuses on history, computing, true-crime, business, nature, nature/pets; based on show description and episode content.",
+      "display_title": "Rover's Morning Glory",
+      "blurb": "Syndicated radio show Rover's Morning Glory blends biting commentary, ridiculous antics and discussions that would get most people fired.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1259582449": {
       "topics": [
@@ -33762,11 +34621,94 @@
     },
     "1260471553": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "society/government",
+        "tv-film",
+        "comedy",
+        "history",
+        "computing",
+        "adventure/exploration",
+        "news/politics",
+        "relationships",
+        "business",
+        "psychology",
+        "nature",
+        "nature/pets",
+        "comedy/casual-hangs",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Holly Randall Unfiltered focuses on health/sexuality, society/government, tv-film, comedy, history, computing, adventure/exploration, news/politics, relationships, business, psychology, nature, nature",
+      "display_title": "Holly Randall Unfiltered",
+      "blurb": "HRU is a podcast series that sheds light on those working in the adult industry, and all topics of sex with authors, educators, and advocates. Hosted by world renowned erotic...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1260504024": {
       "topics": [
@@ -34096,11 +35038,54 @@
     },
     "1266577963": {
       "topics": [
-        "news/commentary"
+        "hobbies",
+        "society/government",
+        "tv-film",
+        "computing",
+        "news/politics",
+        "sports/football",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Michael Knowles Show focuses on hobbies, society/government, tv-film, computing, news/politics, sports/football, education; based on show description and episode content.",
+      "display_title": "The Michael Knowles Show",
+      "blurb": "Bask in the simple joys of being right. The Michael Knowles Show cuts through the madness of our politics and culture, analyzing the top stories of the day. Monday through...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1266700954": {
       "topics": [
@@ -34251,11 +35236,64 @@
     },
     "1269255343": {
       "topics": [
-        "sports/fantasy"
+        "society/government",
+        "computing",
+        "sports/fantasy",
+        "news/politics",
+        "sports/football",
+        "business",
+        "nature",
+        "nature/pets",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy Footballers DFS & Betting - Fantasy Football Podcast focuses on society/government, computing, sports/fantasy, news/politics, sports/football, business, nature, nature/pets, education; based o",
+      "display_title": "Fantasy Footballers DFS & Betting",
+      "blurb": "Welcome to \"DFS and Sports Betting For The Rest of Us.\" Join Fantasy Footballers industry experts Kyle Borgognoni and Matthew Betz as they bring you DFS-winning fantasy football advice and...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1269489189": {
       "topics": [
@@ -34524,11 +35562,54 @@
     },
     "1273606075": {
       "topics": [
-        "education/self-improvement"
+        "tv-film",
+        "computing",
+        "adventure/exploration",
+        "psychology",
+        "nature",
+        "nature/pets",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Growth Mindset Psychology: The Science of Self-Improvement focuses on tv-film, computing, adventure/exploration, psychology, nature, nature/pets, education; based on show description and episode conte",
+      "display_title": "Growth Mindset Psychology: The Science of Self-Improvement",
+      "blurb": "Most self-help advice is guesswork dressed up as wisdom. We dig into psychology, neuroscience, and behavioral science to find what actually changes lives. WHY LISTEN? Over 8 million downloads because...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1273612905": {
       "topics": [
@@ -34553,11 +35634,39 @@
     },
     "1273625203": {
       "topics": [
-        "business/careers"
+        "kids-family",
+        "religion/buddhism",
+        "tv-film",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Best of Both Worlds Podcast focuses on kids-family, religion/buddhism, tv-film, computing; based on show description and episode content.",
+      "display_title": "Best of Both Worlds Podcast",
+      "blurb": "Love your career? Love your family? Best of Both Worlds is the show for you! Hosts Laura Vanderkam, author of I Know How She Does It and a mom of...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1273996998": {
       "topics": [
@@ -34576,11 +35685,67 @@
     },
     "1274188453": {
       "topics": [
-        "travel"
+        "kids-family",
+        "society/government",
+        "tv-film",
+        "computing",
+        "true-crime",
+        "adventure/exploration",
+        "business",
+        "nature",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "New England Legends Podcast focuses on kids-family, society/government, tv-film, computing, true-crime, adventure/exploration, business, nature, nature/pets; based on show description and episode cont",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1274217512": {
       "topics": [
@@ -34682,11 +35847,59 @@
     },
     "1276705357": {
       "topics": [
-        "fiction/sci-fi"
+        "hobbies",
+        "tv-film",
+        "comedy",
+        "computing",
+        "adventure/exploration",
+        "relationships",
+        "sports/football",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mission To Zyxx focuses on hobbies, tv-film, comedy, computing, adventure/exploration, relationships, sports/football, comedy/casual-hangs; based on show description and episode content.",
+      "display_title": "Mission To Zyxx",
+      "blurb": "An improvised science fiction sitcom following a team of ambassadors as they attempt to establish diplomatic relations with planets in the remote and chaotic Zyxx Quadrant… better known as the...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1276756430": {
       "topics": [
@@ -34705,11 +35918,59 @@
     },
     "1276903945": {
       "topics": [
-        "business/management"
+        "tv-film",
+        "history",
+        "computing",
+        "true-crime",
+        "relationships",
+        "business",
+        "psychology",
+        "history/military-ancient"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tax Rep Network with Eric Green focuses on tv-film, history, computing, true-crime, relationships, business, psychology, history/military-ancient; based on show description and episode content.",
+      "display_title": "Tax Rep Network with Eric Green",
+      "blurb": "Join Eric L. Green with Tax Rep Network and build your practice. Navigate the ins-and-outs of IRS Collections, Offers-in-Compromise, Reducing IRS Penalties, etc. Turn this hottest of growth areas into...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1277078956": {
       "topics": [
@@ -34787,11 +36048,54 @@
     },
     "1279361017": {
       "topics": [
-        "culture/performing-arts"
+        "kids-family",
+        "tv-film",
+        "history",
+        "computing",
+        "adventure/exploration",
+        "sports/football",
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spooked focuses on kids-family, tv-film, history, computing, adventure/exploration, sports/football, music; based on show description and episode content.",
+      "display_title": "Spooked",
+      "blurb": "Spooked features true-life supernatural stories, told firsthand by people who can barely believe it happened themselves. Be afraid. Created in the dark of night, by the creators of Snap Judgment...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1279389859": {
       "topics": [
@@ -34833,27 +36137,171 @@
     },
     "1279731673": {
       "topics": [
-        "history"
+        "tv-film",
+        "history",
+        "computing",
+        "adventure/exploration",
+        "business",
+        "psychology",
+        "history/military-ancient",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dark Histories focuses on tv-film, history, computing, adventure/exploration, business, psychology, history/military-ancient, education; based on show description and episode content.",
+      "display_title": "Dark Histories",
+      "blurb": "Fortnightly narratives on the unsolved and the unexplained, mysteries, historical true crime, touches of the paranormal and cultural peculiarities.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1279927057": {
       "topics": [
-        "engineering/ai-robotics"
+        "tv-film",
+        "computing",
+        "sports/football",
+        "business",
+        "psychology",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI Today Podcast focuses on tv-film, computing, sports/football, business, psychology, business/startups; based on show description and episode content.",
+      "display_title": "AI Today Podcast",
+      "blurb": "The top podcast for those wanting no-hype, practical, real-world insight into what enterprises, public sector agencies, thought leaders, leading technology companies, pundits, and experts are doing with AI today.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1279955329": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "history",
+        "computing",
+        "adventure/exploration",
+        "sports/football",
+        "business",
+        "music",
+        "nature",
+        "nature/pets",
+        "music/theory-production"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scrubbing In with Becca Tilley & Tanya Rad focuses on tv-film, history, computing, adventure/exploration, sports/football, business, music, nature, nature/pets, music/theory-production; based on show ",
+      "display_title": "Scrubbing In with Becca Tilley & Tanya Rad",
+      "blurb": "We need a crash cart! Scrub in each week with Becca Tilley and her BFF Tanya Rad as they fangirl over their favorite shows, work through boy troubles, and hang...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1280468643": {
       "topics": [
@@ -35024,11 +36472,74 @@
     },
     "1282660297": {
       "topics": [
-        "education/how-to"
+        "kids-family",
+        "tv-film",
+        "history",
+        "computing",
+        "sports/football",
+        "business",
+        "psychology",
+        "nature",
+        "nature/pets",
+        "history/military-ancient",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Wealth Without Wall Street Podcast focuses on kids-family, tv-film, history, computing, sports/football, business, psychology, nature, nature/pets, history/military-ancient, education; based on sh",
+      "display_title": "The Wealth Without Wall Street Podcast",
+      "blurb": "Your go-to podcast for uncovering the dirty secrets behind Wall Street and how to take back control of your wealth. The Wall Street mindset separates both families & business owners...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1282786304": {
       "topics": [
@@ -35334,11 +36845,59 @@
     },
     "1291620241": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film",
+        "history",
+        "computing",
+        "sports/football",
+        "business",
+        "nature",
+        "nature/pets",
+        "history/military-ancient"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Streaming Things focuses on tv-film, history, computing, sports/football, business, nature, nature/pets, history/military-ancient; based on show description and episode content.",
+      "display_title": "Streaming Things",
+      "blurb": "Hosts Kit, Andy, and Steve (along with a rotating cast of much smarter people) discuss the most popular TV and Film properties in pop culture history. Episode by episode, movie...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1291807221": {
       "topics": [
@@ -35514,11 +37073,54 @@
     },
     "1294529191": {
       "topics": [
-        "psychology"
+        "tv-film",
+        "history",
+        "computing",
+        "relationships",
+        "sports/football",
+        "nature",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "GraveYard Tales focuses on tv-film, history, computing, relationships, sports/football, nature, education; based on show description and episode content.",
+      "display_title": "GraveYard Tales",
+      "blurb": "We tell the stories and history of haunted places, ghost encounters, cryptid encounters, the paranormal, preternatural, and every oddity imaginable. And we do it with a comedic twist and don't...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1295163958": {
       "topics": [
@@ -35551,11 +37153,57 @@
     },
     "1296350485": {
       "topics": [
-        "computing"
+        "tv-film",
+        "computing",
+        "adventure/exploration",
+        "business",
+        "music",
+        "nature",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Darknet Diaries focuses on tv-film, computing, adventure/exploration, business, music, nature, nature/pets; based on show description and episode content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1296411814": {
       "topics": [
@@ -35824,11 +37472,39 @@
     },
     "1302311533": {
       "topics": [
-        "tv-film"
+        "society/government",
+        "tv-film",
+        "history",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Watch What Happens Live with Andy Cohen focuses on society/government, tv-film, history, computing; based on show description and episode content.",
+      "display_title": "Watch What Happens Live with Andy Cohen",
+      "blurb": "Every night, Watch What Happens Live with Andy Cohen brings you lively conversations about everything in the world of entertainment, politics, and pop culture. Now, get that same dose of...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1303300874": {
       "topics": [
@@ -35931,19 +37607,115 @@
     },
     "1305546061": {
       "topics": [
-        "society"
+        "kids-family",
+        "tv-film",
+        "comedy",
+        "computing",
+        "true-crime",
+        "relationships",
+        "nature",
+        "nature/pets",
+        "comedy/casual-hangs"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coffee Convos with Kail Lowry and Lindsie Chrisley focuses on kids-family, tv-film, comedy, computing, true-crime, relationships, nature, nature/pets, comedy/casual-hangs; based on show description an",
+      "display_title": "Coffee Convos with Kail Lowry and Lindsie Chrisley",
+      "blurb": "Coffee Convos is hosted by Kail Lowry of MTV's Teen Mom and Lindsie Chrisley of USA Network's Chrisley Knows Best. These two reality stars come from totally different worlds, but...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1305631801": {
       "topics": [
-        "education/self-improvement"
+        "tv-film",
+        "computing",
+        "adventure/exploration",
+        "psychology",
+        "music",
+        "nature",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Motivation by Ben Lionel Scott focuses on tv-film, computing, adventure/exploration, psychology, music, nature, nature/pets; based on show description and episode content.",
+      "display_title": "Weekly Motivation by Ben Lionel Scott",
+      "blurb": "Here you'll find weekly motivation from some of the most successful and high achieving people in the world to help encourage you through your journey in life. Join Video Editor/Producer...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1305878240": {
       "topics": [
@@ -36243,11 +38015,69 @@
     },
     "1313596069": {
       "topics": [
-        "history"
+        "society/government",
+        "tv-film",
+        "computing",
+        "news/politics",
+        "sports/football",
+        "business",
+        "nature",
+        "nature/pets",
+        "business/startups",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "American History Tellers focuses on society/government, tv-film, computing, news/politics, sports/football, business, nature, nature/pets, business/startups, education; based on show description and e",
+      "display_title": "American History Tellers",
+      "blurb": "The Cold War, Prohibition, the Gold Rush, the Space Race. Every part of your life - the words you speak, the ideas you share - can be traced to our...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1313611947": {
       "topics": [
@@ -36258,11 +38088,44 @@
     },
     "1313996383": {
       "topics": [
-        "relationships"
+        "tv-film",
+        "computing",
+        "sports/football",
+        "nature",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "U Up? focuses on tv-film, computing, sports/football, nature, nature/pets; based on show description and episode content.",
+      "display_title": "U Up?",
+      "blurb": "U Up? is the definitive modern dating podcast presented by Betches co-founder Jordana Abraham and comedian Jared Freid, where they discuss their take on the ebbs and flows of the...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1314170606": {
       "topics": [
@@ -36545,11 +38408,54 @@
     },
     "1318549651": {
       "topics": [
-        "tv-film/after-shows"
+        "kids-family",
+        "tv-film",
+        "history",
+        "relationships",
+        "business",
+        "nature",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pink Shade: Reality TV with MP focuses on kids-family, tv-film, history, relationships, business, nature, nature/pets; based on show description and episode content.",
+      "display_title": "Pink Shade: Reality TV with MP",
+      "blurb": "Pink Shade, hosted by Mary Payne Gilbert, has the best breakdowns and takedowns of your favorite reality TV. Mary Payne recaps the shows we all love (and love to hate)...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1318553877": {
       "topics": [
@@ -36574,11 +38480,49 @@
     },
     "1319179843": {
       "topics": [
-        "gaming"
+        "kids-family",
+        "computing",
+        "sports/football",
+        "music",
+        "nature",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Fortnite Podcast focuses on kids-family, computing, sports/football, music, nature, nature/pets; based on show description and episode content.",
+      "display_title": "The Fortnite Podcast",
+      "blurb": "A weekly podcast covering Epic’s video game Fortnite & all gaming related topics w/ MonsterDface, & Somebodysgun",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1319502839": {
       "topics": [
@@ -36651,11 +38595,49 @@
     },
     "1321060753": {
       "topics": [
-        "computing"
+        "tv-film",
+        "history",
+        "computing",
+        "sports/football",
+        "business",
+        "nature"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Endless Thread focuses on tv-film, history, computing, sports/football, business, nature; based on show description and episode content.",
+      "display_title": "Endless Thread",
+      "blurb": "Untold histories, unsolved mysteries, and other jaw-dropping stories online and IRL. Hosted by Ben Brock Johnson & Amory Sivertson.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1321118314": {
       "topics": [
@@ -36695,11 +38677,74 @@
     },
     "1322200189": {
       "topics": [
-        "society"
+        "tv-film",
+        "history",
+        "computing",
+        "true-crime",
+        "adventure/exploration",
+        "sports/football",
+        "business",
+        "music",
+        "nature",
+        "nature/pets",
+        "history/military-ancient"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Crime Junkie focuses on tv-film, history, computing, true-crime, adventure/exploration, sports/football, business, music, nature, nature/pets, history/military-ancient; based on show description and e",
+      "display_title": "Crime Junkie",
+      "blurb": "Does hearing about a true crime case always leave you scouring the internet for the truth behind the story? Dive into your next mystery with Crime Junkie. Every Monday, join...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1322666339": {
       "topics": [
@@ -36853,11 +38898,54 @@
     },
     "1327196317": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "comedy",
+        "computing",
+        "relationships",
+        "sports/football",
+        "comedy/casual-hangs",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "2 Black Girls, 1 Rose focuses on tv-film, comedy, computing, relationships, sports/football, comedy/casual-hangs, education; based on show description and episode content.",
+      "display_title": "2 Black Girls, 1 Rose",
+      "blurb": "Why don’t reality dating shows look or feel like reality? Where are all the rose ceremonies and romantic getaways when dating IRL? Is popular TV teaching us anything about modern...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1327602180": {
       "topics": [
@@ -37038,11 +39126,34 @@
     },
     "1330865695": {
       "topics": [
-        "aviation"
+        "computing",
+        "sports/football",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Opposing Bases: Air Traffic Talk focuses on computing, sports/football, business; based on show description and episode content.",
+      "display_title": "Opposing Bases: Air Traffic Talk",
+      "blurb": "Opposing Bases Air Traffic Talk ✈ Real pilots. Real controllers. Real talk. 🎧 Want early access and full archives? Join the crew at opposingbases.supercast.com. 🛩️ Listener-supported. No ads. Just aviation...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1330872827": {
       "topics": [
@@ -37396,11 +39507,64 @@
     },
     "1335814741": {
       "topics": [
-        "business/management"
+        "health/sexuality",
+        "tv-film",
+        "computing",
+        "adventure/exploration",
+        "sports/football",
+        "business",
+        "nature",
+        "nature/pets",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business Wars focuses on health/sexuality, tv-film, computing, adventure/exploration, sports/football, business, nature, nature/pets, business/startups; based on show description and episode content.",
+      "display_title": "Business Wars",
+      "blurb": "Netflix vs. HBO. Nike vs. Adidas. Business is war. Sometimes the prize is your wallet or your attention. Sometimes, it’s just the fun of beating the other guy. The outcome...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1335846794": {
       "topics": [
@@ -37554,11 +39718,59 @@
     },
     "1339028551": {
       "topics": [
-        "adventure"
+        "tv-film",
+        "computing",
+        "adventure/exploration",
+        "sports/football",
+        "music",
+        "nature",
+        "nature/pets",
+        "music/theory-production"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Backpacker Radio focuses on tv-film, computing, adventure/exploration, sports/football, music, nature, nature/pets, music/theory-production; based on show description and episode content.",
+      "display_title": "Backpacker Radio",
+      "blurb": "From the Appalachian Trail to the Pacific Crest and everything in between. Backpacker Radio is a show all about the wonderful world that is thru-hiking and long distance backpacking. Co-hosts,...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1339173433": {
       "topics": [
@@ -37633,11 +39845,59 @@
     },
     "1340505607": {
       "topics": [
-        "psychology"
+        "tv-film",
+        "history",
+        "computing",
+        "adventure/exploration",
+        "music",
+        "nature",
+        "nature/pets",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Science of Happiness focuses on tv-film, history, computing, adventure/exploration, music, nature, nature/pets, history/military-ancient; based on show description and episode content.",
+      "display_title": "The Science of Happiness",
+      "blurb": "Learn research-tested strategies for a happier, more meaningful life, drawing on the science of compassion, gratitude, mindfulness, and awe. Hosted by award-winning psychologist Dacher Keltner. Co-produced by PRX and UC...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1340679758": {
       "topics": [
@@ -37708,11 +39968,64 @@
     },
     "1341781855": {
       "topics": [
-        "psychology"
+        "kids-family",
+        "tv-film",
+        "history",
+        "computing",
+        "adventure/exploration",
+        "business",
+        "nature",
+        "nature/pets",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "'Mind the Kids': an ACAMH podcast focuses on kids-family, tv-film, history, computing, adventure/exploration, business, nature, nature/pets, history/military-ancient; based on show description and epi",
+      "display_title": "'Mind the Kids': an ACAMH podcast",
+      "blurb": "These podcasts are an invaluable resource for anyone interested in child and adolescent mental health. They bridge the gap between rigorous research and practical application, featuring expert discussions on mental...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1341785066": {
       "topics": [
@@ -37875,19 +40188,120 @@
     },
     "1344999619": {
       "topics": [
-        "education"
+        "society/government",
+        "tv-film",
+        "history",
+        "computing",
+        "true-crime",
+        "sports/football",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Jordan Harbinger Show focuses on society/government, tv-film, history, computing, true-crime, sports/football, history/military-ancient; based on show description and episode content.",
+      "display_title": "The Jordan Harbinger Show",
+      "blurb": "(Apple's Best of 2018) In-depth conversations with people at the top of their game. Jordan Harbinger unpacks guests' wisdom into practical nuggets you can use to impact your work, life,...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1345075933": {
       "topics": [
-        "education/self-improvement"
+        "society/government",
+        "tv-film",
+        "history",
+        "computing",
+        "true-crime",
+        "adventure/exploration",
+        "relationships",
+        "sports/football",
+        "psychology",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Divorce Survival Guide Podcast focuses on society/government, tv-film, history, computing, true-crime, adventure/exploration, relationships, sports/football, psychology, education; based on show d",
+      "display_title": "The Divorce Survival Guide Podcast",
+      "blurb": "On the Divorce Survival Guide Podcast we have open and honest conversations about co-parenting, separation, divorce, and the hardest question of all, should you stay or should you go? Hosted...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1345084979": {
       "topics": [
@@ -37907,11 +40321,82 @@
     },
     "1345682353": {
       "topics": [
-        "comedy"
+        "tv-film",
+        "comedy",
+        "computing",
+        "true-crime",
+        "adventure/exploration",
+        "relationships",
+        "psychology",
+        "music",
+        "nature",
+        "nature/pets",
+        "comedy/casual-hangs",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Armchair Expert with Dax Shepard focuses on tv-film, comedy, computing, true-crime, adventure/exploration, relationships, psychology, music, nature, nature/pets, comedy/casual-hangs, education; based ",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1345689462": {
       "topics": [
@@ -38067,11 +40552,69 @@
     },
     "1347746953": {
       "topics": [
-        "nature/pets"
+        "tv-film",
+        "computing",
+        "relationships",
+        "sports/football",
+        "business",
+        "psychology",
+        "nature",
+        "nature/pets",
+        "business/startups",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "No Bad Dogs Podcast focuses on tv-film, computing, relationships, sports/football, business, psychology, nature, nature/pets, business/startups, education; based on show description and episode conten",
+      "display_title": "No Bad Dogs Podcast",
+      "blurb": "Hey, there dog folk! Welcome to the No Bad Dogs Podcast, hosted by Tom Davis. Do you often wonder what your dog is thinking? Join Tom as he teams up...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1347757659": {
       "topics": [
@@ -38089,19 +40632,100 @@
     },
     "1347811999": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "history",
+        "computing",
+        "relationships",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dear Men: How to Rock Sex, Dating, and Relationships With Women focuses on health/sexuality, history, computing, relationships, psychology; based on show description and episode content.",
+      "display_title": "Dear Men: How to Rock Sex, Dating, and",
+      "blurb": "Advice for smart men on how to succeed with women in sex, dating, relationships, and marriages. Beautiful women give you a peek behind the curtain into what the feminine really...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1347973549": {
       "topics": [
-        "society"
+        "history",
+        "computing",
+        "business",
+        "psychology",
+        "nature",
+        "nature/pets",
+        "history/military-ancient",
+        "business/startups"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Modern Wisdom focuses on history, computing, business, psychology, nature, nature/pets, history/military-ancient, business/startups; based on show description and episode content.",
+      "display_title": "Modern Wisdom",
+      "blurb": "Life is hard. This podcast will help. Lessons from the greatest thinkers on the planet with Chris Williamson. Including guests like David Goggins, Dr Jordan Peterson, Naval Ravikant, Sam Harris,...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1348062794": {
       "topics": [
@@ -38159,11 +40783,64 @@
     },
     "1348617655": {
       "topics": [
-        "sports/endurance"
+        "tv-film",
+        "comedy",
+        "computing",
+        "adventure/exploration",
+        "relationships",
+        "business",
+        "music",
+        "comedy/casual-hangs",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Off The Rails With Eric And Aisha focuses on tv-film, comedy, computing, adventure/exploration, relationships, business, music, comedy/casual-hangs, music/theory-production; based on show description ",
+      "display_title": "Off The Rails With Eric And Aisha",
+      "blurb": "A laid-back, laugh-packed podcast about life on (and off) the track circuit. Join former pro runners Eric Jenkins (2x NCAA champion and World Championship qualifier) and Aisha Praught-Leer (2x Olympian...",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1348777092": {
       "topics": [
@@ -38354,11 +41031,84 @@
     },
     "1351044991": {
       "topics": [
-        "tv-film"
+        "health/sexuality",
+        "tv-film",
+        "comedy",
+        "history",
+        "computing",
+        "sports/fantasy",
+        "relationships",
+        "sports/football",
+        "psychology",
+        "music",
+        "history/military-ancient",
+        "music/theory-production",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The A24 Podcast focuses on health/sexuality, tv-film, comedy, history, computing, sports/fantasy, relationships, sports/football, psychology, music, history/military-ancient, music/theory-production, ",
+      "display_title": "The A24 Podcast",
+      "blurb": "No host, no ads, no rules. From the people behind Marty Supreme, Everything Everywhere All At Once, Midsommar, Uncut Gems, HBO's Euphoria, Hereditary, Moonlight, and more.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-9d80f8e5",
+      "classified_at": "2026-07-25T09:29:56.265Z"
     },
     "1351065618": {
       "topics": [
