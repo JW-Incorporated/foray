@@ -62,11 +62,71 @@ function logEvent(type, payload) {
   lsSet("cp_events", events.slice(-5000));
 }
 
-/* Durable telemetry (R2): flush the buffer to the workstation endpoint.
-   Browsers allow HTTPS-page -> http://127.0.0.1 (localhost exception), so
-   this syncs when browsing on the workstation itself; phones keep
-   buffering safely until the HTTPS endpoint upgrade. */
-const EVENTS_ENDPOINT = "http://127.0.0.1:8787/events";
+/* Durable telemetry: flush the buffered events to Supabase (ADR-0005 +
+   docs/curation/events-client-integration-spec.md). Anonymous-first — every
+   device gets a Supabase anonymous user; rows insert under auth.uid() and RLS
+   enforces per-user isolation. Publishable key is public by design (RLS
+   protects the data). Raw fetch, no SDK, to stay within the strict CSP. */
+const SB_URL = "https://qjdllvqdcgacvujhclny.supabase.co";
+const SB_KEY = "sb_publishable_0T8hpKCC_857G31LlCh0WA_0Rp61B3J";
+
+async function sbAuth(path, body) {
+  try {
+    const res = await fetch(SB_URL + path, {
+      method: "POST",
+      headers: { apikey: SB_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return res.ok ? await res.json() : null;
+  } catch (_) { return null; }
+}
+
+/* Establish/restore the anonymous session. Refresh a stored token (same user)
+   when possible; only create a NEW anonymous user when there's no token or the
+   refresh fails — re-signing-up every load would orphan a user per visit. */
+async function ensureAnonSession() {
+  const now = Math.floor(Date.now() / 1000);
+  let s = lsGet("cp_sb_session", null);
+  if (s && s.access_token && s.expires_at && s.expires_at - 60 > now) return s;
+  if (s && s.refresh_token) {
+    const r = await sbAuth("/auth/v1/token?grant_type=refresh_token", { refresh_token: s.refresh_token });
+    if (r && r.access_token) {
+      s = { user_id: r.user.id, access_token: r.access_token, refresh_token: r.refresh_token, expires_at: r.expires_at || now + 3600 };
+      lsSet("cp_sb_session", s);
+      return s;
+    }
+  }
+  const r = await sbAuth("/auth/v1/signup", {});
+  if (r && r.access_token) {
+    s = { user_id: r.user.id, access_token: r.access_token, refresh_token: r.refresh_token, expires_at: r.expires_at || now + 3600 };
+    lsSet("cp_sb_session", s);
+    return s;
+  }
+  return null;
+}
+
+/* Map a buffered cp_events entry to a canonical events-table row, or null for
+   local-only types (see the client-integration spec §3). episode_id/session_id
+   stay null; durable ids ride in payload as episode_slug/session_key. */
+const SB_ARCHETYPES = new Set(["deep-learn", "stretch", "narrative", "comfort", "continue"]);
+function toEventRow(e, userId) {
+  const p = e.payload || {};
+  const row = (type, payload, archetype) => ({ user_id: userId, ts: e.ts, type, archetype: archetype || null, payload });
+  switch (e.type) {
+    case "picked":
+      return row("picked", { episode_slug: p.episode_id, topics: p.topics || [], app: p.app }, SB_ARCHETYPES.has(p.context) ? p.context : null);
+    case "finished":
+      // Web hands playback to external apps and cannot observe real position —
+      // the Done button is a declared click, so source is manual_stopgap (spec §1.2).
+      return row("finished", { episode_slug: p.episode_id, topics: p.topics || [], percent_complete: 1, source: "manual_stopgap" });
+    case "saved":
+      return row("saved", { episode_slug: p.episode_id, topics: p.topics || [] });
+    case "session_shown":
+      return row("session_built", { session_key: p.session_id, builder: e.builder || "unknown" });
+    default:
+      return null; // unsaved / playlist_* / family_mode / player_pref / refreshed_all — local only
+  }
+}
 
 async function trySyncEvents() {
   try {
@@ -74,13 +134,26 @@ async function trySyncEvents() {
     const since = lsGet("cp_synced_ts", "");
     const unsynced = events.filter(e => e.ts > since);
     if (!unsynced.length) return;
-    const res = await fetch(EVENTS_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile: profileId(), events: unsynced }),
-    });
-    if (res.ok) lsSet("cp_synced_ts", unsynced[unsynced.length - 1].ts);
-  } catch (_) { /* endpoint unreachable — buffer persists, retry next time */ }
+    const s = await ensureAnonSession();
+    if (!s) return; // offline / auth unavailable — buffer persists, retry next time
+    const lastTs = unsynced[unsynced.length - 1].ts;
+    const rows = unsynced.map(e => toEventRow(e, s.user_id)).filter(Boolean);
+    if (!rows.length) { lsSet("cp_synced_ts", lastTs); return; } // all local-only
+    for (let i = 0; i < rows.length; i += 500) {
+      const res = await fetch(SB_URL + "/rest/v1/events", {
+        method: "POST",
+        headers: {
+          apikey: SB_KEY,
+          Authorization: "Bearer " + s.access_token,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify(rows.slice(i, i + 500)),
+      });
+      if (!res.ok) return; // don't advance the cursor — retry the whole batch next time
+    }
+    lsSet("cp_synced_ts", lastTs);
+  } catch (_) { /* buffer persists, retry next time */ }
 }
 
 /* ---------- interests / topics ---------- */
@@ -479,7 +552,7 @@ function bindPickLogging(scope) {
   scope.querySelectorAll("[data-ev='picked']").forEach(a => {
     a.addEventListener("click", () => {
       const id = a.dataset.ep;
-      logEvent("picked", { episode_id: id, app: a.dataset.app || "Apple Podcasts", context: a.dataset.ctx });
+      logEvent("picked", { episode_id: id, topics: (state.itemIndex[id] && state.itemIndex[id].topics) || [], app: a.dataset.app || "Apple Podcasts", context: a.dataset.ctx });
 
       const history = pickedHistory();
       if (!history.includes(id)) lsSet("cp_history", history.concat(id).slice(-200));
