@@ -11,8 +11,10 @@ depth-based learning paths.
 - **[personalization-and-depth-plan.md](personalization-and-depth-plan.md)** — the
   plan: multi-user interest modeling (personas + light onboarding + observed
   signals), where user data lives (the accounts decision), one-taxonomy alignment,
-  depth-laddered playlists, the step-by-step recommender evolution, the right
-  metrics, and the open decisions for the founders.
+  depth-laddered playlists, **token-light search & playlist-building** (§7 — the
+  feature layer as a query language; LLM only to translate a vague prompt into a
+  filter spec, never to select content), the step-by-step recommender evolution,
+  the right metrics, and the open decisions for the founders.
 
 Background these build on: `docs/brief/03_CURATION_SPEC.md` (the original,
 excellent — but single-user — curation design) and the product principles in
