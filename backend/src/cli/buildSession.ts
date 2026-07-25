@@ -7,6 +7,7 @@ import { createEnricher } from "../enrich/createEnricher";
 import { defaultCostEventSink } from "../cost/costEvents";
 import { defaultBudgetGuard } from "../cost/budgetGuard";
 import { buildSession } from "../curation/sessionBuilder";
+import { createUserInterestsProvider } from "../curation/createUserInterestsProvider";
 import {
   extractCandidatesFromMarkdown,
   normalizeCandidatesFromJson,
@@ -119,6 +120,11 @@ async function main(): Promise<void> {
   console.log(`  candidates loaded: ${candidates.length}`);
 
   const enricher = createEnricher();
+  // Personalization Step A+B (personalization-and-depth-plan.md): resolves to
+  // the in-memory provider today (keyless, seeded from data/personas.json's
+  // "generalist" default — see createUserInterestsProvider.ts for when a
+  // real Postgres-backed provider takes over).
+  const userInterestsProvider = createUserInterestsProvider();
 
   const result = await buildSession({
     userId: SEEDED_USER_ID,
@@ -127,7 +133,8 @@ async function main(): Promise<void> {
     playbackSpeed: args.playbackSpeed,
     taxonomy,
     candidates,
-    enricher
+    enricher,
+    userInterestsProvider
   });
 
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- args.outPath is a local CLI flag (--out) the developer running this script passes themselves, defaulting to a hardcoded repo path; never network/user input.

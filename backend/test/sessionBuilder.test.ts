@@ -8,6 +8,7 @@ import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import { TaxonomyFileSchema } from "../src/types/taxonomy";
 import { SessionDocSchema } from "../src/types/session";
+import { InMemoryUserInterestsProvider } from "../src/curation/userInterests";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 
@@ -172,5 +173,131 @@ describe("buildSession — end-to-end pipeline proof (01_PROMPT.md item 8), zero
     });
 
     expect(await guard.spentToday("cost-test-user")).toBe(0);
+  });
+});
+
+describe("buildSession — per-user personalization (personalization-and-depth-plan.md Step A+B)", () => {
+  it("with no userInterestsProvider supplied, behavior is unchanged (backward compat)", async () => {
+    const taxonomy = loadRealTaxonomy();
+    const candidates = loadRealCandidates();
+    const enricher = new StubEnricher();
+
+    const { session } = await buildSession({
+      userId: "test-user",
+      sessionKey: "test-session",
+      commuteMinutes: 20,
+      playbackSpeed: 1.4,
+      taxonomy,
+      candidates,
+      enricher
+    });
+
+    expect(() => SessionDocSchema.parse(session)).not.toThrow();
+    expect(session.cards).toHaveLength(4);
+  });
+
+  it("a brand-new user with a persona seed and no observed rows still fills all 4 archetype slots", async () => {
+    const taxonomy = loadRealTaxonomy();
+    const candidates = loadRealCandidates();
+    const enricher = new StubEnricher();
+    const provider = new InMemoryUserInterestsProvider();
+    provider.setPersonaSeed("brand-new-user", "generalist");
+
+    const { session } = await buildSession({
+      userId: "brand-new-user",
+      sessionKey: "test-session",
+      commuteMinutes: 20,
+      playbackSpeed: 1.4,
+      taxonomy,
+      candidates,
+      enricher,
+      userInterestsProvider: provider
+    });
+
+    const archetypesPresent = new Set(session.cards.map((c) => c.archetype));
+    expect(archetypesPresent).toEqual(new Set(["deep-learn", "stretch", "narrative", "comfort"]));
+    expect(session.cards).toHaveLength(4);
+  });
+
+  it("lazily seeds the user's taxonomy_nodes from their persona on first build", async () => {
+    const taxonomy = loadRealTaxonomy();
+    const candidates = loadRealCandidates();
+    const enricher = new StubEnricher();
+    const provider = new InMemoryUserInterestsProvider();
+    provider.setPersonaSeed("brand-new-user", "generalist");
+
+    expect(await provider.getUserTaxonomyNodes("brand-new-user")).toEqual([]);
+
+    await buildSession({
+      userId: "brand-new-user",
+      sessionKey: "test-session",
+      commuteMinutes: 20,
+      playbackSpeed: 1.4,
+      taxonomy,
+      candidates,
+      enricher,
+      userInterestsProvider: provider
+    });
+
+    const seeded = await provider.getUserTaxonomyNodes("brand-new-user");
+    expect(seeded.length).toBeGreaterThan(0);
+    expect(seeded.every((r) => r.source === "persona-seed")).toBe(true);
+  });
+
+  it("a user with real observed taxonomy_nodes rows is never re-seeded from their persona", async () => {
+    const taxonomy = loadRealTaxonomy();
+    const candidates = loadRealCandidates();
+    const enricher = new StubEnricher();
+    const provider = new InMemoryUserInterestsProvider();
+    provider.setPersonaSeed("established-user", "generalist");
+    provider.setUserTaxonomyNodes("established-user", [
+      { nodeId: "engineering", weight: 0.95, confidence: 0.9, source: "manual-edit" }
+    ]);
+
+    await buildSession({
+      userId: "established-user",
+      sessionKey: "test-session",
+      commuteMinutes: 20,
+      playbackSpeed: 1.4,
+      taxonomy,
+      candidates,
+      enricher,
+      userInterestsProvider: provider
+    });
+
+    const rows = await provider.getUserTaxonomyNodes("established-user");
+    expect(rows).toEqual([{ nodeId: "engineering", weight: 0.95, confidence: 0.9, source: "manual-edit" }]);
+  });
+
+  it("preserves the 4-slot archetype menu and cross-branch diversity even under an adversarial single-node persona (exploration floor is structural, not score-dependent)", async () => {
+    const taxonomy = loadRealTaxonomy();
+    const candidates = loadRealCandidates();
+    const enricher = new StubEnricher();
+    const provider = new InMemoryUserInterestsProvider();
+    provider.setPersonaSeed("skewed-user", "generalist");
+    // An extreme override: everything except one node hard-zeroed, one node
+    // maxed out. If archetype-pool membership were ever accidentally
+    // coupled to relevance score, this would collapse Stretch/Narrative/
+    // Comfort into the dominant node's pool. It must not.
+    provider.setUserTaxonomyNodes("skewed-user", [
+      { nodeId: "engineering", weight: 1, confidence: 0.9, source: "manual-edit" },
+      { nodeId: "engineering/energy-fusion", weight: 1, confidence: 0.9, source: "manual-edit" }
+    ]);
+
+    const { session, diversity } = await buildSession({
+      userId: "skewed-user",
+      sessionKey: "test-session",
+      commuteMinutes: 20,
+      playbackSpeed: 1.4,
+      taxonomy,
+      candidates,
+      enricher,
+      userInterestsProvider: provider
+    });
+
+    const archetypesPresent = new Set(session.cards.map((c) => c.archetype));
+    expect(archetypesPresent).toEqual(new Set(["deep-learn", "stretch", "narrative", "comfort"]));
+    expect(session.cards).toHaveLength(4);
+    expect(diversity.distinctBranches).toBeGreaterThanOrEqual(3);
   });
 });
