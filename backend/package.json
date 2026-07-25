@@ -15,7 +15,8 @@
     "mutation": "stryker run",
     "build-session": "tsx src/cli/buildSession.ts",
     "ingest-fixtures": "tsx src/cli/ingestFixtures.ts",
-    "migrate": "tsx src/cli/migrate.ts"
+    "migrate": "tsx src/cli/migrate.ts",
+    "learn-interests": "tsx src/cli/learnInterests.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
