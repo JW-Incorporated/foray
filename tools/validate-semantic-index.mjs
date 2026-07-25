@@ -105,6 +105,31 @@ for (const [cid, c] of Object.entries(concepts)) {
   }
 }
 
+/* ---------- zero-coverage terms within an otherwise-covered concept ----------
+   Complements the broad-term tripwire above (that one catches "too common,
+   will leak"); this catches the opposite failure -- a term that falsely
+   signals "we have this" for content the catalog doesn't actually carry.
+   A concept's OVERALL coverage check (above) passes as long as ANY term
+   has real coverage, so a concept like `sports` can be well-covered in
+   aggregate while individual terms (`nba`, `basketball` -- real per-
+   league sports content is ~0) still trigger a full concept-vocabulary
+   expansion for a query that should honestly stay thin (a bare "nba"
+   search surfaced generic sports-science episodes instead of an honest
+   empty, fixed alongside this check by removing the zero-coverage
+   league-name terms). */
+for (const [cid, c] of Object.entries(concepts)) {
+  for (const term of c.terms || []) {
+    const covered = SE.tagDF(term, ctx) > 0 || SE.corpusDF(term, ctx) > 0;
+    if (!covered) {
+      warnings.push(
+        `concept "${cid}": term "${term}" has zero catalog coverage -- it falsely signals ` +
+        `"we have this" for that specific word; consider removing it (the concept can stay if ` +
+        `its other terms are covered).`
+      );
+    }
+  }
+}
+
 /* ---------- report ---------- */
 
 console.log(`${Object.keys(concepts).length} concepts, ${Object.keys(modifiers).length} modifiers checked.`);
