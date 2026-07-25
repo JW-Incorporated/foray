@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T10:27:38.393Z",
+  "built_at": "2026-07-25T11:24:02.313Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-0baf7c41",
+    "last_batch_id": "fresh-2026-07-25-4d8d4677",
     "last_batch_tier": 1
   },
   "entries": {
@@ -52857,11 +52857,25 @@
     },
     "1472428389": {
       "topics": [
-        "kids-family"
+        "craft/filmmaking"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family-focused storytelling through voice acting of children's literature.",
+      "display_title": "Disney Magic of Storytelling",
+      "blurb": "Voice actors bring beloved Disney stories to life for young audiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1472456658": {
       "topics": [
@@ -53076,19 +53090,52 @@
     },
     "1473649053": {
       "topics": [
-        "tv-film/after-shows"
+        "psychology/decision-making"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Reality dating show discussion; relationship content lacks ideal node.",
+      "display_title": "Bachelor Happy Hour",
+      "blurb": "Hosts from The Bachelorette discuss Bachelor Nation news and cast interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1473671727": {
       "topics": [
-        "news/commentary"
+        "philosophy/ideas",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conservative commentary on politics, culture, and current events.",
+      "display_title": "Chicks on The Right",
+      "blurb": "Conservative hosts offer political and cultural commentary with humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1473696717": {
       "topics": [
@@ -53621,11 +53668,25 @@
     },
     "1476287601": {
       "topics": [
-        "travel"
+        "business"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Travel rewards and airline miles; lifestyle lacks clean taxonomy fit.",
+      "display_title": "MTM Travel",
+      "blurb": "Hosts discuss travel rewards, miles, and strategies for booking trips.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1476302603": {
       "topics": [
@@ -53675,11 +53736,25 @@
     },
     "1476331839": {
       "topics": [
-        "tv-film/animation"
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Animation professionals discuss craft, career, and creative storytelling.",
+      "display_title": "Animator's Breakfast Table",
+      "blurb": "Animators share their career paths, creative influences, and craft lessons.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1476344367": {
       "topics": [
@@ -53757,11 +53832,30 @@
     },
     "1476688287": {
       "topics": [
-        "hobbies"
+        "medicine",
+        "sports/biomechanics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness and wellness content focused on health and training.",
+      "display_title": "fit4life",
+      "blurb": "Wellness experts discuss fitness, nutrition, and healthy lifestyle habits.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1476734813": {
       "topics": [
@@ -54259,11 +54353,25 @@
     },
     "1478366349": {
       "topics": [
-        "gaming"
+        "computing"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Gaming and internet culture; gaming lacks explicit valid taxonomy node.",
+      "display_title": "Super Game Culture",
+      "blurb": "Hosts discuss video games, gaming culture, and internet trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1478422712": {
       "topics": [
@@ -54328,11 +54436,25 @@
     },
     "1478682639": {
       "topics": [
-        "sports"
+        "sports/biomechanics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Competitive swimming coverage with athletes and training perspectives.",
+      "display_title": "Social Kick",
+      "blurb": "Swimmers discuss competitive training, racing strategy, and athlete stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1478742413": {
       "topics": [
@@ -54351,11 +54473,25 @@
     },
     "1478754051": {
       "topics": [
-        "education/courses"
+        "medicine/biology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physical therapists discuss orthopedic certification and clinical practice.",
+      "display_title": "Certified: The OCS Prep",
+      "blurb": "Physical therapists discuss evidence-based practice and certification exams.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1478786128": {
       "topics": [
@@ -54550,12 +54686,30 @@
     },
     "1479312117": {
       "topics": [
-        "education/language-learning",
-        "kids-family/education"
+        "linguistics/language",
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics/language",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language instruction through songs and interactive games for families.",
+      "display_title": "Eat Your Spanish",
+      "blurb": "Interactive Spanish lessons using songs and games for young learners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1479338239": {
       "topics": [
@@ -54742,11 +54896,25 @@
     },
     "1479711891": {
       "topics": [
-        "culture"
+        "psychology/decision-making"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews exploring personal growth, resilience, and life transformation.",
+      "display_title": "Work in Progress with Sophia Bush",
+      "blurb": "Long-form interviews with people navigating change and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1479723765": {
       "topics": [
@@ -54757,19 +54925,52 @@
     },
     "1479882159": {
       "topics": [
-        "computing"
+        "computing",
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology entrepreneurs discuss innovation, startups, and emerging technologies.",
+      "display_title": "Brad & Will Made a Tech Pod",
+      "blurb": "Long-form tech discussions on startups, innovation, and emerging trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1479884325": {
       "topics": [
-        "religion/buddhism"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teachings applied to addiction recovery and healing.",
+      "display_title": "Recovery Dharma",
+      "blurb": "Buddhist teachings on recovery from addiction and finding healing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1479905027": {
       "topics": [
@@ -54824,12 +55025,25 @@
     },
     "1480053861": {
       "topics": [
-        "economics/markets",
-        "education/courses"
+        "economics/markets"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Economic principles and microeconomic theory for education.",
+      "display_title": "Microeconomics Course",
+      "blurb": "Economics content exploring markets, supply/demand, and consumer behavior.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1480059697": {
       "topics": [
@@ -54959,11 +55173,25 @@
     },
     "1480311435": {
       "topics": [
-        "comedy"
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cast members discuss The Office episodes with behind-the-scenes stories.",
+      "display_title": "Office Ladies",
+      "blurb": "Co-stars break down Office episodes with insider commentary and stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1480319986": {
       "topics": [
@@ -55013,11 +55241,28 @@
     },
     "1480603149": {
       "topics": [
-        "culture/art"
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Visual artists discuss painting techniques, composition, and creative process.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1480605577": {
       "topics": [
@@ -55244,11 +55489,33 @@
     },
     "1481093871": {
       "topics": [
-        "health/sexuality"
+        "history",
+        "craft/filmmaking"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Media and cultural history of adult entertainment industry through interviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1481120045": {
       "topics": [
@@ -55743,11 +56010,25 @@
     },
     "1482297423": {
       "topics": [
-        "education/language-learning"
+        "linguistics/language"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics/language",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "German language instruction through cultural immersion and native speakers.",
+      "display_title": "Easy German",
+      "blurb": "Native speakers teach German language and culture through dialogue.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1482313742": {
       "topics": [
@@ -55767,11 +56048,25 @@
     },
     "1482399861": {
       "topics": [
-        "music"
+        "music/theory-production"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Electronic dance music performances and DJ mixes from Tomorrowland.",
+      "display_title": "Tomorrowland Friendship Mix",
+      "blurb": "DJ sets and electronic dance music from Tomorrowland festival.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1482424209": {
       "topics": [
@@ -55916,11 +56211,25 @@
     },
     "1482723951": {
       "topics": [
-        "hobbies"
+        "craft/diy-home"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stationery, journaling, and planner hobby community discussion.",
+      "display_title": "The Stationery Cafe",
+      "blurb": "Hosts discuss stationery collecting, journaling, and planner organization.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1482731836": {
       "topics": [
@@ -56088,11 +56397,30 @@
     },
     "1483233279": {
       "topics": [
-        "kids-family/stories"
+        "history",
+        "science/storytelling"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.95
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ancient Greek myths retold for children, covering gods and legendary heroes.",
+      "display_title": "Greeking Out from National Geographic",
+      "blurb": "Kid-friendly stories of Greek gods, goddesses, monsters, and heroes from ancient mythology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1483233538": {
       "topics": [
@@ -56237,11 +56565,33 @@
     },
     "1483510527": {
       "topics": [
-        "computing"
+        "computing",
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.95
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Software engineers discuss development practices, agentic coding, and responsible AI.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1483513974": {
       "topics": [
@@ -56519,11 +56869,33 @@
     },
     "1484406501": {
       "topics": [
-        "society"
+        "psychology/decision-making",
+        "economics/markets"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Hosts discuss quantitative research methods, statistics, and data analysis practices.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1484408677": {
       "topics": [
@@ -56559,11 +56931,30 @@
     },
     "1484511465": {
       "topics": [
-        "history"
+        "history",
+        "engineering/disasters"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.95
+        },
+        {
+          "node": "engineering/disasters",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True stories of historical disasters, accidents, and engineering failures.",
+      "display_title": "Cautionary Tales with Tim Harford",
+      "blurb": "Real historical accounts of catastrophes from human error and engineering failures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1484519564": {
       "topics": [
@@ -56590,11 +56981,25 @@
     },
     "1484599827": {
       "topics": [
-        "gaming"
+        "computing"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Video game industry news and reviews; gaming lacks explicit valid node.",
+      "display_title": "The MinnMax Show",
+      "blurb": "Weekly discussions of game releases and video game industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1484614975": {
       "topics": [
@@ -56906,27 +57311,69 @@
     },
     "1485427725": {
       "topics": [
-        "business/management"
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Law firm marketing and management strategies to scale practice growth.",
+      "display_title": "Grow Your Law Firm",
+      "blurb": "Marketing and management tactics for law firm growth and client acquisition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1485435369": {
       "topics": [
-        "fiction/sci-fi"
+        "history"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Horror fiction anthology; genre lacks explicit mapping to valid nodes.",
+      "display_title": "Old Gods of Appalachia",
+      "blurb": "Dark fiction anthology exploring horror and mythology in alternate Appalachia.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1485443511": {
       "topics": [
-        "business/non-profit"
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wholesale lending industry strategies and leadership insights for brokers.",
+      "display_title": "AIME Podcast Network",
+      "blurb": "Mortgage industry leadership and sales training for wholesale brokers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1485444526": {
       "topics": [
@@ -57263,11 +57710,25 @@
     },
     "1486335987": {
       "topics": [
-        "business/marketing"
+        "business"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "CMO perspectives on marketing strategy; marketing lacks dedicated valid node.",
+      "display_title": "Uncensored CMO",
+      "blurb": "Chief marketing officers discuss creative strategies and brand building.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1486375788": {
       "topics": [
@@ -57293,11 +57754,25 @@
     },
     "1486488039": {
       "topics": [
-        "gaming"
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Magic: The Gathering card game strategy; gaming lacks explicit valid node.",
+      "display_title": "Limited Level-Ups",
+      "blurb": "Strategic analysis of Magic: The Gathering limited format gameplay.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1486494508": {
       "topics": [
@@ -57456,11 +57931,25 @@
     },
     "1487396757": {
       "topics": [
-        "music"
+        "music/theory-production"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Musicians discuss the creative and production process behind albums.",
+      "display_title": "Life of the Record",
+      "blurb": "Musicians reveal creation stories and influences behind classic albums.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1487402264": {
       "topics": [
@@ -57635,11 +58124,33 @@
     },
     "1488059541": {
       "topics": [
-        "science"
+        "science",
+        "medicine"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science news and research breakthroughs with societal impact.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1488080680": {
       "topics": [
@@ -57657,12 +58168,25 @@
     },
     "1488142227": {
       "topics": [
-        "culture/books",
-        "hobbies"
+        "craft/filmmaking"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language dramatized stories and audio theater productions.",
+      "display_title": "Radio Novelas",
+      "blurb": "Spanish-language dramatized stories and audio theater productions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1488142262": {
       "topics": [
@@ -57895,11 +58419,25 @@
     },
     "1488953625": {
       "topics": [
-        "sports/hockey"
+        "sports/biomechanics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "New York Rangers hockey analysis and sports news coverage.",
+      "display_title": "Up In The Blue Seats",
+      "blurb": "Rangers analysis and team coverage from sports journalists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1489022728": {
       "topics": [
@@ -58137,11 +58675,25 @@
     },
     "1490017575": {
       "topics": [
-        "society"
+        "philosophy/ideas"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Documentary on homelessness and social issues; social policy lacks node.",
+      "display_title": "We the Unhoused",
+      "blurb": "Documentary-style stories exploring homelessness and housing insecurity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1490032141": {
       "topics": [
@@ -58413,11 +58965,30 @@
     },
     "1491088065": {
       "topics": [
-        "fiction/comedy"
+        "comedy",
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized romantic comedy fiction told through audio storytelling.",
+      "display_title": "Meet Cute Originals",
+      "blurb": "Serialized romantic comedies told through original audio fiction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1491102803": {
       "topics": [
@@ -58691,11 +59262,25 @@
     },
     "1492397139": {
       "topics": [
-        "sports"
+        "sports/biomechanics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swimrun athletes discuss training, racing, and sport growth.",
+      "display_title": "Low Tide Boyz",
+      "blurb": "Swimrun athletes discuss training strategies and racing experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1492415440": {
       "topics": [
@@ -58713,11 +59298,25 @@
     },
     "1492492083": {
       "topics": [
-        "philosophy"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form interviews with diverse guests on culture and ideas.",
+      "display_title": "The Shawn Ryan Show",
+      "blurb": "Former SEAL hosts candid interviews on culture, ideas, and experience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1492533163": {
       "topics": [
@@ -58743,11 +59342,25 @@
     },
     "1492739517": {
       "topics": [
-        "personal-journals"
+        "psychology/decision-making"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal reflections on relationships, wellness, and life.",
+      "display_title": "Unwinding with Katie Dippold",
+      "blurb": "Host shares personal reflections on relationships and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1492739918": {
       "topics": [
@@ -59324,11 +59937,25 @@
     },
     "1494064011": {
       "topics": [
-        "comedy/interviews"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two friends share secrets and banter through personal challenges.",
+      "display_title": "You Should Know Podcast",
+      "blurb": "Peyton and Cameron reveal secrets and make fun of each other through friendship challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1494066468": {
       "topics": [
@@ -59376,11 +60003,25 @@
     },
     "1494233187": {
       "topics": [
-        "religion/spirituality"
+        "psychology/decision-making"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Monthly energy updates for creatives exploring emotions and personal growth.",
+      "display_title": "Impact the World with Lee Harris",
+      "blurb": "Monthly energy and emotional updates for creatives navigating life's highs and lows.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1494236156": {
       "topics": [
@@ -59436,11 +60077,25 @@
     },
     "1494350511": {
       "topics": [
-        "relationships"
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brené Brown explores vulnerability, courage, and human connection through research.",
+      "display_title": "Unlocking Us with Brené Brown",
+      "blurb": "Conversations on vulnerability, courage, and research-backed emotional exploration with thought leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1494354554": {
       "topics": [
@@ -59475,11 +60130,25 @@
     },
     "1494417297": {
       "topics": [
-        "tv-film/animation"
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Visual media discussions covering anime, film, manga and visual storytelling.",
+      "display_title": "天地无用",
+      "blurb": "Deep talks on anime, films, and manga with animation professionals and enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1494439019": {
       "topics": [
@@ -59506,11 +60175,25 @@
     },
     "1494509115": {
       "topics": [
-        "education/courses"
+        "engineering/energy-grid"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Electricians discuss National Electrical Code updates and electrical infrastructure.",
+      "display_title": "ELECTRIFY Electrician Podcast",
+      "blurb": "Expert electricians break down NEC code changes and industry best practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1494513478": {
       "topics": [
@@ -59537,11 +60220,25 @@
     },
     "1494530079": {
       "topics": [
-        "gaming"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Friends play Call of Cthulhu TTRPG with horror storytelling and dark comedy.",
+      "display_title": "Ain't Slayed Nobody",
+      "blurb": "Cinematic Call of Cthulhu gameplay with rich sound design and dark humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1494533993": {
       "topics": [
@@ -59700,11 +60397,25 @@
     },
     "1494789051": {
       "topics": [
-        "sports/hockey"
+        "sports/biomechanics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Detroit Red Wings hockey analysis and NHL player movement coverage.",
+      "display_title": "Locked On Red Wings",
+      "blurb": "Daily expert analysis of Red Wings news, trades, and NHL coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1494812579": {
       "topics": [
@@ -59901,11 +60612,25 @@
     },
     "1495463421": {
       "topics": [
-        "sports/endurance"
+        "sports/biomechanics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running coaches discuss training, ultramarathons, and endurance athlete interviews.",
+      "display_title": "The Running Public",
+      "blurb": "Endurance coaches share practical running knowledge through athlete interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1495478113": {
       "topics": [
@@ -60053,11 +60778,25 @@
     },
     "1495941921": {
       "topics": [
-        "personal-journals"
+        "philosophy/ideas"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Paranormal and supernatural stories from Filipino and global perspectives.",
+      "display_title": "Stories with Sapphire",
+      "blurb": "True paranormal encounters and supernatural stories from diverse cultural traditions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1495971324": {
       "topics": [
@@ -60169,11 +60908,25 @@
     },
     "1496431053": {
       "topics": [
-        "education/how-to"
+        "craft/diy-home"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Thrift store tips and vintage reselling strategies for treasure hunters.",
+      "display_title": "The Get Thrifty Podcast",
+      "blurb": "Thrifting and vintage reselling tips with experts sharing treasure-hunting strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1496465405": {
       "topics": [
@@ -60237,11 +60990,25 @@
     },
     "1496605443": {
       "topics": [
-        "health/fitness"
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Postpartum health, fitness recovery, and evidence-based parenting strategies.",
+      "display_title": "Healthy Postnatal Body",
+      "blurb": "Expert discusses postpartum health, fitness recovery, and evidence-based parenting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1496623191": {
       "topics": [
@@ -60308,11 +61075,30 @@
     },
     "1496689557": {
       "topics": [
-        "tv-film/interviews"
+        "comedy",
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cast discusses Brooklyn Nine-Nine episodes and behind-the-scenes production.",
+      "display_title": "Brooklyn Nine-Nine Podcast",
+      "blurb": "Cast and creators discuss episodes and behind-the-scenes production stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1496693461": {
       "topics": [
@@ -60503,19 +61289,47 @@
     },
     "1497441201": {
       "topics": [
-        "education/language-learning"
+        "linguistics/language"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics/language",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language learning through storytelling and cultural immersion.",
+      "display_title": "Simple Stories in Spanish",
+      "blurb": "Storytelling approach to Spanish language learning for learners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1497442605": {
       "topics": [
-        "personal-journals"
+        "craft/filmmaking"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime and paranormal stories narratively presented.",
+      "display_title": "Disturbed",
+      "blurb": "True stories of crime and paranormal events narrated with storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1497529501": {
       "topics": [
@@ -60670,11 +61484,30 @@
     },
     "1497921615": {
       "topics": [
-        "kids-family"
+        "philosophy/ideas",
+        "craft/filmmaking"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biblical teachings for children through songs and discussion.",
+      "display_title": "God's Big Story",
+      "blurb": "Biblical teachings presented through songs and discussions for children.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-25-4d8d4677",
+      "classified_at": "2026-07-25T11:24:02.313Z"
     },
     "1497950772": {
       "topics": [
