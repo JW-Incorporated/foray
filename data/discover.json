@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T11:41:49.115Z",
+  "built_at": "2026-07-26T11:42:36.411Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -15560,6 +15560,102 @@
       ],
       "hook": "A Beaumont hotel death looked natural, until an autopsy revealed catastrophic internal injuries.",
       "explicit": true
+    },
+    {
+      "id": "the-ancients--hollywood-s-odyssey-the-historians-verdict",
+      "show": "The Ancients",
+      "title": "Hollywood’s Odyssey: The Historians' Verdict",
+      "apple_collection_id": 1520403988,
+      "apple_track_id": 1000777899185,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/hollywoods-odyssey-the-historians-verdict/id1520403988?i=1000777899185&uo=4",
+      "release_date": "2026-07-26",
+      "duration_min": 71,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/6c/94/31/6c943113-5484-a41d-5cb7-bf606ff289ef/mza_6401313720037127611.jpeg/600x600bb.jpg",
+      "topics": [
+        "history/military-ancient"
+      ],
+      "hook": "Historians Tristan Hughes and Emily Hauser judge what Nolan's Odyssey film keeps, changes, and gets right.",
+      "explicit": false
+    },
+    {
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1608",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 1608: Members in Tension",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000778381203,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1608-members-in-tension/id121493645?i=1000778381203&uo=4",
+      "release_date": "2026-07-26",
+      "duration_min": 4,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "topics": [
+        "history/technology"
+      ],
+      "hook": "Three scale models, three different weights: a short lesson in engineering for tension.",
+      "explicit": false
+    },
+    {
+      "id": "founders--426-how-obsession-built-christopher-nolan",
+      "show": "Founders",
+      "title": "#426 How Obsession Built Christopher Nolan",
+      "apple_collection_id": 1141877104,
+      "apple_track_id": 1000778364358,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/426-how-obsession-built-christopher-nolan/id1141877104?i=1000778364358&uo=4",
+      "release_date": "2026-07-26",
+      "duration_min": 51,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ed/71/4f/ed714f67-f095-a4ef-f38e-d8c02300666a/mza_11432355988627368701.jpg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "How obsession shaped Christopher Nolan's life and work, drawn from Tom Shone's The Nolan Variations.",
+      "explicit": false
+    },
+    {
+      "id": "unauthorized-history-pacific-war--shooting-the-breeze-between-shows-and",
+      "show": "The Unauthorized History of the Pacific War",
+      "title": "Shooting the Breeze Between Shows and Future Ideas",
+      "apple_collection_id": 1641383288,
+      "apple_track_id": 1000778395245,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/shooting-the-breeze-between-shows-and-future-ideas/id1641383288?i=1000778395245&uo=4",
+      "release_date": "2026-07-26",
+      "duration_min": 44,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/fb/ee/c8/fbeec8e6-3d1f-20b4-d8b4-025fc884959e/mza_7133861084749007820.jpg/600x600bb.jpg",
+      "topics": [
+        "history/military-modern"
+      ],
+      "hook": "Seth and Jon catch up between seasons: new books, hiatus plans, and one wild injury story.",
+      "explicit": false
+    },
+    {
+      "id": "call-her-daddy--right-person-wrong-time-is-a",
+      "show": "Call Her Daddy",
+      "title": "\"Right Person Wrong Time\" is a Myth",
+      "apple_collection_id": 1418960261,
+      "apple_track_id": 1000778343344,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/right-person-wrong-time-is-a-myth/id1418960261?i=1000778343344&uo=4",
+      "release_date": "2026-07-26",
+      "duration_min": 53,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/05/10/91/05109145-8c22-5464-1f20-aaedeab769f8/mza_10276081716633787086.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/interviews"
+      ],
+      "hook": "Alex argues 'right person, wrong time' is a myth that blocks grieving and moving on.",
+      "explicit": true
+    },
+    {
+      "id": "wow-in-the-world--wewow-on-the-weekend-dishin-it",
+      "show": "Wow in the World",
+      "title": "WeWow on the Weekend: Dishin' It Up, Cow Toots, and Crickets for Breakfast!",
+      "apple_collection_id": 1233834541,
+      "apple_track_id": 1000778387267,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/wewow-on-the-weekend-dishin-it-up-cow-toots-and/id1233834541?i=1000778387267&uo=4",
+      "release_date": "2026-07-26",
+      "duration_min": 14,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/dc/5b/39/dc5b3991-150c-b40b-295e-abd3003cef35/mza_16877249950035451481.jpeg/600x600bb.jpg",
+      "topics": [
+        "kids-family/education"
+      ],
+      "hook": "Dennis and Reggie mix cow toots, cricket snacks, and an environmental science encore for kids.",
+      "explicit": false
     }
   ]
 }

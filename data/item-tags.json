@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T11:41:49.115Z",
+  "built_at": "2026-07-26T11:42:36.411Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -8986,6 +8986,55 @@
       "death",
       "autopsy",
       "investigation"
+    ],
+    "the-ancients--hollywood-s-odyssey-the-historians-verdict": [
+      "odyssey",
+      "homer",
+      "odysseus",
+      "greek-mythology",
+      "ancient-greece",
+      "film",
+      "mythology",
+      "interview"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1608": [
+      "engineering",
+      "structural-engineering",
+      "physics",
+      "architecture",
+      "history",
+      "ideas"
+    ],
+    "founders--426-how-obsession-built-christopher-nolan": [
+      "business-history",
+      "biography",
+      "entrepreneurship",
+      "film",
+      "books",
+      "founders"
+    ],
+    "unauthorized-history-pacific-war--shooting-the-breeze-between-shows-and": [
+      "world-war-2",
+      "military-history",
+      "pacific-war",
+      "history",
+      "panel",
+      "authors"
+    ],
+    "call-her-daddy--right-person-wrong-time-is-a": [
+      "relationships",
+      "dating",
+      "psychology",
+      "self-improvement",
+      "advice"
+    ],
+    "wow-in-the-world--wewow-on-the-weekend-dishin-it": [
+      "kids",
+      "science",
+      "education",
+      "animals",
+      "family",
+      "comedy"
     ]
   }
 }
