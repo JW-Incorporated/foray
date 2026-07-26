@@ -4956,6 +4956,28 @@
       "batch_id": "fresh-2026-07-26-af6a0d9c",
       "classified_at": "2026-07-26T08:50:56.126Z"
     },
+    "597158828": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with tv-film/reviews.",
+      "display_title": "We Know The Amazing Race",
+      "blurb": "All season long, every season, following each episode, Jessica Liese and Mike Bloom to discuss every leg of the Amazing Races from around the world. T...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
     "597167462": {
       "topics": [
         "comedy"
@@ -5205,6 +5227,1089 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-26-af6a0d9c",
       "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "631094342": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with religion/christianity.",
+      "display_title": "Pastor Rick's Daily Hope",
+      "blurb": "Rick Warren is an innovative pastor, renowned author, and global influencer.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "636301328": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "Talking Cars (Video)",
+      "blurb": "Join our experts at the Consumer Reports Test Track as they discuss cars, answer buying questions, and share insights on everything automotive.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "642198704": {
+      "topics": [
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with culture/performing-arts.",
+      "display_title": "Down These Mean Streets (Old Time Radio Detectives)",
+      "blurb": "Presenting the best detectives from the Golden Age of Radio. Each week, we'll bring you an episode starring one of Old Time Radio's greatest detective...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "642742958": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "Doggy Dan Podcast Show",
+      "blurb": "Solve Dog Reactivity The Kind And Gentle Way By Doggy Dan: Dog Training - Dog and Puppy Trainer, Behaviorist, Speaker, Author",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "643885946": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with craft.",
+      "display_title": "Craft Industry Alliance",
+      "blurb": "An interview show for creative entrepreneurs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "647720354": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "Book Riot - The Podcast",
+      "blurb": "News in the world of books and reading, including hot industry releases, adaptations, publishing industry events, and more with Book Riot’s Jeff O’Nea...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "651219242": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "652522142": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with music.",
+      "display_title": "Kreative Kontrol",
+      "blurb": "Thoughtful, funny, heartfelt interviews and in-depth documentaries about musicians, authors, comedians, and other cultural creators. Support this show...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "653314424": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with religion/christianity.",
+      "display_title": "The Grimerica Show",
+      "blurb": "A loose cannon podcast featuring casual conversations with whomever we deem interesting, often on the fringe, Like Coast to Coast, but on demand. Like...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "655135292": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "The Side Hustle Show",
+      "blurb": "The entrepreneurship podcast you can actually apply! The award-winning small business show covers creative ways to make money online and offline, incl...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "657765158": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show content aligns with hobbies.",
+      "display_title": "大内密谈",
+      "blurb": "「大内密谈Midnightalks」是一档由“深夜谈谈Midnight Network”出品的播客节目。密而不宣，无所不谈。",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "662709986": {
+      "topics": [
+        "culture/pop-culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with culture/pop-culture.",
+      "display_title": "Rule The Roost - A Tottenham Hotspur Podcast",
+      "blurb": "Rule the Roost is a Spurs podcast where proper football man-isms meet arthouse pretension. Every Monday, Jack’s joined by a guest to wrestle with what...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "665149280": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with music.",
+      "display_title": "Sawbones: A Marital Tour of Misguided Medicine",
+      "blurb": "Join Dr. Sydnee McElroy and her husband Justin McElroy for a tour of all the dumb, bad, gross, weird and wrong ways we've tried to fix people.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "665713706": {
+      "topics": [
+        "culture/pop-culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with culture/pop-culture.",
+      "display_title": "The Cycling Podcast",
+      "blurb": "The Cycling Podcast takes listeners to the heart of professional cycling with weekly episodes and daily coverage of the Grand Tours. Join journalists ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "674727044": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "Podcast Rock City",
+      "blurb": "Opinionated, fun and informative! Joe, Sonny, Joey and Leigh talk about their favorite band KISS!! Weekly news, Topic of the week and many other games...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "687238388": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with relationships.",
+      "display_title": "Salah Bukhatir",
+      "blurb": "Salah Bukhatir is native to the United Arab Emirates, Salah Bukhatir is a Qur&#8217;an Reciter and preacher of undeniable good repute and owner of a h...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "688091468": {
+      "topics": [
+        "culture/pop-culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show content aligns with culture/pop-culture.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "694915280": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "FOREVER MIDNIGHT - Horror Movie Podcast.",
+      "blurb": "A horror movie podcast for all horror fans, not just know-it-all nerds (and also for know-it-all nerds). Part of the Bloody Disgusting Podcast Network...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "695268752": {
+      "topics": [
+        "culture/pop-culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with culture/pop-culture.",
+      "display_title": "The Survivalist Prepper Podcast",
+      "blurb": "Survivalist Prepper, all about survival skills, prepping, preparedness and living off the grid without too much &#8220;tin foil hat&#8221; stuff. Lear...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "698819234": {
+      "topics": [
+        "nature/pets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with nature/pets.",
+      "display_title": "Fall 2013 Shamatha and the  Seven-Point Mind Training",
+      "blurb": "Alan Wallace Fall 2013 8-Week retreat on Shamatha and the Seven-Point Mind Training. This retreat was held at the Thanyapura Mind Centre in Phuket, Th...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "703611884": {
+      "topics": [
+        "culture/pop-culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with culture/pop-culture.",
+      "display_title": "The EggChasers Rugby Podcast",
+      "blurb": "The Eggchasers Podcast is a Rugby Union Podcast that doesn't take itself, or the game, too seriously. The longest running rugby podcast on earth. Tim ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "708335534": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with music.",
+      "display_title": "Gorman in the Morning",
+      "blurb": "Steve Gorman (founding member of the legendary Black Crowes, best-selling author, and media personality) along with Fletcher and Ryder bring a fresh t...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "711410636": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with tv-film/reviews.",
+      "display_title": "On the Wind Sailing",
+      "blurb": "The definitive podcast about sailing. Professional sailors Andy Schell, Mia Karlsson and August Sandberg interview sailors from around the world to di...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "711463982": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "The Stem Cell Podcast",
+      "blurb": "A podcast dedicated to culturing knowledge in stem cell research. Brought to you by STEMCELL Technologies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "712578722": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with tv-film/reviews.",
+      "display_title": "Respect The Process",
+      "blurb": "One-on-one chats with commercial directors, advertising agency creatives, actors, editors, producers, crew and more. Filmmaker Jordan Brady has direct...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "714464552": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "The MORE Show",
+      "blurb": "MORE: Maximizing Opportunities in Real Estate is where powerful conversations and real education come together. Hosted by real estate expert Justin Co...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "717653288": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 14w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "730188152": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "Masters in Business",
+      "blurb": "Bloomberg Radio host Barry Ritholtz speaks to the people and ideas that shape markets, investing and business.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "733163012": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show content aligns with culture/books.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "738603722": {
+      "topics": [
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show content aligns with culture/performing-arts.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "791564318": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with tv-film/reviews.",
+      "display_title": "Jacobin Radio",
+      "blurb": "News, politics, history and more from Jacobin. Featuring The Dig, Long Reads, Confronting Capitalism, Behind the News, Jacobin Radio with Suzi Weissma...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "792412676": {
+      "topics": [
+        "religion/buddhism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with religion/buddhism.",
+      "display_title": "หลวงปู่ปราโมทย์ ปาโมชฺโช วัดสวนสันติธรรม",
+      "blurb": "ธรรมะเพื่อการเจริญสติ รู้กาย รู้ใจ ตามความเป็นจริง ด้วยจิตที่ตั้งมั่นและเป็นกลางโดยพระปราโมทย์ ปาโมชฺโช วัดสวนสันติธรรม A collection of the Lord Buddh...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "796478792": {
+      "topics": [
+        "culture/pop-culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with culture/pop-culture.",
+      "display_title": "Bucknuts Morning 5: An Ohio State athletics podcast",
+      "blurb": "Your daily dose of Ohio State Buckeyes news, hosted by Dave Biddle and Dan Rubin.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "797906942": {
+      "topics": [
+        "nature/pets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with nature/pets.",
+      "display_title": "The Fret Files",
+      "blurb": "Guitar Workshop Podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "812436884": {
+      "topics": [
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with culture/performing-arts.",
+      "display_title": "The Cinematography Podcast",
+      "blurb": "Art, Business, Craft and Philosophy of the Moving Image",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "827919428": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "Nock On Archery",
+      "blurb": "Nock On Archery podcast are educational archery tips from Pro Archer John Dudley, an accomplished professional, top level coach and technical expert. ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "828454298": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "Short Time Wrestling Podcast",
+      "blurb": "Featuring the Short Time Wrestling Podcast and hosted by award-winning wrestling broadcaster and journalist of the year, Jason Bryant, this show sets ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "831310808": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with religion/christianity.",
+      "display_title": "Jenna Tries",
+      "blurb": "Hey Party Animals! It's me, comedian, mom, wife, and wanna be foodie Jenna Kim Jones and this is my podcast Jenna Tries! Jenna Tries is for everyone o...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "833641766": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show content aligns with tv-film/reviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 14w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "841758860": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "Sex with Strangers",
+      "blurb": "Host Chris Sowa traverses the globe having interesting, informative, and – at times – hilarious conversations about sex … with strangers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "844102142": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show content aligns with religion/christianity.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "845287058": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "Two Guys on Your Head",
+      "blurb": "Dr. Art Markman and Dr. Bob Duke explain how our brain works.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "849772346": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with automotive.",
+      "display_title": "Real Estate Training & Coaching School",
+      "blurb": "Real Estate Training & Coaching School is the longest-running daily real estate podcast for real estate agents, brokers, and aspiring agents who want ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "859529852": {
+      "topics": [
+        "culture/pop-culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show content aligns with culture/pop-culture.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 17w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "864068000": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with relationships.",
+      "display_title": "The Manwhore Podcast: Sex-Positive Conversations",
+      "blurb": "Sex. Dating. Gender. Love. Comedian Billy Procida hosts weekly conversations on everything you're not allowed to talk about on Slack. It's like Sex an...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "870688022": {
+      "topics": [
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show content aligns with culture/performing-arts.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "875159294": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with religion/christianity.",
+      "display_title": "The Sister Circle Podcast",
+      "blurb": "Real. Authentic. Practical. Thoughts on faith, family, food, fitness, fun, and living with focus.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
+    },
+    "877672766": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show content aligns with music.",
+      "display_title": "Talkhouse Podcast",
+      "blurb": "Your favorite musicians, filmmakers, and other creative minds one-on-one. No moderator, no script, no typical questions. The Talkhouse Podcast offers ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-4487669c",
+      "classified_at": "2026-07-26T16:50:54.214Z"
     },
     "1459232606": {
       "topics": [
@@ -6374,11 +7479,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-26T08:51:58.514Z",
+  "built_at": "2026-07-26T16:50:54.214Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-26-af6a0d9c",
+    "last_batch_id": "fresh-2026-07-26-4487669c",
     "last_batch_tier": 1
   }
 }
