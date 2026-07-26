@@ -7,7 +7,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  pickEnclosure, durationSeconds, isPlayableType, looksTokened, audioFieldsFrom, hostOf,
+  pickEnclosure, durationSeconds, isPlayableType, looksTokened, audioFieldsFrom, hostOf, normalizeAudioUrl,
 } from "./enclosure.mjs";
 
 const enc = (url, type, length) => ({
@@ -121,14 +121,29 @@ test("audioFieldsFrom withholds video-only and non-https enclosures", () => {
   assert.equal(audioFieldsFrom(enc("ftp://cdn.example/ep.mp3", "audio/mpeg")).audio_url, null);
 });
 
-test("audioFieldsFrom rejects cleartext http, matching the CI gate", () => {
-  // iOS ATS and Android's cleartext policy both block http media, and #24's
-  // CSP is `media-src https:`. Publishing an http URL would mean an item that
-  // looks playable in the data and fails at playback time — and CI, which
-  // requires https, would reject it anyway. Keep the two consistent.
-  const r = audioFieldsFrom(enc("http://cdn.example/ep.mp3", "audio/mpeg"));
-  assert.equal(r.audio_url, null);
-  assert.match(r.reason, /non-https/);
+test("audioFieldsFrom UPGRADES cleartext http rather than dropping the item", () => {
+  // Real feeds in this catalogue publish http enclosures (Hardcore History,
+  // Lingthusiasm, Designer Notes, Music History Monday...). Cleartext is
+  // unplayable in the shipped app, but dropping would cost real shows —
+  // and all four affected hosts serve the identical path over https
+  // (verified: 206 + audio/mpeg). Only the transport changes, so corner
+  // case #1's download-attribution still holds.
+  const r = audioFieldsFrom(enc("http://dts.podtrac.com/redirect.mp3/x/ep.mp3", "audio/mpeg"));
+  assert.equal(r.audio_url, "https://dts.podtrac.com/redirect.mp3/x/ep.mp3");
+  assert.equal(r.reason, null);
+});
+
+test("normalizeAudioUrl is the single gate for both RSS and iTunes URLs", () => {
+  assert.equal(normalizeAudioUrl("http://a.example/e.mp3").url, "https://a.example/e.mp3");
+  assert.equal(normalizeAudioUrl("https://a.example/e.mp3").url, "https://a.example/e.mp3");
+  assert.equal(normalizeAudioUrl("HTTP://A.example/E.mp3").url, "https://A.example/E.mp3");
+  // Host and path must survive the upgrade untouched — publishers count
+  // downloads at exactly this URL.
+  assert.equal(normalizeAudioUrl("http://x.example/a/b?c=1#f").url, "https://x.example/a/b?c=1#f");
+  assert.equal(normalizeAudioUrl("ftp://a.example/e.mp3").url, null);
+  assert.equal(normalizeAudioUrl("https://a.example/e.mp3?token=s").url, null);
+  assert.equal(normalizeAudioUrl(null).url, null);
+  assert.equal(normalizeAudioUrl("").url, null);
 });
 
 test("audioFieldsFrom keeps duration even when the URL is withheld", () => {

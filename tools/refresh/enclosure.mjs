@@ -70,27 +70,49 @@ export function looksTokened(url) {
   return q >= 0 && TOKEN_PARAM.test(url.slice(q));
 }
 
+/** The single gate every audio URL passes through, whatever its source (RSS
+    enclosure or the iTunes `episodeUrl` fallback). Returns `{ url, reason }`
+    with a null url when the value is unusable.
+
+    **http is upgraded to https, not rejected.** A meaningful number of feeds
+    still publish cleartext enclosures — measured on this catalogue: Hardcore
+    History, Lingthusiasm, Designer Notes, Music History Monday and others, via
+    podtrac / soundcloud / blubrry. Cleartext is unplayable in the shipped app
+    (iOS ATS, Android's cleartext policy, and #24's `media-src https:` CSP), so
+    publishing it as-is would mean an item that looks playable and fails at
+    playback time. Dropping it instead would silently cost real shows.
+
+    Upgrading is safe here because only the transport changes — host and path
+    are untouched, so corner case #1's "publishers count downloads at the URL
+    they declared" still holds. Verified against all four affected hosts: each
+    returns 206 + audio/mpeg for the identical path over https. On the rare
+    host where https fails, the player's existing degrade path applies (stream
+    if possible, else drop the item and advance). */
+export function normalizeAudioUrl(raw) {
+  if (!raw) return { url: null, reason: "no enclosure" };
+  let url = String(raw).trim();
+  if (!url) return { url: null, reason: "no enclosure" };
+
+  if (/^http:\/\//i.test(url)) url = "https://" + url.slice("http://".length);
+  if (!/^https:\/\//i.test(url)) {
+    const scheme = (url.split(":")[0] || "?").toLowerCase();
+    return { url: null, reason: `unsupported scheme (${scheme})` };
+  }
+  if (looksTokened(url)) return { url: null, reason: "tokened URL withheld" };
+  return { url, reason: null };
+}
+
 /** Everything the pipeline needs from one RSS <item>, or nulls. `reason` is
     set when a URL was deliberately rejected, so callers can log it. */
 export function audioFieldsFrom(item) {
   const { url, type, bytes } = pickEnclosure(item);
   const duration_sec = durationSeconds(item?.["itunes:duration"]);
 
-  if (!url) return { audio_url: null, audio_type: type, audio_bytes: bytes, duration_sec, reason: "no enclosure" };
-  // https ONLY, not http. A cleartext enclosure is unplayable in the shipped
-  // app regardless — iOS App Transport Security and Android's default
-  // cleartext-traffic policy both block it, and #24's CSP is `media-src
-  // https:`. Rejecting here keeps the data honest instead of publishing a URL
-  // that fails at playback time; it also keeps this helper consistent with the
-  // CI gate, which fails the build on a non-https audio_url.
-  if (!/^https:\/\//i.test(url)) {
-    const scheme = (url.split(":")[0] || "?").toLowerCase();
-    return { audio_url: null, audio_type: type, audio_bytes: bytes, duration_sec, reason: `non-https enclosure (${scheme})` };
+  if (!isPlayableType(type)) {
+    return { audio_url: null, audio_type: type, audio_bytes: bytes, duration_sec, reason: `non-audio type ${type}` };
   }
-  if (looksTokened(url)) return { audio_url: null, audio_type: type, audio_bytes: bytes, duration_sec, reason: "tokened URL withheld" };
-  if (!isPlayableType(type)) return { audio_url: null, audio_type: type, audio_bytes: bytes, duration_sec, reason: `non-audio type ${type}` };
-
-  return { audio_url: url, audio_type: type, audio_bytes: bytes, duration_sec, reason: null };
+  const { url: normalized, reason } = normalizeAudioUrl(url);
+  return { audio_url: normalized, audio_type: type, audio_bytes: bytes, duration_sec, reason };
 }
 
 /** Host comparison for the RSS-vs-iTunes disagreement counter. Not an error —

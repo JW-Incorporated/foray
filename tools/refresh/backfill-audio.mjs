@@ -29,7 +29,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
-import { audioFieldsFrom, hostOf } from "./enclosure.mjs";
+import { audioFieldsFrom, hostOf, normalizeAudioUrl } from "./enclosure.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
@@ -198,9 +198,10 @@ for (const [cid, items] of shows) {
     const eps = await itunesEpisodes(cid);
     for (const t of missItems) {
       const ep = eps.find((e) => e.trackId === t.ref.apple_track_id);
-      if (ep?.episodeUrl && /^https?:\/\//i.test(ep.episodeUrl)) {
+      const itunesUrl = ep ? normalizeAudioUrl(ep.episodeUrl).url : null;
+      if (itunesUrl) {
         apply(t, {
-          audio_url: ep.episodeUrl,
+          audio_url: itunesUrl,
           audio_type: ep.episodeFileExtension ? `audio/${ep.episodeFileExtension}` : null,
           audio_bytes: null,
           duration_sec: ep.trackTimeMillis ? Math.round(ep.trackTimeMillis / 1000) : null,

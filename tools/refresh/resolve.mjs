@@ -15,7 +15,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
-import { hostOf } from "./enclosure.mjs";
+import { hostOf, normalizeAudioUrl } from "./enclosure.mjs";
 
 const root = new URL("../../", import.meta.url);
 const p = (rel) => new URL(rel, root);
@@ -130,12 +130,17 @@ for (const ep of pending.episodes) {
     audioFromRss++;
     const itunesUrl = track.episodeUrl || null;
     if (itunesUrl && hostOf(itunesUrl) !== hostOf(audioUrl)) hostDisagreements++;
-  } else if (track.episodeUrl && /^https?:\/\//i.test(track.episodeUrl)) {
-    audioUrl = track.episodeUrl;
-    audioType = track.episodeFileExtension ? `audio/${track.episodeFileExtension}` : null;
-    audioFromItunes++;
   } else {
-    audioMissing++;
+    // Same gate as the RSS path — http upgraded, tokens withheld. iTunes
+    // `episodeUrl` is frequently cleartext, so this is not a rare branch.
+    const { url: fallback } = normalizeAudioUrl(track.episodeUrl);
+    if (fallback) {
+      audioUrl = fallback;
+      audioType = track.episodeFileExtension ? `audio/${track.episodeFileExtension}` : null;
+      audioFromItunes++;
+    } else {
+      audioMissing++;
+    }
   }
 
   resolved.push({
