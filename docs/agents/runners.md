@@ -6,7 +6,7 @@ changes a runner.
 
 | Runner | Where | Cadence | Billing | Prompt / source | Status |
 |--------|-------|---------|---------|-----------------|--------|
-| **nightly-refresh (scan+resolve)** | GitHub Actions (`.github/workflows/nightly-refresh.yml`) | Daily 09:40 UTC | GitHub Actions minutes (free tier) | workflow file | live after Phase 1 |
+| **nightly-refresh (scan+resolve)** | GitHub Actions (`.github/workflows/nightly-refresh.yml`) | Daily 06:40 UTC | GitHub Actions minutes (free tier) | workflow file | live after Phase 1 |
 | **nightly-refresh (enrich+merge+PR)** | Claude Cloud scheduled agent | Daily ~11:40 UTC (≥2h after the Action) | *assigned at Phase 2* | `docs/agents/runner-prompts/foray-nightly.md` | pending Phase 2 |
 
 ## Conventions
