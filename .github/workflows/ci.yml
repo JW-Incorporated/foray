@@ -73,6 +73,11 @@ jobs:
         run: |
           node --check app.js
           node --check search-engine.js
+      - name: Player state-machine tests
+        # Pure reducer, no DOM and no dependencies — see player/queue-state.js.
+        # Lives in this job (rather than its own) because `data-and-site` is
+        # already a required check in the protect-main ruleset.
+        run: node --test "player/**/*.test.js"
       - name: Validate semantic-index.json
         run: node tools/validate-semantic-index.mjs
       - name: Search-quality battery
