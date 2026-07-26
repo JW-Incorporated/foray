@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-26T08:34:54.460Z",
+  "built_at": "2026-07-26T16:35:03.319Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-26-77aa2435",
+    "last_batch_id": "fresh-2026-07-26-95bfb55c",
     "last_batch_tier": 1
   },
   "entries": {
@@ -121858,11 +121858,40 @@
     },
     "1707941233": {
       "topics": [
-        "religion/christianity"
+        "science/physics",
+        "culture/books",
+        "religion/christianity",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expect vulnerability rawness hope and encouragement We will be covering scriptur",
+      "display_title": "Christ With Coffee On Ice",
+      "blurb": "Expect vulnerability, rawness, hope, and encouragement. We will be covering scripture, life's obstacles, and what that looks like while walking with C",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1707970349": {
       "topics": [
@@ -121932,11 +121961,40 @@
     },
     "1708293199": {
       "topics": [
-        "tv-film"
+        "culture/books",
+        "news/politics",
+        "automotive/racing",
+        "kids-family/stories"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Join Harry Potter experts J and Ben Carlin of the Super Carlin Brothers YouTube ",
+      "display_title": "Through the Griffin Door",
+      "blurb": "Join Harry Potter experts J and Ben Carlin of the Super Carlin Brothers YouTube show in a chapter-by-chapter read-through of the entire Harry Potter S",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1708337172": {
       "topics": [
@@ -122001,11 +122059,40 @@
     },
     "1708664521": {
       "topics": [
-        "tv-film/animation"
+        "adventure",
+        "gaming",
+        "history/military-ancient",
+        "history/military-modern"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ki Moments is a podcast hosted by DotoDoya Nanogenix",
+      "display_title": "Ki Moments",
+      "blurb": "Ki Moments is a podcast hosted by DotoDoya & Nanogenix.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1708702503": {
       "topics": [
@@ -122075,19 +122162,77 @@
     },
     "1708957753": {
       "topics": [
-        "sports/endurance"
+        "transport/trains",
+        "engineering/ai-robotics",
+        "nature/ocean-science",
+        "nature/weather"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "transport/trains",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/weather",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to The Get Out Swim YouTube Channel The Get Out Swim podcast is hosted",
+      "display_title": "The Get Out Swim",
+      "blurb": "Welcome to The Get Out Swim YouTube Channel. The Get Out Swim podcast is hosted by Seamus Trzewik-Quinn, former Division 1 swimmer and current college",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1708973083": {
       "topics": [
-        "business/non-profit"
+        "music/classical",
+        "transport/maritime",
+        "culture/performing-arts",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/classical",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The podcast has been created to help those tasked with managing operations for c",
+      "display_title": "Church Ops 500: Doing the Impossible with Less",
+      "blurb": "The podcast has been created to help those tasked with managing operations for churches and non-profits with super-small budgets, and minimal staff. S",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1708993594": {
       "topics": [
@@ -122122,11 +122267,43 @@
     },
     "1709093251": {
       "topics": [
-        "gaming"
+        "space/rockets",
+        "kids-family/stories",
+        "engineering/ai-robotics",
+        "nature/ocean-science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The 40k Lorecast is a weekly dive into all the Lore that surrounds Warhammer 40k",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1709142395": {
       "topics": [
@@ -122296,11 +122473,40 @@
     },
     "1709781511": {
       "topics": [
-        "education/self-improvement"
+        "adventure/exploration",
+        "religion/buddhism",
+        "engineering/ai-robotics",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Become the best version of yourself as you kickstart your day with the right mot",
+      "display_title": "Daily Motivational Positivity",
+      "blurb": "Become the best version of yourself as you kickstart your day with the right motivation and inspiration from &#34;The Daily Positivity Podcast&#34; - ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1709833311": {
       "topics": [
@@ -122481,11 +122687,40 @@
     },
     "1710419203": {
       "topics": [
-        "kids-family"
+        "sports/football",
+        "adventure/exploration",
+        "engineering/energy-fusion",
+        "nature/ocean-science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Grinch is back and jollier than NEVER Whovilles sassiest latenight talk show hos",
+      "display_title": "'Tis The Grinch Holiday Podcast",
+      "blurb": "Grinch is back and jollier than NEVER! Whoville’s sassiest late-night talk show host returns for season 3 with more sharp-tongued monologues about eve",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1710429878": {
       "topics": [
@@ -122585,11 +122820,40 @@
     },
     "1710819001": {
       "topics": [
-        "religion"
+        "culture/books",
+        "math/puzzles",
+        "kids-family/stories",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "An Oral History of the Emergent Church Movement hosted by Tripp Fuller and Tony ",
+      "display_title": "Emerged",
+      "blurb": "An Oral History of the Emergent Church Movement hosted by Tripp Fuller and Tony Jones",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1710885652": {
       "topics": [
@@ -122725,11 +122989,40 @@
     },
     "1711332691": {
       "topics": [
-        "education/self-improvement"
+        "culture/books",
+        "sports/football",
+        "transport/maritime",
+        "automotive/racing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to Mindset Mastery Moments the podcast that promises a transformative jo",
+      "display_title": "Mindset Mastery Moments with Dr. Alisa Whyte",
+      "blurb": "Welcome to Mindset Mastery Moments , the podcast that promises a transformative journey of personal and professional growth. Hosted by Dr. Alisa Whyte",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1711362652": {
       "topics": [
@@ -122771,11 +123064,40 @@
     },
     "1711527247": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "engineering/ai-robotics",
+        "nature/ocean-science",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kris Baker SabresProspects and The Athletics Matthew Fairburn MatthewFairburn di",
+      "display_title": "Baker Fairburn Hockey Show",
+      "blurb": "Kris Baker (@SabresProspects) and The Athletic's Matthew Fairburn (@MatthewFairburn) discuss all things Buffalo Sabres and catch up on the latest happ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1711572443": {
       "topics": [
@@ -122786,11 +123108,40 @@
     },
     "1711601461": {
       "topics": [
-        "travel"
+        "engineering",
+        "engineering/ai-robotics",
+        "economics/markets",
+        "architecture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A theme park podcast that aims to exhaustively evaluate the worlds most popular ",
+      "display_title": "For Your Amusement: A Theme Park Podcast",
+      "blurb": "A theme park podcast that aims to exhaustively evaluate the world’s most popular theme park attractions to determine if they are world class. Consider",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1711700592": {
       "topics": [
@@ -123001,11 +123352,40 @@
     },
     "1712427139": {
       "topics": [
-        "history"
+        "medicine/neuroscience",
+        "sports/football",
+        "craft/filmmaking",
+        "transport/maritime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The podcast covering all the things in history that you probably should know but",
+      "display_title": "Hot History",
+      "blurb": "The podcast covering all the things in history that you probably should know, but don't. ❤️‍🔥",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1712458115": {
       "topics": [
@@ -123356,11 +123736,40 @@
     },
     "1714031449": {
       "topics": [
-        "personal-journals"
+        "news/politics",
+        "craft/woodworking",
+        "craft/photography",
+        "craft/filmmaking"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Best Of Reddit Stories 2026 Dive Into Anything Reddit is home to thousands of co",
+      "display_title": "Best Of Reddit Stories 2026",
+      "blurb": "Best Of Reddit Stories 2026 Dive Into Anything Reddit is home to thousands of communities, endless conversation, and authentic human connection. Wheth",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1714039702": {
       "topics": [
@@ -123386,11 +123795,40 @@
     },
     "1714188967": {
       "topics": [
-        "health/sexuality"
+        "transport/maritime",
+        "automotive/racing",
+        "culture/fashion",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to the Dom Sub Living Podcast your goto kinky resource so you can get",
+      "display_title": "The Dom Sub Living BDSM and Kink Podcast",
+      "blurb": "Welcome to the Dom Sub Living Podcast, your go-to kinky resource, so you can get out of the vanilla rut, become the best Dominant or submissive you ca",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1714198414": {
       "topics": [
@@ -124291,11 +124729,35 @@
     },
     "1718631655": {
       "topics": [
+        "true-crime",
+        "society/law",
         "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Based on show content and episodes.",
+      "display_title": "CRIME TIME I کرایم تایم",
+      "blurb": "اینجا پادکست کرایم تایم هستش و ما در هر اپیزود یک ماجرای جنایی واقعی رو بازگو میکنیم",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1718641785": {
       "topics": [
@@ -124457,11 +124919,40 @@
     },
     "1719210703": {
       "topics": [
-        "tv-film"
+        "kids-family/stories",
+        "engineering/energy-fusion",
+        "engineering/ai-robotics",
+        "nature/ocean-science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Respectfully Whos the ASHole is the podcast where messy stories meet brutally ho",
+      "display_title": "Respectfully... Who's the ASHole?",
+      "blurb": "Respectfully… Who’s the ASHole? is the podcast where messy stories meet brutally honest opinions. From toxic exes to unhinged coworkers, family drama ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1719212923": {
       "topics": [
@@ -124570,11 +125061,40 @@
     },
     "1719651103": {
       "topics": [
-        "health/sexuality"
+        "medicine/neuroscience",
+        "engineering",
+        "engineering/ai-robotics",
+        "nature/weather"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/weather",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to The Rebuilt Man Im Coach Frank founder of Rebuilt Recovery and we exi",
+      "display_title": "The Rebuilt Man",
+      "blurb": "Welcome to The Rebuilt Man, I'm Coach Frank, founder of Rebuilt Recovery and we exist here to help you become a better man, by quitting porn, and rebu",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1719657632": {
       "topics": [
@@ -124638,11 +125158,40 @@
     },
     "1720044655": {
       "topics": [
-        "education/self-improvement"
+        "transport/maritime",
+        "engineering",
+        "engineering/ai-robotics",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A real unfiltered podcast about becoming the best version of yourself We talk ab",
+      "display_title": "it's cringe, but it's true",
+      "blurb": "A real, unfiltered podcast about becoming the best version of yourself. We talk about mental health, gaining self-confidence, learning to love yoursel",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1720050015": {
       "topics": [
@@ -124675,11 +125224,40 @@
     },
     "1720379887": {
       "topics": [
-        "health"
+        "medicine/neuroscience",
+        "transport/trains",
+        "kids-family/parenting",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The health and fitness show for real everyday people Each week we break down the",
+      "display_title": "Stronger Weekly",
+      "blurb": "The health and fitness show for real, everyday people. Each week, we break down the health and fitness headlines that matter and translate them into c",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1720413938": {
       "topics": [
@@ -124908,11 +125486,40 @@
     },
     "1721351881": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "kids-family/parenting",
+        "engineering",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unfiltered conversations with the worlds best tennis players on the game the pre",
+      "display_title": "Tennis Insider Club with Caro Garcia",
+      "blurb": "Unfiltered conversations with the world’s best tennis players, on the game, the pressure, and the person behind the rankings. Hosted by tennis pro Car",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1721383515": {
       "topics": [
@@ -125164,11 +125771,40 @@
     },
     "1722322123": {
       "topics": [
-        "engineering/ai-robotics"
+        "adventure/exploration",
+        "news/tech",
+        "space/rockets",
+        "espionage"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Claude AI is your daily source for the latest in artificial intelligence Each ep",
+      "display_title": "Claude AI",
+      "blurb": "Claude AI is your daily source for the latest in artificial intelligence. Each episode rounds up the biggest AI news, new breakthroughs, and the devel",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1722322146": {
       "topics": [
@@ -125322,11 +125958,40 @@
     },
     "1723046569": {
       "topics": [
-        "health/fitness"
+        "science/physics",
+        "medicine/neuroscience",
+        "sports/football",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In a world where people are living longer than ever our biggest challenge isnt a",
+      "display_title": "Fully Alive:  Unlocking the secrets to your",
+      "blurb": "In a world where people are living longer than ever, our biggest challenge isn’t adding more years to our life but adding life to those years. How can",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1723058888": {
       "topics": [
@@ -125403,11 +126068,40 @@
     },
     "1723377799": {
       "topics": [
-        "history"
+        "music/classical",
+        "news/politics",
+        "craft/filmmaking",
+        "espionage"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/classical",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.85
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "SEASON TWO THE KINGMAKERS IS HERE For early access to future episodes and exclus",
+      "display_title": "Master Plan",
+      "blurb": "SEASON TWO: THE KINGMAKERS IS HERE For early access to future episodes and exclusive bonus content, ⁠click here to upgrade to a paid subscription⁠ to ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1723394243": {
       "topics": [
@@ -125484,11 +126178,40 @@
     },
     "1723626781": {
       "topics": [
-        "comedy"
+        "culture/books",
+        "kids-family/stories",
+        "engineering/ai-robotics",
+        "nature/ocean-science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to THERAPUSS a talk show that puts Jake Shane in the proverbial therapis",
+      "display_title": "Therapuss with Jake Shane",
+      "blurb": "Welcome to THERAPUSS, a talk show that puts Jake Shane, in the proverbial therapist’s chair. Sitting down with amateur “Therapuss,” Jake’s followers w",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1723637897": {
       "topics": [
@@ -125611,19 +126334,77 @@
     },
     "1723943281": {
       "topics": [
-        "computing"
+        "culture/books",
+        "adventure/exploration",
+        "news/tech",
+        "craft/filmmaking"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tech news that matters for everyone to understand Our hosts break down the most ",
+      "display_title": "Primary Technology",
+      "blurb": "Tech news that matters for everyone to understand. Our hosts break down the most important stories, from consumer tech and gadgets, to AI and beyond. ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1723959859": {
       "topics": [
-        "business/startups"
+        "culture/books",
+        "sports/football",
+        "architecture/infrastructure",
+        "transport/maritime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "architecture/infrastructure",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "This podcast is focused on YOU the entrepreneurs that want more than they have T",
+      "display_title": "The Entrepreneur DNA",
+      "blurb": "This podcast is focused on YOU, the entrepreneurs that want more than they have. That have experienced failure, or maybe are too scared to get off the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1724032473": {
       "topics": [
@@ -125642,11 +126423,40 @@
     },
     "1724046445": {
       "topics": [
-        "culture/design"
+        "culture/books",
+        "craft/woodworking",
+        "craft/filmmaking",
+        "culture/fashion"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A podcast centered around design creativity and the search for authentic inspira",
+      "display_title": "Woodworking is BULLSHIT!",
+      "blurb": "A podcast centered around design, creativity, and the search for authentic inspiration in woodworking and beyond, hosted by Paul Jasper, Erik Curtis, ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1724060519": {
       "topics": [
@@ -125903,11 +126713,40 @@
     },
     "1724982367": {
       "topics": [
-        "personal-journals"
+        "craft/photography",
+        "transport/trains",
+        "kids-family/stories",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Real Stuff is a weekly podcast series hosted by Lucie Fink who has spent",
+      "display_title": "The Real Stuff with Lucie Fink",
+      "blurb": "The Real Stuff is a weekly podcast series hosted by Lucie Fink who has spent the past decade getting curious and creating engaging and educational con",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1724990033": {
       "topics": [
@@ -126046,11 +126885,40 @@
     },
     "1725368341": {
       "topics": [
-        "health/fitness"
+        "culture/books",
+        "sports/football",
+        "transport/trains",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "For people who refuse to decline quietly Conversations with top athletes scienti",
+      "display_title": "Ageless Athlete — How to Stay Strong, Curious",
+      "blurb": "For people who refuse to decline quietly. Conversations with top athletes, scientists, and thinkers who are still getting stronger, sharper, and more ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1725380194": {
       "topics": [
@@ -126146,11 +127014,40 @@
     },
     "1725619969": {
       "topics": [
-        "culture/design"
+        "culture/books",
+        "sports/baseball",
+        "sports/basketball",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/baseball",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daring Forever is a podcast about being human wired for wonder capable of courag",
+      "display_title": "Daring Forever (Find your Extraordinary)",
+      "blurb": "Daring Forever is a podcast about being human, wired for wonder, capable of courage, perpetually becoming. It's about the waves that knock us under an",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1725633083": {
       "topics": [
@@ -126394,11 +127291,40 @@
     },
     "1726260907": {
       "topics": [
-        "nature/pets"
+        "culture/books",
+        "sports/football",
+        "craft/filmmaking",
+        "transport/maritime"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Animal Communication Podcast hosted by Julie Hirt Karen Dendy Smith and Mere",
+      "display_title": "The Animal Communication Podcast",
+      "blurb": "The Animal Communication Podcast, hosted by Julie Hirt, Karen Dendy Smith and Meredith Tollison, is the place to hear directly from the animals on why",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1726289174": {
       "topics": [
@@ -126598,11 +127524,40 @@
     },
     "1727020999": {
       "topics": [
-        "health/sexuality"
+        "sports/hockey",
+        "craft/photography",
+        "craft/filmmaking",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Adult Time Podcast is hosted by awardwinning adult filmmaker and producer Br",
+      "display_title": "The Adult Time Podcast",
+      "blurb": "The Adult Time Podcast is hosted by award-winning adult filmmaker and producer Bree Mills. Every other week, Mills sits down with porn performers and ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1727026018": {
       "topics": [
@@ -126769,11 +127724,40 @@
     },
     "1727697151": {
       "topics": [
-        "science/physics"
+        "science/physics",
+        "culture/books",
+        "adventure/exploration",
+        "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The biggest ideas in physics broken down Join theoretical physicist Dan Hooper a",
+      "display_title": "Why This Universe?",
+      "blurb": "The biggest ideas in physics, broken down. Join theoretical physicist Dan Hooper and co-host Shalma Wegsman as they answer your questions about dark m",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1727701619": {
       "topics": [
@@ -126791,19 +127775,77 @@
     },
     "1727769913": {
       "topics": [
-        "society/government"
+        "news/politics",
+        "transport/maritime",
+        "kids-family/parenting",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ignorance of the law is no excuse Thats true for a traffic stop and its",
+      "display_title": "Law and Chaos",
+      "blurb": "Ignorance of the law is no excuse! That's true for a traffic stop, and it's true if you want to participate in whatever's left of American democracy. ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1727777167": {
       "topics": [
-        "tv-film"
+        "sports/football",
+        "engineering/ai-robotics",
+        "nature/ocean-science",
+        "nature/pets"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Join hosts Bits and Nancy as they unpack every episode of Top Chef Follow along",
+      "display_title": "Compliments to the Chef",
+      "blurb": "Join hosts Bits and Nancy as they unpack every episode of Top Chef. Follow along each week as they discuss the cheftestants, their dishes and, most im",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1727790717": {
       "topics": [
@@ -126873,11 +127915,40 @@
     },
     "1728098773": {
       "topics": [
-        "religion"
+        "culture/books",
+        "sports/football",
+        "transport/maritime",
+        "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pastor Jeff McCullough is an evangelical pastor exploring the Church of Jesus Ch",
+      "display_title": "Hello Saints",
+      "blurb": "Pastor Jeff McCullough is an evangelical pastor exploring the Church of Jesus Christ of Latter-day Saints in an effort to have emotionally healthy, in",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1728115087": {
       "topics": [
@@ -126925,11 +127996,43 @@
     },
     "1728292519": {
       "topics": [
-        "religion"
+        "culture/books",
+        "music/classical",
+        "adventure/exploration",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/classical",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Colette Toach teaches you the functions of prophetic ministry in this FREE proph",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1728311904": {
       "topics": [
@@ -127356,11 +128459,40 @@
     },
     "1729639495": {
       "topics": [
-        "education/self-improvement"
+        "culture/fashion",
+        "engineering/energy-fusion",
+        "engineering/ai-robotics",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to Hot and Unbothered your goto pod for becoming the hottest highest ver",
+      "display_title": "Hot and Unbothered",
+      "blurb": "Welcome to Hot and Unbothered, your go-to pod for becoming the hottest, highest version of yourself. Embody a magnetic it-girl mindset that fosters pe",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1729660282": {
       "topics": [
@@ -127501,11 +128633,40 @@
     },
     "1730467417": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/stand-up",
+        "transport/maritime",
+        "engineering/ai-robotics",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Each Wednesday Deirdre and Emma will discuss whats delighted them bewildered the",
+      "display_title": "Keep It Tight",
+      "blurb": "Each Wednesday Deirdre and Emma will discuss what’s delighted them, bewildered them, enraged them, and everything in between. No topic is out of bound",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1730500983": {
       "topics": [
@@ -127639,11 +128800,40 @@
     },
     "1730968465": {
       "topics": [
-        "hobbies"
+        "engineering",
+        "engineering/ai-robotics",
+        "nature/ocean-science",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Join Capt Marty for the most trusted and uptodate fishing reports as he recaps f",
+      "display_title": "Capt. Marty's Outer Banks Fishing Report & Stories",
+      "blurb": "Join Capt. Marty for the most trusted and up-to-date fishing reports as he recaps fishing for the past days from marinas, charters, beaches and piers ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1730984252": {
       "topics": [
@@ -127655,11 +128845,40 @@
     },
     "1730985049": {
       "topics": [
-        "society"
+        "medicine/neuroscience",
+        "culture/books",
+        "sports/football",
+        "space/rockets"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Research professor Bren Brown and organizational psychologist Adam Grant are par",
+      "display_title": "The Curiosity Shop with Brené Brown and Adam",
+      "blurb": "Research professor Brené Brown and organizational psychologist Adam Grant are partnering on a new weekly podcast grounded in an unflinching commitment",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1731012409": {
       "topics": [
@@ -127869,11 +129088,40 @@
     },
     "1731755953": {
       "topics": [
-        "education/self-improvement"
+        "medicine/neuroscience",
+        "culture/books",
+        "sports/football",
+        "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Everybody talks about your WHY Mick Hunt goes deeper Mick Unplugged is the leade",
+      "display_title": "Mick Unplugged",
+      "blurb": "Everybody talks about your WHY. Mick Hunt goes deeper. Mick Unplugged is the leadership and personal growth podcast built on one idea: your BECAUSE is",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1731784296": {
       "topics": [
@@ -127893,11 +129141,40 @@
     },
     "1731849121": {
       "topics": [
-        "personal-journals"
+        "news/politics",
+        "culture/fashion",
+        "engineering/energy-fusion",
+        "nature/pets"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "My name is Teresa and I am a hot wife My husband Tim and I",
+      "display_title": "Pineapple Pinup: Hotwife Swingers Life",
+      "blurb": "My name is Teresa and I am a hot wife. My husband Tim and I are exploring the world of the lifestyle, and I'm sharing my insights. there are so",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1731885106": {
       "topics": [
@@ -127952,11 +129229,40 @@
     },
     "1732118065": {
       "topics": [
-        "religion"
+        "culture/books",
+        "music/classical",
+        "adventure/exploration",
+        "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/classical",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Stakscast with Erick Stakelbeck podcast features host Erick Stakelbeck and s",
+      "display_title": "The Stakscast with Erick Stakelbeck",
+      "blurb": "The Stakscast with Erick Stakelbeck podcast features host Erick Stakelbeck and special guests having candid, thought-provoking conversations on the st",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1732126292": {
       "topics": [
@@ -127998,11 +129304,40 @@
     },
     "1732589839": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "history",
+        "culture/art",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Las mejores y ms terrorficas historias que llegan al correo de Podcast Paranorma",
+      "display_title": "INSOMNIO",
+      "blurb": "Las mejores y más terroríficas historias que llegan al correo de Podcast Paranormal: fepo@podcastparanormal.com Capítulos ESTRENO cada JUEVES. Patroci",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1732611987": {
       "topics": [
@@ -128049,11 +129384,40 @@
     },
     "1732804429": {
       "topics": [
-        "personal-journals"
+        "culture/books",
+        "adventure/exploration",
+        "architecture/infrastructure",
+        "kids-family/stories"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "architecture/infrastructure",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Go inside the mind of one of television and movies wildest storytellers Richard ",
+      "display_title": "Richard Hatem's Paranormal Bookshelf",
+      "blurb": "“Go inside the mind of one of television and movies’ wildest storytellers…” Richard Hatem's Paranormal Bookshelf is a podcast that feels like discover",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1732829037": {
       "topics": [
@@ -128456,11 +129820,43 @@
     },
     "1734355303": {
       "topics": [
-        "business/non-profit"
+        "culture/books",
+        "music/classical",
+        "sports/football",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/classical",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Designing Tomorrow explores a new playbook for modern social impact leaders and ",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1734400151": {
       "topics": [
@@ -128860,11 +130256,40 @@
     },
     "1735826749": {
       "topics": [
-        "personal-journals"
+        "math/puzzles",
+        "transport/maritime",
+        "transport/trains",
+        "automotive/racing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math/puzzles",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to Wholey Schmidt A new kind of podcast where we use storytelling as a",
+      "display_title": "Wholey Schmidt",
+      "blurb": "Welcome to Wholey Schmidt! A new kind of podcast where we use storytelling as a vehicle for self-actualization and reflection. This season, our host, ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1735959335": {
       "topics": [
@@ -128959,11 +130384,40 @@
     },
     "1736330275": {
       "topics": [
-        "fiction/comedy"
+        "sports/hockey",
+        "transport/trains",
+        "true-crime",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Every day in the nice little Canadian town of Beavermount Ontario a Zamboni driv",
+      "display_title": "Sorry About The Murder",
+      "blurb": "Every day in the nice little Canadian town of Beavermount, Ontario, a Zamboni driver must solve a murder to clear his Québecois name...and the ice for",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1736344886": {
       "topics": [
@@ -129044,11 +130498,40 @@
     },
     "1736593333": {
       "topics": [
-        "business/startups"
+        "craft/woodworking",
+        "transport/maritime",
+        "kids-family/stories",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "You can change your life and make a dent on the world This podcast uncovers",
+      "display_title": "BigDeal",
+      "blurb": "You can change your life and make a dent on the world. This podcast uncovers the unfiltered lessons from the smartest minds straight to you, in conver",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1736624934": {
       "topics": [
@@ -129243,11 +130726,40 @@
     },
     "1737643651": {
       "topics": [
-        "health/sexuality"
+        "adventure/exploration",
+        "transport/maritime",
+        "automotive/racing",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Join Pink Water Bottle girl sensation Halli Smith as she takes you on a journey",
+      "display_title": "Girl Core",
+      "blurb": "Join Pink Water Bottle girl sensation Halli Smith as she takes you on a journey of breaking free from societal restrictions and embracing her sexualit",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1737676305": {
       "topics": [
@@ -129420,11 +130932,40 @@
     },
     "1738373011": {
       "topics": [
-        "computing"
+        "news/politics",
+        "transport/maritime",
+        "religion/christianity",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian Idiodi goes behind the craft of great product work to the topics that ",
+      "display_title": "Product Therapy",
+      "blurb": "Christian Idiodi goes behind the craft of great product work, to the topics that usually aren’t talked about. He discusses behavioral, mindset, and cu",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1738393924": {
       "topics": [
@@ -129450,11 +130991,40 @@
     },
     "1738537069": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "culture/performing-arts",
+        "engineering/ai-robotics",
+        "nature/ocean-science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A Phillies podcast hosted by former Phillies player and General Manager Ruben Am",
+      "display_title": "The Phillies Show",
+      "blurb": "A Phillies podcast hosted by former Phillies player and General Manager Ruben Amaro, Jr., long-time Phillies reporter Jim Salisbury and MLB.com Philli",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1738545065": {
       "topics": [
@@ -129510,11 +131080,40 @@
     },
     "1738776739": {
       "topics": [
-        "education/how-to"
+        "culture/books",
+        "math/puzzles",
+        "engineering/ai-robotics",
+        "nature/ocean-science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel isnt just for the rich I teach people how to supercharge their credit car",
+      "display_title": "Points for Normal People by Katie's Travel Tricks",
+      "blurb": "Travel isn’t just for the rich. I teach people how to supercharge their credit card points so they can pay for entire family vacations every year. I'v",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1738784164": {
       "topics": [
@@ -129525,11 +131124,40 @@
     },
     "1738794415": {
       "topics": [
-        "education/self-improvement"
+        "architecture/infrastructure",
+        "culture/performing-arts",
+        "engineering/ai-robotics",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "architecture/infrastructure",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to Your Thoughts Your Reality with Mike Cole the podcast that shines a c",
+      "display_title": "Your Thoughts Your Reality",
+      "blurb": "Welcome to \"Your Thoughts, Your Reality with Mike Cole,\" the podcast that shines a compassionate light on the journey of veterans battling through lif",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1738841174": {
       "topics": [
@@ -129584,11 +131212,40 @@
     },
     "1739138143": {
       "topics": [
-        "kids-family/education"
+        "sports/soccer",
+        "adventure/exploration",
+        "math/puzzles",
+        "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "From the creators of Who Smarted comes Mysteries About True Histories aka MATH a",
+      "display_title": "Mysteries About True Histories (M.A.T.H.)",
+      "blurb": "From the creators of Who Smarted? comes Mysteries About True Histories (aka M.A.T.H.), a podcast for kids where every episode promises an exhilarating",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1739161374": {
       "topics": [
@@ -129704,11 +131361,40 @@
     },
     "1739682007": {
       "topics": [
-        "personal-journals"
+        "adventure/exploration",
+        "comedy/stand-up",
+        "transport/maritime",
+        "automotive/racing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hey Guys Im B Simone Most of you know me as a standup comedian actress",
+      "display_title": "Let's Try This Again with B. Simone",
+      "blurb": "Hey Guys! I’m B. Simone. Most of you know me as a stand-up comedian, actress, and entrepreneur. But now I want you to join me as I virtually document ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1739740112": {
       "topics": [
@@ -129930,12 +131616,40 @@
     },
     "1740654463": {
       "topics": [
-        "business",
-        "economics/markets"
+        "culture/books",
+        "sports/football",
+        "adventure/exploration",
+        "craft/filmmaking"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to The David Lin Report Ill be reporting on the most impactful marketmov",
+      "display_title": "The David Lin Report",
+      "blurb": "Welcome to The David Lin Report! I’ll be reporting on the most impactful market-moving events, as well as interviewing experts in finance, economics, ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-95bfb55c",
+      "classified_at": "2026-07-26T16:35:03.319Z"
     },
     "1740671787": {
       "topics": [
