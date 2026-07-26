@@ -3972,6 +3972,1240 @@
       "batch_id": "fresh-2026-07-26-0db9f848",
       "classified_at": "2026-07-26T00:51:11.360Z"
     },
+    "482034476": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "automotive advice",
+      "display_title": "CarPro Radio Show",
+      "blurb": "CarPro provides tips and insider information on how to buy your car as well as a direct connection to pre-screened and qualified dealers throughout th",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "494747654": {
+      "topics": [
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "design industry",
+      "display_title": "The Deeply Graphic Designcast - DGDC",
+      "blurb": "The Deeply Graphic Designcast: Where Creatives Level Up! Hosted by Nick Longo and Mikelle Morrison, this dynamic duo dives into bold ideas, behind-the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "495936590": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "jewish religious study",
+      "display_title": "Lessons Archive - Torah Class",
+      "blurb": "Torah Class is an in-depth, verse-by-verse study of the entire Bible",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "500189078": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "jewish religious study",
+      "display_title": "JTS Torah Commentary",
+      "blurb": "JTS's weekly commentary on parashat hashavua and the holidays, published for over 20 years, is enjoyed by thousands of readers every week",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "501556082": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Western audio drama set at Fort Laramie in the 1800s.",
+      "display_title": "Fort Laramie - OTRWesterns.com",
+      "blurb": "Audio drama depicting life at Fort Laramie in the 19th century.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:51:31.427Z"
+    },
+    "502349432": {
+      "topics": [
+        "craft/woodworking"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "woodworking",
+      "display_title": "MWA Podcast - Woodworking Conversations",
+      "blurb": "The Modern Woodworkers Association Podcast brings to you in-depth interviews with woodworkers of note in our community - from outstanding hobbyists to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "502689992": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports",
+      "display_title": "All The Kings Men | LA Kings",
+      "blurb": "The official podcast of your LA Kings, All The Kings Men features interviews with players and personalities from the Kings and the rest of the hockey",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "503300852": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "gaming",
+      "display_title": "Leaguecast: A League of Legends Podcast",
+      "blurb": "Longest running podcast about all things League of Legends! We discuss builds, lore, listener feedback, and so much more! If you want to just sit back",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "503482646": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "comedy",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "508618820": {
+      "topics": [
+        "religion",
+        "music/theory-production",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "music, spirituality and religion, educational content",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "508937378": {
+      "topics": [
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "G.I. Joe fan podcast from South African perspective.",
+      "display_title": "GI Joburg",
+      "blurb": "G.I. Joe: A Real American Hero through South African fanboys' eyes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:51:31.427Z"
+    },
+    "517293050": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "automotive advice",
+      "display_title": "The Pete Kaliner Show",
+      "blurb": "A daily podcast covering local, state, & national issues from North Carolina Become a supporter of this podcast: https://www",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "521692586": {
+      "topics": [
+        "automotive",
+        "tv-film"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "automotive advice, entertainment industry",
+      "display_title": "Gold Derby's Awards Magnet",
+      "blurb": "Awards Magnet, a Gold Derby podcast, is your No",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "523121474": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "educational content",
+      "display_title": "TED Radio Hour",
+      "blurb": "Exploring the biggest questions of our time with the help of the world's greatest thinkers",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "527446250": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "comedy",
+      "display_title": "The HoneyDew with Ryan Sickler",
+      "blurb": "The HoneyDew is a storytelling podcast hosted by comedian, Ryan Sickler",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "528150530": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports",
+      "display_title": "The High Stakes Fantasy Football Hour",
+      "blurb": "Your hosts Eric Balkman and Ferrell Elliott cover the world of high stakes fantasy football through weekly interviews with high stakes players",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "538608536": {
+      "topics": [
+        "history/technology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/technology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history",
+      "display_title": "The History of English Podcast",
+      "blurb": "The Spoken History of a Global Language",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "544473518": {
+      "topics": [
+        "automotive",
+        "aviation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "automotive advice, aviation",
+      "display_title": "Aviation Careers Podcast",
+      "blurb": "A Podcast about Achieving Your Aviation Career Goals",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "547986680": {
+      "topics": [
+        "automotive",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "automotive advice, comedy",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "549899114": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "society and culture",
+      "display_title": "Social Media Marketing Podcast",
+      "blurb": "Publishing weekly since 2012, this show helps marketers navigate the ever changing marketing jungle with expert interviews from leading marketing pros",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "553271510": {
+      "topics": [
+        "society",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language show covering relationships, health, music, parenting.",
+      "display_title": "Martha Debayle",
+      "blurb": "Spanish podcast about love, relationships, health, music, and family.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:51:31.427Z"
+    },
+    "561124694": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly music show with remixes, bootlegs, and new tracks.",
+      "display_title": "Protocol Radio",
+      "blurb": "Weekly radio show featuring remixes, bootlegs, and latest music.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:51:31.427Z"
+    },
+    "563933198": {
+      "topics": [
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "technology news",
+      "display_title": "Macworld Podcast",
+      "blurb": "Macworld is the world's leading source for information about Apple and the Apple ecosystem",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "568456106": {
+      "topics": [
+        "history",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history, educational content",
+      "display_title": "5-Minute Videos | PragerU",
+      "blurb": "5-Minute Videos are the flagship viral product that put PragerU on the map",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "569489060": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "audio fiction",
+      "display_title": "Sanctuary: Surviving The Zombie Apocalypse",
+      "blurb": "Brutal, agonizing convulsions simultaneously strike a quarter of the Earth's population",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "570256898": {
+      "topics": [
+        "comedy",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "comedy, society and culture",
+      "display_title": "The Sebastian Maniscalco Show",
+      "blurb": "The Sebastian Maniscalco Show brings Sebastian together with longtime friend and comedian Pete Correale for hilarious, honest conversations about life",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "575308520": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "music",
+      "display_title": "AOKI'S HOUSE",
+      "blurb": "Acclaimed DJ and producer Steve Aoki hosts his own electronic dance music podcast featuring all the latest hot dance tracks",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "578641256": {
+      "topics": [
+        "culture/design",
+        "gaming/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "design industry, gaming",
+      "display_title": "The Game Design Round Table",
+      "blurb": "Covering the full breadth of digital, tabletop, and role playing games, The Game Design Round Table inspires and educates aspiring and experienced gam",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "579999452": {
+      "topics": [
+        "history/military-modern"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history",
+      "display_title": "The Civil War & Reconstruction",
+      "blurb": "A history podcast in which Rich & Tracy weave together a chronological narrative of the Civil War era",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "580709168": {
+      "topics": [
+        "culture/design",
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "design industry, gaming",
+      "display_title": "Magic: The Gathering Drive to Work Podcast",
+      "blurb": "Join Magic: The Gathering Head Designer Mark Rosewater as he shares stories, insights, and more while driving to work",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "580874786": {
+      "topics": [
+        "religion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bible study program covering entire Bible in five years.",
+      "display_title": "Thru the Bible on Oneplace.com",
+      "blurb": "Biblical study program threading through the entire Bible in five years.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:51:31.427Z"
+    },
+    "582614834": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports",
+      "display_title": "The Gary Neville Podcast",
+      "blurb": "Sky Sports’ football pundit and Manchester United legend Gary Neville gives his immediate reaction to the Premier League's biggest matches",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "583456652": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations about inclusive school environments and learning.",
+      "display_title": "Think Inclusive",
+      "blurb": "Conversations about building schools where all learners belong.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:51:31.427Z"
+    },
+    "588344390": {
+      "topics": [
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political and news commentary with focus beyond mainstream headlines.",
+      "display_title": "The Vince Coglianese Show",
+      "blurb": "News and political commentary with focus on alternative perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:51:31.427Z"
+    },
+    "588486116": {
+      "topics": [
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "technology news",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "591157388": {
+      "topics": [
+        "religion",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "spirituality and religion, society and culture",
+      "display_title": "The Holy Post",
+      "blurb": "Join VeggieTales and What's in the Bible? creator Phil Vischer and co-host Skye Jethani (author, speaker, pastor) for a fast-paced and often funny con",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "593355728": {
+      "topics": [
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-running Star Wars fan podcast award-winning program.",
+      "display_title": "Rebel Force Radio: Star Wars Podcast",
+      "blurb": "Award-winning Star Wars fan podcast hosted by Jason Swank.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:51:31.427Z"
+    },
+    "593369492": {
+      "topics": [
+        "news/tech"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "technology news",
+      "display_title": "TWiT News (Video)",
+      "blurb": "When tech news breaks, we cover it",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "594057644": {
+      "topics": [
+        "automotive",
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "automotive advice, jewish religious study",
+      "display_title": "This Jewish Life - With Rabbi Yaakov Wolbe",
+      "blurb": "This Jewish Life is Rabbi Yaakov Wolbe’s flagship podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "595147712": {
+      "topics": [
+        "automotive",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "automotive advice, educational content",
+      "display_title": "The FlightBridgeED Podcast",
+      "blurb": "The FlightBridgeED Podcast provides convenient, easy-to-understand critical care medical education and current topics related to the air medical indus",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "596024360": {
+      "topics": [
+        "aviation",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "aviation, business and startups",
+      "display_title": "Private Jet Podcast",
+      "blurb": "Conversations that reduce risk and increase value in business and private aviation",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "597167462": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "comedy",
+      "display_title": "This Week In Zoltan",
+      "blurb": "Comedian Zoltan Kaszas shares stories from the road and everyday life",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "599491778": {
+      "topics": [
+        "automotive",
+        "architecture",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "automotive advice, architecture discussion, society and culture",
+      "display_title": "Archispeak",
+      "blurb": "Archispeak is one of architecture's longest-running podcasts — 383 episodes of honest, unfiltered conversation about what it's actually like to work i",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "604880888": {
+      "topics": [
+        "religion/islam",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "islamic teaching, educational content",
+      "display_title": "Yasir Qadhi",
+      "blurb": "Yasir Qadhi was born in Houston, Texas and completed his primary and secondary education in Jeddah, Saudi Arabia",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "605877206": {
+      "topics": [
+        "automotive",
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "automotive advice, sports",
+      "display_title": "The Chase Down: A Cleveland Cavaliers Pod",
+      "blurb": "Justin Rowan and Carter Rodriguez discuss the Cleveland Cavaliers and the rest of the NBA through their Wine and Gold colored glasses",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "606186284": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports",
+      "display_title": "Dynasty Fantasy Football - Under The Helmet",
+      "blurb": "Discussing long-term player value in dynasty fantasy football, plus NFL Draft and devy dynasty coverage",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "617028866": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language show about music, current affairs, lifestyle, humor.",
+      "display_title": "La Corneta",
+      "blurb": "Spanish podcast featuring music, current affairs, and lifestyle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:51:31.427Z"
+    },
+    "624693800": {
+      "topics": [
+        "tv-film/reviews",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "comedy, film and television",
+      "display_title": "Maximum Film!",
+      "blurb": "A movie podcast that isn't just a bunch of straight white dudes",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "627538970": {
+      "topics": [
+        "automotive",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "automotive advice, sports",
+      "display_title": "The Baseball Hour with Tony Mazz",
+      "blurb": "The Baseball Hour with Tony Mazz airs weeknights from 6pm-7pm ET during baseball season",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "627888500": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "islamic teaching",
+      "display_title": "Muhammad Siddiq al-Minshawi",
+      "blurb": "Muhammad Siddiq al-Minshawi, (January 1, 1920 – June 20, 1969) was an Egyptian Quranic reciter par excellence and was not in need of any introduction",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "628455920": {
+      "topics": [
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "climate science",
+      "display_title": "Climate Cast",
+      "blurb": "MPR News meteorologist Paul Huttner with the latest research on our changing climate",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-af6a0d9c",
+      "classified_at": "2026-07-26T08:50:56.126Z"
+    },
     "1459232606": {
       "topics": [
         "news/politics",
@@ -5140,11 +6374,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-26T00:51:11.360Z",
+  "built_at": "2026-07-26T08:51:58.514Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-26-0db9f848",
+    "last_batch_id": "fresh-2026-07-26-af6a0d9c",
     "last_batch_tier": 1
   }
 }
