@@ -1,0 +1,9 @@
+{
+  "name": "foray",
+  "private": true,
+  "type": "module",
+  "description": "Root manifest. Exists so Node treats player/*.js as ES modules and `node --test` can run them. Deliberately has NO dependencies and NO build step — the site is served static from this directory (see CLAUDE.md). The player is client code, so it keeps the .js extension rather than .mjs, which GitHub Pages does not reliably serve with a JavaScript MIME type.",
+  "scripts": {
+    "test": "node --test \"player/**/*.test.js\""
+  }
+}
