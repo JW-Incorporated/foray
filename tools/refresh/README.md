@@ -21,6 +21,8 @@ scan.mjs ──▶ fresh-pending.json ──▶ resolve.mjs ──▶ resolved.j
 | `resolve.mjs` | ✅ (iTunes lookup) | Resolve `apple_track_id`, dedup, drop unresolvable/dupe/invalid-topic |
 | `merge.mjs`   | ✅ | Apply agent-authored hooks/tags, enforce copy rules, write data files |
 | `enclosure.mjs` | — | Shared audio-provenance helpers (not a stage) |
+| `dai.mjs` | — | DAI host classification (not a stage) |
+| `classify-dai.mjs` | ✅ | **One-shot, not nightly.** Classifies shows, stamps `dai_suspected` |
 | `backfill-audio.mjs` | ✅ | **One-shot, not nightly.** Backfills audio onto pre-#21 items |
 
 ## Audio provenance (issue #21)
@@ -51,6 +53,50 @@ Three rules that are easy to get wrong and expensive to discover late:
    playable URL stay in discovery and link out to Apple Podcasts (see issue
    #25). CI warns on nulls and *fails* on a non-https or tokened URL — corner
    case #9, a tokened URL is a secret and must never reach a public data file.
+
+## Dynamic ad insertion (issue #22)
+
+`dai_suspected` on every playable item gates seek precision in #30: exact
+hard-seek and chapter jumps for a static file, *"roughly minute 70"* for a
+stitched one (corner case #2).
+
+**The host list is the only signal.** #22 also proposed probing an enclosure
+twice and comparing total length. Measured across six shows — three on
+known-DAI hosts, three static, ~6s apart — every single one returned a
+byte-identical total. Zero discrimination. And the measurement was wrong in
+principle, not merely underpowered: DAI is *designed* to serve a stable file to
+a given listener so that resume works. The bytes vary across listeners and long
+time gaps, never between two requests from one IP. Dropped.
+
+> Corollary for #30: because a listener's own copy is stable, a position or
+> bookmark **they** created is reliable for them. The misalignment risk is
+> against timestamps from a *different* copy — chapter marks authored on the
+> un-stitched master, or transcript times from a separate fetch.
+
+**Classification follows redirects.** ~38% of the catalogue sits behind
+download-measurement prefixes that hide the origin: `pdst.fm` resolves to
+`dcs-cached.megaphone.fm`, so 108 items look neutral and are actually Megaphone.
+We resolve only to *look* — corner case #1's rule about playing the publisher's
+declared URL is untouched.
+
+```bash
+node tools/refresh/classify-dai.mjs --dry-run
+node tools/refresh/classify-dai.mjs                # resolve unclassified shows
+node tools/refresh/classify-dai.mjs --reclassify   # re-apply the host list, no network
+node tools/refresh/classify-dai.mjs --recheck      # re-resolve everything
+```
+
+Verdicts cache per **show** in `data/dai-classification.json`, so a normal run
+resolves nothing it has seen and the nightly costs nothing. `merge.mjs` stamps
+new episodes from that cache.
+
+**Maintaining the list** (`dai-hosts.json`) is the lever. Every entry needs a
+real justification — a test enforces it, because an unexplained entry is one
+nobody can safely remove later. After editing, run `--reclassify`; re-resolving
+213 shows over the network to apply a one-line change would be absurd.
+
+Current state: **139 of 213 shows are DAI**, leaving **326 items eligible for
+precise seeking**.
 
 ### Backfilling
 

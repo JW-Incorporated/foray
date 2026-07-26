@@ -81,6 +81,18 @@ jobs:
             if (tokened.length) { console.error('audio_url looks tokened (secret leak):', tokened.map(i=>i.id||i.title).slice(0,10)); process.exit(1); }
             const noAudio = audioItems.length - withAudio.length;
             console.log('audio coverage:', withAudio.length + '/' + audioItems.length, '(' + noAudio + ' link-out only)');
+
+            // 5. DAI flag (issue #22). It gates seek precision in #30, so a
+            // playable item MUST carry a verdict — a missing flag would be read
+            // as falsy and silently promise exact seeking on a stitched feed.
+            const unflagged = withAudio.filter(i=>typeof i.dai_suspected !== 'boolean');
+            if (unflagged.length) { console.error('playable items missing dai_suspected:', unflagged.map(i=>i.id||i.title).slice(0,10)); process.exit(1); }
+            // Conversely, an unplayable item must not carry one — there is
+            // nothing to seek in, and a stale flag outlives the URL that earned it.
+            const strayFlag = audioItems.filter(i=>!i.audio_url && i.dai_suspected !== undefined);
+            if (strayFlag.length) { console.error('items without audio carry dai_suspected:', strayFlag.map(i=>i.id||i.title).slice(0,10)); process.exit(1); }
+            const dai = withAudio.filter(i=>i.dai_suspected).length;
+            console.log('dai_suspected:', dai + '/' + withAudio.length, '(' + (withAudio.length - dai) + ' precise-seek eligible)');
             console.log('data invariants ok');
           "
       - name: Syntax-check site JS
