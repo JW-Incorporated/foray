@@ -87,6 +87,12 @@ jobs:
         run: |
           node --check app.js
           node --check search-engine.js
+      - name: Player state-machine tests
+        # Pure reducer, no DOM and no dependencies — see player/queue-state.js.
+        # Both suites live in this job (rather than their own) because
+        # `data-and-site` is already a required check in the protect-main
+        # ruleset; a new job would not be enforced until the ruleset changed.
+        run: node --test "player/**/*.test.js"
       - name: Refresh-pipeline helper tests
         run: node --test "tools/refresh/*.test.mjs"
       - name: Validate semantic-index.json

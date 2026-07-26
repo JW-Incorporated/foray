@@ -1,0 +1,4 @@
+{
+  "type": "module",
+  "//": "Scopes ES-module semantics to player/ ONLY. Do not move this to the repo root: app.js and search-engine.js are classic browser scripts whose CommonJS interop shim (`typeof module !== 'undefined'`) breaks when they are reinterpreted as ES modules, which takes down tools/validate-semantic-index.mjs and tools/test-search.mjs. See PR #44."
+}
