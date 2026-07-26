@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-26T08:37:46.615Z",
+  "built_at": "2026-07-26T16:36:42.806Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-26-b0646568",
+    "last_batch_id": "fresh-2026-07-26-8da021ac",
     "last_batch_tier": 1
   },
   "entries": {
@@ -127613,11 +127613,40 @@
     },
     "1730779822": {
       "topics": [
-        "health/nutrition"
+        "health/nutrition",
+        "business/non-profit",
+        "health/alternative",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "nutrition; health/nutrition, business/non-profit, health/alternative, personal-journals.",
+      "display_title": "Save Yourself With Dr. Amy Shah",
+      "blurb": "Dr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1730791401": {
       "topics": [
@@ -127744,11 +127773,40 @@
     },
     "1731187816": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "health/alternative",
+        "culture/pop-culture",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sexuality; health/sexuality, health/alternative, culture/pop-culture, personal-journals.",
+      "display_title": "Sex Stories 🔥",
+      "blurb": "Welcome to Audiodesires and we create audio sex stories for women and couples: think spicy 18+ content meets feminism me",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1731207251": {
       "topics": [
@@ -127922,11 +127980,40 @@
     },
     "1731885106": {
       "topics": [
-        "religion"
+        "religion/christianity",
+        "religion",
+        "health/sexuality",
+        "personal-journals"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "religion & spirituality; religion/christianity, religion, health/sexuality, personal-journals.",
+      "display_title": "The Deep End With Lecrae",
+      "blurb": "Life is hard and things are going to fall apart at some point or another –especially when you've experienced trauma in y",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1731905739": {
       "topics": [
@@ -128114,11 +128201,43 @@
     },
     "1732935520": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "health/sexuality",
+        "personal-journals",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "non-profit; business/non-profit, health/sexuality, personal-journals, health/nutrition.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1732961306": {
       "topics": [
@@ -128175,11 +128294,30 @@
     },
     "1733291140": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "parenting; kids-family/parenting, education.",
+      "display_title": "The ADHD Parenting Podcast",
+      "blurb": "The ADHD Parenting Podcast helps parents of children and teens with ADHD improve behavior, emotional regulation, executi",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1733301641": {
       "topics": [
@@ -128446,11 +128584,40 @@
     },
     "1734318382": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "health/alternative",
+        "tv-film",
+        "health/nutrition"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "personal journals; personal-journals, health/alternative, tv-film, health/nutrition.",
+      "display_title": "MeSsy with Christina Applegate & Jamie Lynn Sigler",
+      "blurb": "On this podcast, Christina Applegate and Jamie Lynn Sigler get vulnerable about the curveballs that life can throw…their",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1734318570": {
       "topics": [
@@ -128589,11 +128756,40 @@
     },
     "1734696958": {
       "topics": [
+        "news/politics",
+        "tv-film",
+        "health/nutrition",
         "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "government; news/politics, tv-film, health/nutrition, society/government.",
+      "display_title": "The KABC News Blitz",
+      "blurb": "The city council will only give you 60 seconds, but you get 60 minutes on the KABC News Blitz",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1734698162": {
       "topics": [
@@ -128656,11 +128852,40 @@
     },
     "1735016800": {
       "topics": [
-        "personal-journals"
+        "health/sexuality",
+        "tv-film",
+        "relationships",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "personal journals; health/sexuality, tv-film, relationships, culture.",
+      "display_title": "Miss Me?",
+      "blurb": "Join longtime friends Miquita Oliver & Jordan Stephens for their twice a week catch-ups, discussing everything from the ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1735019422": {
       "topics": [
@@ -128671,11 +128896,30 @@
     },
     "1735040674": {
       "topics": [
+        "culture/pop-culture",
         "tv-film"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "entertainment news; culture/pop-culture, tv-film.",
+      "display_title": "René Franco presenta La Taquilla",
+      "blurb": "Tu boleto de entrada a lo más frívolo de la cultura y lo más profundo de los espectáculos",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1735052380": {
       "topics": [
@@ -128717,11 +128961,40 @@
     },
     "1735161262": {
       "topics": [
-        "health/alternative"
+        "religion",
+        "health/alternative",
+        "health/sexuality",
+        "religion/christianity"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "alternative health; religion, health/alternative, health/sexuality, religion/christianity.",
+      "display_title": "The Wellness Process",
+      "blurb": "Step into The Wellness Process, a space where all aspects of well-being coexist harmoniously — from mental and physical ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1735173297": {
       "topics": [
@@ -128851,11 +129124,30 @@
     },
     "1735688692": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "entertainment news; tv-film, culture.",
+      "display_title": "I heArt Bell",
+      "blurb": "My favorite episodes of The AB show!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1735702250": {
       "topics": [
@@ -128996,11 +129288,40 @@
     },
     "1736366398": {
       "topics": [
-        "health/sexuality"
+        "religion/christianity",
+        "kids-family/parenting",
+        "religion",
+        "health/alternative"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sexuality; religion/christianity, kids-family/parenting, religion, health/alternative.",
+      "display_title": "I Hate James Dobson",
+      "blurb": "Dr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1736397134": {
       "topics": [
@@ -129020,11 +129341,30 @@
     },
     "1736431000": {
       "topics": [
-        "sports"
+        "tv-film",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports; tv-film, culture.",
+      "display_title": "Mind the Game",
+      "blurb": "Mind the Game is back for Season 3 — continuing to celebrate this beautiful game of basketball with two of the most hard",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1736470159": {
       "topics": [
@@ -129133,11 +129473,40 @@
     },
     "1736841796": {
       "topics": [
-        "science/physics"
+        "business/non-profit",
+        "news/politics",
+        "society/government",
+        "society"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "physics; business/non-profit, news/politics, society/government, society.",
+      "display_title": "Spacewalk with Everyday Astronaut",
+      "blurb": "Spacewalk is the latest adventure with Tim Dodd, the Everyday Astronaut, as he takes listener and supporter questions an",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1736844371": {
       "topics": [
@@ -129171,11 +129540,40 @@
     },
     "1737050770": {
       "topics": [
-        "tv-film"
+        "kids-family/parenting",
+        "business/non-profit",
+        "health/sexuality",
+        "personal-journals"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "entertainment news; kids-family/parenting, business/non-profit, health/sexuality, personal-journals.",
+      "display_title": "VladTV",
+      "blurb": "VladTV is the world leader in hard-hitting interviews with rappers, actors, professional athletes, gangsters, politician",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1737232779": {
       "topics": [
@@ -129209,11 +129607,40 @@
     },
     "1737281584": {
       "topics": [
-        "comedy"
+        "health/sexuality",
+        "news/politics",
+        "tv-film",
+        "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "comedy; health/sexuality, news/politics, tv-film, society/government.",
+      "display_title": "Basically Unfiltered with Remi, Alisha, Zane and Heath",
+      "blurb": "Welcome to Basically Unfiltered, a podcast collab brought to you by the hosts of Pretty Basic with Alisha Marie & Remi C",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1737303645": {
       "topics": [
@@ -129249,11 +129676,35 @@
     },
     "1737517102": {
       "topics": [
-        "education/how-to"
+        "health/alternative",
+        "health/nutrition",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "how to; health/alternative, health/nutrition, health.",
+      "display_title": "The Holistic Homes Podcast",
+      "blurb": "Welcome to The Holistic Homes Podcast, the place for homeowners who are considering a new build or renovation and are re",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1737641272": {
       "topics": [
@@ -129308,11 +129759,40 @@
     },
     "1737812524": {
       "topics": [
-        "society"
+        "kids-family/parenting",
+        "health/sexuality",
+        "tv-film",
+        "relationships"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "documentary; kids-family/parenting, health/sexuality, tv-film, relationships.",
+      "display_title": "Inconceivable Truth",
+      "blurb": "Investigative reporter Matt Katz has been searching for his biological father since he was a little kid",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1737815102": {
       "topics": [
@@ -129621,11 +130101,40 @@
     },
     "1739196034": {
       "topics": [
-        "education/courses"
+        "kids-family/parenting",
+        "health",
+        "business/non-profit",
+        "health/sexuality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "courses; kids-family/parenting, health, business/non-profit, health/sexuality.",
+      "display_title": "LOVE CLASSIFIED with Aliia Roza",
+      "blurb": "Welcome to \"Love Classified,\" where former secret Sexpionage agent Aliia Roza reveals the seduction and intimacy techniq",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1739288903": {
       "topics": [
@@ -129710,11 +130219,40 @@
     },
     "1739653858": {
       "topics": [
-        "business/non-profit"
+        "kids-family/parenting",
+        "health",
+        "business/non-profit",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "non-profit; kids-family/parenting, health, business/non-profit, personal-journals.",
+      "display_title": "Talkin' Trash Addiction Recovery Podcast",
+      "blurb": "Addiction Recovery Support & Mental Health Awareness",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1739664505": {
       "topics": [
@@ -129841,11 +130379,40 @@
     },
     "1740187810": {
       "topics": [
-        "computing"
+        "kids-family/parenting",
+        "tv-film",
+        "education",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "technology; kids-family/parenting, tv-film, education, culture.",
+      "display_title": "Panic World",
+      "blurb": "A weekly podcast, hosted by Ryan Broderick, about how the internet warps our minds, our culture, and eventually reality",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1740188858": {
       "topics": [
@@ -129877,11 +130444,40 @@
     },
     "1740222184": {
       "topics": [
-        "education/how-to"
+        "kids-family/parenting",
+        "tv-film",
+        "education",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "how to; kids-family/parenting, tv-film, education, culture.",
+      "display_title": "Prep Comms",
+      "blurb": "Caleb Nelson (K4CDN), a well-known figure in the ham radio community, was a pioneer in promoting the amateur radio commu",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1740235053": {
       "topics": [
@@ -130040,11 +130636,40 @@
     },
     "1741285846": {
       "topics": [
-        "health/sexuality"
+        "kids-family/parenting",
+        "health/sexuality",
+        "personal-journals",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sexuality; kids-family/parenting, health/sexuality, personal-journals, tv-film.",
+      "display_title": "Cuck My Life Podcast",
+      "blurb": "The Podcast Made By Cucks for Cucks and adjacent people",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1741315774": {
       "topics": [
@@ -130122,11 +130747,43 @@
     },
     "1741605832": {
       "topics": [
-        "nature/earth-science"
+        "business/non-profit",
+        "news/politics",
+        "tv-film",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "earth sciences; business/non-profit, news/politics, tv-film, health/nutrition.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1741618111": {
       "topics": [
@@ -130416,11 +131073,30 @@
     },
     "1742885638": {
       "topics": [
-        "history"
+        "tv-film",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history; tv-film, culture.",
+      "display_title": "An Old Timey Podcast",
+      "blurb": "History class just got hilariously inappropriate",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1742949181": {
       "topics": [
@@ -130700,11 +131376,40 @@
     },
     "1744158760": {
       "topics": [
-        "education/self-improvement"
+        "religion",
+        "business/non-profit",
+        "religion/christianity",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "self-improvement; religion, business/non-profit, religion/christianity, health/nutrition.",
+      "display_title": "Going Public With Ross Mandell",
+      "blurb": "Ross Mandell, the pioneer who reshaped Wall Street, has catapulted hundreds of companies into the public sphere, craftin",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1744234559": {
       "topics": [
@@ -131029,11 +131734,40 @@
     },
     "1745327764": {
       "topics": [
-        "science"
+        "kids-family/parenting",
+        "news/politics",
+        "business/non-profit",
+        "personal-journals"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "natural sciences; kids-family/parenting, news/politics, business/non-profit, personal-journals.",
+      "display_title": "Energy Frontier: The Wyoming Landscape",
+      "blurb": "Energy Frontier highlights the University of Wyoming's School of Energy Resources' role in advancing energy-driven econo",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1745543424": {
       "topics": [
@@ -131250,11 +131984,40 @@
     },
     "1746432292": {
       "topics": [
-        "religion"
+        "religion",
+        "health/alternative",
+        "health/sexuality",
+        "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "religion; religion, health/alternative, health/sexuality, religion/christianity.",
+      "display_title": "Soul Bruises",
+      "blurb": "As a lifelong believer in Christ, I’ve grown weary of witnessing harm within spiritual settings",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1746433334": {
       "topics": [
@@ -131345,11 +132108,40 @@
     },
     "1746633244": {
       "topics": [
-        "education/how-to"
+        "kids-family/parenting",
+        "personal-journals",
+        "tv-film",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "how to; kids-family/parenting, personal-journals, tv-film, health/mental.",
+      "display_title": "Homeschool Moms Unfiltered",
+      "blurb": "Welcome to Homeschool Moms Unfiltered, where we keep it real for modern homeschoolers",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1746656703": {
       "topics": [
@@ -131834,11 +132626,33 @@
     },
     "1749428944": {
       "topics": [
-        "gaming"
+        "health/nutrition",
+        "health"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "games; health/nutrition, health.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1749596510": {
       "topics": [
@@ -131850,11 +132664,30 @@
     },
     "1749604444": {
       "topics": [
-        "sports/baseball"
+        "tv-film",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "baseball; tv-film, culture.",
+      "display_title": "MLB Morning Lineup Podcast",
+      "blurb": "Are you a baseball fan looking for a quick, easy way to catch up on all the scores and stories from the night before? To",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1749616362": {
       "topics": [
@@ -131962,11 +132795,30 @@
     },
     "1750132906": {
       "topics": [
-        "tv-film/history"
+        "tv-film",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "film history; confirm categorization and display title.",
+      "display_title": "Stars of the Golden Age: An Old Hollywood",
+      "blurb": "Welcome to Stars of the Golden Age, a podcast about Old Hollywood and the classic film era, where you can learn about th",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1750133042": {
       "topics": [
@@ -131994,11 +132846,40 @@
     },
     "1750456228": {
       "topics": [
-        "history"
+        "health/sexuality",
+        "tv-film",
+        "relationships",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history; health/sexuality, tv-film, relationships, culture.",
+      "display_title": "Our Ancestors Were Messy",
+      "blurb": "A recap of the gossip, scandals, and pop culture that made headlines and then history in pre-Civil Rights Era America",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1750539873": {
       "topics": [
@@ -132017,11 +132898,30 @@
     },
     "1750573474": {
       "topics": [
-        "gaming"
+        "news/politics",
+        "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "games; news/politics, society/government.",
+      "display_title": "Critical Role Abridged",
+      "blurb": "All the twists and turns of an episode of Critical Role in half the time! In Critical Role Abridged, the rich tapestry o",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1750578413": {
       "topics": [
@@ -132368,11 +133268,40 @@
     },
     "1752100672": {
       "topics": [
-        "sports"
+        "kids-family/parenting",
+        "news/politics",
+        "tv-film",
+        "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports news; kids-family/parenting, news/politics, tv-film, society/government.",
+      "display_title": "Good Game with Sarah Spain",
+      "blurb": "Good Game is your one-stop shop for the biggest stories in women’s sports",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1752115435": {
       "topics": [
@@ -132429,11 +133358,40 @@
     },
     "1752173500": {
       "topics": [
-        "news/commentary"
+        "news/politics",
+        "tv-film",
+        "society/government",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "news commentary; news/politics, tv-film, society/government, culture.",
+      "display_title": "Mehdi Unfiltered",
+      "blurb": "A weekly show that delivers unfiltered news, bold opinions, and challenging interviews you won't find elsewhere",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1752182687": {
       "topics": [
@@ -132630,11 +133588,40 @@
     },
     "1753117762": {
       "topics": [
-        "computing"
+        "news/politics",
+        "tv-film",
+        "society/government",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "technology; news/politics, tv-film, society/government, culture.",
+      "display_title": "Shell Game",
+      "blurb": "A podcast about things that are not what they seem, hosted by journalist Evan Ratliff",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1753127830": {
       "topics": [
@@ -132690,11 +133677,40 @@
     },
     "1753621594": {
       "topics": [
-        "hobbies"
+        "health/sexuality",
+        "personal-journals",
+        "tv-film",
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "hobbies; health/sexuality, personal-journals, tv-film, health/mental.",
+      "display_title": "The Flipside Pinball Podcast",
+      "blurb": "Welcome to \"The Flipside\" with RetroRalph, where arcade nostalgia meets pinball passion! Known for his YouTube channel d",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1753725894": {
       "topics": [
@@ -132875,11 +133891,40 @@
     },
     "1754605114": {
       "topics": [
-        "education/courses"
+        "kids-family/parenting",
+        "health",
+        "tv-film",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "courses; kids-family/parenting, health, tv-film, health/nutrition.",
+      "display_title": "The Del Walmsley Radio Show",
+      "blurb": "After only 2 1⁄2 years of investing in real estate, Del Walmsley used the income from his Single Family rental houses to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1754714080": {
       "topics": [
@@ -132994,11 +134039,30 @@
     },
     "1755456394": {
       "topics": [
-        "fiction"
+        "religion",
+        "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "fiction; religion, religion/christianity.",
+      "display_title": "Fear Daily",
+      "blurb": "Fear Daily takes you into the shadows of the past, unearthing the 1990's most terrifying tales of monsters, madness, and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1755468297": {
       "topics": [
@@ -133033,11 +134097,40 @@
     },
     "1755707344": {
       "topics": [
-        "nature/earth-science"
+        "news/politics",
+        "health/nutrition",
+        "society/government",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "earth sciences; news/politics, health/nutrition, society/government, health.",
+      "display_title": "State of Seed",
+      "blurb": "On State of Seed, you’ll find out how seeds feed and sustain the planet",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1755727621": {
       "topics": [
@@ -133093,11 +134186,40 @@
     },
     "1756014574": {
       "topics": [
-        "comedy/interviews"
+        "religion",
+        "religion/christianity",
+        "news/politics",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "comedy interviews; religion, religion/christianity, news/politics, tv-film.",
+      "display_title": "Hasan Minhaj Doesn't Know",
+      "blurb": "Two-time Peabody Award–winning comedian Hasan Minhaj talks with politicians, public figures, and experts from finance to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1756045818": {
       "topics": [
@@ -133185,11 +134307,40 @@
     },
     "1756613740": {
       "topics": [
-        "tv-film"
+        "kids-family/parenting",
+        "health/nutrition",
+        "education",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "tv & film; kids-family/parenting, health/nutrition, education, health.",
+      "display_title": "Middling with Eden and Brock",
+      "blurb": "*Cue the Sue Heck squeal* Welcome to \"Middling with Eden and Brock,\" the ultimate rewatch podcast of ABC's The Middle ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1756624058": {
       "topics": [
@@ -133240,11 +134391,40 @@
     },
     "1756744318": {
       "topics": [
-        "sports/tennis"
+        "news/politics",
+        "tv-film",
+        "society/government",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "tennis; news/politics, tv-film, society/government, culture.",
+      "display_title": "Nothing Major",
+      "blurb": "Join former American tennis stars Sam Querrey, John Isner & Steve Johnson as they hope to serve up more laughs than Gran",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1756763626": {
       "topics": [
@@ -133332,11 +134512,43 @@
     },
     "1757483524": {
       "topics": [
-        "religion/judaism"
+        "kids-family/parenting",
+        "religion",
+        "business/non-profit",
+        "religion/christianity"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "judaism; kids-family/parenting, religion, business/non-profit, religion/christianity.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1757539273": {
       "topics": [
@@ -133859,11 +135071,30 @@
     },
     "1760612746": {
       "topics": [
-        "science"
+        "news/politics",
+        "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "natural sciences; news/politics, society/government.",
+      "display_title": "How Wild",
+      "blurb": "How Wild hits trails around the country, exploring the meaning of wilderness",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1760825951": {
       "topics": [
@@ -134195,11 +135426,40 @@
     },
     "1762689682": {
       "topics": [
-        "kids-family/education"
+        "kids-family/parenting",
+        "health/sexuality",
+        "tv-film",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "education for kids; kids-family/parenting, health/sexuality, tv-film, relationships.",
+      "display_title": "Constant Wonder KIDS",
+      "blurb": "Welcome to Constant Wonder KIDS, the podcast that turns everyday moments into extraordinary adventures! Designed for cur",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1762692129": {
       "topics": [
@@ -134219,11 +135479,40 @@
     },
     "1762728526": {
       "topics": [
-        "comedy/interviews"
+        "news/politics",
+        "tv-film",
+        "society/government",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "comedy interviews; news/politics, tv-film, society/government, culture.",
+      "display_title": "Story Warz",
+      "blurb": "📖 📚Welcome to Story Warz: A Game of Deceptive Storytelling",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1762729066": {
       "topics": [
@@ -134393,11 +135682,40 @@
     },
     "1763643718": {
       "topics": [
-        "aviation"
+        "kids-family/parenting",
+        "business/non-profit",
+        "society",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "aviation; kids-family/parenting, business/non-profit, society, education.",
+      "display_title": "Jet Setting Wealth Advisory",
+      "blurb": "Welcome to Jet Setting Wealth Advisory, where your financial journey takes flight with David T",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1763656780": {
       "topics": [
@@ -134554,11 +135872,35 @@
     },
     "1764546766": {
       "topics": [
-        "sports/hockey"
+        "culture/pop-culture",
+        "tv-film",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "hockey; culture/pop-culture, tv-film, culture.",
+      "display_title": "DLLS Dallas Stars Podcast",
+      "blurb": "The DLLS Stars Podcast is your go-to source for everything Dallas Stars hockey",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-26-8da021ac",
+      "classified_at": "2026-07-26T16:36:42.806Z"
     },
     "1764546911": {
       "topics": [
