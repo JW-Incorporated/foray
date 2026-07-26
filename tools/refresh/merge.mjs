@@ -38,6 +38,17 @@ const edits = JSON.parse(readFileSync(EDITS_PATH, "utf8"));
 const discover = JSON.parse(readFileSync(p("data/discover.json"), "utf8"));
 const tagsDoc = JSON.parse(readFileSync(p("data/item-tags.json"), "utf8"));
 
+// DAI status is a per-SHOW property (issue #22), so a new episode inherits its
+// show's existing verdict for free — no network call in the nightly path. A
+// show we have never classified yields false, and `classify-dai.mjs` picks it
+// up on its next run. Missing file is not an error: this is additive metadata,
+// and a nightly must not fail because a classification cache is absent.
+let daiByShow = {};
+try {
+  daiByShow = JSON.parse(readFileSync(p("data/dai-classification.json"), "utf8")).shows || {};
+} catch (_) { /* not classified yet */ }
+const daiFor = (cid) => Boolean(daiByShow[cid]?.dai);
+
 // --- Copy-rule preflight — mirrors backend test/copyRules.test.ts (the CI gate).
 // We check here too so a bad hook fails fast, before touching the data files,
 // rather than reddening CI after a commit. BANNED/wc come from
@@ -88,6 +99,7 @@ for (const ep of resolved) {
     audio_url: ep.audio_url ?? null,
     audio_type: ep.audio_type ?? null,
     audio_bytes: ep.audio_bytes ?? null,
+    ...(ep.audio_url ? { dai_suspected: daiFor(ep.apple_collection_id) } : {}),
     artwork_url: ep.artwork_url,
     topics: ep.topics,
     hook: edit.hook,
