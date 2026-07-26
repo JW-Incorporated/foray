@@ -25,10 +25,29 @@ You produce `edits.json` (hooks + tags) and run the committed merge. See
    git show origin/refresh-digest:resolved.json > data-local/resolved.json
    ```
 
-2. **If `resolved.resolved` is empty**, there is nothing to do. Stop. Do not
+2. **Check the digest is fresh — do this before anything else.**
+   ```sh
+   node -e "
+     const r = require('./data-local/resolved.json');
+     const hours = (Date.now() - new Date(r.generated_at)) / 3600000;
+     console.log('digest generated_at ' + r.generated_at + ' (' + hours.toFixed(1) + 'h old)');
+     if (hours > 12) { console.error('STALE DIGEST — the Action has not published today. Stopping.'); process.exit(1); }
+   "
+   ```
+   If this fails, **stop and open no PR.** It means the `nightly-refresh` Action
+   has not run yet, so the digest is yesterday's. Every item in it is already in
+   `discover.json`, so `merge.mjs` would skip them all and report "0 items
+   added" — a silently skipped night that looks like a successful one. Say so in
+   your run output so a human notices.
+
+   (GitHub does not honour cron punctually under load: the Action's 09:40 slot
+   was measured starting at 10:54 and 11:05 on consecutive days. The cron moved
+   to 06:40 UTC to restore the ≥2h margin, but this guard is the backstop.)
+
+3. **If `resolved.resolved` is empty**, there is nothing to do. Stop. Do not
    open a PR, do not commit.
 
-3. **Author `data-local/edits.json`** — a JSON object `{ "<id>": { "hook",
+4. **Author `data-local/edits.json`** — a JSON object `{ "<id>": { "hook",
    "tags" } }` with one entry per resolved item you intend to publish. For each
    item in `resolved.json` (each carries `_description`, the episode's real
    blurb, plus `show`/`title`/`topics`):
@@ -39,11 +58,21 @@ You produce `edits.json` (hooks + tags) and run the committed merge. See
      episode's title/subject instead — never quote the tease.
    - **tags**: 5–10, lowercase-hyphenated (`^[a-z0-9]+(-[a-z0-9]+)*$`). Reuse
      the existing vocabulary in `data/item-tags.json` wherever it applies.
-   - **To drop an item** (a cross-promo/trailer/ad that slipped past resolve),
-     simply omit it from `edits.json` — `merge.mjs` skips resolved items with
-     no edit and reports them. Prefer dropping over forcing a weak hook.
+   - **To drop an item**, simply omit it from `edits.json` — `merge.mjs` skips
+     resolved items with no edit and reports them. Prefer dropping over forcing
+     a weak hook. Drop, at minimum:
+     - cross-promos, trailers, and ads that slipped past resolve
+     - **filler/between-seasons chatter** — "shooting the breeze between shows",
+       hiatus updates, housekeeping. The 2026-07-26 run published one of these;
+       it has no subject a hook can be grounded in, which is the tell.
+     - **encores and rebroadcasts.** Corner case #3 warns that rebroadcasts
+       duplicate old content under a new GUID, so dedup does not catch them.
+       If the title or description says encore/replay/"from the archive", drop
+       it — the original is very likely already in the pool.
+     A good test: if you cannot write a hook that says what the listener will
+     actually learn or hear, the item does not belong in the pool.
 
-4. **Merge** (this is committed machinery — do not edit it, just run it):
+5. **Merge** (this is committed machinery — do not edit it, just run it):
    ```sh
    node tools/refresh/merge.mjs
    ```
@@ -51,13 +80,13 @@ You produce `edits.json` (hooks + tags) and run the committed merge. See
    offending hook/tags in `edits.json` (or drop the item) and re-run. It writes
    `data/discover.json` + `data/item-tags.json`.
 
-5. **Validate.** Never open a red PR:
+6. **Validate.** Never open a red PR:
    ```sh
    cd backend && npx vitest run test/copyRules.test.ts test/poolIntegrity.test.ts
    ```
    Fix or drop offenders and re-run merge until green.
 
-6. **Open a PR — never push to `main`.**
+7. **Open a PR — never push to `main`.**
    ```sh
    git switch -c "nightly/$(date -u +%F)"
    git add data/discover.json data/item-tags.json
