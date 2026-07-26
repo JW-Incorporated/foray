@@ -269,11 +269,63 @@ if (unresolved.length) {
   if (unresolved.length > 40) console.log(`  … and ${unresolved.length - 40} more`);
 }
 
+/* ---------- writing ----------
+
+   discover.json is machine-owned: merge.mjs already rewrites it wholesale with
+   the same 2-space stringify, so a full re-serialise is consistent with how the
+   nightly maintains it.
+
+   session.json is NOT. It is hand-authored ("builder": "hand-architect-v1"),
+   every episode block is deliberately kept on one line, and the founders read
+   it. A blind JSON.stringify reformats all 27 blocks and turns 27 real edits
+   into a ~670-line diff — unreviewable, and it destroys formatting somebody
+   chose on purpose. So we patch its TEXT in place instead, inserting the four
+   fields after `"duration_min": N` and leaving every other byte alone.        */
+
+function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+function patchSessionText(txt, episodes) {
+  const missed = [];
+  for (const [id, e] of Object.entries(episodes)) {
+    if (!e.audio_url && e.duration_sec == null) continue;
+    // Idempotent: skip a block that already carries the fields.
+    const already = new RegExp(`"${escapeRe(id)}":\\s*\\{[^{}]*"audio_url"\\s*:`);
+    if (already.test(txt)) continue;
+
+    const re = new RegExp(`("${escapeRe(id)}":\\s*\\{[^{}]*?"duration_min":\\s*(?:-?\\d+(?:\\.\\d+)?|null))`);
+    if (!re.test(txt)) { missed.push(id); continue; }
+    const fields =
+      `, "duration_sec": ${JSON.stringify(e.duration_sec ?? null)}` +
+      `, "audio_url": ${JSON.stringify(e.audio_url ?? null)}` +
+      `, "audio_type": ${JSON.stringify(e.audio_type ?? null)}` +
+      `, "audio_bytes": ${JSON.stringify(e.audio_bytes ?? null)}`;
+    txt = txt.replace(re, `$1${fields}`);
+  }
+  return { txt, missed };
+}
+
 if (DRY) {
   console.log("\n--dry-run: no files written.");
 } else {
   discover.built_at = new Date().toISOString();
   writeFileSync(join(ROOT, "data", "discover.json"), JSON.stringify(discover, null, 2) + "\n");
-  writeFileSync(join(ROOT, "data", "session.json"), JSON.stringify(session, null, 2) + "\n");
-  console.log("\nwrote data/discover.json + data/session.json");
+
+  const sessionPath = join(ROOT, "data", "session.json");
+  const original = readFileSync(sessionPath, "utf8");
+  const { txt, missed } = patchSessionText(original, session.episodes);
+
+  // Never write a session.json we cannot prove is both valid and correct: it
+  // is the document the whole client boots from.
+  const reparsed = JSON.parse(txt);
+  for (const [id, e] of Object.entries(session.episodes)) {
+    const got = reparsed.episodes[id];
+    if (!got) throw new Error(`session patch lost episode ${id}`);
+    if ((got.audio_url ?? null) !== (e.audio_url ?? null)) {
+      throw new Error(`session patch mismatch on ${id}: ${got.audio_url} !== ${e.audio_url}`);
+    }
+  }
+  if (missed.length) console.log(`WARN could not patch ${missed.length} session episode(s): ${missed.join(", ")}`);
+  writeFileSync(sessionPath, txt);
+
+  console.log("\nwrote data/discover.json (re-serialised) + data/session.json (text-patched, formatting preserved)");
 }
