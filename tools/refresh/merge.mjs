@@ -81,6 +81,13 @@ for (const ep of resolved) {
     apple_episode_url: ep.apple_episode_url,
     release_date: ep.release_date,
     duration_min: ep.duration_min,
+    // Audio provenance (issue #21). Nullable by design: an item with no
+    // playable URL still belongs in discovery, it just links out to Apple
+    // Podcasts instead of playing in-app (see the note on issue #25).
+    duration_sec: ep.duration_sec ?? null,
+    audio_url: ep.audio_url ?? null,
+    audio_type: ep.audio_type ?? null,
+    audio_bytes: ep.audio_bytes ?? null,
     artwork_url: ep.artwork_url,
     topics: ep.topics,
     hook: edit.hook,

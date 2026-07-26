@@ -20,6 +20,50 @@ scan.mjs ──▶ fresh-pending.json ──▶ resolve.mjs ──▶ resolved.j
 | `scan.mjs`    | ✅ | Poll curated RSS feeds, emit episodes newer than last run |
 | `resolve.mjs` | ✅ (iTunes lookup) | Resolve `apple_track_id`, dedup, drop unresolvable/dupe/invalid-topic |
 | `merge.mjs`   | ✅ | Apply agent-authored hooks/tags, enforce copy rules, write data files |
+| `enclosure.mjs` | — | Shared audio-provenance helpers (not a stage) |
+| `backfill-audio.mjs` | ✅ | **One-shot, not nightly.** Backfills audio onto pre-#21 items |
+
+## Audio provenance (issue #21)
+
+Every episode carries a playable URL through all three stages:
+
+| field | source | notes |
+|---|---|---|
+| `audio_url` | RSS `<enclosure url>`, iTunes `episodeUrl` as fallback | **original, pre-redirect** |
+| `audio_type` | enclosure `@_type` | video-only items are skipped (corner case #6) |
+| `audio_bytes` | enclosure `@_length` | `0` means unknown → stored as `null` |
+| `duration_sec` | `itunes:duration`, normalised | exact; `duration_min` stays for copy |
+
+Three rules that are easy to get wrong and expensive to discover late:
+
+1. **RSS is authoritative, iTunes is a fallback.** Not the other way round. The
+   iTunes lookup only returns recent episodes — at `limit=25` it reaches back
+   about a year, at `limit=200` roughly three. Most of the catalogue is recent
+   so an iTunes-first strategy *looks* fine in aggregate while failing on the
+   back catalogue, which is where the hand-curated session content lives.
+
+2. **Never substitute the resolved CDN URL.** Corner case #1: publishers count
+   downloads at the prefix host. We store and play the URL they published. The
+   RSS enclosure and iTunes `episodeUrl` genuinely differ for the same episode
+   (`content.blubrry` vs `ins.blubrry`), which is another reason RSS wins.
+
+3. **A null `audio_url` is fine; a malformed one is not.** Items with no
+   playable URL stay in discovery and link out to Apple Podcasts (see issue
+   #25). CI warns on nulls and *fails* on a non-https or tokened URL — corner
+   case #9, a tokened URL is a secret and must never reach a public data file.
+
+### Backfilling
+
+```bash
+node tools/refresh/backfill-audio.mjs --dry-run     # report only
+node tools/refresh/backfill-audio.mjs              # write data files
+node tools/refresh/backfill-audio.mjs --force      # re-resolve everything
+```
+
+Idempotent and re-runnable; skips items that already have `audio_url` unless
+`--force`. Fetches each **show** feed once, then matches all of that show's
+items. Coverage is reported separately for 2026+ and pre-2026 — a single
+blended number hides exactly the failure mode described in rule 1 above.
 
 The **judgment step** (writing hooks + tags) is the only non-deterministic part.
 It is performed by an agent (Claude Code locally today, a Claude Cloud scheduled

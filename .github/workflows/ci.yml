@@ -67,6 +67,20 @@ jobs:
             // 3. Every pool item should have tags (warn-level: new waves get tagged post-merge)
             const untagged = [...d.items.map(i=>i.id), ...Object.keys(s.episodes)].filter(id=>!tg.tags[id]);
             if (untagged.length) console.warn('WARN untagged items:', untagged.length);
+
+            // 4. Audio provenance (issue #21). A null audio_url is ALLOWED —
+            // the item still appears in discovery and links out to Apple
+            // Podcasts instead of playing in-app. A malformed one is not:
+            // it would reach the player and fail at playback time.
+            const audioItems = [...d.items, ...Object.values(s.episodes)];
+            const withAudio = audioItems.filter(i=>i.audio_url);
+            const badScheme = withAudio.filter(i=>!/^https:\/\//.test(i.audio_url));
+            if (badScheme.length) { console.error('audio_url must be https:', badScheme.map(i=>i.id||i.title).slice(0,10)); process.exit(1); }
+            // Corner case #9: a tokened URL is a secret and must never be published.
+            const tokened = withAudio.filter(i=>/[?&](token|auth|api_?key|secret|password|session)=/i.test(i.audio_url));
+            if (tokened.length) { console.error('audio_url looks tokened (secret leak):', tokened.map(i=>i.id||i.title).slice(0,10)); process.exit(1); }
+            const noAudio = audioItems.length - withAudio.length;
+            console.log('audio coverage:', withAudio.length + '/' + audioItems.length, '(' + noAudio + ' link-out only)');
             console.log('data invariants ok');
           "
       - name: Syntax-check site JS
@@ -75,9 +89,12 @@ jobs:
           node --check search-engine.js
       - name: Player state-machine tests
         # Pure reducer, no DOM and no dependencies — see player/queue-state.js.
-        # Lives in this job (rather than its own) because `data-and-site` is
-        # already a required check in the protect-main ruleset.
+        # Both suites live in this job (rather than their own) because
+        # `data-and-site` is already a required check in the protect-main
+        # ruleset; a new job would not be enforced until the ruleset changed.
         run: node --test "player/**/*.test.js"
+      - name: Refresh-pipeline helper tests
+        run: node --test "tools/refresh/*.test.mjs"
       - name: Validate semantic-index.json
         run: node tools/validate-semantic-index.mjs
       - name: Search-quality battery
