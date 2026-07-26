@@ -15,6 +15,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
+import { hostOf } from "./enclosure.mjs";
 
 const root = new URL("../../", import.meta.url);
 const p = (rel) => new URL(rel, root);
@@ -90,6 +91,12 @@ function matchTrack(eps, title) {
 const resolved = [];
 const dropped = [];
 const seenTrackThisRun = new Set();
+// Audio provenance (issue #21). RSS is authoritative — corner case #1 wants
+// the publisher's own declared URL so their download counts stay honest.
+// iTunes `episodeUrl` is a fallback for feeds that omitted the enclosure.
+// The two genuinely differ (measured: content.blubrry vs ins.blubrry for the
+// same episode), so the disagreement rate is logged, not treated as an error.
+let audioFromRss = 0, audioFromItunes = 0, audioMissing = 0, hostDisagreements = 0;
 
 for (const ep of pending.episodes) {
   const eps = await lookup(ep.apple_collection_id);
@@ -117,6 +124,20 @@ for (const ep of pending.episodes) {
   existingIds.add(id);
   seenTrackThisRun.add(trackId);
 
+  let audioUrl = ep.audio_url || null;
+  let audioType = ep.audio_type || null;
+  if (audioUrl) {
+    audioFromRss++;
+    const itunesUrl = track.episodeUrl || null;
+    if (itunesUrl && hostOf(itunesUrl) !== hostOf(audioUrl)) hostDisagreements++;
+  } else if (track.episodeUrl && /^https?:\/\//i.test(track.episodeUrl)) {
+    audioUrl = track.episodeUrl;
+    audioType = track.episodeFileExtension ? `audio/${track.episodeFileExtension}` : null;
+    audioFromItunes++;
+  } else {
+    audioMissing++;
+  }
+
   resolved.push({
     id,
     show: ep.show,
@@ -126,6 +147,10 @@ for (const ep of pending.episodes) {
     apple_episode_url: track.trackViewUrl || null,
     release_date: ep.release_date,
     duration_min: ep.duration_min,
+    duration_sec: ep.duration_sec ?? null,
+    audio_url: audioUrl,
+    audio_type: audioType,
+    audio_bytes: ep.audio_bytes ?? null,
     artwork_url: ep.artwork_url || track.artworkUrl600 || null,
     topics: validTopics,
     explicit: (track.contentAdvisoryRating || "").toLowerCase() === "explicit",
@@ -135,4 +160,6 @@ for (const ep of pending.episodes) {
 
 writeFileSync(RESOLVED_PATH, JSON.stringify({ generated_at: new Date().toISOString(), resolved, dropped }, null, 2));
 console.log(`RESOLVED ${resolved.length} / DROPPED ${dropped.length} -> ${RESOLVED_PATH}`);
+console.log(`audio: ${audioFromRss} from RSS, ${audioFromItunes} from iTunes fallback, ${audioMissing} unresolved` +
+  (hostDisagreements ? ` (${hostDisagreements} RSS/iTunes host disagreement(s) — RSS wins)` : ""));
 for (const d of dropped) console.log(`  drop: ${d.show} :: ${d.title} :: ${d.reason}`);
