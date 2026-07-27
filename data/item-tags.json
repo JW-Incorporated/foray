@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-07-26T11:42:36.411Z",
+  "built_at": "2026-07-27T11:45:08.756Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -9035,6 +9035,245 @@
       "animals",
       "family",
       "comedy"
+    ],
+    "the-rest-is-history--691-elizabeth-i-vs-the-catholics": [
+      "history",
+      "espionage",
+      "england",
+      "religion",
+      "tudor-england",
+      "elizabeth-i"
+    ],
+    "conan-obrien-needs-a-friend--leslie-jones-returns": [
+      "comedy",
+      "conan-obrien",
+      "interview",
+      "banter",
+      "celebrities"
+    ],
+    "smartless--marcus-mumford": [
+      "comedy",
+      "smartless",
+      "interview",
+      "music",
+      "banter"
+    ],
+    "making-chips--imts-2026-preview-what-s-new": [
+      "manufacturing",
+      "engineering",
+      "industry",
+      "trade-show",
+      "planning",
+      "american-manufacturing"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3391": [
+      "history-of-technology",
+      "engineering",
+      "earth-science",
+      "geology",
+      "space",
+      "cold-war"
+    ],
+    "twenty-minute-vc--20vc-leading-anthropic-s-first-ever": [
+      "venture-capital",
+      "startups",
+      "anthropic",
+      "ai",
+      "open-source-ai",
+      "investing"
+    ],
+    "fly-on-the-wall--shane-gillis-sets-a-record-birthday": [
+      "comedy",
+      "dana-carvey",
+      "david-spade",
+      "banter",
+      "pop-culture"
+    ],
+    "science-for-sport-podcast--330-frontal-plane-fundamentals-with-dr": [
+      "sports-science",
+      "strength-conditioning",
+      "coaching",
+      "athletes",
+      "biomechanics",
+      "performance"
+    ],
+    "odd-lots--branko-milanovic-on-what-comes-after": [
+      "economics",
+      "globalization",
+      "geopolitics",
+      "markets",
+      "policy",
+      "capitalism"
+    ],
+    "the-race-f1-podcast--hungarian-gp-how-norris-and-mclaren": [
+      "formula-1",
+      "racing",
+      "ferrari",
+      "mercedes",
+      "grand-prix"
+    ],
+    "partially-examined-life--ep-396-peirce-on-knowledge-part": [
+      "philosophy",
+      "epistemology",
+      "pragmatism",
+      "peirce",
+      "ideas"
+    ],
+    "partially-examined-life--pel-presents-closereads-galen-strawson-on": [
+      "philosophy",
+      "consciousness",
+      "panpsychism",
+      "physicalism",
+      "ideas"
+    ],
+    "unexplainable--an-argument-for-the-sun": [
+      "science",
+      "health",
+      "sunlight",
+      "vitamin-d",
+      "skin-health"
+    ],
+    "how-i-built-this--sweetwater-chuck-surack-how-a-customer": [
+      "business",
+      "founders",
+      "entrepreneurship",
+      "music",
+      "retail"
+    ],
+    "strong-towns-podcast--america-s-half-funded-highway-system": [
+      "infrastructure",
+      "transportation",
+      "policy",
+      "highways",
+      "urbanism",
+      "government"
+    ],
+    "huberman-lab--your-top-health-questions-answered": [
+      "neuroscience",
+      "sleep",
+      "health",
+      "fertility",
+      "menopause",
+      "memory"
+    ],
+    "the-matt-walker-podcast--145-how-to-get-more-deep": [
+      "sleep",
+      "neuroscience",
+      "health",
+      "circadian-rhythm",
+      "recovery"
+    ],
+    "the-peter-attia-drive--401-how-curiosity-transforms-medicine-extraordinary": [
+      "medicine",
+      "science-history",
+      "health",
+      "longevity",
+      "research"
+    ],
+    "strict-scrutiny--dude-process-not-due-process": [
+      "law",
+      "supreme-court",
+      "politics",
+      "courts",
+      "judiciary"
+    ],
+    "happiness-lab--winning-the-lottery-could-ruin-your": [
+      "psychology",
+      "happiness",
+      "mental-health",
+      "behavioral-science",
+      "self-improvement"
+    ],
+    "ten-percent-happier--how-to-read-people-calm-tension": [
+      "psychology",
+      "negotiation",
+      "self-improvement",
+      "communication",
+      "mental-health"
+    ],
+    "maintenance-phase--why-don-39-t-we-have": [
+      "health",
+      "politics",
+      "public-health",
+      "government",
+      "media-criticism"
+    ],
+    "mel-robbins-podcast--9-small-changes-to-feel-better": [
+      "self-improvement",
+      "habits",
+      "health",
+      "productivity",
+      "mental-health"
+    ],
+    "happier-gretchen-rubin--little-happier-have-you-ever-felt": [
+      "self-improvement",
+      "habits",
+      "personal-growth",
+      "storytelling",
+      "fairy-tales"
+    ],
+    "armchair-expert--alan-ritchson": [
+      "interview",
+      "mental-health",
+      "celebrities",
+      "acting",
+      "trauma"
+    ],
+    "comedy-bang-bang--goomi-turned-the-mustard-green-sean": [
+      "comedy",
+      "comedy-bang-bang",
+      "sketch",
+      "interview",
+      "improv"
+    ],
+    "working-it-out-birbiglia--john-mulaney-he-s-funny-and": [
+      "comedy",
+      "stand-up",
+      "interview",
+      "comedians",
+      "storytelling"
+    ],
+    "lore--lore-311-twice-upon-a-time": [
+      "folklore",
+      "history",
+      "paranormal",
+      "storytelling",
+      "mythology"
+    ],
+    "crime-junkie--murdered-joyce-lepage-part-2": [
+      "true-crime",
+      "murder",
+      "investigation",
+      "cold-case",
+      "crime-junkie"
+    ],
+    "morbid--lorena-and-john-wayne-bobbitt": [
+      "true-crime",
+      "history",
+      "domestic-violence",
+      "1990s",
+      "morbid"
+    ],
+    "wicked-words--justine-van-der-leun-unreasonable-women": [
+      "true-crime",
+      "criminal-justice",
+      "women",
+      "incarceration",
+      "interview"
+    ],
+    "wow-in-the-world--it-s-tuna-time-discover-the": [
+      "science-for-kids",
+      "cats",
+      "animals",
+      "kids",
+      "science"
+    ],
+    "twenty-thousand-hertz--listener-stories-2026-bronze-ai-music": [
+      "sound",
+      "music",
+      "ai",
+      "storytelling",
+      "sound-design"
     ]
   }
 }
