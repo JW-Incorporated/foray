@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-26T16:36:42.806Z",
+  "built_at": "2026-07-27T00:46:28.766Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-26-8da021ac",
+    "last_batch_id": "fresh-2026-07-27-f346246e",
     "last_batch_tier": 1
   },
   "entries": {
@@ -129671,8 +129671,22 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "THIS CAR POD! with Doug DeMuro & Friends!",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1737517102": {
       "topics": [
@@ -129751,11 +129765,25 @@
     },
     "1737754450": {
       "topics": [
-        "business/non-profit"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Counter Crisis",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1737812524": {
       "topics": [
@@ -129875,11 +129903,25 @@
     },
     "1738124704": {
       "topics": [
-        "computing"
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Sourcery",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1738264274": {
       "topics": [
@@ -130600,11 +130642,30 @@
     },
     "1741002772": {
       "topics": [
-        "science"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Talkin' Cotton Podcast",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1741062872": {
       "topics": [
@@ -131293,11 +131354,30 @@
     },
     "1743709642": {
       "topics": [
-        "sports/cricket"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Cricket Et Al",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1743709932": {
       "topics": [
@@ -133209,11 +133289,30 @@
     },
     "1751803396": {
       "topics": [
-        "math"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Rebel Economics with Professor Steve Keen",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1751858926": {
       "topics": [
@@ -135173,11 +135272,30 @@
     },
     "1761279928": {
       "topics": [
-        "hobbies"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "屠龙大实话",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1761321373": {
       "topics": [
@@ -135935,9 +136053,23 @@
       "topics": [
         "education/how-to"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Insufficient signal to determine primary topic.",
+      "display_title": "How To Master Your Emotions: A Guide to",
+      "blurb": "Welcome to today’s episode of The Mindset Mentor Podcast. Today I’m diving deep into one of the biggest super powers tha",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1764932831": {
       "topics": [
@@ -136134,11 +136266,30 @@
     },
     "1765591078": {
       "topics": [
-        "religion"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Covenant & Conflict",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1765605600": {
       "topics": [
@@ -136178,11 +136329,25 @@
     },
     "1765799296": {
       "topics": [
-        "society"
+        "automotive"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Question Everything",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1765931918": {
       "topics": [
@@ -136282,11 +136447,25 @@
     },
     "1766435920": {
       "topics": [
-        "health/sexuality"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "The Kink Consultant",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1766543146": {
       "topics": [
@@ -136370,11 +136549,30 @@
     },
     "1767185986": {
       "topics": [
-        "religion/judaism"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Being Jewish with Jonah Platt",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1767227653": {
       "topics": [
@@ -136415,11 +136613,25 @@
     },
     "1767454006": {
       "topics": [
-        "sports"
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "The Art Of Ward",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1767472190": {
       "topics": [
@@ -136579,9 +136791,23 @@
       "topics": [
         "tv-film/interviews"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Insufficient signal to determine primary topic.",
+      "display_title": "پادکست اثر پروانه‌ای",
+      "blurb": "اثر پروانه‌ای جاییه که می‌خوایم درباره فیلم‌ها، سریال‌ها و کتاب‌هایی صحبت کنیم که اثر ویژه‌ای روی زندگی و ‌نوع نگاهمون د",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1768289604": {
       "topics": [
@@ -136981,11 +137207,30 @@
     },
     "1769869624": {
       "topics": [
-        "tv-film"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Jaguar Wright Uncensored",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1769915228": {
       "topics": [
@@ -137056,11 +137301,25 @@
     },
     "1770253354": {
       "topics": [
-        "hobbies"
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "The NOËLLE FLOYD Podcast",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1770317795": {
       "topics": [
@@ -137121,11 +137380,30 @@
     },
     "1770602068": {
       "topics": [
-        "tv-film"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Sterling Psychic Medium, Paranormal, ET, UFO, AI, The",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1770603501": {
       "topics": [
@@ -137168,11 +137446,30 @@
     },
     "1770745684": {
       "topics": [
-        "music"
+        "society",
+        "business/non-profit"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Disaster risk, climate adaptation, and financial resilience.",
+      "display_title": "Bob’s Blues & The News",
+      "blurb": "Stories on disaster risk financing and climate adaptation strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1770778356": {
       "topics": [
@@ -137282,8 +137579,22 @@
         "hobbies"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Insufficient signal to determine primary topic.",
+      "display_title": "谭立人",
+      "blurb": "「 你的精神角落 」 一档关于自我成长与人文生活的播客。 献给当代都市人：如何把生活过成一种审美与精神实践。 我们用声音治愈内耗与熵增，练习更清醒地生活，也更温柔地成为自己。 主播：谭立人（作家/ 画廊主理人） 周日更新 · 合作联系：邮箱",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1771450708": {
       "topics": [
@@ -137336,8 +137647,22 @@
         "comedy"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Insufficient signal to determine primary topic.",
+      "display_title": "Las Alucines",
+      "blurb": "Somos Lupita Villalobos y Quesito (Kass Quezada), dos amigas alucines que hacen este podcast de comedia, nos reímos de s",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1771757364": {
       "topics": [
@@ -137414,11 +137739,25 @@
     },
     "1771982812": {
       "topics": [
-        "psychology"
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Therapy 101",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1772047800": {
       "topics": [
@@ -137482,11 +137821,25 @@
     },
     "1772456962": {
       "topics": [
-        "science/chemistry"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "The Deep End Pool Podcast",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1772484351": {
       "topics": [
@@ -137866,11 +138219,30 @@
     },
     "1774126198": {
       "topics": [
-        "personal-journals"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Grit Branded",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1774203959": {
       "topics": [
@@ -138019,11 +138391,25 @@
     },
     "1775492884": {
       "topics": [
-        "sports/football"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "The McShay Show",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1775529387": {
       "topics": [
@@ -138305,19 +138691,57 @@
     },
     "1776692854": {
       "topics": [
-        "science"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "COLA: Talk Lab To Me",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1776743104": {
       "topics": [
-        "education/language-learning"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Dreaming Spanish Podcast – Chats in Beginner Spanish",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1776859269": {
       "topics": [
@@ -138638,11 +139062,30 @@
     },
     "1778060368": {
       "topics": [
+        "business/startups",
         "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "The AI News Daily Brief",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1778091761": {
       "topics": [
@@ -139241,11 +139684,25 @@
     },
     "1781636710": {
       "topics": [
-        "tv-film"
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Fame Under Fire",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1781687341": {
       "topics": [
@@ -139301,11 +139758,25 @@
     },
     "1781924674": {
       "topics": [
-        "science/physics"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Naked Nuclear",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1782019054": {
       "topics": [
@@ -139468,11 +139939,30 @@
     },
     "1782974230": {
       "topics": [
-        "health/sexuality"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Romantic Sex Stories",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1783030448": {
       "topics": [
@@ -139590,11 +140080,25 @@
     },
     "1783920058": {
       "topics": [
-        "business/careers"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Social Work to Wealth Podcast",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1783970602": {
       "topics": [
@@ -139672,11 +140176,30 @@
     },
     "1784529112": {
       "topics": [
-        "society/government"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Fixing Broke: Consumer Bankruptcy Diary",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1784540132": {
       "topics": [
@@ -139717,11 +140240,25 @@
     },
     "1784599966": {
       "topics": [
-        "education/how-to"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Faithful Labor | Natural Birth, Pregnancy, Holistic, VBAC,",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1784600155": {
       "topics": [
@@ -139755,11 +140292,25 @@
     },
     "1784736028": {
       "topics": [
-        "hobbies"
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Talk Horse",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1784747300": {
       "topics": [
@@ -139802,11 +140353,25 @@
     },
     "1784946892": {
       "topics": [
-        "tv-film"
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Are You A Charlotte?",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1784985903": {
       "topics": [
@@ -139965,11 +140530,30 @@
     },
     "1785985876": {
       "topics": [
-        "society"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Khloé in Wonder Land",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1785992969": {
       "topics": [
@@ -140182,11 +140766,30 @@
     },
     "1787361016": {
       "topics": [
-        "education/courses"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Systems Thinking and Beyond",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1787395763": {
       "topics": [
@@ -140248,11 +140851,25 @@
     },
     "1787581918": {
       "topics": [
-        "health/fitness"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Dual Coast Podcast",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1787588886": {
       "topics": [
@@ -140263,11 +140880,30 @@
     },
     "1787610634": {
       "topics": [
-        "society"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Divergent Files Podcast",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1787618291": {
       "topics": [
@@ -140534,11 +141170,25 @@
     },
     "1788388390": {
       "topics": [
-        "tv-film"
+        "automotive"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Jonas Brothers Grown Man Boy Band",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1788403482": {
       "topics": [
@@ -140624,11 +141274,25 @@
     },
     "1788635110": {
       "topics": [
-        "sports/rugby"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Coaching Culture with Ben Herring",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1788671281": {
       "topics": [
@@ -140721,11 +141385,25 @@
     },
     "1788967966": {
       "topics": [
-        "education/how-to"
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "The Death Readiness Podcast: Not your dad’s estate",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1788977820": {
       "topics": [
@@ -140743,11 +141421,30 @@
     },
     "1788997372": {
       "topics": [
-        "sports"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Casuals with Katie Nolan",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1789028689": {
       "topics": [
@@ -140782,11 +141479,25 @@
     },
     "1789169776": {
       "topics": [
-        "business"
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Hot Smart Rich with Maggie Sellers Reum",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1789263012": {
       "topics": [
@@ -140892,11 +141603,30 @@
     },
     "1789827802": {
       "topics": [
-        "tv-film"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "Hot Mics with Billy Bush",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1789911793": {
       "topics": [
@@ -140929,11 +141659,25 @@
     },
     "1790108248": {
       "topics": [
-        "culture/art"
+        "automotive"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "I Wanna Be Like You with Elbi Cespedes",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1790113532": {
       "topics": [
@@ -141025,11 +141769,25 @@
     },
     "1790513506": {
       "topics": [
-        "sports/tennis"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Betting Weekly Studios",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1790574798": {
       "topics": [
@@ -141216,11 +141974,25 @@
     },
     "1791537814": {
       "topics": [
-        "science"
+        "automotive"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Flooba",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1791540993": {
       "topics": [
@@ -141253,11 +142025,30 @@
     },
     "1791671806": {
       "topics": [
-        "society"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology startup ecosystem and investor perspectives.",
+      "display_title": "The Anunnaki Connection",
+      "blurb": "Conversations with top investors, CEOs, and technology founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1791682745": {
       "topics": [
@@ -141352,11 +142143,25 @@
     },
     "1791855880": {
       "topics": [
-        "tv-film"
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Cate & Ty Break It Down",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1791857722": {
       "topics": [
@@ -141749,11 +142554,25 @@
     },
     "1793765332": {
       "topics": [
-        "society"
+        "automotive"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Signal Hill",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1793783665": {
       "topics": [
@@ -141833,11 +142652,25 @@
     },
     "1793999230": {
       "topics": [
-        "tv-film/reviews"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "How We Made Your Mother",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1794000426": {
       "topics": [
@@ -142001,11 +142834,25 @@
     },
     "1794450472": {
       "topics": [
-        "news/politics"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Bulwark Takes",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1794454530": {
       "topics": [
@@ -142210,11 +143057,25 @@
     },
     "1795483480": {
       "topics": [
-        "comedy"
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "Good Hang with Amy Poehler",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1795489421": {
       "topics": [
@@ -142294,11 +143155,25 @@
     },
     "1795733422": {
       "topics": [
-        "society"
+        "automotive"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "AFTER DARK | True Scary, Paranormal, Ghost, Supernatural",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1795734509": {
       "topics": [
@@ -142512,11 +143387,25 @@
     },
     "1796598706": {
       "topics": [
-        "math"
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "In the Interim...",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1796608349": {
       "topics": [
@@ -142978,11 +143867,25 @@
     },
     "1798264288": {
       "topics": [
-        "engineering/ai-robotics"
+        "automotive"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive market news and car enthusiast discussions.",
+      "display_title": "AI, Energy and Climate Podcast",
+      "blurb": "Weekly expert commentary on car news, market trends, and vehicle reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-f346246e",
+      "classified_at": "2026-07-27T00:46:28.766Z"
     },
     "1798264523": {
       "topics": [
