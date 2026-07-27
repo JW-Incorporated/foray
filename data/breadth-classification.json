@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-26T16:35:03.319Z",
+  "built_at": "2026-07-27T00:32:45.046Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-26-95bfb55c",
+    "last_batch_id": "fresh-2026-07-27-8487c94d",
     "last_batch_tier": 1
   },
   "entries": {
@@ -115605,11 +115605,25 @@
     },
     "1679458321": {
       "topics": [
-        "gaming"
+        "craft"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Winning Hand - A Marvel C: Craft & making.",
+      "display_title": "Winning Hand - A Marvel Champions Podcast",
+      "blurb": "A podcast all about Marvel Champions…one card at a time",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1679466396": {
       "topics": [
@@ -115652,11 +115666,25 @@
     },
     "1679647627": {
       "topics": [
-        "religion"
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Love & Truth Network - Au: Ideas.",
+      "display_title": "Love & Truth Network - Audio Edition",
+      "blurb": "Love & Truth Network presents wisdom for experiencing relational and sexual wholeness by following God’s path",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1679657705": {
       "topics": [
@@ -115866,11 +115894,25 @@
     },
     "1680589795": {
       "topics": [
-        "hobbies"
+        "music"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Acá Entre Nozz: Music.",
+      "display_title": "Acá Entre Nozz",
+      "blurb": "Charlas cara a cara con amigos del medio del ambiente musical y creadores de contenido digital",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1680598421": {
       "topics": [
@@ -116044,11 +116086,30 @@
     },
     "1681407595": {
       "topics": [
-        "tv-film/after-shows"
+        "sports",
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Little Miss Recap: 90 Day: Sports and Casual hangs.",
+      "display_title": "Little Miss Recap: 90 Day Fiancè, Sister Wives,",
+      "blurb": "Welcome to Little Miss Recap: Your home for 90 Day Fiancè, Sister Wives, Love is Blind, and more reality TV news and recaps",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1681417281": {
       "topics": [
@@ -116158,11 +116219,25 @@
     },
     "1682128969": {
       "topics": [
-        "personal-journals"
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "It's Going To Be OK: Sports.",
+      "display_title": "It's Going To Be OK",
+      "blurb": "“It’s Going To Be OK” is a hard thing to believe given the state of, oh, everything",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1682131345": {
       "topics": [
@@ -116478,27 +116553,87 @@
     },
     "1684148737": {
       "topics": [
-        "society"
+        "history",
+        "philosophy/ideas"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reasons We Serve: Police : History and Ideas.",
+      "display_title": "Reasons We Serve: Police Careers & Officer Experience",
+      "blurb": "Police officer stories and law enforcement interviews revealing why people choose careers in policing",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1684156555": {
       "topics": [
-        "tv-film"
+        "comedy/casual-hangs",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Drama, Darling: A Real Ho: Casual hangs and History.",
+      "display_title": "Drama, Darling: A Real Housewives Comedy Podcast",
+      "blurb": "Amy Phillips, Comedian and Impressionis, along with her fellow comedian and bravo fanatic co-hosts recap reality tv with a comedy perspective",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1684156849": {
       "topics": [
-        "relationships"
+        "philosophy/ideas",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Dating Detectives: Ideas and Craft & making.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /delve/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1684174612": {
       "topics": [
@@ -116994,11 +117129,30 @@
     },
     "1686899797": {
       "topics": [
-        "sports/golf"
+        "sports",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Smylie Show: Sports and Casual hangs.",
+      "display_title": "The Smylie Show",
+      "blurb": "Smylie Kaufman is a PGA Tour winner, pro golf broadcaster, and the host of \"The Smylie Show\"",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1686902268": {
       "topics": [
@@ -117071,11 +117225,25 @@
     },
     "1687260829": {
       "topics": [
-        "society/government"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "No es el fin del mundo: History.",
+      "display_title": "No es el fin del mundo",
+      "blurb": "El podcast semanal de El Orden Mundial (EOM) para entender la geopolítica",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1687349994": {
       "topics": [
@@ -117307,19 +117475,52 @@
     },
     "1688474821": {
       "topics": [
+        "space",
         "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "SETI Live: Space and Science.",
+      "display_title": "SETI Live",
+      "blurb": "SETI Live is a weekly production of the SETI Institute and is recorded live on stream with viewers on YouTube, Facebook, LinkedIn, X (formerly known as Twitter), and Twitch",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1688485153": {
       "topics": [
-        "culture/fashion"
+        "craft"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pretty, Not Smart with Lo: Craft & making.",
+      "display_title": "Pretty, Not Smart with Louie and Yoatzi Castro",
+      "blurb": "Pretty, Not Smart is a weekly podcast hosted by the prettiest sibling duo, Louie and Yoatzi Castro",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1688616315": {
       "topics": [
@@ -117534,11 +117735,25 @@
     },
     "1689495115": {
       "topics": [
-        "personal-journals"
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Keep it Positive, Sweetie: Ideas.",
+      "display_title": "Keep it Positive, Sweetie",
+      "blurb": "Keep It Positive, Sweetie is more than a podcast—it’s a movement rooted in purpose, faith, and healing",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1689536955": {
       "topics": [
@@ -117669,11 +117884,35 @@
     },
     "1690106293": {
       "topics": [
-        "tv-film"
+        "science",
+        "craft",
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pop Culture with Balls: Science and Craft & making.",
+      "display_title": "Pop Culture with Balls",
+      "blurb": "Your source for Pop Culture and Entertainment straight outta Jersey",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1690154299": {
       "topics": [
@@ -117737,11 +117976,30 @@
     },
     "1690411429": {
       "topics": [
-        "sports/tennis"
+        "sports",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "King of the Court: Sports and Casual hangs.",
+      "display_title": "King of the Court",
+      "blurb": "All things Pickleball brought to you by pro pickleball player, Tyler Loong and his co-host and personality Jimmy Miller",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1690418784": {
       "topics": [
@@ -117767,11 +118025,25 @@
     },
     "1690437343": {
       "topics": [
-        "hobbies"
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Remap Radio: Computing.",
+      "display_title": "Remap Radio",
+      "blurb": "Remap Radio is a new podcast from the creators of the long-running video game podcast Waypoint Radio",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1690471124": {
       "topics": [
@@ -117968,11 +118240,25 @@
     },
     "1691240203": {
       "topics": [
-        "religion"
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Redeemed & Reformed: Ideas.",
+      "display_title": "Redeemed & Reformed",
+      "blurb": "Examining scripture and cultural issues through a reformed lens",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1691284824": {
       "topics": [
@@ -118005,11 +118291,30 @@
     },
     "1691452657": {
       "topics": [
+        "craft/photography",
         "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The PetaPixel Photography: Photography and Computing.",
+      "display_title": "The PetaPixel Photography Podcast",
+      "blurb": "Chris Niccolls and Jordan Drake join PetaPixel's Editor-in-Chief Jaron Schneider for a weekly discussion on current events in the photography industry, camera equipment, technology, culture, and more",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1691595080": {
       "topics": [
@@ -118182,11 +118487,35 @@
     },
     "1692283261": {
       "topics": [
-        "hobbies"
+        "craft/diy-home",
+        "comedy/casual-hangs",
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Modeling Insanity Pod: DIY & home and Casual hangs.",
+      "display_title": "The Modeling Insanity Podcast",
+      "blurb": "A funny, honest and in your face look into the world of scale modeling",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1692336821": {
       "topics": [
@@ -118257,11 +118586,30 @@
     },
     "1692818989": {
       "topics": [
-        "personal-journals"
+        "craft",
+        "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.7
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classy with Jonathan Menj: Craft & making and History.",
+      "display_title": "Classy with Jonathan Menjivar",
+      "blurb": "*** Named one of the best podcasts of 2023 by The New Yorker, Time, The Atlantic, Apple, Vogue, the CBC, and Lifehacker",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1692825947": {
       "topics": [
@@ -118417,11 +118765,25 @@
     },
     "1693403323": {
       "topics": [
-        "science/chemistry"
+        "medicine"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Yale Anesthesiology: Medicine.",
+      "display_title": "Yale Anesthesiology",
+      "blurb": "This collection features interviews with anesthesiologists and other experts in which we discuss topics ranging from basic anesthesia to subspecialty-related topics",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1693429728": {
       "topics": [
@@ -118475,11 +118837,30 @@
     },
     "1693633111": {
       "topics": [
-        "health"
+        "medicine",
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fast. Feast. Repeat.  Int: Medicine and Ideas.",
+      "display_title": "Fast. Feast. Repeat.  Intermittent Fasting For Life",
+      "blurb": "Whether you are new to intermittent fasting or an experienced intermittent faster, tune in each week to this motivational and down-to-earth podcast to get inspired, learn, and have some fun.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1693651529": {
       "topics": [
@@ -118615,11 +118996,30 @@
     },
     "1694392423": {
       "topics": [
-        "news/tech"
+        "economics",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "THE Bitcoin Podcast: Economics and Computing.",
+      "display_title": "THE Bitcoin Podcast",
+      "blurb": "THE Bitcoin Podcast, hosted by Walker America, is the fastest-growing Bitcoin podcast in the world",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1694468860": {
       "topics": [
@@ -118819,11 +119219,25 @@
     },
     "1695774787": {
       "topics": [
-        "sports/rugby"
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Good, The Bad & The R: Sports.",
+      "display_title": "The Good, The Bad & The Rugby: Australia",
+      "blurb": "The Good, The Bad & The Rugby, the biggest podcast in the world just got bigger",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1695809251": {
       "topics": [
@@ -118841,11 +119255,35 @@
     },
     "1695901195": {
       "topics": [
-        "nature/earth-science"
+        "craft/photography",
+        "history",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Geopop - Le Scienze nella: Photography and History.",
+      "display_title": "Geopop - Le Scienze nella vita di tutti",
+      "blurb": "'Le Scienze nella vita di tutti i giorni’ è il podcast di divulgazione scientifica di Geopop",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1695951747": {
       "topics": [
@@ -118934,9 +119372,23 @@
       "topics": [
         "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "One Song: Music.",
+      "display_title": "One Song",
+      "blurb": "On each episode of ONE SONG, friends Diallo Riddle (Emmy-nominated star and creator of HBO Max’s 'South Side' and IFC’s 'Sherman’s Showcase') and Blake \"LUXXURY\" Robin (Music Producer & TikTok.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1696159077": {
       "topics": [
@@ -118978,19 +119430,47 @@
     },
     "1696200085": {
       "topics": [
-        "nature/pets"
+        "history"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tank Talk: History.",
+      "display_title": "Tank Talk",
+      "blurb": "John Hudson from KGTropicals and Jason Adams bring you a weekly dive into the world of aquariums",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1696201465": {
       "topics": [
-        "personal-journals"
+        "philosophy/ideas"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family Flowers Only by Gr: Ideas.",
+      "display_title": "Family Flowers Only by Grief Ireland",
+      "blurb": "During the pandemic I created a community on Instagram called Grief Ireland",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1696250206": {
       "topics": [
@@ -119199,11 +119679,25 @@
     },
     "1697258731": {
       "topics": [
-        "society/government"
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mikes on Mic: Ideas.",
+      "display_title": "Mikes on Mic",
+      "blurb": "Welcome to 'Mike's on Mike,' your newest favorite political podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1697270947": {
       "topics": [
@@ -119222,11 +119716,25 @@
     },
     "1697425543": {
       "topics": [
-        "comedy"
+        "philosophy/ideas"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Smosh Reads Reddit Storie: Ideas.",
+      "display_title": "Smosh Reads Reddit Stories",
+      "blurb": "Tall tales from Reddit are just the starting point for these popular hour-long reaction videos",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1697426090": {
       "topics": [
@@ -119275,11 +119783,25 @@
     },
     "1697653759": {
       "topics": [
-        "fiction/drama"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Antiquarium of Sinist: Ideas.",
+      "display_title": "The Antiquarium of Sinister Happenings",
+      "blurb": "Step into a mysterious shop, where every relic has a sordid tale to tell",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1697725725": {
       "topics": [
@@ -119372,11 +119894,25 @@
     },
     "1697971279": {
       "topics": [
-        "society/government"
+        "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pivotal States: History.",
+      "display_title": "Pivotal States",
+      "blurb": "In a fragmented and transactional world, the United States faces a host of challenges",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1698011175": {
       "topics": [
@@ -119395,11 +119931,25 @@
     },
     "1698051187": {
       "topics": [
-        "comedy"
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The LOL Podcast: Ideas.",
+      "display_title": "The LOL Podcast",
+      "blurb": "New episodes every WEDNESDAY & SATURDAY",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1698065414": {
       "topics": [
@@ -119597,11 +120147,25 @@
     },
     "1699124317": {
       "topics": [
-        "education/self-improvement"
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amas Talks Podcast: Computing.",
+      "display_title": "Amas Talks Podcast",
+      "blurb": "Amas is a modern day prophet and Polymath",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1699212404": {
       "topics": [
@@ -119643,11 +120207,25 @@
     },
     "1699511251": {
       "topics": [
-        "personal-journals"
+        "comedy/casual-hangs"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Would You Believe…? with : Casual hangs.",
+      "display_title": "Would You Believe…? with Rebecca Rogers",
+      "blurb": "We live in a world where too many people feel under-appreciated and often unheard",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1699597868": {
       "topics": [
@@ -119784,11 +120362,25 @@
     },
     "1700367421": {
       "topics": [
-        "personal-journals"
+        "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Korean. American. Podcast: History.",
+      "display_title": "Korean. American. Podcast",
+      "blurb": "How does modern day Korea compare to America",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1700375795": {
       "topics": [
@@ -119884,11 +120476,30 @@
     },
     "1700739583": {
       "topics": [
-        "education/how-to"
+        "music",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Learn Music Theory: Music and Computing.",
+      "display_title": "Learn Music Theory",
+      "blurb": "Unlock the secrets to better music composition",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1700759036": {
       "topics": [
@@ -120044,11 +120655,30 @@
     },
     "1701360007": {
       "topics": [
-        "health/sexuality"
+        "comedy/casual-hangs",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NAUGHTY GYM SHOW - Buildi: Casual hangs and Ideas.",
+      "display_title": "NAUGHTY GYM SHOW - Building Stronger Non-Monogamous Relationships",
+      "blurb": "Naughty Gym Show is a podcast about non-monogamy, open relationships, swinging, polyamory, and the skills of building strong relationships beyond traditional monogamy",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1701360580": {
       "topics": [
@@ -120059,11 +120689,25 @@
     },
     "1701367231": {
       "topics": [
-        "education/courses"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sally Shi 寂静的声音: Ideas.",
+      "display_title": "Sally Shi 寂静的声音",
+      "blurb": "Sally Shi 的传福音频道，介绍教会历史，欧洲历史，圣经历史，以及最重要的--学习圣经！",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1701381608": {
       "topics": [
@@ -120195,19 +120839,52 @@
     },
     "1701907939": {
       "topics": [
-        "fiction"
+        "history",
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lighthouse Horror Podcast: History and Ideas.",
+      "display_title": "Lighthouse Horror Podcast",
+      "blurb": "The scariest stories you've ever heard",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1701912463": {
       "topics": [
-        "philosophy"
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Prometheus Lens: Ideas.",
+      "display_title": "Prometheus Lens",
+      "blurb": "For as little as $4 a month you can enjoy an ad free experience synced through your favorite podcast player",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1701923063": {
       "topics": [
@@ -120306,9 +120983,23 @@
       "topics": [
         "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "科技浪 Tech.wav: Computing.",
+      "display_title": "科技浪 Tech.wav",
+      "blurb": "用白話但不失深度的方式跟你聊科技，著重在AI 每周一中午更新！ 合作請來信：techwav",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1702466197": {
       "topics": [
@@ -120362,11 +121053,35 @@
     },
     "1702886407": {
       "topics": [
-        "tv-film"
+        "sports",
+        "comedy/casual-hangs",
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TMZ Live: Sports and Casual hangs.",
+      "display_title": "TMZ Live",
+      "blurb": "TMZ LIVE is a daily program hosted by Harvey Levin and Charles Latibeaudiere featuring the news of the day in the world of entertainment and pop culture and interviews with.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1702910998": {
       "topics": [
@@ -120478,11 +121193,25 @@
     },
     "1703321959": {
       "topics": [
-        "hobbies"
+        "philosophy/ideas"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Good Horses: Stories of t: Ideas.",
+      "display_title": "Good Horses: Stories of the American Quarter Horse",
+      "blurb": "Inspired by the spirit of every horseman’s “good horse,” \"Good Horses: Stories of the American Quarter Horse\" celebrates the incredible stories of the American Quarter Horse",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1703420294": {
       "topics": [
@@ -120585,19 +121314,47 @@
     },
     "1703653891": {
       "topics": [
-        "health/sexuality"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Infinite Devotion: Ideas.",
+      "display_title": "Infinite Devotion",
+      "blurb": "Most long-term relationships end up in the same place",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1703678575": {
       "topics": [
-        "tv-film"
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Petty Headquarters: Casual hangs.",
+      "display_title": "The Petty Headquarters",
+      "blurb": "Welcome to The Petty Headquarters",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1703680438": {
       "topics": [
@@ -120787,11 +121544,30 @@
     },
     "1704756841": {
       "topics": [
-        "craft/diy-home"
+        "craft/photography",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Honey I'm Homemaker: Photography and Ideas.",
+      "display_title": "Honey I'm Homemaker",
+      "blurb": "Join Megan and Jayna, a Mennonite cousin duo as they chat all things homemaking and motherhood",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1704761081": {
       "topics": [
@@ -121167,11 +121943,25 @@
     },
     "1705959955": {
       "topics": [
-        "music"
+        "comedy/casual-hangs"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Nightingale of Iran: Casual hangs.",
+      "display_title": "The Nightingale of Iran",
+      "blurb": "It was a golden age for Jews in Iran",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1705972518": {
       "topics": [
@@ -121476,11 +122266,30 @@
     },
     "1706873419": {
       "topics": [
-        "sports/volleyball"
+        "sports",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball State: Sports and Casual hangs.",
+      "display_title": "Volleyball State",
+      "blurb": "Semi-pro volleyball junkies Lincoln Arneal and Jeff Sheldon take you through six rotations each week -- from the Huskers, to the national college picture, recruiting and more",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1706887053": {
       "topics": [
@@ -121675,11 +122484,25 @@
     },
     "1707385969": {
       "topics": [
-        "tv-film"
+        "philosophy/ideas"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "PEARL DAILY: Ideas.",
+      "display_title": "PEARL DAILY",
+      "blurb": "Pearl is one of the fastest-growing YouTubers and cultural commentators in the world",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1707387295": {
       "topics": [
@@ -121690,11 +122513,25 @@
     },
     "1707391801": {
       "topics": [
-        "education/self-improvement"
+        "medicine"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Am I Doing It Wrong?: Medicine.",
+      "display_title": "Am I Doing It Wrong?",
+      "blurb": "Am I Doing It Wrong?: Medicine.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1707403305": {
       "topics": [
@@ -121773,11 +122610,25 @@
     },
     "1707711637": {
       "topics": [
-        "education/how-to"
+        "craft/diy-home"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Frugal Living for Familie: DIY & home.",
+      "display_title": "Frugal Living for Families | Become a Stay-at-Home",
+      "blurb": "* Is your heart nudging you to be a stay-at-home mom, but it feels impossible to make it work as a single-income family",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-8487c94d",
+      "classified_at": "2026-07-27T00:32:45.046Z"
     },
     "1707761906": {
       "topics": [
