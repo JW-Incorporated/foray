@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-27T08:36:54.213Z",
+  "built_at": "2026-07-27T16:37:11.795Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-27-039e6335",
+    "last_batch_id": "fresh-2026-07-27-04ad1220",
     "last_batch_tier": 1
   },
   "entries": {
@@ -155387,11 +155387,80 @@
     },
     "1843299832": {
       "topics": [
-        "business/non-profit"
+        "kids-family",
+        "history",
+        "sports/hockey",
+        "sports/cricket",
+        "fiction",
+        "computing",
+        "culture",
+        "society",
+        "education/how-to",
+        "health/sexuality",
+        "science",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "sports/cricket",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Dr. Lois Lee Show",
+      "display_title": "The Dr. Lois Lee Show",
+      "blurb": "Dr. Lois Lee — founder of Children of the Night and internationally recognized expert on child sex t.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1843355568": {
       "topics": [
@@ -155510,11 +155579,57 @@
     "1843782664": {
       "topics": [
         "health/sexuality",
-        "fiction"
+        "culture/art",
+        "music",
+        "computing",
+        "personal-journals",
+        "culture",
+        "society"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Audio Gay Porn 🔞  Erotic Gay stories  Evan's Di",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1843904349": {
       "topics": [
@@ -155741,11 +155856,60 @@
     },
     "1844750908": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "history",
+        "fiction",
+        "computing",
+        "personal-journals",
+        "culture",
+        "comedy",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ice Guardians Pod",
+      "display_title": "Ice Guardians Pod",
+      "blurb": "Brett Hull and Kelly Chase—two St. Louis Blues legends whose friendship was forged through grit, loy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1844807568": {
       "topics": [
@@ -155809,11 +155973,55 @@
     },
     "1844999212": {
       "topics": [
-        "sports/cricket"
+        "sports/cricket",
+        "culture",
+        "sports/hockey",
+        "education/self-improvement",
+        "fiction",
+        "computing",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.99
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Fast Bowling Cartel",
+      "display_title": "The Fast Bowling Cartel",
+      "blurb": "Welcome to The Fast Bowling Cartel – where the quicks talk fast, bowl faster and nothing’s off-limit.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1845073720": {
       "topics": [
@@ -155938,11 +156146,75 @@
     },
     "1845887200": {
       "topics": [
-        "education/self-improvement"
+        "education/how-to",
+        "sports/cricket",
+        "music",
+        "history",
+        "kids-family",
+        "fiction",
+        "computing",
+        "personal-journals",
+        "culture",
+        "education/courses",
+        "culture/art"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/cricket",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Human School",
+      "display_title": "Human School",
+      "blurb": "We’ve been taught everything except how to be human. In a world obsessed with output, Human School i.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1845905844": {
       "topics": [
@@ -156307,11 +156579,93 @@
     },
     "1847874670": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society",
+        "education/self-improvement",
+        "news/politics",
+        "hobbies",
+        "music",
+        "history",
+        "computing",
+        "personal-journals",
+        "culture",
+        "education/how-to",
+        "science",
+        "culture/art",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.99
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.55
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Nonprofit Boost Leveraging Corporate Support ",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1847881383": {
       "topics": [
@@ -156563,11 +156917,60 @@
     },
     "1848760192": {
       "topics": [
-        "society/government"
+        "news/politics",
+        "culture",
+        "sports/cricket",
+        "music",
+        "history",
+        "computing",
+        "education/how-to",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.99
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/cricket",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Playbook Canada",
+      "display_title": "Playbook Canada",
+      "blurb": "Each week, POLITICO’s Nick Taylor-Vaisey and Mickey Djuric bring to life the stories that are drivin.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1848845269": {
       "topics": [
@@ -156668,11 +157071,55 @@
     },
     "1849180978": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "culture/art",
+        "sports/hockey",
+        "sports/cricket",
+        "music",
+        "culture",
+        "comedy"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "sports/cricket",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "All Access with Linsey Davis",
+      "display_title": "All Access with Linsey Davis",
+      "blurb": "\"All Access with Linsey Davis\" from ABC News Live features 30-minute candid conversations with celeb.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1849196080": {
       "topics": [
@@ -156838,11 +157285,55 @@
     },
     "1849776514": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "history",
+        "sports/hockey",
+        "fiction",
+        "computing",
+        "culture",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.99
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Holo Hustle Your Weekly Pokémon TCG Market Update",
+      "display_title": "Holo Hustle: Your Weekly Pokémon TCG Market Update",
+      "blurb": "Holo Hustle is your weekly Pokémon TCG market update, hosted by longtime collector Al Bowers. Each 2.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1849798268": {
       "topics": [
@@ -157235,19 +157726,77 @@
     },
     "1851307432": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "education/self-improvement",
+        "news/politics",
+        "tv-film",
+        "kids-family",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.55
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.55
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wingmen with Matthew & Brady Tkachuk",
+      "display_title": "Wingmen with Matthew & Brady Tkachuk",
+      "blurb": "Matthew and Brady Tkachuk mix NHL stardom with brotherly rivalry. New Episodes every Wednesday. 2 Br.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1851308086": {
       "topics": [
-        "religion/christianity"
+        "religion",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Overflow Church",
+      "display_title": "Overflow Church",
+      "blurb": "Overflow Church exists to help people overflow with love, joy, and hope through Jesus. Join us Sunda.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1851315396": {
       "topics": [
@@ -157266,11 +157815,78 @@
     },
     "1851409948": {
       "topics": [
-        "education/self-improvement"
+        "kids-family",
+        "education/how-to",
+        "sports/hockey",
+        "health/fitness",
+        "history",
+        "religion",
+        "computing",
+        "personal-journals",
+        "culture",
+        "health/mental",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "religion",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "NXT Chapter with T.D. Jakes",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1851456704": {
       "topics": [
@@ -157309,11 +157925,45 @@
     },
     "1851577528": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "society",
+        "kids-family",
+        "fiction",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Vanishing of Janis Rose",
+      "display_title": "The Vanishing of Janis Rose",
+      "blurb": "An investigator takes on the challenge of figuring out what became of a young mother of four who van.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1851610818": {
       "topics": [
@@ -157338,11 +157988,85 @@
     },
     "1851836302": {
       "topics": [
-        "health/sexuality"
+        "religion",
+        "health/sexuality",
+        "history",
+        "sports/hockey",
+        "music",
+        "fiction",
+        "computing",
+        "culture",
+        "society",
+        "education/how-to",
+        "space",
+        "culture/art",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        },
+        {
+          "node": "space",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "You Can Be Both",
+      "display_title": "You Can Be Both",
+      "blurb": "You Can Be Both is hosted by singer/songwriter Lauren Lanzaretta, who shares honest conversations ab.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1851853436": {
       "topics": [
@@ -157391,11 +158115,58 @@
     },
     "1852047160": {
       "topics": [
-        "kids-family"
+        "history",
+        "kids-family",
+        "computing",
+        "sports/cricket",
+        "business/non-profit",
+        "fiction",
+        "education/courses"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/cricket",
+          "confidence": 0.55
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History for Kids / History's Not Boring The Kids ",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1852074005": {
       "topics": [
@@ -157450,11 +158221,45 @@
     },
     "1852272754": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "sports/hockey",
+        "kids-family",
+        "fiction",
+        "space"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.99
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "space",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonsense on Ice",
+      "display_title": "Nonsense on Ice",
+      "blurb": "Join Doug Plagens for a weekly dose of hockey collectibles conversation. You can expect to hear abou.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1852295289": {
       "topics": [
@@ -157597,11 +158402,65 @@
     },
     "1852618120": {
       "topics": [
-        "history"
+        "history",
+        "sports/hockey",
+        "music",
+        "kids-family",
+        "fiction",
+        "computing",
+        "culture",
+        "education/how-to",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.99
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Past Lives",
+      "display_title": "Past Lives",
+      "blurb": "History is built by people like you, and Past Lives is here to bring their stories to life. Every we.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1852682436": {
       "topics": [
@@ -157747,11 +158606,80 @@
     },
     "1853682658": {
       "topics": [
-        "music"
+        "music",
+        "culture",
+        "culture/art",
+        "sports/hockey",
+        "sports/cricket",
+        "education/self-improvement",
+        "history",
+        "kids-family",
+        "fiction",
+        "computing",
+        "space",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.99
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "sports/cricket",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "space",
+          "confidence": 0.55
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Still 400 The Mannie & Juvie Show",
+      "display_title": "Still 400: The Mannie & Juvie Show",
+      "blurb": "Still 400: The Mannie & Juvie Show is a weekly ride through music, culture, and real-life stories —.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1853686424": {
       "topics": [
@@ -157800,11 +158728,80 @@
     },
     "1853905504": {
       "topics": [
-        "business/non-profit"
+        "kids-family",
+        "sports/hockey",
+        "music",
+        "health/fitness",
+        "history",
+        "religion",
+        "computing",
+        "personal-journals",
+        "culture",
+        "society",
+        "science",
+        "culture/art"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "religion",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Listen to the Helpers",
+      "display_title": "Listen to the Helpers",
+      "blurb": "The Fred Rogers Institute advances the legacy of Fred Rogers by investing in the strengths of famili.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1853909745": {
       "topics": [
@@ -157954,11 +158951,65 @@
     },
     "1854840136": {
       "topics": [
-        "history"
+        "sports/hockey",
+        "business/non-profit",
+        "history",
+        "kids-family",
+        "computing",
+        "culture",
+        "education/how-to",
+        "space",
+        "culture/art"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        },
+        {
+          "node": "space",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Ask A Vet Podcast",
+      "display_title": "Ask A Vet Podcast",
+      "blurb": "Ask A Vet Podcast is a long-form conversation where veterans share their service experiences in thei.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1854841689": {
       "topics": [
@@ -158030,11 +159081,60 @@
     },
     "1855137874": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "education/self-improvement",
+        "science",
+        "sports/hockey",
+        "sports/cricket",
+        "computing",
+        "comedy",
+        "space"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.99
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "sports/cricket",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.55
+        },
+        {
+          "node": "space",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "All or Something Podcast",
+      "display_title": "All or Something Podcast",
+      "blurb": "The All or Something Podcast is where Sohee and Ben bring their real, evidence-based approach to hea.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1855147261": {
       "topics": [
@@ -158068,11 +159168,60 @@
     },
     "1855549216": {
       "topics": [
-        "society/government"
+        "history",
+        "news/politics",
+        "music",
+        "fiction",
+        "computing",
+        "culture",
+        "culture/art",
+        "relationships"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stubborn Things",
+      "display_title": "Stubborn Things",
+      "blurb": "John Adams famously said: “Facts are stubborn things; and whatever may be our wishes, our inclinatio.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1855632593": {
       "topics": [
@@ -158346,11 +159495,55 @@
     },
     "1858549786": {
       "topics": [
-        "culture/art"
+        "sports/hockey",
+        "tv-film",
+        "computing",
+        "personal-journals",
+        "society",
+        "comedy",
+        "space"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.55
+        },
+        {
+          "node": "space",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "It's Open with Ilana Glazer",
+      "display_title": "It's Open with Ilana Glazer",
+      "blurb": "Comedian Ilana Glazer hosts this comedy & socio-political podcast, a space to celebrate the little t.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1858561509": {
       "topics": [
@@ -158361,11 +159554,75 @@
     },
     "1858594054": {
       "topics": [
-        "fiction"
+        "fiction",
+        "music",
+        "true-crime",
+        "culture/art",
+        "sports/hockey",
+        "tv-film",
+        "history",
+        "computing",
+        "personal-journals",
+        "culture",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kahani Suno with Kabir and Sarah",
+      "display_title": "Kahani Suno with Kabir and Sarah",
+      "blurb": "“Kahani Suno: A Cinematic Experience” is where timeless storytelling meets modern imagination. Each.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1858639304": {
       "topics": [
@@ -158419,11 +159676,45 @@
     },
     "1858999390": {
       "topics": [
-        "tv-film"
+        "history",
+        "fiction",
+        "computing",
+        "culture",
+        "culture/art"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Stay and Scream an HHN Podcast",
+      "display_title": "Stay and Scream: an HHN Podcast",
+      "blurb": "Welcome to the Stay & Scream: a Halloween Horror Nights Podcast, where we share our love for Hallowe.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1859041530": {
       "topics": [
@@ -158639,11 +159930,70 @@
     },
     "1861635232": {
       "topics": [
-        "music"
+        "music",
+        "culture/art",
+        "culture",
+        "sports/cricket",
+        "history",
+        "kids-family",
+        "computing",
+        "personal-journals",
+        "society",
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/cricket",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Ebro, Laura, Rosenberg Show",
+      "display_title": "The Ebro, Laura, Rosenberg Show",
+      "blurb": "The Ebro, Laura & Rosenberg Show is a cultural commentary platform hosted by Ebro Darden, Laura Styl.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1861673355": {
       "topics": [
@@ -159149,19 +160499,125 @@
     },
     "1866347260": {
       "topics": [
-        "personal-journals"
+        "tv-film",
+        "comedy",
+        "sports/hockey",
+        "music",
+        "computing",
+        "personal-journals",
+        "culture",
+        "education/how-to",
+        "culture/art",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hey Tablo",
+      "display_title": "Hey Tablo",
+      "blurb": "K-pop icon and Epik High frontman Tablo has seen it all—from surviving an internet witchhunt and chi.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1866385864": {
       "topics": [
-        "tv-film"
+        "sports/hockey",
+        "tv-film",
+        "history",
+        "kids-family",
+        "computing",
+        "culture",
+        "culture/art"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Aespa, ITZY, Red Velvet And BlackPink Kpop Girl Ba",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1866392480": {
       "topics": [
@@ -159201,11 +160657,50 @@
     },
     "1866656284": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "kids-family",
+        "computing",
+        "culture",
+        "society",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Kindergarten Toolbox",
+      "display_title": "The Kindergarten Toolbox",
+      "blurb": "Welcome to The Kindergarten Toolbox Podcast , your go-to guide for creating calmer classrooms and mo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1866690507": {
       "topics": [
@@ -159345,11 +160840,50 @@
     },
     "1867054864": {
       "topics": [
-        "gaming"
+        "health/fitness",
+        "culture",
+        "music",
+        "computing",
+        "health/mental",
+        "culture/art"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hard Reset Podcast",
+      "display_title": "Hard Reset Podcast",
+      "blurb": "With everything going on in life, sometimes you need a Hard Reset. Hosted by Baddie and ScottyKFitne.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1867080456": {
       "topics": [
@@ -159862,11 +161396,60 @@
     },
     "1869086350": {
       "topics": [
-        "education/how-to"
+        "health/mental",
+        "education/how-to",
+        "health/fitness",
+        "history",
+        "fiction",
+        "computing",
+        "society",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neurodivergent Insights with Dr. Megan Anna Neff",
+      "display_title": "Neurodivergent Insights with Dr. Megan Anna Neff",
+      "blurb": "The Neurodivergent Insights Podcast was created by Dr. Megan Anna Neff (she/they) an Autistic-ADHD c.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1869154633": {
       "topics": [
@@ -159900,19 +161483,127 @@
     },
     "1869378304": {
       "topics": [
-        "religion"
+        "history",
+        "religion",
+        "music",
+        "true-crime",
+        "fiction",
+        "computing",
+        "personal-journals",
+        "culture",
+        "culture/art"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Storyscape Podcast",
+      "display_title": "Storyscape Podcast",
+      "blurb": "Join Pastor Travis Jones, Silverdale Baptist Church, and Shawn Whitfield for the Storyscape Podcast..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1869451510": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "sports/hockey",
+        "business/non-profit",
+        "music",
+        "history",
+        "computing",
+        "personal-journals",
+        "culture",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Finance Exam Prep",
+      "display_title": "Finance Exam Prep",
+      "blurb": "Finance Exam Prep is a daily podcast designed to help future tax and finance professionals pass thei.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1869515072": {
       "topics": [
@@ -159931,11 +161622,40 @@
     },
     "1869700162": {
       "topics": [
-        "society"
+        "sports/cricket",
+        "computing",
+        "culture",
+        "culture/art"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Bloodline Banter",
+      "display_title": "Bloodline Banter",
+      "blurb": "BLOODLINE BANTER IS OUT NOW!!!! Subscribe now so you don't miss it",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1869700282": {
       "topics": [
@@ -160252,11 +161972,45 @@
     },
     "1871931514": {
       "topics": [
-        "religion/hinduism"
+        "religion",
+        "history",
+        "computing",
+        "culture",
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.7
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brihadaranyaka Upanishad  Swami Sarvapriyananda",
+      "display_title": "Brihadaranyaka Upanishad | Swami Sarvapriyananda",
+      "blurb": "The Brihadaranyaka Upanishad (Sanskrit: बृहदारण्यकोपनिषद्, IAST: Bṛhadāraṇyakopaniṣad) is one of the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1871936541": {
       "topics": [
@@ -160468,11 +162222,50 @@
     },
     "1873383760": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "sports/hockey",
+        "music",
+        "computing",
+        "culture",
+        "culture/art"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ABC Entertainment Update",
+      "display_title": "ABC Entertainment Update",
+      "blurb": "The hottest music releases, upcoming movies, and insightful celebrity interviews are all featured in.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1873383776": {
       "topics": [
@@ -160659,11 +162452,45 @@
     },
     "1874130976": {
       "topics": [
-        "kids-family/education"
+        "sports/cricket",
+        "history",
+        "kids-family",
+        "fiction",
+        "computing"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History Snacks",
+      "display_title": "History Snacks",
+      "blurb": "New season coming Sept 10th! Bite size chomps of history for kids! Join hosts Kenny Curtis and Jilli.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1874157491": {
       "topics": [
@@ -160749,11 +162576,55 @@
     },
     "1874648722": {
       "topics": [
-        "engineering/ai-robotics"
+        "sports/hockey",
+        "news/politics",
+        "computing",
+        "culture",
+        "space",
+        "science",
+        "culture/art"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "space",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "This Week in AI",
+      "display_title": "This Week in AI",
+      "blurb": "An experts-only AI podcast: Think the 'All In' podcast for AI. Jason + 3 CEO-level experts breaking.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1874649731": {
       "topics": [
@@ -160863,11 +162734,75 @@
     },
     "1874953738": {
       "topics": [
-        "religion"
+        "religion",
+        "fiction",
+        "sports/hockey",
+        "health/fitness",
+        "computing",
+        "personal-journals",
+        "culture",
+        "society",
+        "education/how-to",
+        "science",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Backstory Podcast",
+      "display_title": "The Backstory Podcast",
+      "blurb": "The Backstory Podcast Join hosts Josh Packard (Future of Faith), Shannon Hopkins (Rooted Good), and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1875054474": {
       "topics": [
@@ -161073,11 +163008,55 @@
     },
     "1876307350": {
       "topics": [
-        "business"
+        "computing",
+        "sports/hockey",
+        "history",
+        "culture",
+        "society",
+        "education/courses",
+        "culture/art"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dialed In",
+      "display_title": "Dialed In",
+      "blurb": "The AI voice industry is booming, but most platforms leave compliance up to chance. Dialed In breaks.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1876326569": {
       "topics": [
@@ -161283,19 +163262,137 @@
     },
     "1877210950": {
       "topics": [
-        "news/tech"
+        "history",
+        "computing",
+        "sports/hockey",
+        "news/politics",
+        "true-crime",
+        "fiction",
+        "culture",
+        "society",
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.55
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Drey Dossier",
+      "display_title": "The Drey Dossier",
+      "blurb": "The Drey Dossier is an independent investigative project tracing how power operates through systems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1877266132": {
       "topics": [
-        "personal-journals"
+        "history",
+        "kids-family",
+        "comedy",
+        "culture/art",
+        "sports/hockey",
+        "tv-film",
+        "music",
+        "fiction",
+        "computing",
+        "culture",
+        "education/courses"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Person Who Believed In Me",
+      "display_title": "The Person Who Believed In Me",
+      "blurb": "Deeply human conversations with extraordinary humans. Raw. Relatable. Unexpected. Hosted by Emmy Awa.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1877275547": {
       "topics": [
@@ -161322,11 +163419,60 @@
     },
     "1877577124": {
       "topics": [
-        "business/non-profit"
+        "culture/art",
+        "sports/hockey",
+        "business/non-profit",
+        "health/fitness",
+        "religion",
+        "computing",
+        "culture",
+        "society"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.55
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.55
+        },
+        {
+          "node": "religion",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Nonprofit CEO Podcast",
+      "display_title": "The Nonprofit CEO Podcast",
+      "blurb": "Nonprofit CEOs carry decisions they can't fully discuss with their board, their team, or their peers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1877611346": {
       "topics": [
@@ -161360,11 +163506,55 @@
     },
     "1877671240": {
       "topics": [
-        "education/self-improvement"
+        "health/fitness",
+        "culture",
+        "education/how-to",
+        "sports/hockey",
+        "education/self-improvement",
+        "computing",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.99
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Project Swagger with Robin Arzón",
+      "display_title": "Project Swagger with Robin Arzón",
+      "blurb": "It’s time to level up. Every week, modern multi-hyphenate Robin Arzón delivers the tools and mindset.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1877692345": {
       "topics": [
@@ -161375,11 +163565,70 @@
     },
     "1877705944": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "history",
+        "business/non-profit",
+        "kids-family",
+        "fiction",
+        "computing",
+        "culture",
+        "education/how-to",
+        "space",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.99
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.55
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        },
+        {
+          "node": "space",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories of Art",
+      "display_title": "Stories of Art",
+      "blurb": "Stories of Art brings together art historian Dr. James Fox and art critic Alastair Sooke to uncover.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1877846685": {
       "topics": [
@@ -161411,11 +163660,73 @@
     },
     "1877888956": {
       "topics": [
-        "education/self-improvement"
+        "psychology",
+        "sports/hockey",
+        "tv-film",
+        "computing",
+        "culture",
+        "society",
+        "education/how-to",
+        "space",
+        "science",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.99
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        },
+        {
+          "node": "space",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Spirit Daughter Podcast",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1877905664": {
       "topics": [
@@ -161531,11 +163842,58 @@
     },
     "1878393358": {
       "topics": [
-        "education/courses"
+        "sports/hockey",
+        "tv-film",
+        "music",
+        "history",
+        "computing",
+        "space",
+        "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "space",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "On the Mic with MAP Podcast Mapping the Way to Pr",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1878410447": {
       "topics": [
@@ -161642,11 +164000,63 @@
     },
     "1879151296": {
       "topics": [
-        "education/how-to"
+        "sports/hockey",
+        "history",
+        "fiction",
+        "computing",
+        "personal-journals",
+        "culture",
+        "education/how-to",
+        "culture/art"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Navigating Elderly Parents  Elderly Care, Senior ",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 15w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1879155149": {
       "topics": [
@@ -161707,11 +164117,55 @@
     },
     "1879512100": {
       "topics": [
-        "religion/christianity"
+        "religion",
+        "business/non-profit",
+        "history",
+        "computing",
+        "culture",
+        "society",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Faith Under Fire",
+      "display_title": "Faith Under Fire",
+      "blurb": "Working so that Christians can thrive everywhere. A podcast of Aid to the Church in Need Ireland. Wi.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1879555679": {
       "topics": [
@@ -161855,11 +164309,50 @@
     },
     "1880097970": {
       "topics": [
-        "music"
+        "music",
+        "kids-family",
+        "culture/art",
+        "computing",
+        "culture",
+        "society"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "All Songs Considered",
+      "display_title": "All Songs Considered",
+      "blurb": "All Songs Considered is NPR's flagship podcast for new music, artist interviews and friendly banter.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1880116158": {
       "topics": [
@@ -161964,11 +164457,70 @@
     },
     "1880468950": {
       "topics": [
-        "comedy"
+        "tv-film",
+        "sports/hockey",
+        "history",
+        "society",
+        "comedy",
+        "fiction",
+        "computing",
+        "culture",
+        "education/courses",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.7
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Funny You Ask with Ike Barinholtz",
+      "display_title": "Funny You Ask with Ike Barinholtz",
+      "blurb": "Funny You Ask is a weekly comedy-trivia show hosted by Ike Barinholtz, who gathers his funniest frie.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1880474943": {
       "topics": [
@@ -162240,11 +164792,65 @@
     },
     "1882146616": {
       "topics": [
-        "space"
+        "space",
+        "music",
+        "history",
+        "culture",
+        "computing",
+        "science",
+        "culture/art",
+        "psychology",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.99
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.55
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Star River Podcast",
+      "display_title": "The Star River Podcast",
+      "blurb": "The Star River: Astronomy, Culture, and the Cosmic Connection We are all travelers on a single curre.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1882188536": {
       "topics": [
@@ -162363,12 +164969,80 @@
     },
     "1882578376": {
       "topics": [
+        "science",
+        "health/fitness",
         "health/sexuality",
-        "fiction"
+        "sports/hockey",
+        "business/non-profit",
+        "music",
+        "history",
+        "computing",
+        "culture",
+        "comedy",
+        "culture/art",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.55
+        },
+        {
+          "node": "music",
+          "confidence": 0.55
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Sexology Lab",
+      "display_title": "The Sexology Lab",
+      "blurb": "The conversation on human potential is incomplete without erotic intelligence. The Sexology Lab is w.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1882800094": {
       "topics": [
@@ -162439,11 +165113,85 @@
     },
     "1883176744": {
       "topics": [
-        "personal-journals"
+        "culture",
+        "society",
+        "sports/hockey",
+        "news/politics",
+        "tv-film",
+        "health/fitness",
+        "true-crime",
+        "fiction",
+        "computing",
+        "comedy",
+        "education/how-to",
+        "health/sexuality",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.55
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.55
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.55
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "B*tch, Listen!",
+      "display_title": "B*tch, Listen!",
+      "blurb": "Imani Gandy is a lawyer, a reproductive justice advocate, and someone with a lot of opinions. B*tch,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1883180157": {
       "topics": [
@@ -162759,11 +165507,65 @@
     },
     "1884997786": {
       "topics": [
-        "religion/spirituality"
+        "culture",
+        "history",
+        "psychology",
+        "tv-film",
+        "hobbies",
+        "religion",
+        "fiction",
+        "society",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.55
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.55
+        },
+        {
+          "node": "religion",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AstroloTea with Aliza Kelly Horoscopes and Astrol",
+      "display_title": "AstroloTea with Aliza Kelly: Horoscopes and Astrology",
+      "blurb": "Put the kettle on! You're invited to spill the AstroloTea with Aliza Kelly. Every Monday and Wednesd.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1885015768": {
       "topics": [
@@ -162821,11 +165623,45 @@
     },
     "1885261942": {
       "topics": [
-        "tv-film"
+        "culture/art",
+        "sports/hockey",
+        "health/fitness",
+        "computing",
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Valhalla VFT",
+      "display_title": "Valhalla VFT",
+      "blurb": "Join our Patreon for exclusive DMs! New videos and clips are released regularly. Livestreams are on.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-04ad1220",
+      "classified_at": "2026-07-27T16:37:11.795Z"
     },
     "1885326677": {
       "topics": [
