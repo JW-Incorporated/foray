@@ -7638,6 +7638,1303 @@
       "batch_id": "fresh-2026-07-27-503b0eab",
       "classified_at": "2026-07-27T00:50:27.931Z"
     },
+    "963859436": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music based on show description and episode titles.",
+      "display_title": "Don Diablo Presents Hexagon Radio",
+      "blurb": "Join Don Diablo and his little electronic buddy Hex for a weekly journey in to the future..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "964330550": {
+      "topics": [
+        "news/daily",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily News based on show description and episode titles.",
+      "display_title": "Yaron Brook Show",
+      "blurb": "Yaron Brook, the Radical for Capitalism, discusses news, culture and politics from the principled perspective of Ayn Rand's philosophy, Objectivism. Want more? Visit YaronBrookShow...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "964623770": {
+      "topics": [
+        "hobbies",
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Hobbies & Leisure based on show description and episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 35w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "966770162": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Judaism based on show description and episode titles.",
+      "display_title": "Parshah With Rabbi Gordon",
+      "blurb": "These classes teach the day’s section of the weekly Torah portion. The lesson is taught using the original Hebrew text with the indispensable commentary of Rashi—both translated an...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "967794020": {
+      "topics": [
+        "personal-journals",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Personal Journals based on show description and episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 35w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "968271818": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Islam based on show description and episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "968638424": {
+      "topics": [
+        "health/mental",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.95
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mental Health based on show description and episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "973600874": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Endurance based on show description and episode titles.",
+      "display_title": "The Natural Running Network",
+      "blurb": "Straight Talk and Expert Advice for Endurance Athletes",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "974288930": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.98
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Hockey based on show description and episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8",
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "974925146": {
+      "topics": [
+        "fiction/drama",
+        "philosophy",
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Drama based on show description and episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 35w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "975730628": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business based on show description and episode titles.",
+      "display_title": "Podcasts – RealAgriculture",
+      "blurb": "Get all of the audio interviews and podcasts from RealAgriculture in one place.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "976377038": {
+      "topics": [
+        "health/alternative",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Alternative Health based on show description and episode titles.",
+      "display_title": "Herbal Radio",
+      "blurb": "Herbal Radio brings you invaluable conversations with herbalists, botanists, scientists, conservationists, and more! Hoping to inspire the next generation of herbal crafters, Herba...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "977824904": {
+      "topics": [
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pop Culture based on show description and episode titles.",
+      "display_title": "STASSI with Tay",
+      "blurb": "Stassi Schroeder and Taylor Strecker are here to talk shit… mostly about themselves. They break down pop culture, relationships, motherhood, and the chaos of their lives, without t...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "978052928": {
+      "topics": [
+        "culture/mythology",
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/mythology",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mythology based on show description and episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "981973526": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive based on show description and episode titles.",
+      "display_title": "Remarkable Results Radio Podcast",
+      "blurb": "Ever wonder what differentiates successful businesses, especially in the professional automotive repair industry? Continuing education focused on great leadership, business strateg...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "984107360": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.98
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Baseball based on show description and episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "984947792": {
+      "topics": [
+        "aviation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation based on show description and episode titles.",
+      "display_title": "Cloudbase Mayhem Podcast",
+      "blurb": "Free flight podcast hosted by Gavin McClurg",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "986108444": {
+      "topics": [
+        "culture/design",
+        "music",
+        "architecture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Design based on show description and episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "989564408": {
+      "topics": [
+        "news/politics",
+        "philosophy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Politics based on show description and episode titles.",
+      "display_title": "Punk Rock Libertarians Podcast",
+      "blurb": "Politics, philosophy, music, current events and more from a Punk Rock Libertarian perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "990897842": {
+      "topics": [
+        "culture/mythology",
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/mythology",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mythology based on show description and episode titles.",
+      "display_title": "Myths and Legends",
+      "blurb": "Jason Weiser and Carissa Weiser tell stories from myths, legends, and folklore that have shaped cultures throughout history. Some, like the stories of Aladdin, King Arthur, and Her...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "992525558": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Relationships based on show description and episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "993000668": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Drama based on show description and episode titles.",
+      "display_title": "Paralyzed",
+      "blurb": "This fictional podcast follows David, a chronic sufferer of sleep paralysis on his annual camping trip with friends. But something evil from his dreams awaits.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "993060740": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.98
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baseball based on show description and episode titles.",
+      "display_title": "Postgame Wrap Podcast",
+      "blurb": "Kruk, Kuip, Jon and Dave break down every Giants game on KNBR 680.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "997778396": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming based on show description and episode titles.",
+      "display_title": "Magic Mics Podcast",
+      "blurb": "Magic Mics is a weekly Magic: The Gathering podcast focusing on the community, current events, and fun topics each and every week. You can catch the show live at twitch.tv/magicmic...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "999471212": {
+      "topics": [
+        "health/fitness",
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fitness based on show description and episode content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:36.443Z"
+    },
+    "999487472": {
+      "topics": [
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Careers based on show description and episode content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 34w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:36.443Z"
+    },
+    "1003845008": {
+      "topics": [
+        "philosophy",
+        "religion",
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophy based on show description and episode content.",
+      "display_title": "Truth in Love",
+      "blurb": "A podcast providing biblical solutions for the problems people face. This podcast is a resource from the Association of Certified Biblical Counselors. For more information about AC...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:36.443Z"
+    },
+    "1005628280": {
+      "topics": [
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film Interviews based on show description and episode content.",
+      "display_title": "Twin Peaks Unwrapped",
+      "blurb": "A weekly podcast where we unwrap each and every episode of Twin Peaks, oh and lots of pie.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:36.443Z"
+    },
+    "1005719306": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Automotive based on show description and episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "1010738108": {
+      "topics": [
+        "news/daily",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily News based on show description and episode titles.",
+      "display_title": "CBS News Sunday Morning with Jane Pauley",
+      "blurb": "CBS News Sunday Morning is the top-rated Sunday morning news program in all the key demos and features stories on the arts, music, nature, entertainment, sports, history, science,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "1012570406": {
+      "topics": [
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Startups & deep tech based on show description and episode content.",
+      "display_title": "REAL AF with Andy Frisella",
+      "blurb": "Entrepreneur Andy Frisella and his guests discuss, debate, and laugh their way through trending topics and hot-button issues. (This is also the home of Andy's other show, the top-r...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:36.443Z"
+    },
+    "1012994576": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Music based on show description and episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "1013225660": {
+      "topics": [
+        "kids-family/education",
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Music and culture exploration for children.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 34w > 30",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:59.440Z"
+    },
+    "1017349610": {
+      "topics": [
+        "sports/cricket"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket podcast with alternative format and musical elements.",
+      "display_title": "Tailenders",
+      "blurb": "Greg James, Jimmy Anderson and Felix White take an alternative (and sometimes musical) look at cricket...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:59.440Z"
+    },
+    "1019622752": {
+      "topics": [
+        "religion/judaism",
+        "health/mental",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.95
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Judaism based on show description and episode titles.",
+      "display_title": "The RDL Podcast with Rabbi Daniel Lapin",
+      "blurb": "Rabbi Daniel Lapin, known world-wide as America's Rabbi, is a noted rabbinic scholar, best-selling author and host of the Rabbi Daniel Lapin podcast. He reveals how the world REALL...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "1020880772": {
+      "topics": [
+        "sports",
+        "adventure/exploration"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Backcountry hunting tactics and strategies.",
+      "display_title": "The Hunt Backcountry Podcast",
+      "blurb": "Backcountry hunters talking backcountry hunting. No advertisers or sponsors, no fluff, no BS. We discuss tactics, strategies, gear, hunt stories, and more — featuring a wide variet...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:52:11.392Z"
+    },
+    "1021817294": {
+      "topics": [
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Careers based on show description and episode content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:36.443Z"
+    },
+    "1023224738": {
+      "topics": [
+        "gaming",
+        "gaming/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "World of Warcraft lore and Blizzard games discussion.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:59.440Z"
+    },
+    "1023234452": {
+      "topics": [
+        "sports/fantasy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football analysis and film study.",
+      "display_title": "Harris Fantasy Football Podcast",
+      "blurb": "Christopher Harris's fantasy football podcast. We ignore the box score and watch game film. Draft better. Manage smarter. Win.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:59.440Z"
+    },
+    "1026284774": {
+      "topics": [
+        "comedy/casual-hangs",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast with personal conversations and stories.",
+      "display_title": "Jim Breuer's Breuniverse",
+      "blurb": "Step into The Breuniverse—where comedian Jim Breuer blends comedy, curiosity, and candid conversations like no one else can. From laugh-out-loud stories and life’s biggest question...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:59.440Z"
+    },
+    "1027216124": {
+      "topics": [
+        "news/daily",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily News based on show description and episode titles.",
+      "display_title": "Cruise News Today",
+      "blurb": "Cruise Radio News provides travel stories as they are released from the cruise lines. Cruise Radio News is a service of Cruise Radio, a weekly podcast informing cruise vacationers",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "1027239734": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Movie discussion and reviews.",
+      "display_title": "Epic Film Guys Podcast",
+      "blurb": "We’re the movie podcast your mother warned you about! Located in the Washington DC area, filled with bloodcurdling screams and gut-busting laughs, this weekly podcast follows Justi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:59.440Z"
+    },
+    "1027430378": {
+      "topics": [
+        "medicine",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Clinical medical reviews and author interviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:59.440Z"
+    },
+    "1027603976": {
+      "topics": [
+        "education",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.95
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Law school preparation and legal career guidance.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8",
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:59.440Z"
+    },
+    "1030050704": {
+      "topics": [
+        "kids-family/parenting",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Respectful parenting advice and guidance.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:59.440Z"
+    },
+    "1031707838": {
+      "topics": [
+        "health",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wellness, balance and purpose in modern life.",
+      "display_title": "The Urban Monk podcast with Dr. Pedram Shojai",
+      "blurb": "Join Dr. Pedram Shojai, New York Times bestselling author and acclaimed filmmaker, for deep conversations about living with balance and purpose in our chaotic modern world. As \"The...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:59.440Z"
+    },
+    "1033017980": {
+      "topics": [
+        "news/politics",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Politics based on show description and episode titles.",
+      "display_title": "Closing Market Report",
+      "blurb": "Established 1985 The Closing Market Report airs weekdays at 2:06pm central on WILL AM580, Urbana. University of Illinois Extension Farm Broadcaster Todd Gleason hosts the program.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:03.171Z"
+    },
+    "1033048640": {
+      "topics": [
+        "personal-journals",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motivation and personal development podcast.",
+      "display_title": "The Mindset Mentor",
+      "blurb": "The Mindset Mentor™ podcast is designed for anyone desiring motivation, direction, and focus in life. Host Rob Dial has amassed a passionate following of over 3 million social medi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:59.440Z"
+    },
+    "1035087290": {
+      "topics": [
+        "philosophy",
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Taoism philosophy explained in lighthearted format.",
+      "display_title": "What's This Tao All About?",
+      "blurb": "A lighthearted Taoism podcast hosted by a journalist and Tao philosopher.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-66513309",
+      "classified_at": "2026-07-27T08:51:59.440Z"
+    },
     "1459232606": {
       "topics": [
         "news/politics",
@@ -8806,11 +10103,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-27T00:50:27.931Z",
+  "built_at": "2026-07-27T08:52:11.392Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-27-503b0eab",
+    "last_batch_id": "fresh-2026-07-27-66513309",
     "last_batch_tier": 1
   }
 }
