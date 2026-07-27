@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-27T00:32:45.046Z",
+  "built_at": "2026-07-27T08:32:42.608Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-27-8487c94d",
+    "last_batch_id": "fresh-2026-07-27-93af5a00",
     "last_batch_tier": 1
   },
   "entries": {
@@ -132674,11 +132674,30 @@
     },
     "1741618111": {
       "topics": [
-        "science"
+        "science",
+        "space"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "space",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "UFO/UAP investigation; blends astronomy, conspiracy theory investigation",
+      "display_title": "UAP Files Podcast",
+      "blurb": "Documentary-style UFO case investigation with interviews from military, pilots, and scientists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1741620815": {
       "topics": [
@@ -132991,11 +133010,33 @@
     },
     "1742968315": {
       "topics": [
+        "comedy/casual-hangs",
         "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Celebrity interview; conversational, intimate Q&A format",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1743030473": {
       "topics": [
@@ -133043,11 +133084,30 @@
     },
     "1743146131": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family genealogy storytelling across US states",
+      "display_title": "Stories That Live In Us",
+      "blurb": "Genealogy storytelling uncovering family history, secrets, and heritage across America.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1743296029": {
       "topics": [
@@ -133410,11 +133470,35 @@
     },
     "1744739905": {
       "topics": [
+        "nature/animal-cognition",
+        "nature",
         "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marine mammal biology research and species highlights",
+      "display_title": "PacMam Podcast",
+      "blurb": "Marine mammal research and conservation science from Pacific Mammal Research organization.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1744748488": {
       "topics": [
@@ -133764,11 +133848,30 @@
     },
     "1746392935": {
       "topics": [
-        "business/careers"
+        "business/founders",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career guidance and life purpose from business/exec perspective",
+      "display_title": "Becoming You with Suzy Welch",
+      "blurb": "Career and life purpose guidance on work identity and professional transitions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1746394640": {
       "topics": [
@@ -133926,11 +134029,28 @@
     },
     "1746891577": {
       "topics": [
-        "society"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1747045069": {
       "topics": [
@@ -134187,8 +134307,25 @@
         "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1748312214": {
       "topics": [
@@ -134674,11 +134811,28 @@
     },
     "1751116057": {
       "topics": [
-        "education/self-improvement"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1751134433": {
       "topics": [
@@ -134712,11 +134866,28 @@
     },
     "1751194045": {
       "topics": [
-        "music"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1751241474": {
       "topics": [
@@ -134845,11 +135016,28 @@
     },
     "1751679193": {
       "topics": [
-        "computing"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1751803396": {
       "topics": [
@@ -134920,11 +135108,28 @@
     },
     "1752115435": {
       "topics": [
-        "education/self-improvement"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1752116728": {
       "topics": [
@@ -134943,11 +135148,28 @@
     },
     "1752138229": {
       "topics": [
-        "sports/soccer"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1752142877": {
       "topics": [
@@ -135250,11 +135472,28 @@
     },
     "1753789609": {
       "topics": [
-        "society"
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1753818800": {
       "topics": [
@@ -135344,11 +135583,28 @@
     },
     "1754386129": {
       "topics": [
-        "sports/volleyball"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1754392239": {
       "topics": [
@@ -135713,11 +135969,28 @@
     },
     "1756571551": {
       "topics": [
-        "news/daily"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1756578125": {
       "topics": [
@@ -135744,11 +136017,28 @@
     },
     "1756639663": {
       "topics": [
-        "news/politics"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1756695576": {
       "topics": [
@@ -135807,11 +136097,28 @@
     },
     "1756814155": {
       "topics": [
-        "society"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1756939023": {
       "topics": [
@@ -135898,11 +136205,28 @@
     },
     "1757686789": {
       "topics": [
-        "society"
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1757723241": {
       "topics": [
@@ -136028,11 +136352,28 @@
     },
     "1758531943": {
       "topics": [
-        "society"
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1758545538": {
       "topics": [
@@ -136073,11 +136414,28 @@
     },
     "1758855019": {
       "topics": [
-        "news/daily"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1758983201": {
       "topics": [
@@ -136141,11 +136499,28 @@
     },
     "1759355203": {
       "topics": [
-        "true-crime"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1759421406": {
       "topics": [
@@ -136229,11 +136604,29 @@
     },
     "1759876087": {
       "topics": [
-        "education/how-to"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8",
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1760009567": {
       "topics": [
@@ -136587,11 +136980,28 @@
     },
     "1761813985": {
       "topics": [
-        "health/sexuality"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1761904853": {
       "topics": [
@@ -136709,11 +137119,28 @@
     },
     "1762532683": {
       "topics": [
-        "business/non-profit"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1762538290": {
       "topics": [
@@ -136884,11 +137311,28 @@
     },
     "1763461729": {
       "topics": [
-        "society"
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1763475643": {
       "topics": [
@@ -137181,11 +137625,28 @@
     },
     "1765020547": {
       "topics": [
-        "society"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1765065234": {
       "topics": [
@@ -137218,11 +137679,28 @@
     },
     "1765159015": {
       "topics": [
-        "education/courses"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1765189781": {
       "topics": [
@@ -137476,11 +137954,28 @@
     },
     "1766382649": {
       "topics": [
-        "society"
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1766435920": {
       "topics": [
@@ -137529,11 +138024,28 @@
     },
     "1766755237": {
       "topics": [
-        "business/non-profit"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1766863322": {
       "topics": [
@@ -137595,11 +138107,28 @@
     },
     "1767329371": {
       "topics": [
-        "comedy/casual-hangs"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1767430765": {
       "topics": [
@@ -137727,11 +138256,28 @@
     },
     "1767956371": {
       "topics": [
-        "fiction"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1767970971": {
       "topics": [
@@ -137810,11 +138356,28 @@
     },
     "1768347235": {
       "topics": [
-        "science"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1768354655": {
       "topics": [
@@ -137898,11 +138461,28 @@
     },
     "1768794307": {
       "topics": [
-        "culture/fashion"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1768832305": {
       "topics": [
@@ -138108,11 +138688,28 @@
     },
     "1769462923": {
       "topics": [
-        "tv-film"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1769475730": {
       "topics": [
@@ -138250,11 +138847,28 @@
     },
     "1770243577": {
       "topics": [
-        "fiction/sci-fi"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1770253354": {
       "topics": [
@@ -138294,11 +138908,28 @@
     },
     "1770393529": {
       "topics": [
-        "medicine"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1770405815": {
       "topics": [
@@ -138422,11 +139053,28 @@
     },
     "1771047001": {
       "topics": [
-        "history"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1771049913": {
       "topics": [
@@ -138452,11 +139100,28 @@
     },
     "1771250299": {
       "topics": [
-        "news/commentary"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1771296517": {
       "topics": [
@@ -138594,11 +139259,28 @@
     },
     "1771928629": {
       "topics": [
-        "hobbies"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1771947545": {
       "topics": [
@@ -138631,11 +139313,28 @@
     },
     "1772148241": {
       "topics": [
-        "gaming"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1772288268": {
       "topics": [
@@ -138721,11 +139420,28 @@
     },
     "1772506189": {
       "topics": [
-        "hobbies"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1772528471": {
       "topics": [
@@ -139130,11 +139846,28 @@
     },
     "1774505095": {
       "topics": [
-        "news/politics"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1774600735": {
       "topics": [
@@ -139312,11 +140045,28 @@
     },
     "1775930773": {
       "topics": [
-        "nature/earth-science"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1775998101": {
       "topics": [
@@ -139403,11 +140153,28 @@
     },
     "1776375169": {
       "topics": [
-        "gaming"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1776386493": {
       "topics": [
@@ -139581,11 +140348,28 @@
     },
     "1777077679": {
       "topics": [
-        "computing"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1777081815": {
       "topics": [
@@ -139818,11 +140602,28 @@
     },
     "1777943683": {
       "topics": [
-        "religion"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1778011846": {
       "topics": [
@@ -139871,11 +140672,28 @@
     },
     "1778294839": {
       "topics": [
-        "society"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1778316009": {
       "topics": [
@@ -140020,11 +140838,28 @@
     },
     "1778869717": {
       "topics": [
-        "education/how-to"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1778966730": {
       "topics": [
@@ -140036,11 +140871,28 @@
     },
     "1778968081": {
       "topics": [
-        "gaming"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1778979797": {
       "topics": [
@@ -140060,11 +140912,28 @@
     },
     "1779133177": {
       "topics": [
-        "history"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Manual review needed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-93af5a00",
+      "classified_at": "2026-07-27T08:31:37.756Z"
     },
     "1779160795": {
       "topics": [
