@@ -1738,6 +1738,27 @@
       "batch_id": "fresh-2026-07-25-75c2313d",
       "classified_at": "2026-07-25T16:50:50.775Z"
     },
+    "276266378": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Anthology of fantasy fiction stories.",
+      "display_title": "PodCastle",
+      "blurb": "Weekly fantasy fiction stories featuring original works and published pieces read by professional narrators.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
     "276268070": {
       "topics": [
         "computing"
@@ -4614,6 +4635,32 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-26-af6a0d9c",
       "classified_at": "2026-07-26T08:50:56.126Z"
+    },
+    "577245086": {
+      "topics": [
+        "comedy",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast exploring conspiracy theories and hidden history.",
+      "display_title": "Tin Foil Hat With Sam Tripoli",
+      "blurb": "Comedy podcast exploring conspiracy theories and hidden history through satirical interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
     },
     "578641256": {
       "topics": [
@@ -8935,6 +8982,988 @@
       "batch_id": "fresh-2026-07-27-66513309",
       "classified_at": "2026-07-27T08:51:59.440Z"
     },
+    "1036379102": {
+      "topics": [
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English language learning lessons for non-native speakers.",
+      "display_title": "Learning English Vocabulary",
+      "blurb": "Language learning podcast building vocabulary and grammar skills through short lessons.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1037423108": {
+      "topics": [
+        "medicine/biology",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert discussions on microbiology and infectious disease research.",
+      "display_title": "Editors in Conversation",
+      "blurb": "Scientific podcast featuring expert discussions on microbiology and clinical diagnostics.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1037454686": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College athletics coverage focused on Oklahoma State.",
+      "display_title": "Pistols Firing",
+      "blurb": "Coverage of Oklahoma State Cowboys athletics and college sports.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1038064178": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tottenham Hotspur fan podcast covering team news.",
+      "display_title": "The Tottenham Way",
+      "blurb": "Spurs podcast covering transfers, match reactions, and team analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1039511252": {
+      "topics": [
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Original bedtime and anytime stories for families.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1039562972": {
+      "topics": [
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual and motivational podcast with daily interviews.",
+      "display_title": "Inspire Nation Show with Michael Sandler",
+      "blurb": "Spiritual and motivational show featuring guided meditations and self-help interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1039910852": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chicago Bears fan coverage with team analysis.",
+      "display_title": "CHGO Chicago Bears Podcast",
+      "blurb": "Daily Chicago Bears coverage featuring exclusive interviews and game analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1040046560": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science fiction audio drama about alien invasion survival.",
+      "display_title": "End of All Hope",
+      "blurb": "Science fiction audio drama following survivors during an alien invasion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1041876428": {
+      "topics": [
+        "tv-film",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast reviewing bad religious movies.",
+      "display_title": "God Awful Movies",
+      "blurb": "Comedians review poorly-made religious films through a satirical lens.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1042342868": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music-focused content covering interviews and discussions.",
+      "display_title": "Best of The Roula Show with Eric",
+      "blurb": "Music podcast featuring artist interviews, record collecting, or music commentary.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1042351742": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship and dating advice focused on listener experiences.",
+      "display_title": "Second Date Update Podcasts",
+      "blurb": "Relationship advice and dating podcast covering personal connections and life updates.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1042368254": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tottenham Hotspur fan podcast covering team news.",
+      "display_title": "The Herd with Colin Cowherd",
+      "blurb": "Spurs podcast covering transfers, match reactions, and team analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1042735766": {
+      "topics": [
+        "sports/tennis",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis coaching insights and player development interviews.",
+      "display_title": "Dissecting High Performance In Tennis",
+      "blurb": "In-depth interviews with professional tennis coaches on player development and coaching.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1045171376": {
+      "topics": [
+        "society",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political satire and cultural commentary with humor.",
+      "display_title": "The Andrew Klavan Show",
+      "blurb": "Satirical political and cultural commentary addressing contemporary issues.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1047430562": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Poker strategy coaching for serious players.",
+      "display_title": "The Official Red Chip Poker Podcast",
+      "blurb": "Poker strategy podcast covering game theory and bankroll management.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:30.860Z"
+    },
+    "1048210550": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science fiction audio drama about alien invasion survival.",
+      "display_title": "U.S. Supreme Court Oral Arguments",
+      "blurb": "Science fiction audio drama following survivors during an alien invasion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1048375034": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literature history and author discussions.",
+      "display_title": "The History of Literature",
+      "blurb": "Literature history podcast exploring classics from ancient epics to contemporary works.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1048766030": {
+      "topics": [
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Spiritual and motivational podcast with daily interviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1052346812": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly rugby discussion and analysis.",
+      "display_title": "Blood & Mud Rugby Podcast",
+      "blurb": "Rugby podcast covering international matches and tournament analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1053268058": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science fiction audio drama about alien invasion survival.",
+      "display_title": "The Bright Sessions",
+      "blurb": "Science fiction audio drama following survivors during an alien invasion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1055044256": {
+      "topics": [
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual and motivational podcast with daily interviews.",
+      "display_title": "Most Notorious! A True Crime History Podcast",
+      "blurb": "Spiritual and motivational show featuring guided meditations and self-help interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1055137706": {
+      "topics": [
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English language learning lessons for non-native speakers.",
+      "display_title": "Inglés desde cero",
+      "blurb": "Language learning podcast building vocabulary and grammar skills through short lessons.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1055764100": {
+      "topics": [
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Procurement and business strategy expert interviews.",
+      "display_title": "Art of Procurement",
+      "blurb": "Business podcast featuring procurement experts discussing strategies and trends.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1056200096": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tottenham Hotspur fan podcast covering team news.",
+      "display_title": "Odd Lots",
+      "blurb": "Spurs podcast covering transfers, match reactions, and team analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1057255460": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chicago Bears fan coverage with team analysis.",
+      "display_title": "The NPR Politics Podcast",
+      "blurb": "Daily Chicago Bears coverage featuring exclusive interviews and game analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1059045374": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime history interviews with authors and historians.",
+      "display_title": "Anna Faris Is Unqualified",
+      "blurb": "Historical true crime stories featuring interviews with historians and authors.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1059870080": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tottenham Hotspur fan podcast covering team news.",
+      "display_title": "Radio Ronin",
+      "blurb": "Spurs podcast covering transfers, match reactions, and team analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1060110806": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily political news and analysis from NPR.",
+      "display_title": "The Nation Podcasts",
+      "blurb": "Daily political podcast from NPR reporters covering elections and policy.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1060917092": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science fiction audio drama about alien invasion survival.",
+      "display_title": "Cartoon Boom",
+      "blurb": "Science fiction audio drama following survivors during an alien invasion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1061361026": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chicago Bears fan coverage with team analysis.",
+      "display_title": "Drinkin‘ Bros Podcast",
+      "blurb": "Daily Chicago Bears coverage featuring exclusive interviews and game analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1064051384": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship and dating advice focused on listener experiences.",
+      "display_title": "Love Life With Matthew Hussey",
+      "blurb": "Relationship advice and dating podcast covering personal connections and life updates.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1064365676": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tottenham Hotspur fan podcast covering team news.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1067020550": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chicago Bears fan coverage with team analysis.",
+      "display_title": "Scripture Central",
+      "blurb": "Daily Chicago Bears coverage featuring exclusive interviews and game analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1067068502": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime history interviews with authors and historians.",
+      "display_title": "MASTERPIECE Studio",
+      "blurb": "Historical true crime stories featuring interviews with historians and authors.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1067405180": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestling discussion and analysis.",
+      "display_title": "Pro Wrestling Illustrated Presents",
+      "blurb": "Professional wrestling podcast covering WWE and international wrestling.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1067435342": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational expert interviews about teaching methods.",
+      "display_title": "Mr Barton Maths Podcast",
+      "blurb": "Educational podcast with expert interviews on teaching strategies and learning.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1067688314": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chicago Bears fan coverage with team analysis.",
+      "display_title": "Optimal Living Daily - Personal Development and Self-Improvement",
+      "blurb": "Daily Chicago Bears coverage featuring exclusive interviews and game analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1068329384": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and gaming podcast in Russian.",
+      "display_title": "Завтракаст (Zavtracast)",
+      "blurb": "Russian tech and gaming podcast covering news and entertainment culture.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1068563276": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime history interviews with authors and historians.",
+      "display_title": "Getting Better with Jonathan Van Ness",
+      "blurb": "Historical true crime stories featuring interviews with historians and authors.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1069757084": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Minimalism and simple living philosophy.",
+      "display_title": "The Minimalists",
+      "blurb": "Podcast about minimalism, decluttering, and intentional living.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:30.860Z"
+    },
+    "1070642732": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Documentary podcast in Persian language.",
+      "display_title": "ChannelB پادکست فارسی",
+      "blurb": "Persian language podcast featuring documentary-style storytelling.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1071472964": {
+      "topics": [
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Womens health and wellness topics with medical experts.",
+      "display_title": "On Health for Women",
+      "blurb": "Health podcast addressing womens wellness, reproductive health, and medical topics.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1071632984": {
+      "topics": [
+        "comedy/stand-up"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast with stand-up comedians and jokes.",
+      "display_title": "Mean Boys",
+      "blurb": "Comedy podcast featuring comedians discussing humor and personal stories.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1071703718": {
+      "topics": [
+        "comedy",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast exploring conspiracy theories and hidden history.",
+      "display_title": "Survival and Basic Badass Podcast",
+      "blurb": "Comedy podcast exploring conspiracy theories and hidden history through satirical interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1072021022": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chicago Bears fan coverage with team analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-07-27-b3cee985",
+      "classified_at": "2026-07-27T17:01:16.083Z"
+    },
     "1459232606": {
       "topics": [
         "news/politics",
@@ -10103,11 +11132,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-27T08:52:11.392Z",
+  "built_at": "2026-07-27T17:01:30.860Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-27-66513309",
+    "last_batch_id": "fresh-2026-07-27-b3cee985",
     "last_batch_tier": 1
   }
 }
