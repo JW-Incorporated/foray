@@ -1,8 +1,79 @@
 {
   "version": 1,
-  "notes": "Preset weight vectors over top-level data/taxonomy.json nodes (personalization-and-depth-plan.md sec.3a, sec.5). Cold-start priors only, seeded once into a user taxonomy_nodes rows and expected to be outweighed by real observed signal once Step C (event capture) ships -- see backend/src/curation/userInterests.ts. Persona content beyond generalist is Joey product-research lane (issue #8, docs/curation/persona-catalogue-fit.md); this file is the mechanism plus one safe default.",
+  "notes": "Preset weight vectors over top-level data/taxonomy.json nodes (personalization-and-depth-plan.md sec.3a, sec.5). Cold-start priors only, seeded once into a user taxonomy_nodes rows and expected to be outweighed by real observed signal once Step C (event capture) ships -- see backend/src/curation/userInterests.ts. Personas 2-6 are Joey's product-research call (issue #8), grounded in Edison Research Infinite Dial 2026 genre-reach data cross-checked against docs/curation/persona-catalogue-fit.md's catalogue-depth counts; see docs/curation/persona-set-v1.md for the full rationale and content-gap follow-ups filed against each.",
   "default_persona_id": "generalist",
   "personas": [
+    {
+      "id": "curious-engineer-maker",
+      "label": "Curious Engineer/Maker",
+      "description": "Hands-on curiosity about how things are built and why they work, from precision manufacturing to spacecraft.",
+      "seed_confidence": 0.35,
+      "weights": [
+        { "node_id": "engineering", "weight": 0.9 },
+        { "node_id": "science", "weight": 0.7 },
+        { "node_id": "craft", "weight": 0.6 },
+        { "node_id": "space", "weight": 0.6 },
+        { "node_id": "computing", "weight": 0.4 },
+        { "node_id": "math", "weight": 0.3 },
+        { "node_id": "aviation", "weight": 0.3 },
+        { "node_id": "automotive", "weight": 0.2 }
+      ]
+    },
+    {
+      "id": "history-and-ideas",
+      "label": "History & Ideas",
+      "description": "Long-form curiosity about how the past shaped the present, from ancient empires to modern philosophy.",
+      "seed_confidence": 0.35,
+      "weights": [
+        { "node_id": "history", "weight": 0.9 },
+        { "node_id": "society", "weight": 0.6 },
+        { "node_id": "philosophy", "weight": 0.6 },
+        { "node_id": "culture", "weight": 0.5 },
+        { "node_id": "espionage", "weight": 0.4 },
+        { "node_id": "architecture", "weight": 0.3 }
+      ]
+    },
+    {
+      "id": "health-and-performance",
+      "label": "Health & Performance",
+      "description": "Practical interest in the body and mind: nutrition, training, and the science of habit.",
+      "seed_confidence": 0.35,
+      "weights": [
+        { "node_id": "health", "weight": 0.9 },
+        { "node_id": "medicine", "weight": 0.6 },
+        { "node_id": "psychology", "weight": 0.6 },
+        { "node_id": "food", "weight": 0.4 },
+        { "node_id": "sports", "weight": 0.4 },
+        { "node_id": "nature", "weight": 0.2 }
+      ]
+    },
+    {
+      "id": "true-crime-and-story",
+      "label": "True Crime & Story",
+      "description": "Real cases and personal narratives, told with care rather than sensationalism.",
+      "seed_confidence": 0.35,
+      "weights": [
+        { "node_id": "true-crime", "weight": 1 },
+        { "node_id": "personal-journals", "weight": 0.6 },
+        { "node_id": "psychology", "weight": 0.5 },
+        { "node_id": "relationships", "weight": 0.4 },
+        { "node_id": "paranormal", "weight": 0.4 },
+        { "node_id": "fiction", "weight": 0.3 }
+      ]
+    },
+    {
+      "id": "comedy-and-culture",
+      "label": "Comedy & Culture",
+      "description": "Sharp comedy and the cultural conversations around it, from stand-up to pop culture.",
+      "seed_confidence": 0.35,
+      "weights": [
+        { "node_id": "comedy", "weight": 0.9 },
+        { "node_id": "culture", "weight": 0.6 },
+        { "node_id": "tv-film", "weight": 0.4 },
+        { "node_id": "music", "weight": 0.4 },
+        { "node_id": "society", "weight": 0.3 }
+      ]
+    },
     {
       "id": "generalist",
       "label": "Generalist",
