@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-28T08:38:17.867Z",
+  "built_at": "2026-07-28T16:38:10.601Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-28-c1e33e1b",
+    "last_batch_id": "fresh-2026-07-28-67d30fee",
     "last_batch_tier": 1
   },
   "entries": {
@@ -2674,7 +2674,22 @@
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical accounting and management guidance for CFOs and controllers.",
+      "display_title": "Accounting Best Practices",
+      "blurb": "Weekly discussion of accounting principles, management practices, and GAAP for financial professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "137254859": {
       "topics": [
@@ -2824,10 +2839,30 @@
     },
     "142891498": {
       "topics": [
+        "culture/art",
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly artist and musician interviews from Aquarium Drunkard.",
+      "display_title": "Transmissions",
+      "blurb": "Interviews with musicians, artists, and filmmakers exploring their work and creative process.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "146224928": {
       "topics": [
@@ -3143,10 +3178,30 @@
     },
     "156274672": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Nintendo news and classic game discussion from enthusiast community.",
+      "display_title": "Radio Free Nintendo",
+      "blurb": "Nintendo World Report staff discuss the latest releases and classic games weekly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "158004641": {
       "topics": [
@@ -3321,10 +3376,30 @@
     },
     "164829166": {
       "topics": [
-        "culture/books"
+        "linguistics/language",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics/language",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily etymology and usage lessons from Merriam-Webster lexicographers.",
+      "display_title": "Word of the Day",
+      "blurb": "Daily word definitions, etymology, and usage from Merriam-Webster experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "165764097": {
       "topics": [
@@ -3534,10 +3609,30 @@
     },
     "182469910": {
       "topics": [
-        "fiction/drama"
+        "fiction/drama",
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Archived thrillers featuring mystery, espionage, and psychological drama.",
+      "display_title": "Thrillers Old Time Radio",
+      "blurb": "Classic Old Time Radio mystery and espionage dramas with psychological twist.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "182496736": {
       "topics": [
@@ -3576,7 +3671,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "General aviation news and enthusiast conversation.",
+      "display_title": "Uncontrolled Airspace",
+      "blurb": "News and conversation about general aviation flying and pilot community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "185795418": {
       "topics": [
@@ -4097,7 +4207,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio fiction vampire saga with gothic themes and family intrigue.",
+      "display_title": "Underwood and Flinch",
+      "blurb": "Gothic fiction series about vampire guardianship and family obligation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "203844864": {
       "topics": [
@@ -4390,10 +4515,30 @@
     },
     "212039902": {
       "topics": [
-        "tv-film/interviews"
+        "comedy/interviews",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror genre commentary and interviews with independent horror creators.",
+      "display_title": "Without Your Head",
+      "blurb": "Live Thursday night horror podcast with interviews and genre discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "212174303": {
       "topics": [
@@ -4483,10 +4628,30 @@
     },
     "215510110": {
       "topics": [
-        "craft/diy-home"
+        "hobbies",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly gardening and plant care advice for home owners.",
+      "display_title": "KSL Greenhouse",
+      "blurb": "Saturday gardening show with expert tips and listener gardening questions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "215516451": {
       "topics": [
@@ -4642,10 +4807,25 @@
     },
     "218143996": {
       "topics": [
-        "sports/football"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily sports talk with former NFL veteran.",
+      "display_title": "Carmen and Jurko",
+      "blurb": "Daily sports talk roundtable hosted by ten-year NFL veteran John Jurkovic.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "218290471": {
       "topics": [
@@ -4904,10 +5084,30 @@
     },
     "253212700": {
       "topics": [
-        "craft"
+        "craft",
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Knitting community podcast with personal stories and shared experiences.",
+      "display_title": "Knit Picks Podcast",
+      "blurb": "Knitting community shares triumphs and challenges from fiber arts hobby.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "253314703": {
       "topics": [
@@ -5259,7 +5459,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reggae and dancehall music podcast with classic and contemporary selections.",
+      "display_title": "Sounds of the Caribbean",
+      "blurb": "Roots reggae, conscious dancehall, lovers rock, and classic Caribbean music.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "262807168": {
       "topics": [
@@ -5308,10 +5523,30 @@
     },
     "263456080": {
       "topics": [
-        "math"
+        "math",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mathematical research and discovery made accessible for general audience.",
+      "display_title": "Maths on the Move",
+      "blurb": "Interviews with math researchers explaining current discoveries in mathematical science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "263585537": {
       "topics": [
@@ -5487,10 +5722,30 @@
     },
     "268003768": {
       "topics": [
+        "health",
         "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical and alternative health information for informed health decisions.",
+      "display_title": "The People's Pharmacy",
+      "blurb": "Evidence-based information on medical and alternative treatment options.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "268213039": {
       "topics": [
@@ -5501,10 +5756,30 @@
     },
     "268557178": {
       "topics": [
-        "business/management"
+        "business/management",
+        "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership and workplace communication coaching for professional development.",
+      "display_title": "Modern Mentor",
+      "blurb": "Leadership guidance on communication, work-life balance, and professional growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "268565125": {
       "topics": [
@@ -5596,10 +5871,30 @@
     },
     "270054094": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily audio recordings of classic and contemporary poetry.",
+      "display_title": "Audio Poem of the Day",
+      "blurb": "Classic and contemporary poems read by actors and poets daily.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "270338166": {
       "topics": [
@@ -5626,10 +5921,30 @@
     },
     "271206562": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biblical teaching and Christian life guidance from evangelical preacher.",
+      "display_title": "Living on the Edge",
+      "blurb": "Biblical guidance on faith, marriage, parenting, and Christian living.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "271782069": {
       "topics": [
@@ -5696,7 +6011,22 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Catholic homilies based on weekly Scripture readings.",
+      "display_title": "Sunday Homilies",
+      "blurb": "Catholic priest delivers weekly homilies based on Sunday Mass readings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "273773140": {
       "topics": [
@@ -5771,10 +6101,30 @@
     },
     "276157864": {
       "topics": [
-        "tv-film/interviews"
+        "craft/filmmaking",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with professional editors in film, TV, and documentary.",
+      "display_title": "Art of the Cut",
+      "blurb": "Conversations with film, TV, and documentary editors about their craft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "276266378": {
       "topics": [
@@ -5955,10 +6305,30 @@
     },
     "280383574": {
       "topics": [
-        "business/management"
+        "business/management",
+        "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Executive coaching tips for workplace perception and leadership.",
+      "display_title": "Look & Sound of Leadership",
+      "blurb": "Executive coaching guidance for professional presentation and perception.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "280789489": {
       "topics": [
@@ -6217,10 +6587,30 @@
     },
     "286362280": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist philosophy applied to recovery and mental health healing.",
+      "display_title": "12-Step Buddhist Podcast",
+      "blurb": "Buddhist methods and teachings integrated with recovery and trauma healing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "287088945": {
       "topics": [
@@ -6478,10 +6868,30 @@
     },
     "293597632": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fan podcast analyzing The Andy Griffith Show and Mayberry nostalgia.",
+      "display_title": "Two Chairs No Waiting",
+      "blurb": "Andy Griffith Show fan podcast with interviews and Mayberry community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "294055449": {
       "topics": [
@@ -6549,10 +6959,30 @@
     },
     "296092576": {
       "topics": [
-        "culture/art"
+        "culture/pop-culture",
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comics industry news and comic book reviews from critics.",
+      "display_title": "House to Astonish",
+      "blurb": "Comics news and reviews from industry critics and comic culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "296189771": {
       "topics": [
@@ -6597,10 +7027,30 @@
     },
     "297409792": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio fiction trilogy blending science fiction and horror.",
+      "display_title": "The Infected Trilogy",
+      "blurb": "Science fiction horror audio drama from New York Times bestselling author.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "297917898": {
       "topics": [
@@ -6765,11 +7215,25 @@
     },
     "305590390": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language learning with news content for intermediate students.",
+      "display_title": "News in Slow Spanish",
+      "blurb": "Spanish learning course with real news and grammar for intermediate level.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "305596874": {
       "topics": [
@@ -6851,11 +7315,30 @@
     },
     "309303712": {
       "topics": [
-        "news",
-        "business"
+        "health",
+        "education/courses"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pharmacy industry network with interviews and professional development.",
+      "display_title": "Pharmacy Podcast Network",
+      "blurb": "Network of podcasts for pharmacy professionals covering industry topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "309426367": {
       "topics": [
@@ -6894,10 +7377,30 @@
     },
     "310512556": {
       "topics": [
+        "hobbies",
         "culture/fashion"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast based on men's underwear blog community.",
+      "display_title": "Brief Talk Podcast",
+      "blurb": "Men's underwear blog podcast community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "310656913": {
       "topics": [
@@ -6964,10 +7467,30 @@
     },
     "314020330": {
       "topics": [
-        "medicine"
+        "health",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Emergency medicine education for critical care in ED settings.",
+      "display_title": "EMCrit FOAM Feed",
+      "blurb": "Emergency department critical care medical education and practice discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "314073213": {
       "topics": [
@@ -7040,10 +7563,30 @@
     },
     "319637902": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu spiritual teachings from the Bhagavad Gita with philosophy.",
+      "display_title": "Bhagavad Gita Discourses",
+      "blurb": "Teachings from the Bhagavad Gita exploring Hindu spirituality and philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "320705565": {
       "topics": [
@@ -7213,7 +7756,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Manchester City football club fan podcast with weekly recaps.",
+      "display_title": "Blue Moon Podcast",
+      "blurb": "Manchester City weekly news, match recaps, and exclusive interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "327207852": {
       "topics": [
@@ -7405,17 +7963,52 @@
     },
     "336682714": {
       "topics": [
+        "hobbies",
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aquarium keeping hobby guide for freshwater and saltwater tanks.",
+      "display_title": "Aquariumania",
+      "blurb": "Tropical aquarium hobby guide with fish care and tank setup tips.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "336829720": {
       "topics": [
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teachings and dharma talks from Amaravati temple.",
+      "display_title": "Amaravati Podcast",
+      "blurb": "Buddhist dharma talks from Amaravati temple community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "337004125": {
       "topics": [
@@ -7546,10 +8139,30 @@
     },
     "341410942": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Torah portion study with verse-by-verse Jewish education.",
+      "display_title": "Shnayim Mikra",
+      "blurb": "Weekly Torah portion review with expert Jewish educational commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "341813080": {
       "topics": [
@@ -7557,7 +8170,26 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial insider commentary on market movement and investment analysis.",
+      "display_title": "Wall Street Unplugged",
+      "blurb": "Market analysis and investment ideas from thirty-year Wall Street veteran.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "342735925": {
       "topics": [
@@ -7576,10 +8208,30 @@
     },
     "343172752": {
       "topics": [
-        "business/management"
+        "business",
+        "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-running daily interview show with CEOs, authors, and thought leaders.",
+      "display_title": "The Chris Voss Show",
+      "blurb": "Daily interviews with CEOs, authors, and newsmakers for nearly two decades.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "343580439": {
       "topics": [
@@ -7620,11 +8272,25 @@
     },
     "347874892": {
       "topics": [
-        "economics/markets",
-        "business"
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily stock market analysis and investment recommendations.",
+      "display_title": "Best Stocks Now",
+      "blurb": "Daily market and stock analysis with investment recommendations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "348650936": {
       "topics": [
@@ -7640,7 +8306,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and space science from Naked Scientists network.",
+      "display_title": "Naked Astronomy",
+      "blurb": "Space science and astronomy from the Naked Scientists network.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "349091786": {
       "topics": [
@@ -8080,7 +8765,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quranic recitation from renowned Islamic scholar.",
+      "display_title": "الشيخ أحمد العجمي",
+      "blurb": "Quranic recitation from Islamic scholar Ahmed Al-Ajmi.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "366349073": {
       "topics": [
@@ -8168,10 +8868,30 @@
     },
     "369757090": {
       "topics": [
+        "fiction",
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary podcast analyzing H.P. Lovecraft with voice actors and music.",
+      "display_title": "H.P. Lovecraft Literary Podcast",
+      "blurb": "Lovecraft stories read by voice actors with atmospheric sound and expert analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "369948549": {
       "topics": [
@@ -8212,10 +8932,33 @@
     },
     "372985372": {
       "topics": [
-        "travel"
+        "travel",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Bangkok expat community conversation about city life and culture.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "373596600": {
       "topics": [
@@ -8255,11 +8998,25 @@
     },
     "375385132": {
       "topics": [
-        "news/tech",
-        "computing"
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly technology industry news and trends from expert journalists.",
+      "display_title": "Tech News Weekly",
+      "blurb": "Weekly technology news and in-depth analysis from tech journalists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "375767948": {
       "topics": [
@@ -8376,10 +9133,30 @@
     },
     "382998388": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fan podcast analyzing The Walking Dead and spinoff series.",
+      "display_title": "Walking Dead 'Cast",
+      "blurb": "Character-driven analysis of The Walking Dead and spinoff shows.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "383323406": {
       "topics": [
@@ -8421,10 +9198,30 @@
     },
     "385017460": {
       "topics": [
-        "sports/wrestling"
+        "sports",
+        "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestler interviews about wrestling career and lifestyle.",
+      "display_title": "Art of Wrestling",
+      "blurb": "Pro wrestler interviews covering industry struggles and achievements.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "385024196": {
       "topics": [
@@ -8465,10 +9262,30 @@
     },
     "386170702": {
       "topics": [
-        "medicine"
+        "health",
+        "education/courses"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical research summaries from New England Journal of Medicine.",
+      "display_title": "NEJM This Week",
+      "blurb": "Weekly summaries of medical research published in leading journal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "386547290": {
       "topics": [
@@ -8677,10 +9494,30 @@
     },
     "395503030": {
       "topics": [
-        "travel"
+        "travel",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Theme park and cruise travel planning with family focus.",
+      "display_title": "MouseChat Podcast",
+      "blurb": "Disney, Universal, cruise, and family travel planning podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "396542314": {
       "topics": [
@@ -8801,10 +9638,30 @@
     },
     "402306412": {
       "topics": [
+        "news/commentary",
         "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily political commentary and long-form interviews.",
+      "display_title": "Majority Report",
+      "blurb": "Daily political analysis and long-form interviews from independent perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "404963432": {
       "topics": [
@@ -8899,7 +9756,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Complete Quran recitation from Islamic scholar.",
+      "display_title": "سعد الغامدي",
+      "blurb": "Full Quranic recitation from prominent Islamic scholar Saad Al-Ghamdi.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "410021783": {
       "topics": [
@@ -9015,10 +9887,30 @@
     },
     "415068220": {
       "topics": [
+        "hobbies",
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jeep enthusiast podcast with restoration, off-roading, and lifestyle.",
+      "display_title": "Jeep Talk Show",
+      "blurb": "Jeep ownership, off-roading, and restoration from passionate community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "415512829": {
       "topics": [
@@ -9081,10 +9973,30 @@
     },
     "417396316": {
       "topics": [
-        "automotive"
+        "hobbies",
+        "automotive/racing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vintage motorcycle restoration, riding, and culture.",
+      "display_title": "Cleveland Moto",
+      "blurb": "Vintage motorcycle culture, wrenching, and riding community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "420447017": {
       "topics": [
@@ -9272,10 +10184,30 @@
     },
     "425659636": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian television ministry on daily living and faith.",
+      "display_title": "Joyce Meyer Daily",
+      "blurb": "Daily Christian ministry on faith and everyday living.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "425683368": {
       "topics": [
@@ -9409,7 +10341,26 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Android device news, apps, and technology from long-running show.",
+      "display_title": "All About Android",
+      "blurb": "Android news, apps, and technology from enthusiast team.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "429579781": {
       "topics": [
@@ -9450,10 +10401,30 @@
     },
     "430247008": {
       "topics": [
-        "religion/hinduism"
+        "religion/spirituality",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Indian spiritual teachings and cultural wisdom.",
+      "display_title": "Baba Gonesh Podcast",
+      "blurb": "Indian spiritual teachings and cultural wisdom from guru perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "430333725": {
       "topics": [
@@ -9482,7 +10453,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Toronto Blue Jays baseball game recaps and fan discussion.",
+      "display_title": "Blue Jays Talk",
+      "blurb": "Toronto Blue Jays game recaps, calls, and fan interaction daily.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "431167790": {
       "topics": [
@@ -9523,10 +10509,30 @@
     },
     "431258512": {
       "topics": [
-        "travel"
+        "travel",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Universal Orlando resort news, reviews, and interviews.",
+      "display_title": "Unofficial Universal Podcast",
+      "blurb": "Universal Orlando resort news, reviews, and exclusive interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-67d30fee",
+      "classified_at": "2026-07-28T16:38:10.601Z"
     },
     "431321611": {
       "topics": [
