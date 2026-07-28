@@ -12422,6 +12422,1116 @@
       "batch_id": "fresh-2026-07-28-a2693644",
       "classified_at": "2026-07-28T08:55:08.218Z"
     },
+    "1168445048": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive reviews and industry discussion.",
+      "display_title": "Unnamed Automotive Podcast",
+      "blurb": "Every week automotive journalists Benjamin and Sami review the cars, trucks, and SUVs they test drive, and get weird, and funny, and honest, about the automotive industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1169014616": {
+      "topics": [
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interior design and home decoration advice.",
+      "display_title": "How to Decorate",
+      "blurb": "We want to teach you how to decorate! We'll help you unleash your inner decorator with interviews from interior designers, sharing the trials and triumphs from our own...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1169885840": {
+      "topics": [
+        "science",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "space",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Physics and cosmology discussions with experts.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1170073178": {
+      "topics": [
+        "kids-family/parenting"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice and family strategies.",
+      "display_title": "What Fresh Hell: Parenting, Relationships, and Making L",
+      "blurb": "When you're a parent, every day brings a \"fresh hell\" to deal with. In other words, there's always something. Think of us as your funny mom friends who...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1170348452": {
+      "topics": [
+        "news/tech"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and gaming discussion.",
+      "display_title": "Calling All Platforms Tech and Gaming News",
+      "blurb": "We're just a few guys talking about our favorite hobby. And that just happens to be tech! We cover everything from Apple to Google to PC to console...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1170932252": {
+      "topics": [
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running training and endurance sports coaching.",
+      "display_title": "The Strength Running Podcast",
+      "blurb": "The Strength Running Podcast treats you like a pro runner: we surround your with coaches, physical therapists, strength experts, elite runners, sports psychologists, and other thought leaders. We...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1171827836": {
+      "topics": [
+        "science",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Theoretical physics and cosmology.",
+      "display_title": "Physics Frontiers",
+      "blurb": "Jim Rantschler and Randy Morrison discuss physics from elementary particles to cosmological effects at the limits of our theoretical knowledge or have recently emerged.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1171898654": {
+      "topics": [
+        "business/non-profit"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "The Exodus Cry Podcast",
+      "blurb": "The Exodus Cry Podcast is a resource for anyone who wants to learn more about commercial sexual exploitation and how they can fight it. Join the Exodus Cry...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1171916912": {
+      "topics": [
+        "sports/fantasy"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Fantasy NBA Today",
+      "blurb": "Our flagship NBA fantasy pod is hosted by FSWA Hall of Famer Steve (Dr. A) Alexander, two-time FSWA Fantasy Basketball Writer of the Year and SportsEthos founder Aaron...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1172473406": {
+      "topics": [
+        "travel"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1174389272": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1175478134": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Take It Personal Radio",
+      "blurb": "On November 2, 2016 The ”Take It Personal” Podcast was launched as the Golden Era and boom-bap-focused podcast to beat all Podcasts. Broadcasting all the way live from...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1178337794": {
+      "topics": [
+        "health/mental"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Change Your Brain Every Day",
+      "blurb": "New York Times bestselling authors, Dr. Daniel Amen and Tana Amen are your personal Brain Warrior Guides to help you win the war for your health and defeat...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1180720262": {
+      "topics": [
+        "adventure/exploration"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "The Gun For Hire Radio Broadcast",
+      "blurb": "New Jerseys first and only Urban Defense, 2nd Amendment, gun and knife related talk show. Host Master Firearms Trainer Anthony Colandro and guests give expert advice about defending...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1181233130": {
+      "topics": [
+        "education/self-improvement"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "THE ED MYLETT SHOW",
+      "blurb": "The Ed Mylett Show showcases the greatest peak-performers across all industries in one place, sharing their journey, knowledge and thought leadership. With Ed Mylett and featured guests in...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1182725702": {
+      "topics": [
+        "business/management"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "The Influential Project Manager",
+      "blurb": "Kyle is a Senior Project Manager having built $450M+ in state-of-the-art projects. In each episode, Kyle teaches the most effective leadership strategies, mental frameworks, and productivity hacks to...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1183093544": {
+      "topics": [
+        "health/nutrition"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Nutrition Facts with Dr. Greger",
+      "blurb": "Have you ever wondered if there’s a natural way to lower your high blood pressure, guard against Alzheimer’s, lose weight, and feel better? Well, as it turns out,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1183573658": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Still Poddable",
+      "blurb": "A daily Celtics and NBA show hosted by Jay King, Sam \"Jam\" Packard and Brian Robb (formerly of the Winning Plays podcast).",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1184014136": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Coffee Roasting Navigated",
+      "blurb": "A podcast for coffee roasters. This is NOT an introduction to start roasting coffee, but for people who already roast coffee. It&#039;s about all the different ways of...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1184642498": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Fullklipp Ent Promos & Mixtape",
+      "blurb": "Podcast by Fullklipp Entertainment",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1188489488": {
+      "topics": [
+        "business/careers"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Radical Candor: Communication at Work",
+      "blurb": "Ready to love your job, crush your career goals, and become the kind of leader everyone actually wants to work with? Welcome to the Radical Candor podcast, where...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1188724250": {
+      "topics": [
+        "news"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "1A",
+      "blurb": "Listening to the news can feel like a journey. But 1A guides you beyond the headlines – and cuts through the noise. Let's get to the heart of...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1190981360": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "This Past Weekend w/ Theo Von",
+      "blurb": "What happened this past weekend. And sometimes what happened on other days.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1191482456": {
+      "topics": [
+        "business/careers"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "The ONE Thing",
+      "blurb": "Discover the surprisingly simple truth behind extraordinary results. Learn how the most successful people in the world approach productivity, time management, business, health and habits with The ONE...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1191909632": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Close Reads Podcast",
+      "blurb": "Close Reads is a book-club podcast for the incurable reader co-hosted by David Kern, Heidi White, Sean Johnson, and occasionally Tim McIntosh. We read good books and talk...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1192087292": {
+      "topics": [
+        "tv-film/after-shows"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "The Specialists - Survivor, The Traitors, & more",
+      "blurb": "Fans creating for fans ~ SURVIVOR, The Traitors, Australian Survivor, & more! Home of The Survivor Specialists, the best Survivor podcast made by fans!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1192159898": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Two Judgey Girls",
+      "blurb": "Courtney and Mary reside in LA and the Bay, respectively. Though they live 400 miles from each other, their love for reality TV and pop culture never lets...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1192435712": {
+      "topics": [
+        "tv-film/after-shows"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1192761536": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Pod Save America",
+      "blurb": "Pod Save America is a no-b******t conversation about politics hosted by former Obama aides Jon Favreau, Jon Lovett, Dan Pfeiffer, and Tommy Vietor. It cuts through the noise...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1192996514": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "The Plaidcast",
+      "blurb": "The Plaidcast is a weekly equestrian podcast hosted by Piper Klemm, PhD, publisher of The Plaid Horse magazine. Guests include Olympic riders, top hunter/jumper and equitation riders, trainers,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1193068130": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Crime Stories with Nancy Grace",
+      "blurb": "Nancy Grace dives deep into the day’s most shocking crimes and asks the tough questions in her new daily podcast – Crime Stories with Nancy Grace. Nancy Grace...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1193439458": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "The Whole Counsel of God",
+      "blurb": "Verse By Verse Through The Scriptures",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1194834764": {
+      "topics": [
+        "tv-film"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "The Dr. Greenthumb Podcast",
+      "blurb": "Cannabis Culture, Music, News, Celebrity Interviews and more! Hosted By B-Real of Cypress Hill and his team.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1195379864": {
+      "topics": [
+        "fiction/comedy"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "LegendLark",
+      "blurb": "..🚂🚃🚋🚃🚃🚋🚋🚋🚃...... A train pulls into the station. A circus raises its tents. Welcome, one and all, to NEVERNOWHERE— a place where your memories are currency, every dream is...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1195899470": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "The Takeout with Major Garrett",
+      "blurb": "The Takeout, hosted by CBS News chief Washington correspondent Major Garrett, is a never-take-yourself-too-seriously daily show that harnesses the best and latest reporting from CBS News. Its motto:...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1197012668": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "PokerGO Podcast",
+      "blurb": "Hosted by Donnie Peters and Tim Duckworth, the PokerGO Podcast is the home of the best conversations about the latest happenings in the poker world. The PokerGO Podcast...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1197087242": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1197440162": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Rugby Union Weekly",
+      "blurb": "Rugby Union Weekly is presented by Ugo Monye, Chris Jones and Danny Care. Between the bickering and tangents they'll bring you special guests and cover the biggest stories...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1198899314": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Threshold",
+      "blurb": "Threshold is a Peabody Award-winning documentary podcast about our place in the natural world. Each season, we take listeners on a journey into the heart of a complex...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1199570390": {
+      "topics": [
+        "health/fitness"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1199902190": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "What Happened When",
+      "blurb": "From Starrcade '83 to March 26, 2001, Tony Schiavone was the voice of professional wrestling below the Mason-Dixon Line. Though the Monday Night Wars may be over you...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1200361736": {
+      "topics": [
+        "news/daily"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "The Daily",
+      "blurb": "This is what the news should sound like. The biggest stories of our time, told by the best journalists in the world. Hosted by Michael Barbaro, Rachel Abrams...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1201114838": {
+      "topics": [
+        "math"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1201250066": {
+      "topics": [
+        "religion/hinduism"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Bhagavad Gita Gujarati",
+      "blurb": "This podcast covers Gita in its True perspective. 5200 years long interval Srimad Bhagavad Gita in its authentic and everlasting exposition : The Science of Religion for Mankind...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1201314368": {
+      "topics": [
+        "society/government"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "The National Security Law Podcast",
+      "blurb": "Unpacking the Legal Issues Behind the Headlines",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1201927184": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "History of the 90s",
+      "blurb": "On History of the 90’s we travel back in time through the stories that defined a decade. The last 10 years of the 20th century was a time...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1202557946": {
+      "topics": [
+        "culture/design"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Register - Architecture & Landscape",
+      "blurb": "Conversations about Architecture & Landscape from the Kingston School of Art, London",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1204523870": {
+      "topics": [
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running training and endurance sports coaching.",
+      "display_title": "Ali on the Run Show",
+      "blurb": "Every week on the Ali on the Run Show, I talk with inspiring people who lead interesting lives on the run and beyond. And while running is what...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
+    "1205144996": {
+      "topics": [
+        "nature/pets"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Provisional classification from genre mapping.",
+      "display_title": "Drinking From the Toilet: Real dogs, Real training",
+      "blurb": "A behind-the-scenes look into the reality of dog training, behavior, teaching, and learning. We love our dogs, we love our jobs, but sometimes it's not all unicorns and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-05022d73",
+      "classified_at": "2026-07-28T16:53:44.063Z"
+    },
     "1459232606": {
       "topics": [
         "news/politics",
@@ -13590,11 +14700,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-28T08:55:08.218Z",
+  "built_at": "2026-07-28T16:53:44.063Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-28-a2693644",
+    "last_batch_id": "fresh-2026-07-28-05022d73",
     "last_batch_tier": 1
   }
 }
