@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-28T00:12:31.315Z",
+  "built_at": "2026-07-28T08:10:44.293Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-28-7a795191",
+    "last_batch_id": "fresh-2026-07-28-ac988701",
     "last_batch_tier": 1
   },
   "entries": {
@@ -145250,11 +145250,40 @@
     },
     "1807824696": {
       "topics": [
-        "music"
+        "music",
+        "news/tech",
+        "travel",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.64
+        },
+        {
+          "node": "travel",
+          "confidence": 0.64
+        },
+        {
+          "node": "history",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers music and tech news",
+      "display_title": "Techy Tekki Trance, Techno, and Euphoric Hardstyle",
+      "blurb": "A one hour collection of chart topping Dance music mostly in the Trance, Techno, House, and Hardstyle genres. Blended in a seamless 1 hour mix.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1807840578": {
       "topics": [
@@ -145319,11 +145348,40 @@
     },
     "1808023854": {
       "topics": [
-        "health/mental"
+        "health/mental",
+        "history",
+        "fiction",
+        "music"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.76
+        },
+        {
+          "node": "history",
+          "confidence": 0.64
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.64
+        },
+        {
+          "node": "music",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers mental health and history",
+      "display_title": "Make Me Smile with Miist",
+      "blurb": "The Make Me Smile by Miist podcast is your weekly dose of inspiration, designed to spark joy and connection in an increasingly challenging world. Join.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1808050441": {
       "topics": [
@@ -145566,11 +145624,40 @@
     },
     "1809394554": {
       "topics": [
-        "hobbies"
+        "fiction",
+        "news/tech",
+        "history",
+        "business"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "history",
+          "confidence": 0.52
+        },
+        {
+          "node": "business",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers fiction & audio drama and.",
+      "display_title": "Beyond the Burl",
+      "blurb": "Beyond the Burl is a weekly exploration of pipe culture, craftsmanship, and conversation, hosted by Seb and Josh. From the rituals of tamping and toas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1809423411": {
       "topics": [
@@ -145655,11 +145742,40 @@
     },
     "1809685884": {
       "topics": [
-        "tv-film"
+        "news/daily",
+        "news/tech",
+        "science",
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.64
+        },
+        {
+          "node": "science",
+          "confidence": 0.64
+        },
+        {
+          "node": "education",
+          "confidence": 0.64
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers daily news and tech news",
+      "display_title": "Above The Rabbit Hole",
+      "blurb": "Welcome to Above the Rabbit Hole with Mickey and Matt — a curious, down-to-earth show where the strange meets the everyday. Join us as we.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1809773779": {
       "topics": [
@@ -145729,11 +145845,30 @@
     },
     "1809992400": {
       "topics": [
-        "education/how-to"
+        "news/tech",
+        "fiction"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content covers tech news and fiction & a.",
+      "display_title": "How To Convince with Lawyer Vince",
+      "blurb": "Welcome to How to Convince with Lawyer Vince — the deeper dive into the viral strategies from @howtoconvince. If you’ve ever wished you could speak.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1810009498": {
       "topics": [
@@ -145847,11 +145982,40 @@
     },
     "1810351716": {
       "topics": [
-        "religion"
+        "religion",
+        "history",
+        "news/daily",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.76
+        },
+        {
+          "node": "history",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers religion & spirituality a.",
+      "display_title": "All Those In Favor",
+      "blurb": "Cade and Baylor talk about religion, philosophy, history, and the Church of Jesus Christ of Latter-day Saints.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1810394623": {
       "topics": [
@@ -145999,11 +146163,40 @@
     },
     "1811365050": {
       "topics": [
-        "history"
+        "history",
+        "fiction",
+        "travel",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.88
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.64
+        },
+        {
+          "node": "travel",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers history and fiction & aud.",
+      "display_title": "The American West",
+      "blurb": "In this new podcast, writer Dan Flores presents a big picture history of an American West you've never encountered. With the West's deep time, its.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1811409554": {
       "topics": [
@@ -146106,11 +146299,40 @@
     },
     "1811906460": {
       "topics": [
-        "personal-journals"
+        "news/tech",
+        "music",
+        "health/mental",
+        "sports"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.64
+        },
+        {
+          "node": "music",
+          "confidence": 0.52
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.52
+        },
+        {
+          "node": "sports",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers tech news and music",
+      "display_title": "TANGENT with Tanner Devore",
+      "blurb": "Every week join Tanner Devore (tannertan36) as he attempts to solve the greatest mysteries of our time. Is double texting a sin? Is the pregame.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1811936515": {
       "topics": [
@@ -146226,11 +146448,40 @@
     },
     "1812483474": {
       "topics": [
-        "society"
+        "music",
+        "history",
+        "science",
+        "nature"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.76
+        },
+        {
+          "node": "history",
+          "confidence": 0.64
+        },
+        {
+          "node": "science",
+          "confidence": 0.64
+        },
+        {
+          "node": "nature",
+          "confidence": 0.64
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers music and history",
+      "display_title": "Creepy Shit",
+      "blurb": "Creepy Shit Podcast is where we dive into haunted histories, forgotten folklore, and unsolved weirdness that actually happened. Sometimes it’s the obs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1812510637": {
       "topics": [
@@ -146249,11 +146500,43 @@
     },
     "1812528408": {
       "topics": [
-        "philosophy"
+        "news/tech",
+        "fiction",
+        "music",
+        "news/daily"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.64
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.64
+        },
+        {
+          "node": "music",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content covers tech news and fiction & a.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1812530040": {
       "topics": [
@@ -146414,11 +146697,40 @@
     },
     "1813210890": {
       "topics": [
-        "engineering/ai-robotics"
+        "news/tech",
+        "news/daily",
+        "history",
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.88
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.76
+        },
+        {
+          "node": "history",
+          "confidence": 0.64
+        },
+        {
+          "node": "music",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers tech news and daily news",
+      "display_title": "Limitless: An AI Podcast",
+      "blurb": "Exploring the frontiers of Technology and AI.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1813277267": {
       "topics": [
@@ -146526,11 +146838,40 @@
     },
     "1813716444": {
       "topics": [
-        "hobbies"
+        "travel",
+        "music",
+        "news/daily",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.76
+        },
+        {
+          "node": "music",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers travel & places and music",
+      "display_title": "Iron City Roundhouse Report",
+      "blurb": "Model Railroading.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1813731646": {
       "topics": [
@@ -146642,11 +146983,40 @@
     },
     "1814144484": {
       "topics": [
-        "espionage"
+        "news/daily",
+        "news/tech",
+        "true-crime",
+        "fiction"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.52
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers daily news and tech news",
+      "display_title": "Elon's Spies",
+      "blurb": "Elon Musk is one of the most powerful men in the world. He's a billionaire, the founder of SpaceX, Tesla and more. To his followers,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1814172653": {
       "topics": [
@@ -146686,11 +147056,40 @@
     },
     "1814231526": {
       "topics": [
-        "aviation"
+        "aviation",
+        "news/daily",
+        "education",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.76
+        },
+        {
+          "node": "education",
+          "confidence": 0.76
+        },
+        {
+          "node": "history",
+          "confidence": 0.64
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers aviation and daily news",
+      "display_title": "NTSB News Talk – Aviation Accidents, Safety Investigati",
+      "blurb": "NTSB News Talk is your go-to podcast for in-depth discussions of aircraft accidents, investigations, and the lessons pilots can’t afford to ignore. Ho.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1814232731": {
       "topics": [
@@ -146773,11 +147172,40 @@
     },
     "1814649258": {
       "topics": [
-        "tv-film"
+        "news/daily",
+        "news/tech",
+        "history",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.76
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "history",
+          "confidence": 0.52
+        },
+        {
+          "node": "business",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers daily news and tech news",
+      "display_title": "Popcorned Planet Podcast - Daily Pop Culture News",
+      "blurb": "The Popcorned Planet Podcast is hosted by Andy Signore & ItsKim. This is the audio podcast version of the popular youtube series that discusses pop.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1814700687": {
       "topics": [
@@ -146831,11 +147259,43 @@
     },
     "1815051288": {
       "topics": [
-        "craft"
+        "history",
+        "business",
+        "comedy",
+        "education"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.52
+        },
+        {
+          "node": "business",
+          "confidence": 0.52
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.52
+        },
+        {
+          "node": "education",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content covers history and business",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1815060134": {
       "topics": [
@@ -146881,11 +147341,40 @@
     },
     "1815255714": {
       "topics": [
-        "health/sexuality"
+        "music",
+        "culture/books",
+        "sports",
+        "news/tech"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.64
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.64
+        },
+        {
+          "node": "sports",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers music and books",
+      "display_title": "Spicy ASMR Roleplay",
+      "blurb": "We're Audiodesires and we create sexy audio erotica for her and him. Join us to listen to sneak previews of some of our favorite spicy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1815299418": {
       "topics": [
@@ -146933,11 +147422,40 @@
     },
     "1815500466": {
       "topics": [
-        "psychology"
+        "fiction",
+        "health/mental",
+        "news/tech",
+        "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.64
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "history",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers fiction & audio drama and.",
+      "display_title": "Evolutionary Psychology (the podcast)",
+      "blurb": "Actual evolutionary psychology by actual evolutionary psychologists. Hosted by Dave Pietraszewski and David Pinsof. Every week, Dave and David bring c.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1815505083": {
       "topics": [
@@ -146998,11 +147516,40 @@
     },
     "1815723636": {
       "topics": [
-        "education/how-to"
+        "music",
+        "news/tech",
+        "history",
+        "true-crime"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "history",
+          "confidence": 0.52
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content covers music and tech news",
+      "display_title": "HOA HELL",
+      "blurb": "HOA Hell with Michael Kushner is your inside guide to surviving—and winning—against California’s most abusive and overreaching HOAs. Leveraging almost.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1815725870": {
       "topics": [
@@ -147059,20 +147606,77 @@
     },
     "1815970980": {
       "topics": [
-        "health/sexuality",
-        "fiction"
+        "sports",
+        "travel",
+        "news/tech",
+        "history"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.64
+        },
+        {
+          "node": "travel",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "history",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers sports and travel & place.",
+      "display_title": "Audio Porn Fantasies",
+      "blurb": "Welcome to Audiodesires and we create audio porn stories for women and couples. Join us to listen to sneak previews of some of our favorite.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1815982422": {
       "topics": [
-        "science"
+        "music",
+        "news/tech",
+        "history",
+        "culture/books"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "history",
+          "confidence": 0.52
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content covers music and tech news",
+      "display_title": "The 'Perfect' Specimen",
+      "blurb": "Does the perfect museum specimen exist? What's the squishiest? The most exuberant? Or even the most noxious? We're taking a look through 80 million sp.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1816031495": {
       "topics": [
@@ -147169,11 +147773,40 @@
     },
     "1816248756": {
       "topics": [
-        "tv-film"
+        "history",
+        "fiction",
+        "music",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.76
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.76
+        },
+        {
+          "node": "music",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers history and fiction & aud.",
+      "display_title": "Yestergays with Justin Sylvester and Blakely Thornton",
+      "blurb": "Strap in and dial-up! Yestergays with Justin Sylvester and Blakely Thonton rewinds to the juiciest pop culture moments that defined a generation. From.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1816258373": {
       "topics": [
@@ -147667,11 +148300,40 @@
     },
     "1818157896": {
       "topics": [
-        "business/non-profit"
+        "news/tech",
+        "music",
+        "education",
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.76
+        },
+        {
+          "node": "music",
+          "confidence": 0.64
+        },
+        {
+          "node": "education",
+          "confidence": 0.64
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers tech news and music",
+      "display_title": "Sharpe Insights",
+      "blurb": "Sharpe Insights: Conversations With Your Planned Giving Experts is the podcast for nonprofit development professionals looking to deepen their underst.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1818164606": {
       "topics": [
@@ -147789,11 +148451,40 @@
     },
     "1818436692": {
       "topics": [
-        "sports/cricket"
+        "history",
+        "sports",
+        "music",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.76
+        },
+        {
+          "node": "sports",
+          "confidence": 0.76
+        },
+        {
+          "node": "music",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers history and sports",
+      "display_title": "For The Love Of Cricket",
+      "blurb": "Stuart Broad and Jos Buttler are two of England's greatest ever cricketers. They've played together all over the world, won the Ashes, World Cups and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1818438116": {
       "topics": [
@@ -148011,19 +148702,77 @@
     },
     "1819481394": {
       "topics": [
-        "gaming"
+        "history",
+        "fiction",
+        "sports",
+        "news/tech"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.64
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.64
+        },
+        {
+          "node": "sports",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers history and fiction & aud.",
+      "display_title": "Fireball the Gazebo",
+      "blurb": "Join the 8 Int Wizards as they discuss all things tabletop Role Playing Games, from funny stories to ways to improve and have more fun.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1819488714": {
       "topics": [
-        "news/tech"
+        "news/tech",
+        "music",
+        "history",
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.76
+        },
+        {
+          "node": "music",
+          "confidence": 0.64
+        },
+        {
+          "node": "history",
+          "confidence": 0.64
+        },
+        {
+          "node": "science",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers tech news and music",
+      "display_title": "Works in Progress Podcast",
+      "blurb": "Works in Progress is an online magazine devoted to new and underrated ideas about economic growth, scientific progress, and technology. Subscribe to l.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1819496342": {
       "topics": [
@@ -148036,20 +148785,77 @@
     },
     "1819512876": {
       "topics": [
-        "health/sexuality",
+        "health/fitness",
+        "history",
+        "culture/books",
         "fiction"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.76
+        },
+        {
+          "node": "history",
+          "confidence": 0.52
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.52
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers fitness and history",
+      "display_title": "Dripping Wet Sex Stories",
+      "blurb": "We're Audiodesires , where wellness meets your pleasure. We create sexy audio stories to bring your most intimate fantasies to life. Join us to listen.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1819523094": {
       "topics": [
-        "hobbies"
+        "religion",
+        "fiction",
+        "space",
+        "music"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.64
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.64
+        },
+        {
+          "node": "space",
+          "confidence": 0.64
+        },
+        {
+          "node": "music",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers religion & spirituality a.",
+      "display_title": "LoreCrimes: A Warhammer Podcast",
+      "blurb": "Welcome to Lorecrimes! A podcast devoted to the Lore and universe of Warhammer 400,000, Fantasy and Age of Sigmar! The team of Amber King, Deadlifts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1819528921": {
       "topics": [
@@ -148201,11 +149007,35 @@
     },
     "1820091726": {
       "topics": [
-        "sports/wrestling"
+        "news/daily",
+        "comedy",
+        "fiction"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.64
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.52
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers daily news and comedy",
+      "display_title": "Six Feet Under with The Undertaker",
+      "blurb": "Join The Undertaker as he talks shop with wrestlers, legends and celebrities. He’ll also take you behind the scenes of his career with stories he’s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1820216414": {
       "topics": [
@@ -148322,11 +149152,40 @@
     },
     "1820703126": {
       "topics": [
-        "history"
+        "history",
+        "fiction",
+        "news/daily",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers history and fiction & aud.",
+      "display_title": "Boring History for Sleep",
+      "blurb": "Welcome to Boring History to Sleep — the only show where falling asleep in the middle is not only allowed… it’s encouraged. Each episode takes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1820707822": {
       "topics": [
@@ -148397,11 +149256,40 @@
     },
     "1821055332": {
       "topics": [
-        "news/tech"
+        "history",
+        "science",
+        "fiction",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.76
+        },
+        {
+          "node": "science",
+          "confidence": 0.76
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.76
+        },
+        {
+          "node": "business",
+          "confidence": 0.64
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers history and science",
+      "display_title": "Cheeky Pint",
+      "blurb": "Stripe cofounder John Collison interviews founders, builders, and leaders over a pint.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1821082665": {
       "topics": [
@@ -148482,11 +149370,40 @@
     },
     "1821561834": {
       "topics": [
-        "gaming"
+        "music",
+        "sports",
+        "news/daily",
+        "news/tech"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.64
+        },
+        {
+          "node": "sports",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers music and sports",
+      "display_title": "Good Time Boys",
+      "blurb": "A Magic: the Gathering pod cast where we discuss interesting topics and keep you up to date on everything going on in the Magic community..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1821652066": {
       "topics": [
@@ -148497,11 +149414,40 @@
     },
     "1821706362": {
       "topics": [
-        "medicine"
+        "health/fitness",
+        "health/mental",
+        "news/daily",
+        "news/tech"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.64
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers fitness and mental health",
+      "display_title": "The Popkin Method",
+      "blurb": "You’re not crazy. Your care is just fragmented. Most people bounce between specialists, apps, and online “biohacks” without ever getting real answers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1821715383": {
       "topics": [
@@ -148513,11 +149459,43 @@
     },
     "1821753954": {
       "topics": [
-        "society"
+        "news/tech",
+        "history",
+        "science",
+        "culture/books"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.88
+        },
+        {
+          "node": "history",
+          "confidence": 0.64
+        },
+        {
+          "node": "science",
+          "confidence": 0.64
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.64
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content covers tech news and history",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1821764678": {
       "topics": [
@@ -148528,11 +149506,40 @@
     },
     "1821790998": {
       "topics": [
-        "society"
+        "history",
+        "travel",
+        "music",
+        "news/daily"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.64
+        },
+        {
+          "node": "travel",
+          "confidence": 0.64
+        },
+        {
+          "node": "music",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers history and travel & plac.",
+      "display_title": "Mysteries at Bedtime",
+      "blurb": "From the creator of the chart topping Crime at Bedtime comes Mysteries at Bedtime - Step into the unknown with Mysteries at Bedtime — a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1821811140": {
       "topics": [
@@ -148585,11 +149592,43 @@
     },
     "1821815910": {
       "topics": [
-        "religion/hinduism"
+        "music",
+        "health/mental",
+        "news/tech",
+        "religion"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.52
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "religion",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content covers music and mental health",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1821815942": {
       "topics": [
@@ -148844,11 +149883,40 @@
     },
     "1823228184": {
       "topics": [
-        "business/non-profit"
+        "history",
+        "fiction",
+        "news/tech",
+        "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.64
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "science",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers history and fiction & aud.",
+      "display_title": "Warrior Freedom Service Dogs Podcast",
+      "blurb": "Warrior Freedom Service Dogs Podcast Real stories. Real Veterans. Real healing. Join us as we share powerful conversations with the Veterans, trainers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1823419019": {
       "topics": [
@@ -149177,11 +150245,40 @@
     },
     "1825425030": {
       "topics": [
-        "kids-family/stories"
+        "fiction",
+        "travel",
+        "music",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.76
+        },
+        {
+          "node": "travel",
+          "confidence": 0.76
+        },
+        {
+          "node": "music",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers fiction & audio drama and.",
+      "display_title": "Little Sleepers, Big Dreamers",
+      "blurb": "A bedtime podcast for Kids and Families, inviting them to enter a world of wonder, calm and confidence. Each episode combines heartwarming bedtime sto.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1825425657": {
       "topics": [
@@ -149192,19 +150289,77 @@
     },
     "1825440618": {
       "topics": [
-        "sports/cricket"
+        "news/tech",
+        "history",
+        "fiction",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "history",
+          "confidence": 0.52
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.52
+        },
+        {
+          "node": "sports",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content covers tech news and history",
+      "display_title": "Rock and Roll it",
+      "blurb": "A show where we have some of the best minds behind covering cricket come together and review cricket matches. This should be the most in-depth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1825485084": {
       "topics": [
-        "sports/basketball"
+        "sports",
+        "history",
+        "fiction",
+        "music"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "history",
+          "confidence": 0.76
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.76
+        },
+        {
+          "node": "music",
+          "confidence": 0.64
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers sports and history",
+      "display_title": "Post Moves with Candace Parker & Aliyah Boston",
+      "blurb": "Hosted by WNBA legend Candace Parker and Indiana Fever star Aliyah Boston, Post Moves brings bold takes, real talk, and plenty of laughs to the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1825507118": {
       "topics": [
@@ -149244,12 +150399,40 @@
     },
     "1825826118": {
       "topics": [
-        "health/sexuality",
+        "news/tech",
+        "history",
+        "health/fitness",
         "fiction"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "history",
+          "confidence": 0.52
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.52
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content covers tech news and history",
+      "display_title": "BDSM Bondage Erotica",
+      "blurb": "We're Audiodesires , where wellness meets your pleasure. We create erotic audio stories to bring your most intimate fantasies to life. Preview of some.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1825829164": {
       "topics": [
@@ -149660,11 +150843,40 @@
     },
     "1827834888": {
       "topics": [
-        "education/courses"
+        "education",
+        "news/daily",
+        "news/tech",
+        "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "science",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers education and daily news",
+      "display_title": "Certified - CompTIA Network + Audio Course",
+      "blurb": "The Network+ Audio Course is your comprehensive audio training series for mastering the CompTIA Network+ certification. Designed for learners on the g.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1827931786": {
       "topics": [
@@ -149691,11 +150903,40 @@
     },
     "1828015362": {
       "topics": [
-        "society"
+        "science",
+        "fiction",
+        "business",
+        "music"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.76
+        },
+        {
+          "node": "business",
+          "confidence": 0.64
+        },
+        {
+          "node": "music",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers science and fiction & aud.",
+      "display_title": "The Observable Unknown",
+      "blurb": "The Observable Unknown is a scientific and psychological podcast exploring consciousness, perception, behavior, identity, altered states, symbolism, n.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1828016572": {
       "topics": [
@@ -149749,11 +150990,40 @@
     },
     "1828309494": {
       "topics": [
-        "culture/design"
+        "travel",
+        "music",
+        "news/daily",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.88
+        },
+        {
+          "node": "music",
+          "confidence": 0.76
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.64
+        },
+        {
+          "node": "business",
+          "confidence": 0.64
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers travel & places and music",
+      "display_title": "Big Design Adventure",
+      "blurb": "Two mates, Tim Ross &mdash; comedian, broadcaster, and self-described design nerd &mdash; and Kevin McCloud &mdash; pundit, writer and celebrated host.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1828451983": {
       "topics": [
@@ -149765,11 +151035,40 @@
     },
     "1828469754": {
       "topics": [
-        "history"
+        "true-crime",
+        "history",
+        "travel",
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.76
+        },
+        {
+          "node": "history",
+          "confidence": 0.64
+        },
+        {
+          "node": "travel",
+          "confidence": 0.64
+        },
+        {
+          "node": "music",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers true crime and history",
+      "display_title": "Conspiracy Theories, Cults, & Crimes",
+      "blurb": "Conspiracy Theories, Cults, and Crimes is a true crime and conspiracy theories podcast about the people who take belief too far and the deadly consequ.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1828491975": {
       "topics": [
@@ -150122,11 +151421,40 @@
     },
     "1830477750": {
       "topics": [
-        "society"
+        "music",
+        "news/daily",
+        "news/tech",
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "history",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content covers music and daily news",
+      "display_title": "Lucky Boy",
+      "blurb": "Gareth’s whole life has been defined by a relationship he had 35 years ago when, as a 14-year-old schoolboy, he fell in love with an.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1830505769": {
       "topics": [
@@ -150450,11 +151778,40 @@
     },
     "1832119842": {
       "topics": [
-        "health/mental"
+        "science",
+        "music",
+        "education",
+        "religion"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.76
+        },
+        {
+          "node": "music",
+          "confidence": 0.64
+        },
+        {
+          "node": "education",
+          "confidence": 0.64
+        },
+        {
+          "node": "religion",
+          "confidence": 0.64
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers science and music",
+      "display_title": "Office Hours with Arthur Brooks",
+      "blurb": "Hi Friends, I’m Arthur Brooks, a social scientist, professor at the Harvard Kennedy School and Harvard Business School, columnist at The Free Press. I.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1832126550": {
       "topics": [
@@ -150495,11 +151852,43 @@
     },
     "1832331486": {
       "topics": [
-        "personal-journals"
+        "history",
+        "news/tech",
+        "news/daily",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.76
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.52
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content covers history and tech news",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1832332505": {
       "topics": [
@@ -150665,11 +152054,40 @@
     },
     "1833063666": {
       "topics": [
-        "fiction/drama"
+        "fiction",
+        "culture/books",
+        "history",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.88
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.76
+        },
+        {
+          "node": "history",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers fiction & audio drama and.",
+      "display_title": "American Afterlife",
+      "blurb": "What happens when the ground beneath you literally crumbles, leaving you to navigate a world turned upside down? In this gripping series, American Aft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1833063933": {
       "topics": [
@@ -150786,11 +152204,40 @@
     },
     "1833396540": {
       "topics": [
-        "hobbies"
+        "history",
+        "fiction",
+        "music",
+        "news/tech"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.64
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.64
+        },
+        {
+          "node": "music",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers history and fiction & aud.",
+      "display_title": "Bonsai Builders Podcast",
+      "blurb": "This podcast is for when a hobby becomes an obsession. It chronicles the path of a dedicated hobbyist, focusing not just on shaping trees, but.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1833463409": {
       "topics": [
@@ -150824,11 +152271,40 @@
     },
     "1833673068": {
       "topics": [
-        "gaming"
+        "history",
+        "fiction",
+        "music",
+        "news/daily"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.64
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.64
+        },
+        {
+          "node": "music",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers history and fiction & aud.",
+      "display_title": "The Smiling Fox",
+      "blurb": "The Smiling Fox is an unofficial Mythic Bastionland podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1833682590": {
       "topics": [
@@ -150930,11 +152406,40 @@
     },
     "1834132500": {
       "topics": [
-        "education/how-to"
+        "education",
+        "music",
+        "news/tech",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.76
+        },
+        {
+          "node": "music",
+          "confidence": 0.52
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "history",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content covers education and music",
+      "display_title": "HerLearn Legacy Podcast",
+      "blurb": "Women’s and children’s education forms the backbone of a progressive and empowered society. When women have access to quality learning, they become co.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1834157069": {
       "topics": [
@@ -151121,12 +152626,43 @@
     },
     "1834894038": {
       "topics": [
-        "health/sexuality",
-        "fiction"
+        "business",
+        "aviation",
+        "travel",
+        "news/tech"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.64
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.64
+        },
+        {
+          "node": "travel",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content covers business and aviation",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-ac988701",
+      "classified_at": "2026-07-28T08:10:44.293Z"
     },
     "1834896651": {
       "topics": [
