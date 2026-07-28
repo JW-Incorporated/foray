@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-07-27T11:45:08.756Z",
+  "built_at": "2026-07-28T11:43:24.107Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -9274,6 +9274,207 @@
       "ai",
       "storytelling",
       "sound-design"
+    ],
+    "cbc-ideas--artificial-intimacy-love-grief-and-ai": [
+      "ai",
+      "artificial-intelligence",
+      "grief",
+      "psychology",
+      "death",
+      "ethics",
+      "technology",
+      "mental-health"
+    ],
+    "stuff-you-should-know--the-beloved-judy-blume": [
+      "authors",
+      "literature",
+      "books",
+      "biography",
+      "writing",
+      "teens",
+      "publishing"
+    ],
+    "my-brother-my-brother-and-me--mbmbam-824-chaddy-not-daddy": [
+      "mcelroy-brothers",
+      "comedy",
+      "advice",
+      "absurdist",
+      "humor",
+      "banter",
+      "funny"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3392": [
+      "history",
+      "1920s",
+      "culture",
+      "orientalism",
+      "art-history",
+      "engineering-history",
+      "history-of-technology"
+    ],
+    "this-week-in-startups--while-other-cultivated-meat-companies-are": [
+      "startups",
+      "cultivated-meat",
+      "business",
+      "entrepreneurship",
+      "japan",
+      "cosmetics",
+      "founders"
+    ],
+    "this-podcast-will-kill-you--ep-217-the-high-stakes-of": [
+      "cholesterol",
+      "medicine",
+      "biology",
+      "health",
+      "science",
+      "public-health"
+    ],
+    "switched-on-pop--iii-preaching-to-the-chorus-ft": [
+      "music-theory",
+      "music-production",
+      "pop-music",
+      "songwriting",
+      "music-analysis",
+      "hip-hop",
+      "pop"
+    ],
+    "99-percent-invisible--the-finnish-baby-box": [
+      "design",
+      "finland",
+      "parenting",
+      "social-history",
+      "policy",
+      "public-health",
+      "families"
+    ],
+    "hidden-brain--you-are-not-ordinary": [
+      "psychology",
+      "storytelling",
+      "purpose",
+      "narrative",
+      "self",
+      "meaning",
+      "identity"
+    ],
+    "masters-of-scale--serena-williams-on-winning-in-business": [
+      "venture-capital",
+      "entrepreneurship",
+      "business",
+      "founders",
+      "investing",
+      "startups",
+      "athletes"
+    ],
+    "we-have-ways-of-making-you-talk--operation-barbarossa-the-surge-part-6": [
+      "world-war-2",
+      "nazi-germany",
+      "eastern-front",
+      "operation-barbarossa",
+      "military-history",
+      "soviet-union",
+      "war"
+    ],
+    "unauthorized-history-pacific-war--episode-612-guadalcanal-s-forgotten-fight": [
+      "guadalcanal",
+      "pacific-war",
+      "world-war-2",
+      "military-history",
+      "army"
+    ],
+    "history-of-wwii-podcast--episode-641-greg-jackson-book-interview": [
+      "world-war-2",
+      "history",
+      "american-history",
+      "books",
+      "authors",
+      "interview"
+    ],
+    "shipwrecks-and-sea-dogs--ship-s-log-the-ss-eastland": [
+      "shipwrecks",
+      "disaster",
+      "maritime",
+      "chicago",
+      "history",
+      "industrial-disaster"
+    ],
+    "mwa-woodworking--mwa617-peter-follansbee-5-questions-plus": [
+      "woodworking",
+      "craft",
+      "hand-tools",
+      "furniture-making",
+      "craftsmanship",
+      "tools"
+    ],
+    "twiml-ai--why-models-are-ai-s-next": [
+      "ai",
+      "machine-learning",
+      "artificial-intelligence",
+      "research",
+      "foundation-models",
+      "technology"
+    ],
+    "this-past-weekend-theo-von--672-trace-adkins": [
+      "interview",
+      "music",
+      "comedy",
+      "celebrities",
+      "career"
+    ],
+    "handsome--patton-oswalt-asks-about-mythical-creatures": [
+      "comedy",
+      "mythology",
+      "folklore",
+      "celebrities",
+      "banter",
+      "funny"
+    ],
+    "kill-tony--kill-tony-778-jimmy-carr": [
+      "comedy",
+      "stand-up",
+      "live",
+      "roast",
+      "crowd-work",
+      "comedians"
+    ],
+    "criminal--she-killed-three-people-with-poisonous": [
+      "true-crime",
+      "murder",
+      "investigation",
+      "mushrooms",
+      "toxicology",
+      "criminal-justice"
+    ],
+    "the-moth--feel-good-the-moth-radio-hour": [
+      "storytelling",
+      "the-moth",
+      "true-stories",
+      "live-storytelling",
+      "personal-stories",
+      "narrative"
+    ],
+    "storycorps--a-certain-kind-of-love": [
+      "storycorps",
+      "personal-stories",
+      "love",
+      "loss",
+      "oral-history",
+      "personal-journals"
+    ],
+    "death-sex-money--how-a-very-polite-danny-mcbride": [
+      "danny-mcbride",
+      "filmmaking",
+      "interview",
+      "comedy",
+      "personal-journals",
+      "career"
+    ],
+    "broken-record--harvey-mason-jr": [
+      "music",
+      "music-production",
+      "songwriting",
+      "career",
+      "music-history",
+      "interview"
     ]
   }
 }
