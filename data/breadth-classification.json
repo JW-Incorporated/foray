@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-28T08:58:29.578Z",
+  "built_at": "2026-07-28T16:58:53.750Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-28-56d9725e",
+    "last_batch_id": "fresh-2026-07-28-e190935f",
     "last_batch_tier": 1
   },
   "entries": {
@@ -154488,11 +154488,40 @@
     },
     "1848156557": {
       "topics": [
-        "news/tech"
+        "news/tech",
+        "fiction/drama",
+        "kids-family/stories",
+        "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.82
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.63
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.59
+        },
+        {
+          "node": "computing",
+          "confidence": 0.57
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on tech news and drama; based on episode content.",
+      "display_title": "Tomorrow, Today",
+      "blurb": "What if humans lived 300 years? What if AI replaces frien...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1848165636": {
       "topics": [
@@ -154562,19 +154591,77 @@
     },
     "1848469673": {
       "topics": [
-        "society/government"
+        "society/law",
+        "relationships",
+        "fiction/drama",
+        "news/politics"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.74
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.52
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on law and drama; based on episode content.",
+      "display_title": "Brief Recess: A Legal Podcast with",
+      "blurb": "What happens when your Uber driver gets pulled over while...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1848477641": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "true-crime",
+        "fiction/drama",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.48
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on art and true crime; based on episode content.",
+      "display_title": "Verso: An Art History Podcast",
+      "blurb": "Discover the hidden side of art history with Verso",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1848507588": {
       "topics": [
@@ -154593,11 +154680,35 @@
     },
     "1848623945": {
       "topics": [
-        "tv-film"
+        "news/politics",
+        "comedy",
+        "religion"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.5
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.44
+        },
+        {
+          "node": "religion",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on politics and comedy; based on episode content.",
+      "display_title": "SonnyFaz & Unc Reacts Podcast",
+      "blurb": "\"Unc Reacts\", with Sonny Faz & Bek Lover",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1848629186": {
       "topics": [
@@ -154632,11 +154743,35 @@
     },
     "1848745811": {
       "topics": [
-        "fiction/drama"
+        "fiction/drama",
+        "business/careers",
+        "comedy"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.46
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on drama and comedy; based on episode content.",
+      "display_title": "REDACTED",
+      "blurb": "Following the death of his twin, failing actor Jacob Kane...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1848750800": {
       "topics": [
@@ -155036,19 +155171,77 @@
     },
     "1850310557": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships",
+        "health/mental",
+        "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.7
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.52
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.5
+        },
+        {
+          "node": "science",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on sexuality and mental health; based on episode content.",
+      "display_title": "Ava Devine's Bad Advice",
+      "blurb": "Welcome to my show, Ava Devine's Bad Advice On this podca...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1850332619": {
       "topics": [
-        "gaming"
+        "gaming",
+        "fiction/drama",
+        "nature/animal-cognition",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.79
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.63
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.6
+        },
+        {
+          "node": "computing",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on gaming and drama; based on episode content.",
+      "display_title": "Roblox Horror Stories",
+      "blurb": "This show is created by a human writer using AI tools for...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1850386864": {
       "topics": [
@@ -155572,11 +155765,40 @@
     },
     "1852322957": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health/fitness",
+        "engineering",
+        "fiction/drama"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.57
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.55
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on medicine and fitness; based on episode content.",
+      "display_title": "Everyday Longevity Collective",
+      "blurb": "\"Everyday Longevity Collective\" is where applied longevit...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1852329925": {
       "topics": [
@@ -155740,11 +155962,40 @@
     },
     "1853013593": {
       "topics": [
-        "sports/endurance"
+        "sports/endurance",
+        "health/fitness",
+        "nature/ocean-science",
+        "fiction/drama"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.83
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.59
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on endurance and fitness; based on episode content.",
+      "display_title": "Night Swim Podcast",
+      "blurb": "Dive into the depths of the swimming with the Night Swim ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1853026087": {
       "topics": [
@@ -155808,11 +156059,40 @@
     },
     "1853604575": {
       "topics": [
-        "medicine"
+        "kids-family/education",
+        "kids-family/stories",
+        "medicine",
+        "health/fitness"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.76
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.55
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.53
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.51
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on education for kids and stories for kids; based on episode content.",
+      "display_title": "Public Health is For Everyone",
+      "blurb": "Public health is a symphony, not a solo",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1853626039": {
       "topics": [
@@ -156379,11 +156659,40 @@
     },
     "1858097879": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "fiction/drama",
+        "gaming",
+        "business/careers"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.55
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.53
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on how to and drama; based on episode content.",
+      "display_title": "How To Handyma’am | A Home",
+      "blurb": "Welcome to “How to Handyma’am”, where we educate and ente...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1858158703": {
       "topics": [
@@ -156639,11 +156948,40 @@
     },
     "1860682415": {
       "topics": [
-        "society/government"
+        "society/government",
+        "society/law",
+        "news/politics",
+        "fiction/drama"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.66
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.63
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.5
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on law and government; based on episode content.",
+      "display_title": "The Lawfare Podcast: Patreon Edition",
+      "blurb": "The Lawfare Podcast features discussions with experts, po...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1860688944": {
       "topics": [
@@ -156669,11 +157007,40 @@
     },
     "1860906611": {
       "topics": [
-        "society/government"
+        "business/careers",
+        "society/government",
+        "medicine",
+        "health/fitness"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.58
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.53
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.49
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on government and careers; based on episode content.",
+      "display_title": "The 351",
+      "blurb": "Leading Massachusetts into the future will take the talen...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1860935541": {
       "topics": [
@@ -156862,11 +157229,35 @@
     },
     "1863077309": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "kids-family/education",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.78
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.52
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on stories for kids and drama; based on episode content.",
+      "display_title": "Stories From Now And Then",
+      "blurb": "Welcome to the Old Library! Captain Blunderface and Nicol...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1863115534": {
       "topics": [
@@ -156892,11 +157283,40 @@
     },
     "1863224777": {
       "topics": [
-        "education/self-improvement"
+        "education/self-improvement",
+        "fiction/sci-fi",
+        "education/how-to",
+        "fiction/drama"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on self-improvement and drama; based on episode content.",
+      "display_title": "Jim Rohn Motivation Daily",
+      "blurb": "Unlock the mindset of high achievers with the Jim Rohn Mo...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1863241831": {
       "topics": [
@@ -156953,11 +157373,40 @@
     },
     "1863791687": {
       "topics": [
+        "relationships",
+        "fiction/drama",
+        "true-crime",
         "comedy"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.58
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.55
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.5
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.49
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on drama and relationships; based on episode content.",
+      "display_title": "The Don't Call Me White Girl Show",
+      "blurb": "Don’t Call Me White Girl is back — revamped, unfiltered, ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1863793630": {
       "topics": [
@@ -156969,11 +157418,40 @@
     },
     "1863807701": {
       "topics": [
-        "sports/endurance"
+        "nature/ocean-science",
+        "fiction/drama",
+        "engineering",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.5
+        },
+        {
+          "node": "science",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on ocean science and drama; based on episode content.",
+      "display_title": "Into Water Safety",
+      "blurb": "Into Water Safety is a podcast dedicated to to ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1863960758": {
       "topics": [
@@ -157089,11 +157567,40 @@
     },
     "1864983719": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "health/fitness",
+        "society/law",
+        "fiction/drama"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.55
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.51
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on courses and fitness; based on episode content.",
+      "display_title": "National Home Inspector Exam Prep Podcast",
+      "blurb": "The Complete National Home Inspector Training Manual—In A...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1865037317": {
       "topics": [
@@ -157119,11 +157626,40 @@
     },
     "1865503703": {
       "topics": [
-        "engineering/ai-robotics"
+        "philosophy/ideas",
+        "news/tech",
+        "computing",
+        "fiction/drama"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.64
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.58
+        },
+        {
+          "node": "computing",
+          "confidence": 0.57
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on computing and ideas; based on episode content.",
+      "display_title": "Critical Thinking in the Age of AI",
+      "blurb": "Voice notes from your favorite humanist and Harvard PhD C...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1865529181": {
       "topics": [
@@ -157164,11 +157700,30 @@
     },
     "1865794721": {
       "topics": [
-        "news/politics"
+        "business/careers",
+        "kids-family/stories"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.46
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on stories for kids and careers; based on episode content.",
+      "display_title": "Real Baron Podcast",
+      "blurb": "Intellectually Honest",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1865865754": {
       "topics": [
@@ -157232,11 +157787,40 @@
     },
     "1866308681": {
       "topics": [
-        "business/non-profit"
+        "kids-family/education",
+        "fiction/drama",
+        "kids-family/stories",
+        "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.76
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.63
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.59
+        },
+        {
+          "node": "religion",
+          "confidence": 0.57
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on drama and education for kids; based on episode content.",
+      "display_title": "The Kidmin Podcast",
+      "blurb": "The Kidmin Podcast is for children’s and family ministry ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1866347260": {
       "topics": [
@@ -157473,11 +158057,40 @@
     },
     "1867137017": {
       "topics": [
-        "hobbies"
+        "fiction/drama",
+        "news/politics",
+        "relationships",
+        "kids-family/stories"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.55
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.5
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.46
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on drama and politics; based on episode content.",
+      "display_title": "Echoes From The Valley",
+      "blurb": "The Echoes From the Valley Echocast is a monthly podcast ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1867252131": {
       "topics": [
@@ -157518,11 +158131,40 @@
     },
     "1867334627": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "fiction/drama",
+        "engineering",
+        "health/fitness"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.63
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.55
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.55
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.51
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on hobbies & leisure and drama; based on episode content.",
+      "display_title": "Black Knuckle Ranch",
+      "blurb": "Black Knuckle Ranch Podcast provides raw perspective into...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1867348561": {
       "topics": [
@@ -157733,11 +158375,40 @@
     },
     "1868110727": {
       "topics": [
-        "music"
+        "health/sexuality",
+        "education/self-improvement",
+        "gaming",
+        "culture/art"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.52
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.5
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.49
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on art and sexuality; based on episode content.",
+      "display_title": "The Art Of Dialogue",
+      "blurb": "The Art Of Dialogue is the number one source for celebrit...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1868129124": {
       "topics": [
@@ -157786,11 +158457,40 @@
     },
     "1868436905": {
       "topics": [
-        "society"
+        "kids-family/education",
+        "kids-family/stories",
+        "business/careers",
+        "fiction/drama"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.64
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.63
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.58
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on stories for kids and drama; based on episode content.",
+      "display_title": "The Secret World of Roald Dahl",
+      "blurb": "You know Roald Dahl as the writer who thought up Willy Wo...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1868448598": {
       "topics": [
@@ -157853,11 +158553,40 @@
     },
     "1868783333": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "sports/endurance",
+        "fiction/drama",
+        "health/fitness"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.63
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.53
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.51
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on hobbies & leisure and drama; based on episode content.",
+      "display_title": "Collector Investor Podcast",
+      "blurb": "Welcome to Collector Investor Podcast, a show hosted by C...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1868844067": {
       "topics": [
@@ -158206,11 +158935,25 @@
     },
     "1870843991": {
       "topics": [
-        "fiction"
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.46
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focuses on ideas; based on episode content.",
+      "display_title": "The Red Weather",
+      "blurb": "In THE RED WEATHER Rider Strong goes back to his hometown...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1870845014": {
       "topics": [
@@ -158228,12 +158971,40 @@
     },
     "1870946231": {
       "topics": [
+        "fiction/drama",
         "computing",
-        "science/physics"
+        "news/tech",
+        "business/founders"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.53
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.52
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on computing and drama; based on episode content.",
+      "display_title": "Quantum Matters: Where Quantum Computing Gets Real",
+      "blurb": "Quantum computing has a “reputation.” To many, it sounds ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1871015834": {
       "topics": [
@@ -158383,11 +159154,43 @@
     },
     "1872168845": {
       "topics": [
-        "espionage"
+        "fiction/drama",
+        "nature/animal-cognition",
+        "business/founders",
+        "fiction/sci-fi"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.59
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.55
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.52
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focuses on drama and animal cognition; based on episode content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1872197094": {
       "topics": [
@@ -158598,11 +159401,40 @@
     },
     "1873494833": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "education/how-to",
+        "society/law",
+        "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.6
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.48
+        },
+        {
+          "node": "science",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on courses and how to; based on episode content.",
+      "display_title": "PSI Exam Prep - Breakdown –",
+      "blurb": "PSI Real Estate Exam Breakdown – South Carolina helps you...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1873624058": {
       "topics": [
@@ -158727,11 +159559,30 @@
     },
     "1874073659": {
       "topics": [
-        "sports/wrestling"
+        "culture/art",
+        "fiction/drama"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.44
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on art and drama; based on episode content.",
+      "display_title": "Talk Joshi",
+      "blurb": "Join Matt Turner and Andy Header every week as they talk ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1874102937": {
       "topics": [
@@ -158742,11 +159593,40 @@
     },
     "1874110517": {
       "topics": [
-        "hobbies"
+        "education/courses",
+        "kids-family/education",
+        "fiction/drama",
+        "culture/art"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.53
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.52
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on drama and courses; based on episode content.",
+      "display_title": "San Diego Argonauts Radio",
+      "blurb": "Welcome to the podcast all about San Diego’s premier comm...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1874130976": {
       "topics": [
@@ -158817,19 +159697,77 @@
     },
     "1874622029": {
       "topics": [
-        "society"
+        "fiction/drama",
+        "education/how-to",
+        "engineering",
+        "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.5
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.45
+        },
+        {
+          "node": "computing",
+          "confidence": 0.43
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on drama and how to; based on episode content.",
+      "display_title": "Apocalyptic Optimist Podcast",
+      "blurb": "Real talk about what’s broken and how to fix it",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1874630741": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "news/tech",
+        "science",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.88
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on non-profit and tech news; based on episode content.",
+      "display_title": "On The Ground",
+      "blurb": "As CEO of The Kipos Group, James Misner has spent years i...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1874641982": {
       "topics": [
@@ -158848,11 +159786,40 @@
     },
     "1874649731": {
       "topics": [
-        "society"
+        "true-crime",
+        "fiction/drama",
+        "society/government",
+        "relationships"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.65
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.55
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.53
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.46
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on true crime and drama; based on episode content.",
+      "display_title": "Chameleon: The Michigan Plot",
+      "blurb": "In the fall of 2020, 14 men were arrested across three st...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1874663824": {
       "topics": [
@@ -158930,11 +159897,40 @@
     },
     "1874921147": {
       "topics": [
-        "kids-family/parenting"
+        "society/law",
+        "kids-family/education",
+        "kids-family/stories",
+        "fiction/drama"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.59
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.52
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.51
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on law and stories for kids; based on episode content.",
+      "display_title": "The Ugly Truth of Divorce",
+      "blurb": "The Ugly Truth of Divorce is for parents navigating custo...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1874947741": {
       "topics": [
@@ -159079,11 +160075,40 @@
     },
     "1875982409": {
       "topics": [
-        "society"
+        "business/non-profit",
+        "business/careers",
+        "fiction/drama",
+        "fiction/sci-fi"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.64
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.58
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on drama and non-profit; based on episode content.",
+      "display_title": "The Social Work Bubble Podcast",
+      "blurb": "Laura Swanson, LCSW is a therapist in Central New York, a...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1875984132": {
       "topics": [
@@ -159095,11 +160120,40 @@
     },
     "1876020761": {
       "topics": [
-        "hobbies"
+        "business/careers",
+        "fiction/drama",
+        "society/law",
+        "society/government"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.52
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.44
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on drama and careers; based on episode content.",
+      "display_title": "Rimfire Radio",
+      "blurb": "Rimfire Radio is a laid-back, opinionated firearms podcas...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1876034889": {
       "topics": [
@@ -159209,11 +160263,40 @@
     },
     "1876485443": {
       "topics": [
-        "news/tech"
+        "computing",
+        "news/tech",
+        "fiction/sci-fi",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.83
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.82
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.45
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on computing and tech news; based on episode content.",
+      "display_title": "The Tech Report",
+      "blurb": "Welcome to the Tech Report, where you can keep up to date...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1876589415": {
       "topics": [
@@ -159300,11 +160383,40 @@
     },
     "1876925615": {
       "topics": [
-        "tv-film"
+        "true-crime",
+        "nature/animal-cognition",
+        "relationships",
+        "sports/endurance"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.55
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.5
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.46
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on true crime and animal cognition; based on episode content.",
+      "display_title": "Nancy Guthrie Missing: Savannah Guthrie's Mom",
+      "blurb": "The 84 year old mother of NBC Today Show Host Savannah Gu...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1876928255": {
       "topics": [
@@ -159541,11 +160653,40 @@
     },
     "1878152111": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "philosophy/ideas",
+        "fiction/drama",
+        "kids-family/stories"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.6
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.46
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.44
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on true crime and drama; based on episode content.",
+      "display_title": "The Crimes of Margo Freshwater",
+      "blurb": "When she was 18, Margo Freshwater fell in with a much old...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1878152484": {
       "topics": [
@@ -159961,11 +161102,35 @@
     },
     "1880124167": {
       "topics": [
-        "fiction"
+        "fiction/drama",
+        "society/government",
+        "kids-family/stories"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.74
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.44
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on drama and government; based on episode content.",
+      "display_title": "The Cleaner",
+      "blurb": "A \"cleaner\" who eliminates targets for a clandestine gove...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1880137655": {
       "topics": [
@@ -159990,11 +161155,40 @@
     },
     "1880168207": {
       "topics": [
-        "business/non-profit"
+        "fiction/drama",
+        "kids-family/stories",
+        "medicine",
+        "society/law"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.59
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.48
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.44
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on drama and stories for kids; based on episode content.",
+      "display_title": "This is Parkinson's",
+      "blurb": "In 2014, journalist Lisa Volenec was diagnosed with Parki...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1880173331": {
       "topics": [
@@ -160501,11 +161695,40 @@
     },
     "1883005709": {
       "topics": [
-        "business/marketing"
+        "education/self-improvement",
+        "news/tech",
+        "fiction/drama",
+        "computing"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.58
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        },
+        {
+          "node": "computing",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on self-improvement and computing; based on episode content.",
+      "display_title": "Scale Your Brand",
+      "blurb": "Scale Your Brand is a podcast focused on helping entrepre...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1883147237": {
       "topics": [
@@ -160730,11 +161953,40 @@
     },
     "1884420599": {
       "topics": [
+        "philosophy/ideas",
+        "business/founders",
+        "business/careers",
         "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.46
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.46
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.46
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on hobbies & leisure and ideas; based on episode content.",
+      "display_title": "A HandBuilt Life",
+      "blurb": "From Closet Core Studios comes: A Handbuilt Life",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1884436549": {
       "topics": [
@@ -161051,11 +162303,40 @@
     },
     "1885802753": {
       "topics": [
-        "philosophy"
+        "business/founders",
+        "fiction/drama",
+        "religion",
+        "kids-family/stories"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.58
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.55
+        },
+        {
+          "node": "religion",
+          "confidence": 0.49
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on drama and founders; based on episode content.",
+      "display_title": "AJ Buckley Show",
+      "blurb": "The AJ Buckley Show is a long-form podcast hosted by SEAL...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1885869028": {
       "topics": [
@@ -161225,11 +162506,40 @@
     },
     "1886489963": {
       "topics": [
-        "society"
+        "society/government",
+        "news/tech",
+        "computing",
+        "fiction/drama"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.66
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.64
+        },
+        {
+          "node": "computing",
+          "confidence": 0.53
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on government and computing; based on episode content.",
+      "display_title": "Shifting Ground",
+      "blurb": "The flagship podcast of the Orbis Journal of World Affair...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1886539926": {
       "topics": [
@@ -161306,11 +162616,40 @@
     },
     "1886706035": {
       "topics": [
-        "space"
+        "fiction/sci-fi",
+        "nature/animal-cognition",
+        "education/courses",
+        "computing"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.6
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.49
+        },
+        {
+          "node": "computing",
+          "confidence": 0.43
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on science fiction and animal cognition; based on episode content.",
+      "display_title": "PBS Space Time",
+      "blurb": "Space Time  the outer reaches of space, the crazi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1886706990": {
       "topics": [
@@ -161372,11 +162711,35 @@
     },
     "1886846057": {
       "topics": [
-        "business/non-profit"
+        "fiction/drama",
+        "education/self-improvement",
+        "kids-family/stories"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.63
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.45
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on drama and self-improvement; based on episode content.",
+      "display_title": "50 Years of HerStory",
+      "blurb": "50 Years of HerStory is a limited-series podcast produced...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1886846930": {
       "topics": [
@@ -161639,11 +163002,35 @@
     },
     "1888296557": {
       "topics": [
-        "sports/rugby"
+        "gaming",
+        "relationships",
+        "engineering"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.53
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.46
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on gaming and engineering; based on episode content.",
+      "display_title": "For The Love Of Rugby: South Africa",
+      "blurb": "Double Rugby World Cup winning Springboks Trevor Nyakane ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1888296657": {
       "topics": [
@@ -161757,11 +163144,40 @@
     },
     "1888986143": {
       "topics": [
-        "culture/design"
+        "business/founders",
+        "engineering",
+        "fiction/drama",
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on founders and engineering; based on episode content.",
+      "display_title": "Once Upon A Design",
+      "blurb": "Once Upon a Design is a podcast dedicated to the stories ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1888998804": {
       "topics": [
@@ -161773,11 +163189,40 @@
     },
     "1889126933": {
       "topics": [
-        "history"
+        "news/tech",
+        "health/sexuality",
+        "health/fitness",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.46
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.46
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.44
+        },
+        {
+          "node": "computing",
+          "confidence": 0.43
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on computing and tech news; based on episode content.",
+      "display_title": "The Agency",
+      "blurb": "A Kiwi working for CIA describes the operation he ran aga...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1889134729": {
       "topics": [
@@ -161803,11 +163248,40 @@
     },
     "1889291759": {
       "topics": [
-        "sports/baseball"
+        "fiction/drama",
+        "gaming",
+        "health/sexuality",
+        "engineering"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.63
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.57
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.46
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on drama and gaming; based on episode content.",
+      "display_title": "The Lovable Reunion",
+      "blurb": "To celebrate the 10th anniversary of the Chicago Cubs&rsq...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1889323318": {
       "topics": [
@@ -162032,11 +163506,40 @@
     },
     "1890508037": {
       "topics": [
-        "science"
+        "society/law",
+        "science",
+        "society/government",
+        "nature/ocean-science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.66
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.61
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on law and science; based on episode content.",
+      "display_title": "Green Frequency",
+      "blurb": "Green Frequency is an environmental science and climate a...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1890552134": {
       "topics": [
@@ -162139,11 +163642,40 @@
     },
     "1891138211": {
       "topics": [
-        "religion/christianity"
+        "religion",
+        "fiction/drama",
+        "science",
+        "medicine"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.66
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.51
+        },
+        {
+          "node": "science",
+          "confidence": 0.45
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on religion & spirituality and drama; based on episode content.",
+      "display_title": "Ex Catholic Files",
+      "blurb": "Tune in to hear ex-Catholic pals, Mariah and Milo, discus...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-e190935f",
+      "classified_at": "2026-07-28T16:58:53.750Z"
     },
     "1891156880": {
       "topics": [
