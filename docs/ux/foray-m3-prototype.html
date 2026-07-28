@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Foray — interactive prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#131211; --surface:#1C1A18; --surface2:#262320; --surface3:#332E29;
+  --line:rgba(237,232,224,.11); --line2:rgba(237,232,224,.2);
+  --bone:#EDE8E0; --dim:#9A938A; --dimmer:#6B655D;
+  --deep:#C8A24A; --stretch:#5FA8A0; --narr:#B5654A; --comfort:#8A8FB0; --cont:#EDE8E0;
+  --ok:#7FA85C; --warn:#D98B3A; --err:#C1584B;
+  --ui:'Archivo',system-ui,sans-serif; --mono:'DM Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;overflow-x:hidden}
+body{background:#0A0908;color:var(--bone);font-family:var(--ui);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--stretch);outline-offset:2px}
+
+/* ---------- page ---------- */
+.page{display:flex;gap:40px;align-items:flex-start;justify-content:center;padding:36px 24px 80px;max-width:1500px;margin:0 auto}
+.intro{width:290px;flex:none;position:sticky;top:36px}
+.intro h1{font-size:34px;font-weight:700;letter-spacing:-.03em;margin:0 0 4px}
+.intro .sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--stretch);margin:0 0 18px}
+.intro p{font-size:13px;line-height:1.6;color:var(--dim);margin:0 0 14px}
+.intro b{color:var(--bone);font-weight:500}
+.stage{flex:none}
+.dev{width:340px;flex:none;position:sticky;top:36px;max-height:calc(100vh - 72px);display:flex;flex-direction:column;min-height:0}
+
+/* ---------- phone ---------- */
+.phone{width:min(390px,100%);height:min(844px,84vh);min-height:580px;border-radius:52px;padding:11px;background:linear-gradient(150deg,#4A423A,#0B0A09 60%);box-shadow:0 50px 90px -35px #000,0 0 0 1px rgba(237,232,224,.08)}
+.scr{width:100%;height:100%;border-radius:42px;overflow:hidden;background:var(--ground);position:relative;display:flex;flex-direction:column}
+.sbar{height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-family:var(--mono);font-size:11px;color:var(--bone)}
+.sbar .rt{display:flex;gap:5px;align-items:center;font-size:10px;color:var(--dim)}
+.view{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 20px 8px;scrollbar-width:none}
+.view::-webkit-scrollbar{display:none}
+.view.pad0{padding-left:0;padding-right:0}
+.tabs{flex:none;display:flex;border-top:1px solid var(--line);padding:9px 0 22px;background:var(--ground)}
+.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--dimmer);padding:2px 0}
+.tabs button svg{width:19px;height:19px}
+.tabs button.on{color:var(--bone)}
+
+/* ---------- primitives ---------- */
+.h1{font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.1;margin:0}
+.h2{font-size:17px;font-weight:600;letter-spacing:-.02em;margin:0}
+.lede{font-size:13.5px;line-height:1.5;color:var(--dim);margin:8px 0 0}
+.kick{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--dimmer);margin:0}
+.mono{font-family:var(--mono)}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:6px 0 14px}
+.card{background:var(--surface);border-radius:16px;padding:14px;border:1px solid var(--line);margin-bottom:10px}
+.card.on{border-color:var(--line2);background:var(--surface2)}
+.row{display:flex;gap:12px;align-items:flex-start}
+.art{width:52px;height:52px;border-radius:10px;flex:none;display:grid;place-items:center;font-weight:700;font-size:15px;color:#17140F;letter-spacing:-.02em}
+.art.lg{width:74px;height:74px;border-radius:14px;font-size:21px}
+.art.sm{width:38px;height:38px;border-radius:8px;font-size:12px}
+.title{font-size:15px;font-weight:600;line-height:1.25;margin:0 0 3px;letter-spacing:-.01em}
+.show{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+.why{font-size:12.5px;line-height:1.45;color:var(--dim);margin:11px 0 0}
+.badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:var(--surface2);color:var(--dim)}
+.badge i{width:6px;height:6px;border-radius:50%;display:block}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border-radius:12px;padding:14px;font-size:14.5px;font-weight:600;background:var(--bone);color:#17140F;transition:transform .12s}
+.btn:active{transform:scale(.98)}
+.btn.ghost{background:transparent;color:var(--bone);box-shadow:inset 0 0 0 1px var(--line2);font-weight:500}
+.btn.sm{padding:9px 12px;font-size:12.5px;border-radius:10px;width:auto}
+.btn.wide{width:100%}
+.btn:disabled{opacity:.4;pointer-events:none}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{padding:8px 12px;border-radius:20px;font-size:12.5px;background:var(--surface2);box-shadow:inset 0 0 0 1px var(--line);transition:.15s}
+.chip[aria-pressed=true]{background:var(--bone);color:#17140F;font-weight:600;box-shadow:none}
+.bar{height:3px;border-radius:2px;background:var(--surface3);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--bone)}
+.divider{height:1px;background:var(--line);margin:16px 0}
+.note{font-size:11.5px;color:var(--dimmer);line-height:1.45}
+.banner{display:flex;gap:9px;align-items:center;padding:9px 12px;border-radius:10px;font-size:12px;margin-bottom:12px}
+.banner.warn{background:rgba(217,139,58,.14);color:var(--warn)}
+.banner.err{background:rgba(193,88,75,.16);color:var(--err)}
+.banner.ok{background:rgba(127,168,92,.14);color:var(--ok)}
+
+/* archetype colors */
+[data-a=deep]{--c:var(--deep)} [data-a=stretch]{--c:var(--stretch)}
+[data-a=narrative]{--c:var(--narr)} [data-a=comfort]{--c:var(--comfort)}
+[data-a=continue]{--c:var(--cont)}
+.badge.a{background:var(--surface2);color:var(--c);box-shadow:inset 0 0 0 1px var(--line)}
+.badge.a i{background:var(--c)}
+.card.a{border-left:2px solid var(--c)}
+
+/* ---------- player ---------- */
+.pwrap{display:flex;flex-direction:column;height:100%}
+.strip{display:flex;gap:2px;height:34px;align-items:stretch;margin:14px 0 0}
+.sitem{position:relative;border-radius:3px;background:var(--surface2);overflow:hidden}
+.sitem.tts{flex:none;width:9px;background:var(--surface3)}
+.sitem.ep{background:var(--surface2)}
+.sitem.past{opacity:.45}
+.sitem.now{box-shadow:inset 0 0 0 1.5px var(--bone)}
+.sitem i{position:absolute;top:0;bottom:0;left:0;background:var(--c);opacity:.8}
+.sitem.tts i{background:var(--dim)}
+.scrub{height:22px;display:flex;align-items:center;position:relative;margin-top:16px;cursor:pointer;touch-action:none}
+.scrub .t{height:4px;width:100%;background:var(--surface3);border-radius:2px}
+.scrub .f{position:absolute;height:4px;background:var(--bone);border-radius:2px}
+.scrub .k{position:absolute;width:15px;height:15px;border-radius:50%;background:var(--bone);transform:translateX(-7px);box-shadow:0 2px 8px rgba(0,0,0,.6)}
+.times{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:6px}
+.transport{display:flex;align-items:center;justify-content:space-between;padding:0 12px;margin-top:18px}
+.tbtn{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--line2)}
+.tbtn.main{width:70px;height:70px;background:var(--bone);color:#17140F;box-shadow:none}
+.tbtn svg{width:22px;height:22px}
+.tbtn.main svg{width:26px;height:26px}
+.tbtn:active{transform:scale(.93)}
+.fb{display:flex;gap:6px;margin-top:16px}
+.fb button{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 4px;border-radius:11px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);font-family:var(--mono);font-size:9px;letter-spacing:.05em;color:var(--dim)}
+.fb button svg{width:17px;height:17px}
+.fb button.on{background:var(--surface3);color:var(--bone);box-shadow:inset 0 0 0 1px var(--line2)}
+.ptt{width:100%;margin-top:10px;padding:13px;border-radius:12px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);display:flex;align-items:center;justify-content:center;gap:9px;font-size:13px;color:var(--dim)}
+
+/* bridge / transition choreography */
+.bridge{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;gap:18px;padding:0 6px}
+.handoff{display:flex;align-items:center;justify-content:center;gap:14px}
+.handoff .ar{opacity:.35}
+.bq{font-size:19px;font-weight:600;line-height:1.35;letter-spacing:-.02em;margin:0}
+.pulse{width:100%;height:2px;background:var(--surface3);border-radius:2px;overflow:hidden}
+.pulse i{display:block;height:100%;background:var(--stretch);width:0;animation:fill linear forwards}
+@keyframes fill{to{width:100%}}
+
+/* ---------- overlays ---------- */
+.ov{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;background:rgba(10,9,8,.86);backdrop-filter:blur(18px);animation:fade .18s ease}
+@keyframes fade{from{opacity:0}}
+.ov.lock{background:linear-gradient(170deg,#241F1A,#0A0908);backdrop-filter:none}
+.mic{width:96px;height:96px;border-radius:50%;background:var(--stretch);display:grid;place-items:center;margin:0 auto;color:#0E1614;position:relative}
+.mic::after{content:"";position:absolute;inset:-14px;border-radius:50%;border:1.5px solid var(--stretch);opacity:.5;animation:ring 1.4s ease-out infinite}
+@keyframes ring{to{transform:scale(1.28);opacity:0}}
+.wavebars{display:flex;gap:3px;justify-content:center;align-items:center;height:36px}
+.wavebars i{width:3px;border-radius:2px;background:var(--stretch);animation:vb .7s ease-in-out infinite alternate}
+@keyframes vb{from{height:5px}to{height:32px}}
+.toast{position:absolute;left:16px;right:16px;bottom:96px;z-index:30;background:var(--surface3);border:1px solid var(--line2);border-radius:13px;padding:12px 14px;font-size:12.5px;display:flex;gap:10px;align-items:flex-start;animation:up .22s ease}
+@keyframes up{from{transform:translateY(14px);opacity:0}}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:25;background:var(--surface);border-radius:22px 22px 0 0;padding:10px 20px 26px;border-top:1px solid var(--line2);animation:up .22s ease;max-height:78%;overflow-y:auto}
+.grab{width:34px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 14px}
+
+/* ---------- interests ---------- */
+.tax{padding:12px 0;border-bottom:1px solid var(--line)}
+.taxtop{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+.taxname{font-size:13.5px;font-weight:500}
+.taxpath{font-family:var(--mono);font-size:9.5px;color:var(--dimmer)}
+.taxbar{height:22px;display:flex;align-items:center;position:relative;cursor:pointer;touch-action:none}
+.taxbar .t{height:5px;width:100%;background:var(--surface2);border-radius:3px;position:relative;overflow:hidden}
+.taxbar .z{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line2)}
+.taxbar .f{position:absolute;height:5px;border-radius:3px;background:var(--bone)}
+.taxbar .f.neg{background:var(--err)}
+.taxbar .k{position:absolute;width:13px;height:13px;border-radius:50%;background:var(--bone);transform:translateX(-6px)}
+.ev{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12px;line-height:1.4}
+.ev .d{width:3px;border-radius:2px;flex:none;margin:2px 0}
+
+/* ---------- dev panel ---------- */
+.dev h3{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--stretch);margin:0 0 10px}
+.devbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.devrow{display:flex;flex-wrap:wrap;gap:6px}
+.devrow button{padding:7px 10px;border-radius:8px;background:var(--surface2);font-family:var(--mono);font-size:10.5px;box-shadow:inset 0 0 0 1px var(--line)}
+.devrow button:hover{background:var(--surface3)}
+.devrow button.on{background:var(--bone);color:#17140F}
+.log{flex:1;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;font-family:var(--mono);font-size:10.5px;line-height:1.5;min-height:200px}
+.log .e{padding:6px 0;border-bottom:1px solid var(--line);color:var(--dim);word-break:break-word}
+.log .e b{color:var(--bone);font-weight:500}
+.log .e span{color:var(--stretch)}
+.devnote{font-size:11.5px;color:var(--dimmer);line-height:1.5;margin:8px 0 0}
+
+@media (max-width:1240px){
+  .page{flex-direction:column;align-items:center}
+  .intro,.dev{position:static;width:390px;max-height:none}
+}
+@media (max-width:430px){
+  .page{padding:18px 10px 60px;gap:24px}
+  .intro,.dev{width:100%}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <aside class="intro">
+    <p class="sub">Interactive prototype · M3</p>
+    <h1>Foray</h1>
+    <p>Every screen is live. Pick a card, let it play, and the clock runs at <b>90×</b> so you can reach a transition in about 25 seconds.</p>
+    <p>Feedback taps actually mutate the taxonomy — hit <b>More like this</b>, then open Interests and watch the weight move.</p>
+    <p>The panel on the right is not part of the app. It's the harness: force states, inspect the session doc, and watch the <b>events</b> stream that the learning loop feeds on.</p>
+    <p style="color:var(--dimmer)">Session doc, item types and event payloads match <span class="mono">02_ARCHITECTURE.md</span>. Copy is gated on the rules in <span class="mono">CLAUDE.md</span>: no commute framing, why-lines ≤ 18 words.</p>
+  </aside>
+
+  <main class="stage">
+    <div class="phone"><div class="scr">
+      <div class="sbar"><span id="clock">7:12</span><span class="rt" id="rtstat"></span></div>
+      <div id="view" class="view"></div>
+      <div id="tabs" class="tabs"></div>
+      <div id="overlay"></div>
+      <div id="toast"></div>
+      <div id="sheet"></div>
+    </div></div>
+  </main>
+
+  <aside class="dev">
+    <div class="devbox">
+      <h3>Harness</h3>
+      <div class="devrow" id="devroutes"></div>
+      <div class="divider" style="margin:12px 0"></div>
+      <div class="devrow" id="devstates"></div>
+      <p class="devnote" id="devnote"></p>
+    </div>
+    <div class="devbox" style="padding-bottom:10px">
+      <h3>Events → POST /events</h3>
+      <div class="devrow"><button data-dev="copyev">copy JSON</button><button data-dev="clearev">clear</button><button data-dev="showsession">session doc</button></div>
+    </div>
+    <div class="log" id="log"></div>
+  </aside>
+</div>
+
+<script>
+/* ============================================================================
+   ICONS
+   ============================================================================ */
+const I = {
+  home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  play:'<path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke="none"/>',
+  pause:'<path d="M8 5h3v14H8zM13 5h3v14h-3z" fill="currentColor" stroke="none"/>',
+  back15:'<path d="M11 4 7 7l4 3"/><path d="M7 7h6a6 6 0 1 1-6 6"/>',
+  fwd30:'<path d="M13 4l4 3-4 3"/><path d="M17 7h-6a6 6 0 1 0 6 6"/>',
+  lib:'<path d="M4 5v14M9 5v14M14 6l4 13"/>',
+  tune:'<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+  mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  minus:'<path d="M5 12h14"/>',
+  down:'<path d="M12 4v12m0 0 4-4m-4 4-4-4M4 20h16"/>',
+  up:'<path d="m6 14 6-6 6 6"/>',
+  block:'<circle cx="12" cy="12" r="8"/><path d="m6.5 6.5 11 11"/>',
+  check:'<path d="m5 12.5 4.5 4.5L19 7"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  seam:'<path d="M12 3v18"/><path d="m12 8 3 4-3 4-3-4z" fill="currentColor"/>',
+  wifi:'<path d="M2 8a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor"/>',
+  plane:'<path d="M10 3h4l-1 7 8 4v2l-8-2-1 5 3 2v1l-5-1-5 1v-1l3-2-1-5-8 2v-2l8-4z" fill="currentColor" stroke="none"/>',
+  alert:'<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
+  bell:'<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6M10 21h4"/>'
+};
+const ic=(n,s=1.6)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${s}" stroke-linecap="round" stroke-linejoin="round">${I[n]}</svg>`;
+
+/* ============================================================================
+   FIXTURE — session doc v1  (mirrors 02_ARCHITECTURE.md)
+   ============================================================================ */
+const SHOWS = {
+  ir:{id:'shw_ir', name:'Industrial Radio', art:'IR', c:'#C8A24A'},
+  sl:{id:'shw_sl', name:'The Slow Lathe',   art:'SL', c:'#5FA8A0'},
+  rd:{id:'shw_rd', name:'Ruins & Dust',     art:'RD', c:'#B5654A'},
+  pe:{id:'shw_pe', name:'Pigeon Empire',    art:'PE', c:'#8A8FB0'},
+  lb:{id:'shw_lb', name:'The Long Bench',   art:'LB', c:'#B9A38C'},
+  tt:{id:'shw_tt', name:'Thermal Tales',    art:'TT', c:'#C8A24A'}
+};
+
+const SESSION = {
+  session_id:'ses_20260728_am', version:1, user_id:'usr_joey',
+  built_at:'2026-07-28T05:41:00Z', expires_at:'2026-07-28T21:00:00Z',
+  target_minutes:38,
+  menu:[
+    {card_id:'c_cont', archetype:'continue', episode_ref:'ep_lb_212',
+     card:{title:'The inefficiency paradox', show:'lb', archetype:'Continue',
+           why_line:'You stopped 18 minutes in on Sunday.'},
+     start_offset:1080, expected_duration:2760},
+    {card_id:'c_deep', archetype:'deep', episode_ref:'ep_ir_847',
+     card:{title:'Emissivity, and why your thermal camera lies', show:'ir', archetype:'Deep-learn',
+           why_line:'Follows the metallurgy episode you finished Monday, from the measurement side.'},
+     intro_tts:{asset_url:'storage://tts/ses_20260728_am/0.mp3', expected_duration:14},
+     expected_duration:2280},
+    {card_id:'c_stretch', archetype:'stretch', episode_ref:'ep_sl_063',
+     card:{title:'Graduating violin plates by ear', show:'sl', archetype:'Stretch',
+           why_line:'Bridge: you finish precision-machining shows. This is the same obsession, in wood.'},
+     intro_tts:{asset_url:'storage://tts/ses_20260728_am/1.mp3', expected_duration:16},
+     expected_duration:2700},
+    {card_id:'c_narr', archetype:'narrative', episode_ref:'ep_rd_031',
+     card:{title:'The Baltimore fire, hydrant by hydrant', show:'rd', archetype:'Narrative',
+           why_line:'Told through the men who mapped the water mains. No prior knowledge needed.'},
+     intro_tts:{asset_url:'storage://tts/ses_20260728_am/2.mp3', expected_duration:13},
+     expected_duration:3120},
+    {card_id:'c_comfort', archetype:'comfort', episode_ref:'ep_pe_118',
+     card:{title:'What hobbyists get wrong', show:'pe', archetype:'Comfort',
+           why_line:'Two hosts you finish nine times out of ten, arguing about pigeons.'},
+     intro_tts:{asset_url:'storage://tts/ses_20260728_am/3.mp3', expected_duration:11},
+     expected_duration:1560}
+  ],
+  paths:{
+    c_deep:[
+      {type:'intro_tts', asset_url:'storage://tts/ses_20260728_am/0.mp3', expected_duration:14,
+       card:{title:'Intro', show:'ir'},
+       script:'Starting with Industrial Radio — this follows the metallurgy episode you finished Monday, but from the measurement side.'},
+      {type:'episode', episode_ref:'ep_ir_847', start_offset:0, expected_duration:2280,
+       card:{title:'Emissivity, and why your thermal camera lies', show:'ir', archetype:'Deep-learn'}},
+      {type:'transition_tts', asset_url:'storage://tts/ses_20260728_am/0t.mp3', expected_duration:9,
+       card:{title:'Transition', show:'tt'},
+       script:'That emissivity problem is exactly what the next show hit in the field — here is Thermal Tales.'},
+      {type:'episode', episode_ref:'ep_tt_044', start_offset:0, expected_duration:1320,
+       card:{title:'Sensing at the edge', show:'tt', archetype:'Deep-learn'}},
+      {type:'outro_tts', asset_url:'storage://tts/ses_20260728_am/0o.mp3', expected_duration:8,
+       card:{title:'Outro', show:'ir'},
+       script:'That is the run. Nothing queued after this.'}
+    ],
+    c_stretch:[
+      {type:'intro_tts', asset_url:'storage://tts/ses_20260728_am/1.mp3', expected_duration:16,
+       card:{title:'Intro', show:'sl'},
+       script:'This one is a reach. You finish precision-machining shows, and plate graduation is the same obsession in wood.'},
+      {type:'episode', episode_ref:'ep_sl_063', start_offset:0, expected_duration:2700,
+       card:{title:'Graduating violin plates by ear', show:'sl', archetype:'Stretch'}},
+      {type:'outro_tts', asset_url:'storage://tts/ses_20260728_am/1o.mp3', expected_duration:8,
+       card:{title:'Outro', show:'sl'}, script:'That is the run.'}
+    ],
+    c_narr:[
+      {type:'intro_tts', asset_url:'storage://tts/ses_20260728_am/2.mp3', expected_duration:13,
+       card:{title:'Intro', show:'rd'}, script:'A story today. Ruins and Dust on the Baltimore fire.'},
+      {type:'episode', episode_ref:'ep_rd_031', start_offset:0, expected_duration:3120,
+       card:{title:'The Baltimore fire, hydrant by hydrant', show:'rd', archetype:'Narrative'}},
+      {type:'outro_tts', asset_url:'storage://tts/ses_20260728_am/2o.mp3', expected_duration:8,
+       card:{title:'Outro', show:'rd'}, script:'That is the run.'}
+    ],
+    c_comfort:[
+      {type:'intro_tts', asset_url:'storage://tts/ses_20260728_am/3.mp3', expected_duration:11,
+       card:{title:'Intro', show:'pe'}, script:'Something easy. Pigeon Empire.'},
+      {type:'episode', episode_ref:'ep_pe_118', start_offset:0, expected_duration:1560,
+       card:{title:'What hobbyists get wrong', show:'pe', archetype:'Comfort'}},
+      {type:'outro_tts', asset_url:'storage://tts/ses_20260728_am/3o.mp3', expected_duration:8,
+       card:{title:'Outro', show:'pe'}, script:'That is the run.'}
+    ],
+    c_cont:[
+      {type:'episode', episode_ref:'ep_lb_212', start_offset:1080, expected_duration:2760,
+       card:{title:'The inefficiency paradox', show:'lb', archetype:'Continue'}},
+      {type:'outro_tts', asset_url:'storage://tts/ses_20260728_am/4o.mp3', expected_duration:8,
+       card:{title:'Outro', show:'lb'}, script:'That is where you left off, finished.'}
+    ]
+  }
+};
+
+const TAX = [
+  {id:'eng.precision', path:'engineering', name:'Precision manufacturing', w:.82, conf:.9, at:'Mon'},
+  {id:'sci.materials', path:'science',     name:'Materials science',      w:.64, conf:.8, at:'Mon'},
+  {id:'craft.instr',   path:'craft',       name:'Instrument making',      w:.21, conf:.3, at:'seeded'},
+  {id:'eng.energy',    path:'engineering', name:'Energy / fusion',        w:.58, conf:.7, at:'Thu'},
+  {id:'hist.tech',     path:'history',     name:'History of technology',  w:.49, conf:.6, at:'Sat'},
+  {id:'hist.mil',      path:'history',     name:'Military, ancient',      w:.33, conf:.5, at:'seeded'},
+  {id:'biz.startups',  path:'business',    name:'Startups',               w:.18, conf:.4, at:'Jun'},
+  {id:'com.hangs',     path:'comedy',      name:'Casual hangs',           w:.44, conf:.8, at:'Sun'},
+  {id:'home.diy',      path:'home',        name:'DIY / shop',             w:.37, conf:.5, at:'seeded'},
+  {id:'news.politics', path:'news',        name:'Politics',               w:-.62, conf:.9, at:'Wed'}
+];
+
+const ONBOARD = [
+  {q:'What did you last fall down a rabbit hole on?', hint:'Type it how you would say it.',
+   opts:['Thermal imaging','Violin acoustics','Fab economics','Ancient siege engines'], gives:['eng.precision','sci.materials']},
+  {q:'When you bail on an episode, what usually did it?', hint:'This tunes the quality signal, not the topic.',
+   opts:['Padding and banter','A guest who cannot explain','Too slow to start','I finish most things'], gives:[]},
+  {q:'What do you put on when you do not want to think?', hint:'The comfort slot needs a target.',
+   opts:['Two friends talking','Comedy','A story','Nothing — silence'], gives:['com.hangs']},
+  {q:'Anything you never want to hear about?', hint:'Hard blocks. You can change these later.',
+   opts:['Politics','True crime','Celebrity interviews','Sports'], gives:['news.politics'], negative:true},
+  {q:'How much should I say before pressing play?', hint:'Intro verbosity.',
+   opts:['One line','A sentence of context','Skip it entirely'], gives:[]}
+];
+
+/* ============================================================================
+   STATE
+   ============================================================================ */
+const S = {
+  route:'signin', tab:'today', onb:0, onbPicks:{},
+  tax:JSON.parse(JSON.stringify(TAX)),
+  queue:null, qi:0, pos:0, playing:false, pickedCard:null,
+  rate:1.25, demo:90, offline:false, dl:'ready', dlPct:100,
+  sessionState:'ready', events:[], toast:null, overlay:null, sheet:null,
+  fb:{}, saved:[], subs:['shw_ir','shw_pe','shw_lb'], blocked:[],
+  lastPickArchetype:null, askedRating:false, ratings:0,
+  breakNext:false, pttText:'', clock:7*60+12
+};
+const show = k => SHOWS[k] || SHOWS.ir;
+const cur = () => S.queue ? S.queue[S.qi] : null;
+const fmt = s => { s=Math.max(0,Math.round(s)); const m=Math.floor(s/60); return m+':'+String(s%60).padStart(2,'0'); };
+const mins = s => Math.round(s/60)+' min';
+
+/* ---------- events (the learning signal) ---------- */
+function ev(type, payload={}){
+  S.events.unshift({user_id:'usr_joey', ts:new Date().toISOString(), type, payload});
+  paintLog();
+}
+function toast(msg, kind){ S.toast={msg,kind}; paintToast(); clearTimeout(toast._t); toast._t=setTimeout(()=>{S.toast=null;paintToast();},2600); }
+
+/* ---------- taxonomy mutation ---------- */
+function bump(id, delta, why){
+  const n = S.tax.find(t=>t.id===id); if(!n) return;
+  n.w = Math.max(-1, Math.min(1, n.w + delta));
+  n.at = 'just now'; n.recent = why; n.flash = true;
+  setTimeout(()=>{ n.flash=false; },1800);
+}
+
+/* ============================================================================
+   PLAYBACK ENGINE  (the PlayerQueueManager stand-in)
+   ============================================================================ */
+function pick(cardId){
+  const card = SESSION.menu.find(m=>m.card_id===cardId);
+  S.queue = JSON.parse(JSON.stringify(SESSION.paths[cardId]));
+  if(S.breakNext){ const e=S.queue.find(i=>i.type==='episode'); if(e) e.broken=true; S.breakNext=false; }
+  S.qi=0; S.pos = S.queue[0].start_offset || 0; S.playing=true; S.pickedCard=cardId;
+  S.lastPickArchetype = card.archetype; S.route='player'; S.tab='today';
+  ev('picked', {card_id:cardId, archetype:card.archetype, episode_ref:card.episode_ref, position_in_menu:SESSION.menu.indexOf(card)});
+  bump(archToTax(card.archetype), .02, 'picked from menu');
+  render();
+}
+function archToTax(a){ return {deep:'eng.precision', stretch:'craft.instr', narrative:'hist.tech', comfort:'com.hangs', continue:'eng.energy'}[a]||'eng.precision'; }
+
+function advance(reason){
+  const it = cur();
+  if(it){
+    if(it.type==='episode'){
+      const pct = (S.pos - (it.start_offset||0)) / it.expected_duration;
+      if(reason==='finished' || pct>=.85){
+        ev('finished', {episode_ref:it.episode_ref, pct:+pct.toFixed(2)});
+        bump('eng.precision', .05, 'finished an episode');
+        pushHistory(it);
+      } else {
+        ev('skipped_at', {episode_ref:it.episode_ref, at_sec:Math.round(S.pos), pct:+pct.toFixed(2)});
+        if(S.pos < 120) bump('eng.precision', -.01, 'skipped early');
+      }
+    }
+  }
+  if(S.qi >= S.queue.length-1){ endSession(); return; }
+  S.qi++; S.pos = cur().start_offset || 0;
+  if(cur().broken){ handleBroken(); return; }
+  render();
+}
+function handleBroken(){
+  const it=cur();
+  ev('error', {kind:'enclosure_unreachable', episode_ref:it.episode_ref, http:404});
+  it.errored=true; S.playing=false; render();
+  setTimeout(()=>{ if(!cur()||!cur().errored) return; toast('Skipped — that file would not load.','err'); S.playing=true; advance('error'); },3400);
+}
+function pushHistory(it){
+  const c=it.card; S.history=S.history||[];
+  S.history.unshift({title:c.title, show:c.show, when:'just now'});
+}
+function endSession(){
+  S.playing=false; ev('session_end',{session_id:SESSION.session_id, items_played:S.qi+1});
+  S.route='sessionend'; render();
+}
+setInterval(()=>{
+  if(!S.playing || S.route!=='player') return;
+  const it=cur(); if(!it || it.errored) return;
+  S.pos += .25 * S.rate * (S.demo/1);
+  const end = (it.start_offset||0) + it.expected_duration;
+  if(S.pos >= end){ advance('finished'); return; }
+  paintProgress();
+}, 250);
+setInterval(()=>{ S.clock++; const el=document.getElementById('clock'); if(el) el.textContent=Math.floor(S.clock/60)+':'+String(S.clock%60).padStart(2,'0'); }, 6000);
+
+/* ============================================================================
+   SCREENS
+   ============================================================================ */
+const V = {};
+
+V.signin = () => `
+<div style="display:flex;flex-direction:column;height:100%;padding-top:60px">
+  <div style="flex:1">
+    <p class="kick" style="color:var(--stretch)">Foray</p>
+    <h1 class="h1" style="font-size:36px;margin-top:14px">A short trip<br>somewhere you<br>would not have<br>gone.</h1>
+    <p class="lede">Four picks a day, chosen for you. One of them is deliberately outside what you already like.</p>
+  </div>
+  <div style="display:grid;gap:9px;padding-bottom:8px">
+    <button class="btn" data-act="go" data-r="onboard">Continue with Apple</button>
+    <button class="btn ghost" data-act="go" data-r="onboard">Continue with email</button>
+    <p class="note" style="text-align:center">Audio plays from the publisher. Nothing is re-hosted or edited.</p>
+  </div>
+</div>`;
+
+V.onboard = () => {
+  const step = ONBOARD[S.onb], n = S.onb+1;
+  const picks = S.onbPicks[S.onb]||[];
+  return `
+  <div style="display:flex;flex-direction:column;height:100%">
+    <div class="hdr"><span class="kick">Interview · ${n} of ${ONBOARD.length}</span>
+      ${S.onb>0?'<button class="mono" data-act="onbBack" style="font-size:11px;color:var(--dim)">back</button>':''}</div>
+    <div class="bar" style="margin-bottom:26px"><i style="width:${n/ONBOARD.length*100}%"></i></div>
+    <h2 class="h1">${step.q}</h2>
+    <p class="lede">${step.hint}</p>
+    <div class="chips" style="margin-top:22px">
+      ${step.opts.map((o,i)=>`<button class="chip" data-act="onbPick" data-i="${i}" aria-pressed="${picks.includes(i)}">${o}</button>`).join('')}
+    </div>
+    <div style="margin-top:18px"><input class="btn ghost" style="text-align:left;font-weight:400;color:var(--dim)" value="or type your own…" readonly></div>
+    <div style="margin-top:auto;display:grid;gap:8px">
+      <button class="btn" data-act="onbNext">${n===ONBOARD.length?'Build my first menu':'Next'}</button>
+      <p class="note" style="text-align:center">Answers seed your taxonomy. Everything is editable later.</p>
+    </div>
+  </div>`;
+};
+
+V.onbdone = () => `
+<div style="display:flex;flex-direction:column;height:100%">
+  <div class="hdr"><span class="kick">What I heard</span></div>
+  <h2 class="h1">Here is your starting shape.</h2>
+  <p class="lede">Weights, not categories. They move every time you finish or bail on something.</p>
+  <div style="margin-top:18px">
+    ${S.tax.filter(t=>Math.abs(t.w)>.3).slice(0,6).map(t=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)">
+        <div><div style="font-size:13.5px;font-weight:500">${t.name}</div><div class="taxpath">${t.path}</div></div>
+        <div class="mono" style="font-size:11px;color:${t.w<0?'var(--err)':'var(--dim)'}">${t.w>0?'+':''}${t.w.toFixed(2)}</div>
+      </div>`).join('')}
+  </div>
+  <div style="margin-top:auto;display:grid;gap:8px">
+    <button class="btn" data-act="finishOnb">Open today's menu</button>
+    <p class="note" style="text-align:center">First week runs a higher exploration rate and shorter picks.</p>
+  </div>
+</div>`;
+
+V.today = () => {
+  if(S.sessionState==='building') return stateCard('Building your menu','The curator is scoring candidates and writing the intros. This normally finishes before you wake up.', 'bell', [['Notify me when it is ready','noop']]);
+  if(S.sessionState==='expired') return stateCard('This menu is from this morning','It expired at 9pm. Nothing here is fresh enough to bother you with.','alert',[['Build a new one','rebuild']]);
+  if(S.sessionState==='none') return stateCard('Nothing scheduled','No menu is built for right now. You can ask for one on demand.','plus',[['Build a menu','rebuild']]);
+
+  const dl = S.dl!=='ready' ? `<div class="banner warn">${ic('down')}<span>${S.dl==='queued'?'Queued for download':'Downloading — first pick is ready in 40s'}</span></div>` : '';
+  const off = S.offline ? `<div class="banner ok">${ic('plane')}<span>Airplane mode. Everything below is on the phone already.</span></div>` : '';
+  return `
+  <div class="hdr">
+    <div><p class="kick">Tuesday · built 5:41am</p><h2 class="h1" style="margin-top:5px">Today</h2></div>
+    <button class="art sm" data-act="go" data-r="settings" style="background:var(--surface2);color:var(--dim);font-size:11px">J</button>
+  </div>
+  ${off}${dl}
+  ${SESSION.menu.map(m=>card(m)).join('')}
+  <p class="note" style="text-align:center;padding:6px 0 14px">Four picks, one of them deliberately off your path.<br>No feed, no more to load.</p>`;
+};
+function stateCard(t,b,icon,acts){
+  return `<div style="display:flex;flex-direction:column;height:100%;justify-content:center;text-align:center;gap:16px;padding:0 8px">
+    <div style="width:52px;height:52px;border-radius:50%;background:var(--surface2);display:grid;place-items:center;margin:0 auto;color:var(--dim)">${ic(icon)}</div>
+    <h2 class="h1" style="font-size:23px">${t}</h2><p class="lede" style="margin:0">${b}</p>
+    <div style="display:grid;gap:8px;margin-top:10px">${acts.map(a=>`<button class="btn" data-act="${a[1]}">${a[0]}</button>`).join('')}</div>
+  </div>`;
+}
+function card(m){
+  const sh = show(m.card.show), isCont = m.archetype==='continue';
+  const dis = S.offline && S.dl!=='ready';
+  const played = isCont ? (m.start_offset/m.expected_duration*100) : 0;
+  return `
+  <div class="card a ${isCont?'on':''}" data-a="${m.archetype}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
+      <span class="badge a"><i></i>${m.card.archetype}</span>
+      <span class="show">${isCont? mins(m.expected_duration-m.start_offset)+' left' : mins(m.expected_duration)}</span>
+    </div>
+    <div class="row">
+      <div class="art" style="background:${sh.c}">${sh.art}</div>
+      <div style="flex:1;min-width:0">
+        <p class="title">${m.card.title}</p>
+        <span class="show">${sh.name}</span>
+      </div>
+    </div>
+    ${isCont?`<div class="bar" style="margin-top:12px"><i style="width:${played}%"></i></div>`:''}
+    <p class="why">${m.card.why_line}</p>
+    <button class="btn ${isCont||m.archetype==='deep'?'':'ghost'}" style="margin-top:12px" data-act="pick" data-id="${m.card_id}" ${dis?'disabled':''}>
+      ${ic('play')} ${isCont?'Resume':'Play'}</button>
+  </div>`;
+}
+
+V.player = () => {
+  const it = cur(); if(!it) return '';
+  const sh = show(it.card.show);
+  const isTTS = it.type.endsWith('_tts');
+  if(it.errored) return playerError(it, sh);
+  if(isTTS) return playerBridge(it, sh);
+
+  const start = it.start_offset||0, dur = it.expected_duration;
+  const pct = Math.min(100, Math.max(0, (S.pos-start)/dur*100));
+  const nextIt = S.queue[S.qi+1];
+  return `
+  <div class="pwrap">
+    <div class="hdr">
+      <button data-act="go" data-r="today" class="mono" style="font-size:11px;color:var(--dim)">▾ Today</button>
+      <span class="show">${S.qi+1} of ${S.queue.length}</span>
+    </div>
+    ${S.offline?`<div class="banner ok">${ic('plane')}<span>Offline — playing from downloads</span></div>`:''}
+    <div class="row" style="margin-top:4px">
+      <div class="art lg" style="background:${sh.c}">${sh.art}</div>
+      <div style="flex:1;min-width:0;padding-top:2px">
+        <span class="badge a" data-a="${S.lastPickArchetype}"><i></i>${it.card.archetype||''}</span>
+        <p class="title" style="font-size:19px;margin:9px 0 4px;letter-spacing:-.02em">${it.card.title}</p>
+        <span class="show">${sh.name}</span>
+      </div>
+    </div>
+    ${strip()}
+    <div class="scrub" id="scrub"><span class="t"></span><span class="f" style="width:${pct}%"></span><span class="k" style="left:${pct}%"></span></div>
+    <div class="times"><span id="tcur">${fmt(S.pos-start)}</span><span id="trem">−${fmt(dur-(S.pos-start))}</span></div>
+    <div class="transport">
+      <button class="tbtn" data-act="seek" data-d="-15">${ic('back15')}</button>
+      <button class="tbtn main" data-act="toggle">${ic(S.playing?'pause':'play')}</button>
+      <button class="tbtn" data-act="seek" data-d="30">${ic('fwd30')}</button>
+    </div>
+    <div class="fb">
+      <button class="${S.fb.more?'on':''}" data-act="fb" data-k="more">${ic('plus')}MORE LIKE THIS</button>
+      <button class="${S.fb.down?'on':''}" data-act="fb" data-k="down">${ic('minus')}LESS</button>
+      <button class="${S.fb.saved?'on':''}" data-act="fb" data-k="save">${ic('down')}SAVE</button>
+      <button data-act="sheet" data-s="show">${ic('block')}SHOW</button>
+    </div>
+    <button class="ptt" data-act="ptt">${ic('mic')} Hold to talk</button>
+    <div style="margin-top:auto;padding:14px 0 6px;border-top:1px solid var(--line);display:flex;gap:9px;align-items:flex-start">
+      <span style="color:var(--stretch);flex:none;width:15px">${ic('seam',1.4)}</span>
+      <p class="note" style="margin:0">${nextIt ? (nextIt.type==='outro_tts' ? 'Last item in this run. Nothing queues after it.' : `Next: ${show(S.queue[S.qi+2]?.card.show||nextIt.card.show).name}, after a short handoff.`) : 'Last item.'}</p>
+    </div>
+  </div>`;
+};
+function strip(){
+  return `<div class="strip">${S.queue.map((it,i)=>{
+    const sh=show(it.card.show), tts=it.type.endsWith('_tts');
+    const p = i<S.qi?100 : i>S.qi?0 : Math.min(100,(S.pos-(it.start_offset||0))/it.expected_duration*100);
+    return `<div class="sitem ${tts?'tts':'ep'} ${i<S.qi?'past':''} ${i===S.qi?'now':''}" data-a="${S.lastPickArchetype}"
+      style="${tts?'':'flex:'+it.expected_duration};--c:${sh.c}"><i style="width:${p}%"></i></div>`;
+  }).join('')}</div>`;
+}
+function playerBridge(it, sh){
+  const nx = S.queue[S.qi+1], nsh = nx?show(nx.card.show):sh;
+  const prev = S.queue[S.qi-1], psh = prev?show(prev.card.show):sh;
+  const isOutro = it.type==='outro_tts';
+  return `
+  <div class="pwrap">
+    <div class="hdr"><span class="kick" style="color:var(--stretch)">${isOutro?'End of run':'Handoff '+S.qi}</span>
+      <span class="show">${fmt(it.expected_duration-S.pos)} left</span></div>
+    <div class="bridge">
+      <div class="handoff">
+        <div class="art ar" style="background:${psh.c}">${psh.art}</div>
+        <span style="color:var(--stretch);width:20px">${ic('seam',1.5)}</span>
+        <div class="art" style="background:${nsh.c}">${nsh.art}</div>
+      </div>
+      <p class="bq">“${it.script||''}”</p>
+      <div class="pulse"><i style="animation-duration:${(it.expected_duration/S.demo*4).toFixed(1)}s"></i></div>
+      <p class="note">Spoken by Foray · ${it.expected_duration}s · levels matched to −16 LUFS</p>
+    </div>
+    <div style="display:grid;gap:8px;padding-bottom:6px">
+      <button class="btn ghost" data-act="skipItem">Skip the handoff</button>
+      <p class="note" style="text-align:center">${isOutro?'The run stops here. Nothing autoplays after it.':'Playing straight into '+nsh.name+'.'}</p>
+    </div>
+  </div>`;
+}
+function playerError(it, sh){
+  return `
+  <div class="pwrap">
+    <div class="hdr"><span class="kick" style="color:var(--err)">Item ${S.qi+1}</span></div>
+    <div class="bridge">
+      <div style="width:52px;height:52px;border-radius:50%;background:rgba(193,88,75,.18);display:grid;place-items:center;margin:0 auto;color:var(--err)">${ic('alert')}</div>
+      <p class="bq" style="font-size:17px">This episode would not load.</p>
+      <p class="note">The publisher's file returned 404. Foray never re-hosts audio, so there is no copy to fall back to.</p>
+      <p class="mono" style="font-size:10px;color:var(--dimmer)">${it.episode_ref} · logged to /events</p>
+    </div>
+    <div style="display:grid;gap:8px;padding-bottom:6px">
+      <button class="btn" data-act="skipItem">Skip to the next item</button>
+      <button class="btn ghost" data-act="go" data-r="today">Back to the menu</button>
+    </div>
+  </div>`;
+}
+
+V.sessionend = () => {
+  const rate = !S.askedRating;
+  return `
+  <div style="display:flex;flex-direction:column;height:100%">
+    <div class="hdr"><span class="kick">Run finished</span></div>
+    <h2 class="h1">That is the run.</h2>
+    <p class="lede">Nothing queues after this. Come back tomorrow, or build one on demand.</p>
+    ${rate?`
+    <div class="card on" style="margin-top:20px">
+      <p class="kick" style="margin-bottom:10px">How was that pick?</p>
+      <p class="note" style="margin-bottom:12px">Asked until the ranker has ~30 signals from you. Then it stops.</p>
+      <div style="display:flex;gap:7px">
+        <button class="btn sm ghost" style="flex:1" data-act="rate" data-v="good">Good call</button>
+        <button class="btn sm ghost" style="flex:1" data-act="rate" data-v="ok">Fine</button>
+        <button class="btn sm ghost" style="flex:1" data-act="rate" data-v="bad">Miss</button>
+      </div>
+    </div>`:''}
+    <div style="margin-top:18px">
+      <p class="kick" style="margin-bottom:10px">What this taught the ranker</p>
+      ${S.tax.filter(t=>t.recent).slice(0,4).map(t=>`
+        <div class="ev"><span class="d" style="background:${t.w>=0?'var(--ok)':'var(--err)'}"></span>
+        <div><b>${t.name}</b> ${t.w>=0?'up':'down'} — ${t.recent}<div class="taxpath" style="margin-top:2px">${t.at}</div></div></div>`).join('')
+        || '<p class="note">No taste signal from this run yet.</p>'}
+    </div>
+    <div style="margin-top:auto;display:grid;gap:8px">
+      <button class="btn" data-act="go" data-r="today">Back to today</button>
+      <button class="btn ghost" data-act="go" data-r="interests">See what I know about you</button>
+    </div>
+  </div>`;
+};
+
+V.queue = () => {
+  if(!S.queue) return `<div class="hdr"><h2 class="h1">Queue</h2></div><p class="lede">Nothing playing. Pick something from Today.</p>`;
+  const total = S.queue.reduce((a,i)=>a+i.expected_duration,0);
+  return `
+  <div class="hdr"><div><p class="kick">Queued after your pick</p><h2 class="h1" style="margin-top:5px">This run</h2></div>
+    <span class="show">${mins(total)}</span></div>
+  ${S.queue.map((it,i)=>{
+    const sh=show(it.card.show), tts=it.type.endsWith('_tts');
+    if(tts) return `<div style="display:flex;gap:11px;padding:11px 0;align-items:flex-start">
+      <span style="color:var(--stretch);width:16px;flex:none;margin-top:1px">${ic('seam',1.4)}</span>
+      <div style="flex:1"><p style="margin:0;font-size:12.5px;line-height:1.4;color:${i===S.qi?'var(--bone)':'var(--dim)'}">${it.script||''}</p>
+      <span class="taxpath">${it.type} · ${it.expected_duration}s · ${it.asset_url?'pre-generated':'lazy'}</span></div></div>`;
+    return `<div class="card ${i===S.qi?'on':''}" style="padding:12px">
+      <div class="row">
+        <div class="art sm" style="background:${sh.c}">${sh.art}</div>
+        <div style="flex:1;min-width:0">
+          <p class="title" style="font-size:13.5px">${it.card.title}</p>
+          <span class="show">${sh.name} · ${mins(it.expected_duration)}${it.start_offset?' · resumes at '+fmt(it.start_offset):''}</span>
+        </div>
+        <span class="show">${i<S.qi?'played':i===S.qi?'now':''}</span>
+      </div></div>`;
+  }).join('')}
+  <button class="btn ghost" style="margin-top:6px" data-act="skipItem">Skip to next item</button>
+  <p class="note" style="text-align:center;padding:14px 0">The run ends after the outro. Nothing autoplays past it.</p>`;
+};
+
+V.library = () => {
+  const tab = S.libTab||'continuing';
+  const conts = [
+    {t:'The inefficiency paradox', s:'lb', pct:39, left:'28 min'},
+    {t:'Why fabs cost what they cost', s:'ir', pct:64, left:'14 min'}
+  ];
+  const fin = (S.history||[]).concat([
+    {title:'Building for scale', show:'ir', when:'Mon'},
+    {title:'Why we optimise the wrong thing', show:'pe', when:'Sun'},
+    {title:'Bronze casting, badly', show:'rd', when:'Sat'}
+  ]);
+  return `
+  <div class="hdr"><h2 class="h1">Library</h2></div>
+  <div class="chips" style="margin-bottom:16px">
+    ${['continuing','finished','saved','shows'].map(k=>`<button class="chip" data-act="libTab" data-k="${k}" aria-pressed="${tab===k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}
+  </div>
+  ${tab==='continuing'? conts.map(c=>`
+    <div class="card"><div class="row">
+      <div class="art sm" style="background:${show(c.s).c}">${show(c.s).art}</div>
+      <div style="flex:1;min-width:0"><p class="title" style="font-size:13.5px">${c.t}</p><span class="show">${show(c.s).name} · ${c.left} left</span></div>
+    </div><div class="bar" style="margin-top:11px"><i style="width:${c.pct}%"></i></div>
+    <button class="btn ghost sm wide" style="margin-top:11px" data-act="pick" data-id="c_cont">Resume</button></div>`).join('')
+  : tab==='finished'? fin.map(f=>`
+    <div style="display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line);align-items:center">
+      <div class="art sm" style="background:${show(f.show).c}">${show(f.show).art}</div>
+      <div style="flex:1"><p class="title" style="font-size:13px;margin:0">${f.title}</p><span class="show">${show(f.show).name} · ${f.when}</span></div>
+      <span style="color:var(--ok);width:16px">${ic('check',2)}</span></div>`).join('')
+  : tab==='saved'? (S.saved.length? S.saved.map(f=>`
+    <div style="display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line);align-items:center">
+      <div class="art sm" style="background:${show(f.show).c}">${show(f.show).art}</div>
+      <div style="flex:1"><p class="title" style="font-size:13px;margin:0">${f.title}</p><span class="show">saved ${f.when}</span></div></div>`).join('')
+    : empty('Nothing saved','Hit Save while something is playing and it lands here. Saving marks the topic good, the timing wrong.'))
+  : S.subs.map(id=>{const sh=Object.values(SHOWS).find(x=>x.id===id);return `
+    <div style="display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line);align-items:center">
+      <div class="art sm" style="background:${sh.c}">${sh.art}</div>
+      <div style="flex:1"><p class="title" style="font-size:13px;margin:0">${sh.name}</p><span class="show">following</span></div>
+      <button class="mono" data-act="unsub" data-id="${id}" style="font-size:10px;color:var(--dim)">unfollow</button></div>`;}).join('')
+     + (S.blocked.length?`<p class="kick" style="margin:18px 0 8px">Blocked</p>`+S.blocked.map(b=>`<div class="ev"><span class="d" style="background:var(--err)"></span><div>${b} — never suggested again</div></div>`).join(''):'')}
+  `;
+};
+function empty(t,b){ return `<div style="text-align:center;padding:48px 20px;color:var(--dim)">
+  <p class="h2" style="margin-bottom:8px">${t}</p><p class="note">${b}</p></div>`; }
+
+V.interests = () => `
+  <div class="hdr"><div><p class="kick">Observed, not declared</p><h2 class="h1" style="margin-top:5px">What I know</h2></div></div>
+  <p class="lede" style="margin-bottom:6px">Drag any weight to overrule me. Everything here came from something you did.</p>
+  <div style="margin-top:12px">
+  ${S.tax.map(t=>`
+    <div class="tax" ${t.flash?'style="background:rgba(95,168,160,.08);border-radius:8px"':''}>
+      <div class="taxtop">
+        <div><div class="taxname">${t.name}</div><div class="taxpath">${t.path} · last signal ${t.at}</div></div>
+        <div class="mono" style="font-size:11px;color:${t.w<0?'var(--err)':t.flash?'var(--stretch)':'var(--dim)'}">${t.w>0?'+':''}${t.w.toFixed(2)}</div>
+      </div>
+      <div class="taxbar" data-tax="${t.id}">
+        <span class="t"></span><span class="z"></span>
+        <span class="f ${t.w<0?'neg':''}" style="left:${t.w<0?(50+t.w*50):50}%;width:${Math.abs(t.w)*50}%"></span>
+        <span class="k" style="left:${50+t.w*50}%"></span>
+      </div>
+      ${t.recent?`<p class="note" style="margin-top:6px;color:var(--stretch)">${t.recent}</p>`:''}
+    </div>`).join('')}
+  </div>
+  <p class="kick" style="margin:22px 0 8px">Recent signals</p>
+  ${S.events.filter(e=>['finished','skipped_at','voice_command','thumbs','picked','saved'].includes(e.type)).slice(0,6).map(e=>`
+    <div class="ev"><span class="d" style="background:${e.type==='finished'?'var(--ok)':e.type==='skipped_at'?'var(--warn)':'var(--stretch)'}"></span>
+      <div><b>${e.type}</b> · ${Object.entries(e.payload).slice(0,2).map(([k,v])=>k+'='+v).join(', ')}</div></div>`).join('')
+   || '<p class="note">Nothing yet. Play something.</p>'}
+  <div style="height:20px"></div>`;
+
+V.settings = () => `
+  <div class="hdr"><h2 class="h1">Settings</h2></div>
+  <p class="kick" style="margin-bottom:10px">Listening window</p>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:baseline">
+      <div><p class="title" style="font-size:14px">Weekday mornings</p><span class="show">observed 7:10–7:52 · 34 sessions</span></div>
+      <span class="mono" style="font-size:11px;color:var(--dim)">learned</span>
+    </div>
+    <p class="note" style="margin-top:10px">Foray works this out from what you actually play. There is no field to set it.</p>
+    <button class="btn ghost sm wide" style="margin-top:11px" data-act="wrongwindow">This is wrong</button>
+  </div>
+  <p class="kick" style="margin:20px 0 10px">Voice &amp; intros</p>
+  <div class="card">
+    <p class="title" style="font-size:14px;margin-bottom:10px">How much I say before playing</p>
+    <div class="chips">${['One line','A sentence','Skip it'].map((o,i)=>`<button class="chip" data-act="set" data-k="verbosity" data-v="${i}" aria-pressed="${(S.verbosity??1)===i}">${o}</button>`).join('')}</div>
+  </div>
+  <div class="card">
+    <p class="title" style="font-size:14px;margin-bottom:10px">Voice</p>
+    <div class="chips">${['Neutral','Warm','Clipped'].map((o,i)=>`<button class="chip" data-act="set" data-k="voice" data-v="${i}" aria-pressed="${(S.voice??0)===i}">${o}</button>`).join('')}</div>
+  </div>
+  <p class="kick" style="margin:20px 0 10px">Playback</p>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <p class="title" style="font-size:14px;margin:0">Speed</p>
+      <div class="chips">${[1,1.25,1.5,1.75].map(r=>`<button class="chip" data-act="set" data-k="rate" data-v="${r}" aria-pressed="${S.rate===r}">${r}×</button>`).join('')}</div>
+    </div>
+    <p class="note" style="margin-top:10px">Remembered per show. Ruins &amp; Dust plays at 1.0× because you keep turning it down.</p>
+  </div>
+  <p class="kick" style="margin:20px 0 10px">Downloads</p>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between"><span style="font-size:13.5px">Storage used</span><span class="mono" style="font-size:11px;color:var(--dim)">2.4 / 6.0 GB</span></div>
+    <div class="bar" style="margin-top:10px"><i style="width:40%"></i></div>
+    <p class="note" style="margin-top:10px">Oldest finished episodes are evicted first.</p>
+  </div>
+  <p class="kick" style="margin:20px 0 10px">Cost &amp; telemetry</p>
+  <div class="card">
+    ${[['LLM spend, this week','$1.82'],['TTS characters','41,200'],['Tier-2 transcripts','3 of 20 budget'],['Daily cap','$1.50 — not hit']].map(r=>`
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line)">
+        <span style="font-size:13px;color:var(--dim)">${r[0]}</span><span class="mono" style="font-size:11px">${r[1]}</span></div>`).join('')}
+  </div>
+  <div style="height:20px"></div>`;
+
+/* ---------- overlays ---------- */
+function ovPTT(){
+  const t = S.pttText;
+  return `<div class="ov" style="justify-content:center;padding:0 26px;text-align:center;gap:24px">
+    <div class="mic">${ic('mic',1.8)}</div>
+    <div class="wavebars">${Array.from({length:13},(_,i)=>`<i style="animation-delay:${i*.06}s"></i>`).join('')}</div>
+    <p style="font-size:19px;font-weight:600;margin:0;min-height:52px">${t||'Listening…'}</p>
+    <p class="note">Audio ducked to −18 dB · on-device recognition</p>
+    <div class="chips" style="justify-content:center">
+      ${['More like this','Less politics','Something different','Save this','Never this show again'].map(c=>`<button class="chip" data-act="say" data-c="${c}">${c}</button>`).join('')}
+    </div>
+    <button class="btn ghost" style="width:auto;padding:11px 22px" data-act="closeOv">Release</button>
+  </div>`;
+}
+function ovLock(){
+  const it = cur(); if(!it) return '';
+  const isTTS = it.type.endsWith('_tts');
+  const nx = S.queue[S.qi+1];
+  const sh = show(isTTS && nx ? nx.card.show : it.card.show);
+  const t1 = isTTS ? (nx?`Up next: ${nx.card.title}`:'Foray') : it.card.title;
+  const t2 = isTTS ? 'Foray — handoff' : show(it.card.show).name;
+  const pct = Math.min(100,(S.pos-(it.start_offset||0))/it.expected_duration*100);
+  return `<div class="ov lock" style="padding:26px">
+    <div style="text-align:center;padding-top:16px"><p class="mono" style="font-size:44px;font-weight:400;margin:0;letter-spacing:-.02em">${Math.floor(S.clock/60)}:${String(S.clock%60).padStart(2,'0')}</p>
+      <p class="show">Tuesday 28 July</p></div>
+    <div style="margin-top:auto">
+      <div class="row" style="align-items:center">
+        <div class="art lg" style="background:${sh.c}">${sh.art}</div>
+        <div style="flex:1;min-width:0"><p class="title" style="font-size:16px">${t1}</p><span class="show">${t2}</span></div>
+      </div>
+      <div class="bar" style="margin-top:16px"><i style="width:${pct}%"></i></div>
+      <div class="times"><span>${fmt(S.pos-(it.start_offset||0))}</span><span>−${fmt(it.expected_duration-(S.pos-(it.start_offset||0)))}</span></div>
+      <div class="transport" style="margin-top:10px">
+        <button class="tbtn" data-act="seek" data-d="-15">${ic('back15')}</button>
+        <button class="tbtn main" data-act="toggle">${ic(S.playing?'pause':'play')}</button>
+        <button class="tbtn" data-act="seek" data-d="30">${ic('fwd30')}</button>
+      </div>
+      <p class="note" style="text-align:center;margin-top:18px">${isTTS?'During a handoff the lock screen names what is coming, not the bridge itself.':'Bluetooth next-track maps to the next item, not the next 30 seconds.'}</p>
+      <button class="btn ghost" style="margin-top:14px" data-act="closeOv">Unlock</button>
+    </div>
+  </div>`;
+}
+function shSheet(){
+  const it=cur(); const sh=show(it?it.card.show:'ir');
+  return `<div class="sheet"><div class="grab"></div>
+    <div class="row" style="margin-bottom:16px">
+      <div class="art" style="background:${sh.c}">${sh.art}</div>
+      <div style="flex:1"><p class="title">${sh.name}</p><span class="show">${S.subs.includes(sh.id)?'Following':'Not following'}</span></div>
+    </div>
+    <div style="display:grid;gap:8px">
+      <button class="btn ghost" data-act="sub" data-id="${sh.id}">${S.subs.includes(sh.id)?'Unfollow':'Follow'}</button>
+      <button class="btn ghost" data-act="openEp">Open the full episode elsewhere</button>
+      <button class="btn ghost" style="color:var(--err)" data-act="block" data-n="${sh.name}">Never suggest this show again</button>
+      <button class="btn" data-act="closeSheet">Done</button>
+    </div>
+    <p class="note" style="margin-top:12px">Blocking is a hard rule, not a weight. It is the only irreversible taste control.</p>
+  </div>`;
+}
+
+/* ============================================================================
+   RENDER
+   ============================================================================ */
+const TABS=[['today','Today','home'],['queue','Run','lib'],['library','Library','lib'],['interests','You','tune']];
+function render(){
+  const r = S.route;
+  document.getElementById('view').innerHTML = (V[r]||V.today)();
+  document.getElementById('view').className = 'view';
+  const showTabs = ['today','queue','library','interests','settings','player'].includes(r);
+  document.getElementById('tabs').innerHTML = !showTabs ? '' : TABS.map(t=>
+    `<button data-act="go" data-r="${t[0]}" class="${(r===t[0]||(r==='player'&&t[0]==='today'))?'on':''}">${ic(t[2])}${t[1]}</button>`).join('');
+  document.getElementById('tabs').style.display = showTabs?'flex':'none';
+  document.getElementById('rtstat').innerHTML = (S.offline?ic('plane'):ic('wifi')) + (S.dl!=='ready'?' ⇣':'');
+  document.getElementById('overlay').innerHTML = S.overlay==='ptt'?ovPTT():S.overlay==='lock'?ovLock():'';
+  document.getElementById('sheet').innerHTML = S.sheet==='show'?shSheet():'';
+  paintToast(); paintLog(); paintDev();
+  if(r==='today') SESSION.menu.forEach(m=>{ if(!S.seen?.[m.card_id]){ (S.seen=S.seen||{})[m.card_id]=1; ev('card_shown',{card_id:m.card_id,archetype:m.archetype}); }});
+}
+function paintProgress(){
+  const it=cur(); if(!it) return;
+  const start=it.start_offset||0, pct=Math.min(100,(S.pos-start)/it.expected_duration*100);
+  const f=document.querySelector('#scrub .f'), k=document.querySelector('#scrub .k');
+  if(f){ f.style.width=pct+'%'; k.style.left=pct+'%';
+    document.getElementById('tcur').textContent=fmt(S.pos-start);
+    document.getElementById('trem').textContent='−'+fmt(it.expected_duration-(S.pos-start));
+    const n=document.querySelectorAll('.strip .sitem')[S.qi]; if(n) n.querySelector('i').style.width=pct+'%';
+  } else if(S.overlay==='lock'){ document.getElementById('overlay').innerHTML=ovLock(); }
+  else if(it.type.endsWith('_tts')) { const el=document.querySelector('.hdr .show'); if(el) el.textContent=fmt(it.expected_duration-S.pos)+' left'; }
+}
+function paintToast(){
+  document.getElementById('toast').innerHTML = !S.toast?'':
+    `<div class="toast"><span style="width:16px;flex:none;color:${S.toast.kind==='err'?'var(--err)':'var(--stretch)'}">${ic(S.toast.kind==='err'?'alert':'check',2)}</span><span>${S.toast.msg}</span></div>`;
+}
+function paintLog(){
+  const el=document.getElementById('log'); if(!el) return;
+  el.innerHTML = S.events.length? S.events.slice(0,40).map(e=>
+    `<div class="e"><b>${e.type}</b> <span>${e.ts.slice(11,19)}</span><br>${JSON.stringify(e.payload)}</div>`).join('')
+    : '<div class="e">No events yet. Interact with the phone.</div>';
+}
+function paintDev(){
+  const routes=[['signin','sign in'],['onboard','onboarding'],['today','today'],['player','player'],['queue','run'],['library','library'],['interests','interests'],['settings','settings'],['sessionend','run end']];
+  document.getElementById('devroutes').innerHTML = routes.map(r=>
+    `<button data-dev="route" data-r="${r[0]}" class="${S.route===r[0]?'on':''}">${r[1]}</button>`).join('');
+  const st=[
+    ['offline', S.offline?'offline ✓':'offline', S.offline],
+    ['lock','lock screen', S.overlay==='lock'],
+    ['ptt','voice', S.overlay==='ptt'],
+    ['dl', 'downloading', S.dl!=='ready'],
+    ['building','session building', S.sessionState==='building'],
+    ['expired','session expired', S.sessionState==='expired'],
+    ['break','break next episode', S.breakNext],
+    ['reset','reset all', false]
+  ];
+  document.getElementById('devstates').innerHTML = st.map(s=>
+    `<button data-dev="${s[0]}" class="${s[2]?'on':''}">${s[1]}</button>`).join('')
+    + ['1','30','90','300'].map(d=>`<button data-dev="demo" data-d="${d}" class="${S.demo==+d?'on':''}">${d}×</button>`).join('');
+  document.getElementById('devnote').textContent = S.route==='player' && S.queue
+    ? `item ${S.qi+1}/${S.queue.length} · ${cur().type} · ${Math.round(S.pos)}s`
+    : 'Clock multiplier lets you reach a handoff in seconds.';
+}
+
+/* ============================================================================
+   ACTIONS
+   ============================================================================ */
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-act]'); if(b) return act(b.dataset.act, b);
+  const d = e.target.closest('[data-dev]'); if(d) return dev(d.dataset.dev, d);
+});
+function act(a, el){
+  switch(a){
+    case 'go': S.route=el.dataset.r; if(S.route!=='player') S.sheet=null; render(); break;
+    case 'noop': break;
+    case 'rebuild': S.sessionState='ready'; ev('session_build_requested',{on_demand:true}); toast('Menu rebuilt.'); render(); break;
+    case 'onbPick': {
+      const st=ONBOARD[S.onb], i=+el.dataset.i, cur=S.onbPicks[S.onb]||[];
+      S.onbPicks[S.onb] = cur.includes(i)? cur.filter(x=>x!==i) : cur.concat(i);
+      render(); break; }
+    case 'onbBack': S.onb--; render(); break;
+    case 'onbNext': {
+      const st=ONBOARD[S.onb]; (st.gives||[]).forEach(g=>bump(g, st.negative?-.35:.3,'onboarding interview'));
+      ev('onboarding_answer',{step:S.onb, picks:(S.onbPicks[S.onb]||[]).length});
+      if(S.onb===ONBOARD.length-1){ S.route='onbdone'; } else S.onb++;
+      render(); break; }
+    case 'finishOnb': S.route='today'; ev('onboarding_complete',{nodes:S.tax.length}); render(); break;
+    case 'pick': pick(el.dataset.id); break;
+    case 'toggle': S.playing=!S.playing; ev(S.playing?'play':'pause',{item:S.qi}); render(); break;
+    case 'seek': {
+      const it=cur(); if(!it) break;
+      S.pos = Math.max(it.start_offset||0, S.pos + (+el.dataset.d));
+      ev('seek',{delta_sec:+el.dataset.d, at_sec:Math.round(S.pos)}); paintProgress(); break; }
+    case 'skipItem': ev('skip_item',{from:S.qi}); advance('skipped'); break;
+    case 'fb': {
+      const k=el.dataset.k, it=cur();
+      if(k==='more'){ S.fb.more=!S.fb.more; if(S.fb.more){ ev('thumbs',{value:1, episode_ref:it.episode_ref});
+        bump('eng.precision',.08,'more like this'); bump('sci.materials',.05,'more like this'); toast('Noted. Weights moved — see You.'); } }
+      if(k==='down'){ S.fb.down=!S.fb.down; if(S.fb.down){ ev('thumbs',{value:-1, episode_ref:it.episode_ref});
+        S.sheet='less'; bump('eng.precision',-.04,'thumbs down'); toast('Logged. Say “less X” to name what you mean.'); } }
+      if(k==='save'){ S.fb.saved=!S.fb.saved; if(S.fb.saved){ ev('saved',{episode_ref:it.episode_ref});
+        S.saved.unshift({title:it.card.title, show:it.card.show, when:'today'}); toast('Saved. Topic good, timing wrong — noted that way.'); } }
+      render(); break; }
+    case 'ptt': S.overlay='ptt'; S.pttText=''; ev('voice_ptt_open',{}); render(); break;
+    case 'say': {
+      const c=el.dataset.c; S.pttText=c;
+      render();
+      setTimeout(()=>{ handleVoice(c); }, 700); break; }
+    case 'closeOv': S.overlay=null; render(); break;
+    case 'sheet': S.sheet=el.dataset.s; render(); break;
+    case 'closeSheet': S.sheet=null; render(); break;
+    case 'sub': { const id=el.dataset.id; S.subs = S.subs.includes(id)? S.subs.filter(x=>x!==id): S.subs.concat(id);
+      ev('subscription',{show_id:id, following:S.subs.includes(id)}); render(); break; }
+    case 'unsub': S.subs=S.subs.filter(x=>x!==el.dataset.id); ev('subscription',{show_id:el.dataset.id,following:false}); render(); break;
+    case 'block': { const n=el.dataset.n; S.blocked.push(n); S.sheet=null;
+      ev('blocklist_add',{show:n}); toast('Blocked. That is a hard rule, not a weight.'); render(); break; }
+    case 'openEp': toast('Hands off to the publisher — Foray never re-hosts audio.'); break;
+    case 'rate': S.askedRating=true; S.ratings++; ev('pick_rating',{value:el.dataset.v, archetype:S.lastPickArchetype});
+      if(el.dataset.v==='bad') bump(archToTax(S.lastPickArchetype),-.06,'rated the pick a miss');
+      if(el.dataset.v==='good') bump(archToTax(S.lastPickArchetype),.06,'rated the pick a good call');
+      render(); break;
+    case 'libTab': S.libTab=el.dataset.k; render(); break;
+    case 'set': { const k=el.dataset.k, v=el.dataset.v; S[k]= k==='rate'? +v : +v; ev('setting_changed',{key:k,value:v}); render(); break; }
+    case 'wrongwindow': ev('window_correction',{}); toast('Noted. It will re-derive from the next ten sessions.'); break;
+  }
+}
+function handleVoice(c){
+  const local = ['More like this','Something different','Save this','Skip'];
+  const tier = local.includes(c)?1:2;
+  ev('voice_command', {utterance:c, tier, resolved: c.toLowerCase().replace(/ /g,'_')});
+  if(c==='More like this'){ bump('eng.precision',.08,'said “more like this”'); toast('Earcon: rising. Weights moved.'); }
+  if(c==='Less politics'){ bump('news.politics',-.2,'said “less politics”'); toast('Earcon: falling. Politics pushed down.'); }
+  if(c==='Something different'){ toast('Session-only. Your durable taste is untouched.'); ev('mood_shift',{scope:'session_only'}); }
+  if(c==='Save this'){ const it=cur(); if(it){ S.saved.unshift({title:it.card.title,show:it.card.show,when:'today'}); toast('Saved.'); } else toast('Nothing playing to save.'); }
+  if(c==='Never this show again'){ const it=cur(); if(it){ S.blocked.push(show(it.card.show).name); toast('Hard block applied.'); } else toast('Nothing playing.'); }
+  S.overlay=null; render();
+}
+function dev(a, el){
+  switch(a){
+    case 'route': S.route=el.dataset.r; if(S.route==='player'&&!S.queue) pick('c_deep'); else render(); break;
+    case 'offline': S.offline=!S.offline; ev('connectivity',{offline:S.offline}); render(); break;
+    case 'lock': S.overlay = S.overlay==='lock'?null:'lock'; render(); break;
+    case 'ptt': S.overlay = S.overlay==='ptt'?null:'ptt'; S.pttText=''; render(); break;
+    case 'dl': S.dl = S.dl==='ready'?'downloading':'ready'; S.sessionState='ready'; render(); break;
+    case 'building': S.sessionState = S.sessionState==='building'?'ready':'building'; S.route='today'; render(); break;
+    case 'expired': S.sessionState = S.sessionState==='expired'?'ready':'expired'; S.route='today'; render(); break;
+    case 'break': S.breakNext=!S.breakNext; toast(S.breakNext?'Next episode you pick will 404.':'Cleared.'); render(); break;
+    case 'demo': S.demo=+el.dataset.d; render(); break;
+    case 'reset': location.reload(); break;
+    case 'clearev': S.events=[]; paintLog(); break;
+    case 'copyev': navigator.clipboard?.writeText(JSON.stringify(S.events,null,2)); toast('Event stream copied.'); break;
+    case 'showsession': S.events.unshift({user_id:'—',ts:new Date().toISOString(),type:'session_doc_v1',payload:{session_id:SESSION.session_id,target_minutes:SESSION.target_minutes,menu:SESSION.menu.length,item_types:['intro_tts','episode','transition_tts','outro_tts']}}); paintLog(); break;
+  }
+}
+
+/* ---------- drag: scrubber + taxonomy ---------- */
+document.addEventListener('pointerdown', e=>{
+  const sc=e.target.closest('#scrub'), tx=e.target.closest('[data-tax]');
+  if(sc){ const it=cur(); const move=ev2=>{ const r=sc.getBoundingClientRect();
+      const p=Math.max(0,Math.min(1,(ev2.clientX-r.left)/r.width));
+      S.pos=(it.start_offset||0)+p*it.expected_duration; paintProgress(); };
+    move(e); sc.setPointerCapture(e.pointerId); sc.onpointermove=move;
+    sc.onpointerup=()=>{ sc.onpointermove=null; ev('scrub',{to_sec:Math.round(S.pos)}); }; }
+  if(tx){ const node=S.tax.find(t=>t.id===tx.dataset.tax); if(!node) return;
+    const f=tx.querySelector('.f'), k=tx.querySelector('.k'), val=tx.parentElement.querySelector('.taxtop .mono');
+    const move=ev2=>{ const r=tx.getBoundingClientRect();
+      const p=Math.max(0,Math.min(1,(ev2.clientX-r.left)/r.width));
+      node.w=+((p-.5)*2).toFixed(2);
+      k.style.left=(50+node.w*50)+'%';
+      f.className='f'+(node.w<0?' neg':'');
+      f.style.left=(node.w<0?(50+node.w*50):50)+'%';
+      f.style.width=(Math.abs(node.w)*50)+'%';
+      if(val){ val.textContent=(node.w>0?'+':'')+node.w.toFixed(2); val.style.color=node.w<0?'var(--err)':'var(--stretch)'; } };
+    move(e); tx.setPointerCapture(e.pointerId); tx.onpointermove=move;
+    tx.onpointerup=()=>{ tx.onpointermove=null; node.at='just now'; node.recent='you dragged this yourself';
+      ev('interest_override',{node:node.id, weight:node.w}); render(); }; }
+});
+
+render();
+</script>
+</body>
+</html>
