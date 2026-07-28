@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-27T16:18:18.684Z",
+  "built_at": "2026-07-28T00:12:31.315Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-27-9b4e54b5",
+    "last_batch_id": "fresh-2026-07-28-7a795191",
     "last_batch_tier": 1
   },
   "entries": {
@@ -120951,11 +120951,25 @@
     },
     "1708188846": {
       "topics": [
-        "hobbies"
+        "news/tech"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and computing discussions.",
+      "display_title": "二的三次方",
+      "blurb": "这是一个由肆笑喜剧和漫喜利工作室联合出品的播客节目。 肆漫新喜剧专场巡演中…… 这是一个三个喜剧人的播客，主打的就是各执己见，全是偏颇。 老实人小黑 第一代抖音b站网红 演员王俊霖 前笑果编剧/艺人 演员小镟 老板 用不同的视角分享生活探讨热点 欢迎关注wx公众号【肆笑喜剧】 每周不定时更新…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1708242412": {
       "topics": [
@@ -136939,11 +136953,30 @@
     },
     "1772680590": {
       "topics": [
-        "gaming"
+        "gaming",
+        "fiction/drama"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Immersive fantasy tabletop RPG actual-play storytelling series.",
+      "display_title": "The Kingdom Sleeps: Sleepy DnD Actual Play",
+      "blurb": "The Kingdom Sleeps is a high fantasy DnD actual-play that helps you relax before bed",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1772686490": {
       "topics": [
@@ -136985,11 +137018,25 @@
     },
     "1772911050": {
       "topics": [
-        "space"
+        "science/physics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science and research-focused content.",
+      "display_title": "Daniel and Jorge Explain the Universe",
+      "blurb": "a fun-filled discussion of the big, mind-blowing, unanswered questions about the universe. in each episode, daniel whiteson (a physicist who works at ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1773016797": {
       "topics": [
@@ -137074,11 +137121,25 @@
     },
     "1773334458": {
       "topics": [
-        "society/government"
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content for learning and skill development.",
+      "display_title": "The Fascism Barometer",
+      "blurb": "Learning about fascism can feel overwhelming and terrifying. The Fascism Barometer is a podcast and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1773413759": {
       "topics": [
@@ -137198,8 +137259,22 @@
         "business"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business, entrepreneurship, and market-focused discussions.",
+      "display_title": "Business Insights",
+      "blurb": "Tune into Business Insights: Stand Out & Supercharge Your Assets, the premier podcast for financial",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1774049804": {
       "topics": [
@@ -137340,11 +137415,25 @@
     },
     "1775065416": {
       "topics": [
-        "society"
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and humor-focused entertainment.",
+      "display_title": "Queens of Social Work",
+      "blurb": "“afro-caribbean american social workers sharing our first hand experiences in the field. laugh, cry and learn with us as we discuss various types of s",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1775197940": {
       "topics": [
@@ -137417,11 +137506,25 @@
     },
     "1775548374": {
       "topics": [
-        "religion/spirituality"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and past events.",
+      "display_title": "The David Ghiyam Podcast",
+      "blurb": "I'm David Ghiyam, and for over 20 years, I've shared universal spiritual laws to help",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1775666184": {
       "topics": [
@@ -137432,11 +137535,25 @@
     },
     "1775675742": {
       "topics": [
-        "science/physics"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News coverage and current events discussion.",
+      "display_title": "Wonders of Relativity",
+      "blurb": "\"theory of relativity: simplified\" makes einstein’s groundbreaking ideas accessible to everyone. we break down complex topics like special relativity ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1775691320": {
       "topics": [
@@ -137536,11 +137653,28 @@
     },
     "1776236328": {
       "topics": [
-        "religion/christianity"
+        "news/tech"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Technology and computing discussions.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1776240577": {
       "topics": [
@@ -137569,9 +137703,23 @@
       "topics": [
         "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports discussion and athletic commentary.",
+      "display_title": "Dinks On Tap: The Happy Hour Pickleball Podcast",
+      "blurb": "Ever wondered what the big deal is about Pickleball? Welcome to Dinks on Tap, where",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1776375169": {
       "topics": [
@@ -137948,8 +138096,25 @@
         "science/physics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science and research-focused content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1777861879": {
       "topics": [
@@ -138037,9 +138202,23 @@
       "topics": [
         "religion/hinduism"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified based on genre prior.",
+      "display_title": "Aparokshanubhuti - Swami Sarvapriyananda",
+      "blurb": "in this series of talks, swami sarvapriyananda lucidly unfolds the path to direct &#34;self-realization&#34; presented by adi shankaracharya in aparok",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1778294839": {
       "topics": [
@@ -138698,11 +138877,25 @@
     },
     "1782117048": {
       "topics": [
-        "religion"
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science and research-focused content.",
+      "display_title": "The Deconstructionists",
+      "blurb": "a podcast about building new faith. its all about construction, but sometimes that means you have to deconstruct a little. questions, exploration, mys",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1782118833": {
       "topics": [
@@ -138818,19 +139011,50 @@
     },
     "1782915630": {
       "topics": [
-        "education/courses"
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News coverage and current events discussion.",
+      "display_title": "American Law Cafe",
+      "blurb": "american law cafe: exploring the foundations of law welcome to the american law cafe, your go-to podcast for breaking down the basics of fundamental l",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1782953598": {
       "topics": [
-        "tv-film"
+        "music"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Music-focused content discussing genres, artists, and production.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1782960381": {
       "topics": [
@@ -139083,11 +139307,25 @@
     },
     "1784595198": {
       "topics": [
-        "religion"
+        "news/tech"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and computing discussions.",
+      "display_title": "39th St Church of Christ Podcast",
+      "blurb": "we are a congregation driven by a simple commitment—to be true followers of christ. our faith is grounded in the new testament, and we earnestly pract",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1784599966": {
       "topics": [
@@ -139191,11 +139429,25 @@
     },
     "1785014400": {
       "topics": [
-        "religion"
+        "news/tech"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and computing discussions.",
+      "display_title": "Quiet In The Night",
+      "blurb": "quiet in the night is a podcast to sleep to. so many deal with anxiety. this podcast helps you experience the peace you are looking for you so you can",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1785059048": {
       "topics": [
@@ -139725,11 +139977,25 @@
     },
     "1787830122": {
       "topics": [
-        "engineering/ai-robotics"
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science and research-focused content.",
+      "display_title": "Building AI Boston",
+      "blurb": "“building ai boston” is a dynamic and engaging show dedicated to exploring artificial intelligence (ai) through open, inclusive conversations. centere",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1787869184": {
       "topics": [
@@ -139747,11 +140013,25 @@
     },
     "1787967894": {
       "topics": [
-        "religion/christianity"
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and humor-focused entertainment.",
+      "display_title": "Relatable Catholic",
+      "blurb": "join katie and guests as they aim to bring lighthearted humor to the world while navigating their catholic faith journey toward eternity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1788035047": {
       "topics": [
@@ -139893,11 +140173,25 @@
     },
     "1788370236": {
       "topics": [
-        "relationships"
+        "medicine/neuroscience"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness-focused content.",
+      "display_title": "Mens Anonymous",
+      "blurb": "men have always been seen as strong, rigid, and determined. they are the ones to rely on during the toughest of times and are expected to stand firm i",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1788373264": {
       "topics": [
@@ -139916,11 +140210,25 @@
     },
     "1788403482": {
       "topics": [
-        "hobbies"
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and humor-focused entertainment.",
+      "display_title": "Hobby Nonsense",
+      "blurb": "hobby nonsense is your weekly dive into the weird, wonderful world of non-sport trading cards and pop culture collectibles. hosted by jesse gibson and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1788416416": {
       "topics": [
@@ -140013,11 +140321,25 @@
     },
     "1788695376": {
       "topics": [
-        "religion/hinduism"
+        "news/tech"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and computing discussions.",
+      "display_title": "Kena Upanishad - Swami Sarvapriyananda",
+      "blurb": "swami sarvapriyananda teaches kena upanishad in this series. the kena upanishad (sanskrit: केनोपनिषद्) (also alternatively known as talavakara upanish",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1788724796": {
       "topics": [
@@ -140281,11 +140603,28 @@
     },
     "1789985790": {
       "topics": [
-        "education/how-to"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "News coverage and current events discussion.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1789989059": {
       "topics": [
@@ -140687,19 +141026,47 @@
     },
     "1791818646": {
       "topics": [
-        "religion/hinduism"
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and computing discussions.",
+      "display_title": "Mandukya Upanishad - Swami Sarvapriyananda",
+      "blurb": "lectures on the mandukya upanishad and karika by swami sarvapriyananda at the vedanta society of new york.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1791818724": {
       "topics": [
         "religion/hinduism"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified based on genre prior.",
+      "display_title": "Mundaka Upanishad - Swami Sarvapriyananda",
+      "blurb": "swami sarvapriyananda teaches the mundaka upanishad which one of the major upanishads belonging to the atharva veda. mundaka means &#39;&#39;shaved&#3",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1791818888": {
       "topics": [
@@ -140855,19 +141222,47 @@
     },
     "1792294662": {
       "topics": [
-        "tv-film"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News coverage and current events discussion.",
+      "display_title": "Reality Receipts Podcast",
+      "blurb": "get ready to grab your favorite drink and settle in because reality receipts is here to give you all the latest, juiciest gossip from the world of rea",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1792432770": {
       "topics": [
-        "education/courses"
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and past events.",
+      "display_title": "Charles Stanley Institute Podcast",
+      "blurb": "the charles stanley institute is the disciple-training arm of in touch ministries. it exists to provide believers with sound biblical instruction so t",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1792478736": {
       "topics": [
@@ -141107,11 +141502,25 @@
     },
     "1793661078": {
       "topics": [
-        "tv-film"
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business, entrepreneurship, and market-focused discussions.",
+      "display_title": "Me and Who Els Podcast",
+      "blurb": "Join Elsy as she brings a fresh, unfiltered vibe to the mic, making every listener",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1793764248": {
       "topics": [
@@ -141139,11 +141548,25 @@
     },
     "1793802354": {
       "topics": [
-        "sports/endurance"
+        "news/tech"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and computing discussions.",
+      "display_title": "The Coaches Lane",
+      "blurb": "a podcast by swim coaches, for swim coaches, helping you each and every day to become better than yesterday. powered by the ap race coaches community,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1793802899": {
       "topics": [
@@ -141383,11 +141806,25 @@
     },
     "1794454530": {
       "topics": [
-        "education/self-improvement"
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News coverage and current events discussion.",
+      "display_title": "Start Your Day Positive",
+      "blurb": "start your day positive is the feel-good way to start your morning. every weekday, we bring you uplifting news (yes, it exists!), trending stories wor",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1794511460": {
       "topics": [
@@ -141405,11 +141842,25 @@
     },
     "1794590850": {
       "topics": [
-        "history"
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and past events.",
+      "display_title": "Ask Haviv Anything",
+      "blurb": "\"ask haviv anything\" is a podcast about history, a podcast you, dear listener, will help to shape and direct, focusing not just on what i want to talk",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1794602321": {
       "topics": [
@@ -141576,11 +142027,28 @@
     },
     "1795466868": {
       "topics": [
-        "society/government"
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science-focused content covering research and discovery.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1795483480": {
       "topics": [
@@ -141652,11 +142120,25 @@
     },
     "1795698096": {
       "topics": [
-        "business/careers"
+        "business"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Business, entrepreneurship, and market-focused discussions.",
+      "display_title": "How Much Can I Make? — Real Jobs.",
+      "blurb": "How Much Can I Make? with Mirav Ozeri is the podcast that pulls back the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1795706178": {
       "topics": [
@@ -141730,11 +142212,25 @@
     },
     "1795815972": {
       "topics": [
-        "education/self-improvement"
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and humor-focused entertainment.",
+      "display_title": "Tantric🌹Awakening™",
+      "blurb": "when buddha was asked whether he is a man or a god, he replied, simply, “i am awake.” 🪷 ready to join the 💗𝗿𝗘𝗩𝗢𝗟𝘂𝘁𝗶𝗼𝗻?™ 👉 https://tantric",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1795844824": {
       "topics": [
@@ -141801,9 +142297,23 @@
       "topics": [
         "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-focused content covering research and discovery.",
+      "display_title": "Sasquatch Syndicate",
+      "blurb": "Sasquatch Syndicate is a Washington State Non-Profit and Pacific Northwest–based media organization dedicated to the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1796177870": {
       "topics": [
@@ -142060,11 +142570,28 @@
     },
     "1797033780": {
       "topics": [
-        "history"
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Historical narratives and past events.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1797128904": {
       "topics": [
@@ -142174,11 +142701,25 @@
     },
     "1797618096": {
       "topics": [
-        "sports/golf"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and humor-focused entertainment.",
+      "display_title": "Vanity Index Podcast",
+      "blurb": "full swing creator chad mumm and bachelor nation favorite wells adams take listeners inside the iykyk corners of golf.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1797623408": {
       "topics": [
@@ -142243,9 +142784,23 @@
       "topics": [
         "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports discussion and athletic commentary.",
+      "display_title": "The Next Round",
+      "blurb": "The Next Round with Jim Dunaway, Ryan Brown & Lance Taylor is your daily destination",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1797917580": {
       "topics": [
@@ -142256,11 +142811,25 @@
     },
     "1797958788": {
       "topics": [
-        "education/how-to"
+        "business"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business, entrepreneurship, and market-focused discussions.",
+      "display_title": "Notary Knowledge by Derrick Spruill",
+      "blurb": "\"Notary Knowledge by Derrick Spruill,\" created by Derrick Spruill and hosted by Eddie Montes Travis",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1797993863": {
       "topics": [
@@ -142368,11 +142937,28 @@
     },
     "1798267956": {
       "topics": [
-        "true-crime"
+        "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "News coverage and current events discussion.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1798271005": {
       "topics": [
@@ -142635,11 +143221,25 @@
     },
     "1799464086": {
       "topics": [
-        "society"
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News coverage and current events discussion.",
+      "display_title": "Concrete Mama: The Podcast",
+      "blurb": "concrete mama is not just a podcast - it’s a raw and powerful journey recorded in the heart of the washington state penitentiary in walla walla. featu",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1799554290": {
       "topics": [
@@ -142819,11 +143419,25 @@
     },
     "1800126846": {
       "topics": [
-        "sports/rugby"
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and computing discussions.",
+      "display_title": "Kenty - Paul Kent NRL Podcast",
+      "blurb": "paul kent is back with his very own podcast. kenty blitz - monday to thursday kenty primetime - friday uncompromising, direct & fearless. always. host",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1800138616": {
       "topics": [
@@ -142867,11 +143481,25 @@
     },
     "1800302028": {
       "topics": [
-        "nature/pets"
+        "nature/animal-cognition"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Natural world content focusing on animals, ecosystems, and environment.",
+      "display_title": "The Dr. Molly Says Podcast",
+      "blurb": "Hey friends! I’m Dr. Molly Brinkmann (@drmollysays), a small animal veterinarian, lifelong animal lover, and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1800316056": {
       "topics": [
@@ -142910,11 +143538,25 @@
     },
     "1800587742": {
       "topics": [
-        "true-crime"
+        "business"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business, entrepreneurship, and market-focused discussions.",
+      "display_title": "SCAMMERLAND",
+      "blurb": "Scams are no longer run by individuals. Instead, the bulk of scams now come from",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1800658994": {
       "topics": [
@@ -142933,11 +143575,25 @@
     },
     "1800735102": {
       "topics": [
-        "culture/fashion"
+        "history/military-ancient"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and past events.",
+      "display_title": "I Want Her Shoes Podcast",
+      "blurb": "\"i want her shoes podcast\" is the go-to audio platform for the dynamic woman navigating the crossroads of career and lifestyle. join us as we discuss ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1800758497": {
       "topics": [
@@ -143033,9 +143689,23 @@
       "topics": [
         "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports discussion and athletic commentary.",
+      "display_title": "Press Box Chronicles",
+      "blurb": "Welcome to Press Box Chronicles with Jeff Pearlman—the show where a cranky middle-aged sports writer",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1801207070": {
       "topics": [
@@ -143165,11 +143835,25 @@
     },
     "1801616424": {
       "topics": [
-        "tv-film/interviews"
+        "music"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music-focused content discussing genres, artists, and production.",
+      "display_title": "The Jimmy Star Show With Ron Russell",
+      "blurb": "The Jimmy Star Show with Ron Russell (www.JimmyStarsWorld.com) is tv/radio's coolest syndicated entertainment, music, fashion",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1801708081": {
       "topics": [
@@ -143262,11 +143946,25 @@
     },
     "1802026980": {
       "topics": [
-        "health/mental"
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News coverage and current events discussion.",
+      "display_title": "The Chronic Truth",
+      "blurb": "if chronic illness has ever made you feel lost, alone, or like your body is working against you, this podcast is for you. the chronic truth is a weekl",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1802035466": {
       "topics": [
@@ -143343,11 +144041,25 @@
     },
     "1802625282": {
       "topics": [
-        "society/government"
+        "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News coverage and current events discussion.",
+      "display_title": "Optimist Economy",
+      "blurb": "optimist economy is the anti-doomscroll economics podcast. work rules, tax fairness, healthcare, housing costs, retirement security — the economic for",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1802645201": {
       "topics": [
@@ -143411,11 +144123,25 @@
     },
     "1802737962": {
       "topics": [
-        "fiction"
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and humor-focused entertainment.",
+      "display_title": "DC High Volume: Batman",
+      "blurb": "bringing essential dc comic stories to life off the page and into the audio space — dc high volume: batman begins with the four-part adaptation of yea",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1802744140": {
       "topics": [
@@ -143877,11 +144603,28 @@
     },
     "1804716774": {
       "topics": [
-        "tv-film"
+        "comedy"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Comedy and humor-focused entertainment.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1804853747": {
       "topics": [
@@ -144080,11 +144823,28 @@
     },
     "1805870502": {
       "topics": [
-        "food"
+        "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Historical narratives and past events.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1805898975": {
       "topics": [
@@ -144150,11 +144910,25 @@
     },
     "1806008130": {
       "topics": [
-        "tv-film"
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News coverage and current events discussion.",
+      "display_title": "Davey Boy’s Mind of a Madman Podcast",
+      "blurb": "a madman’s take on current news, entertainment, history, and sports.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:12:31.315Z"
     },
     "1806078144": {
       "topics": [
@@ -144442,11 +145216,30 @@
     },
     "1807755678": {
       "topics": [
-        "medicine"
+        "science",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-focused content covering research and discovery.",
+      "display_title": "Diabetes Nerd",
+      "blurb": "Seriously? Another diabetes podcast? Yup. I couldn't help myself. In this podcast, we are breaking",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-7a795191",
+      "classified_at": "2026-07-28T00:11:42.740Z"
     },
     "1807773760": {
       "topics": [
