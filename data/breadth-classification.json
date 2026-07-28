@@ -9407,6 +9407,33 @@
       "batch_id": "fresh-2026-07-27-b3cee985",
       "classified_at": "2026-07-27T17:01:16.083Z"
     },
+    "1053077930": {
+      "topics": [
+        "news/politics",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Federal government news and policy updates.",
+      "display_title": "Federal Newscast",
+      "blurb": "THE FEDERAL NEWSCAST , (length about seven minutes), is a daily Monday through Friday, high-information compilation o...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
     "1053268058": {
       "topics": [
         "fiction/sci-fi"
@@ -9427,6 +9454,55 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-27-b3cee985",
       "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1053786200": {
+      "topics": [
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design talk and creative design discussion.",
+      "display_title": "Anyway.FM 设计杂谈",
+      "blurb": "由 UI 设计师 JJ Ying 和 Leon Gao 主播的 podcast，主题包括但不限于视觉设计，入选 2015 年 Apple 最佳播客榜单。Anyway.FM 是两个闷骚男抒发对设计热情的地方、Anyway.FM 是两个老...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1054720784": {
+      "topics": [
+        "gaming/design",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Warhammer 40k gaming and tabletop strategies.",
+      "display_title": "Forge the Narrative - Warhammer 40k Podcast",
+      "blurb": "Warhammer 40k based talk show but we get down and dirty with all kinds of geek stuff.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
     },
     "1055044256": {
       "topics": [
@@ -9963,6 +10039,1175 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-27-b3cee985",
       "classified_at": "2026-07-27T17:01:16.083Z"
+    },
+    "1073499086": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book recommendations and literary discussions.",
+      "display_title": "What Should I Read Next?",
+      "blurb": "What Should I Read Next? is the show for every reader who has ever finished a book and faced the problem of not knowi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1073522912": {
+      "topics": [
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "English language learning instruction.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1073817284": {
+      "topics": [
+        "nature/earth-science",
+        "economics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "economics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Energy systems and environmental economics.",
+      "display_title": "Cultures of Energy",
+      "blurb": "Cultures of Energy brings writers, artists and scholars together to talk, think and feel their way into the Anthropoc...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1076806340": {
+      "topics": [
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Project management and team leadership.",
+      "display_title": "Manage This - The Project Management Podcast",
+      "blurb": "In the ever-evolving world of project management, Manage This is the leading podcast for project managers eager for p...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1078714736": {
+      "topics": [
+        "paranormal",
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.95
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal stories and mysteries.",
+      "display_title": "Weird Darkness: Paranormal & True Crime Stories",
+      "blurb": "Award-winning podcast of true stories of the paranormal, supernatural, legends, lore, the strange and bizarre, true c...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1079598542": {
+      "topics": [
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal finance and money management.",
+      "display_title": "Afford Anything | Get Smarter With Money",
+      "blurb": "45 million downloads. One question: what does it actually take to build wealth? Each week, Paula Pant brings in econo...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1080090608": {
+      "topics": [
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Astronomy and space exploration news.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /delve/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1080467174": {
+      "topics": [
+        "news/tech",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Media industry and streaming business analysis.",
+      "display_title": "Channels with Peter Kafka",
+      "blurb": "Media and tech aren’t just intersecting — they’re fully intertwined. And to understand how those worlds work, and wha...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1081954148": {
+      "topics": [
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual guidance and personal development.",
+      "display_title": "The Higher Self with Danny Morel",
+      "blurb": "The Higher Self is dedicated to guiding you through the journey of discovering your highest purpose, passion and pote...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1082188856": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling and martial arts training.",
+      "display_title": "Fight Disciples Podcast",
+      "blurb": "Hosted by Adam Catterall and Nick Peet , Fight Disciples celebrates the biggest personalities within Boxing and MMA, ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1082678396": {
+      "topics": [
+        "true-crime",
+        "sports",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime narratives in sports with comic commentary.",
+      "display_title": "Crime in Sports",
+      "blurb": "Two comedians take an unmerciful and hilarious look at athletes who have lost big games.. with the law! Crime in Spor...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1082725826": {
+      "topics": [
+        "culture/fashion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion, styling, and beauty techniques.",
+      "display_title": "Beyond The Technique Podcast",
+      "blurb": "Welcome to the Beyond The Technique podcast with Kati Whitledge. We exist to support beauty & wellness pros and your ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1083305474": {
+      "topics": [
+        "sports/fantasy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football league strategy and analysis.",
+      "display_title": "GoingFor2 Live Fantasy Football Podcast Network",
+      "blurb": "Sit back, grab a beer and enjoy GoingFor2 Live’s full complement of podcasts, home of; the Armchair Fantasy Show, The...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1084020770": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cold case investigations and mysteries.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1084736600": {
+      "topics": [
+        "tv-film/reviews",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marvel films and superhero entertainment.",
+      "display_title": "Marveling at Marvel's Marvels",
+      "blurb": "Each week, Allen, Josef, and Jonathan discuss a comic book character (or team). Jonathan, a lifelong Marvel devotee, ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1087110764": {
+      "topics": [
+        "culture",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Storytelling about people, work, and history.",
+      "display_title": "The Way I Heard It with Mike Rowe",
+      "blurb": "What started as a series of short mysteries for the curious mind with a short attention span has evolved into enlight...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1088698598": {
+      "topics": [
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physical therapy and rehabilitation practice.",
+      "display_title": "#PTonICE Podcast",
+      "blurb": "The faculty of the Institute of Clinical Excellence deliver their specialized content every weekday morning. Topic ar...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1088978354": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio fiction and dramatic storytelling.",
+      "display_title": "Alice Isn't Dead",
+      "blurb": "A truck driver searches across America for the wife she had long assumed was dead. In the course of her search, she w...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1090666976": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama and theatrical fiction.",
+      "display_title": "The Penumbra Podcast",
+      "blurb": "At the Penumbra, you might follow Juno Steel , a brooding, sharp-witted private eye on Mars, as he tangles with an el...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1090687742": {
+      "topics": [
+        "culture/pop-culture",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.9
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "LGBTQ+ personal narratives and community discussion.",
+      "display_title": "An Older Gay Guy Show",
+      "blurb": "This is an LGBT Podcast aimed toward 40+ guys or anyone who enjoys a show that discusses older gay life and interests...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1091861630": {
+      "topics": [
+        "philosophy/ideas",
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Consciousness, philosophy, and alternative perspectives.",
+      "display_title": "THIRD EYE DROPS",
+      "blurb": "Meld minds with Michael Phillip and his magnificent multidisciplinary guests— Experiencers, artists, scientists, psyc...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1092800054": {
+      "topics": [
+        "health/mental",
+        "kids-family"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.95
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relaxation, sleep, and wellness content.",
+      "display_title": "Sleep Whispers: Relax with ASMR bedtime sleep s...",
+      "blurb": "Relax with Sleep Whispers and enjoy ASMR bedtime sleep stories for kids and adults. Episodes include gently whispered...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1092818618": {
+      "topics": [
+        "history",
+        "transport/maritime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.95
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Maritime history and pirate narratives.",
+      "display_title": "The Pirate History Podcast",
+      "blurb": "A podcast about the Golden Age of Piracy in the Caribbean, the real men and women that threatened the trade and stabi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1096830182": {
+      "topics": [
+        "music",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hip-hop culture and music industry interviews.",
+      "display_title": "Drink Champs",
+      "blurb": "Legendary Queens rapper-turned show host N.O.R.E. teams up with Miami hip-hop pioneer DJ EFN for a night of boozy con...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1097417804": {
+      "topics": [
+        "news/politics",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political commentary with comedic irreverence.",
+      "display_title": "Chapo Trap House",
+      "blurb": "Podcast by Chapo Trap House",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1097449598": {
+      "topics": [
+        "business/management",
+        "economics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        },
+        {
+          "node": "economics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real estate investment and property strategy.",
+      "display_title": "Lifetime Cash Flow Through Real Estate Investing",
+      "blurb": "The Lifetime Cash Flow Through Real Estate Investing Podcast grants you access to expert real estate investors, syndi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1098781682": {
+      "topics": [
+        "craft/diy-home",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home organization and decluttering techniques.",
+      "display_title": "Clutterbug - Real-Life Hacks and Tips to Declut...",
+      "blurb": "Are you ready to take control of your home and your life? You are in the right place! Clutterbug shares home organizi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1099510856": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political commentary and news analysis.",
+      "display_title": "Mark Levin Podcast",
+      "blurb": "Mark Levin is one of the hottest talk radio hosts in America. A prominent conservative commentator, best-selling auth...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1101188156": {
+      "topics": [
+        "culture/pop-culture",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.9
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pop culture talk and personal narratives.",
+      "display_title": "Come Thru Queen",
+      "blurb": "Dan and Brendan bringing you weekly reality show recaps including Real Housewives of Atlanta, Beverly Hills, New York...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1101234896": {
+      "topics": [
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical news and oncology clinical updates.",
+      "display_title": "ASCO Daily News",
+      "blurb": "The ASCO Daily News Podcast features oncologists discussing the latest research and therapies in their areas of exper...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1101754136": {
+      "topics": [
+        "food",
+        "food/cooking-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.95
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coffee culture and beverage science.",
+      "display_title": "Coffee House Shots",
+      "blurb": "Daily political analysis from The Spectator's top team of writers, including Michael Gove, Tim Shipman, Isabel Hardma...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1102050398": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian faith and religious teaching.",
+      "display_title": "Unashamed Unafraid",
+      "blurb": "Unashamed Unafraid is a show dedicated to being unashamed about sexual addiction recovery and unafraid of coming unto...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1102505312": {
+      "topics": [
+        "business/non-profit"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonprofit leadership and organizational strategy.",
+      "display_title": "Nonprofit Leadership Podcast",
+      "blurb": "The Nonprofit Leadership Podcast discusses important issues facing nonprofit leaders in our community and features re...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1104535262": {
+      "topics": [
+        "society/government",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Emergency services and firefighting professionalism.",
+      "display_title": "FDNY Pro",
+      "blurb": "The FDNY Pro podcast brings together professionals and experts in the field of Fire and EMS, offering their firsthand...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1105145426": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Small business operations and entrepreneurship.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1105760780": {
+      "topics": [
+        "health/fitness",
+        "sports/biomechanics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Strength training and fitness culture.",
+      "display_title": "Massenomics Podcast",
+      "blurb": "The Massenomics Podcast has been described as \"the lifting podcast about nothing\". We (Tommy & Tanner) cover relevant...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1106619794": {
+      "topics": [
+        "news",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News reporting and investigative journalism.",
+      "display_title": "Patterson in Pursuit",
+      "blurb": "Philosophy in the real world. Interviewing intellectuals across the globe. Grappling with the biggest ideas. stevepat...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1108992116": {
+      "topics": [
+        "culture/fashion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion industry news and trends.",
+      "display_title": "The Glossy Podcast",
+      "blurb": "The Glossy Podcast is a weekly show on the impact of technology on the fashion and luxury industries with the people ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1109064476": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soccer and Liverpool FC coverage.",
+      "display_title": "Blood Red: The Liverpool FC Podcast",
+      "blurb": "Liverpool FC podcasts from the Liverpool ECHO, including our main Blood Red show with Ian Doyle, Paul Gorst, Theo Squ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1109282822": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL football analysis and coverage.",
+      "display_title": "The Ringer NFL Show",
+      "blurb": "This season, The Ringer NFL Show is in your feed every weekday. Host Sheil Kapadia teams up with a rotating crew of R...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1110780638": {
+      "topics": [
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Art history and visual analysis.",
+      "display_title": "The Lonely Palette",
+      "blurb": "Welcome to The Lonely Palette, the podcast that returns art history to the masses, one painting at a time. Each episo...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1111896980": {
+      "topics": [
+        "philosophy/ideas",
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Consciousness and philosophical exploration.",
+      "display_title": "跟宇宙结婚",
+      "blurb": "《跟宇宙结婚》节目是一档巨型文化知识类聊天节目，妄图传播各种无用/冷门/过时但有趣的知识，主播队伍由小伙子、青年、刀夫三位老师领衔。内容丰富多彩，气氛诙谐调皮，是您生活中的良师益友。",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1112190608": {
+      "topics": [
+        "culture",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Race, culture, and identity in America.",
+      "display_title": "Code Switch",
+      "blurb": "What's CODE SWITCH? It's the fearless conversations about race that you've been waiting for. Hosted by journalists of...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1113848918": {
+      "topics": [
+        "news",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Local news and regional sports coverage.",
+      "display_title": "Expected Buffalo | The Podcast",
+      "blurb": "Official podcast of Expected Buffalo which is an analytics focused website covering the Buffalo Sabres, hosted by Cha...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1114667498": {
+      "topics": [
+        "business/marketing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Social media marketing and Pinterest strategy.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1116782774": {
+      "topics": [
+        "nature",
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gardens, landscapes, and place-making.",
+      "display_title": "Cultivating Place",
+      "blurb": "Gardens are more than collections of plants. Gardens and Gardeners are intersectional spaces and agents for positive ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
+    },
+    "1116995036": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA basketball and Los Angeles Lakers.",
+      "display_title": "Lakers Talk with Mike Trudell",
+      "blurb": "This is a Lakers town, and Mike Trudell is getting you closer to the team during Lakers Talk weekly on ESPN LA 710 an...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-bf6fce47",
+      "classified_at": "2026-07-28T00:55:27.804Z"
     },
     "1459232606": {
       "topics": [
@@ -11132,11 +12377,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-27T17:01:30.860Z",
+  "built_at": "2026-07-28T00:55:27.804Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-27-b3cee985",
+    "last_batch_id": "fresh-2026-07-28-bf6fce47",
     "last_batch_tier": 1
   }
 }
