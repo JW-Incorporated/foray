@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-27T16:16:41.882Z",
+  "built_at": "2026-07-28T00:17:31.639Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-27-f42b961a",
+    "last_batch_id": "fresh-2026-07-28-76bd6eaa",
     "last_batch_tier": 1
   },
   "entries": {
@@ -143851,11 +143851,30 @@
     },
     "1800180117": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Taiwanese casual conversations about relationships, dating, family dynamics, and personal growth.",
+      "display_title": "禎甄要chat內",
+      "blurb": "Two hosts discuss relationships, dating attachment styles, and life experiences through casual hangout conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1800241226": {
       "topics": [
@@ -149542,11 +149561,35 @@
     },
     "1823006955": {
       "topics": [
-        "news/tech"
+        "news/tech",
+        "economics",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "economics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Israeli tech entrepreneurs analyze global geopolitical, economic, and technology trends.",
+      "display_title": "שולחן 4",
+      "blurb": "Tech entrepreneurs discuss global strategy, geopolitics, wealth transfer, and world economics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1823008237": {
       "topics": [
@@ -149759,11 +149802,30 @@
     },
     "1824468099": {
       "topics": [
-        "history"
+        "history",
+        "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Darryl Cooper interviews on controversial historical events and geopolitical strategy.",
+      "display_title": "Provoked",
+      "blurb": "Conversations exploring historical perspectives on geopolitical strategy and international affairs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1824468884": {
       "topics": [
@@ -150217,11 +150279,30 @@
     },
     "1826645409": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Exam preparation and study strategies for registered dietitian certification.",
+      "display_title": "RD Exam Ready",
+      "blurb": "Audio course preparing candidates for the registered dietitian professional exam.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1826784341": {
       "topics": [
@@ -150524,11 +150605,35 @@
     },
     "1828491975": {
       "topics": [
-        "business/non-profit"
+        "health",
+        "health/sexuality",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "HIV prevention, sexual health education, and PrEP medication information.",
+      "display_title": "Lets Talk About PrEP",
+      "blurb": "Educational conversations about HIV prevention methods and sexual health resources.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1828492796": {
       "topics": [
@@ -150585,11 +150690,30 @@
     },
     "1828732605": {
       "topics": [
-        "music"
+        "music",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Musical analysis and fan perspectives on contemporary pop music.",
+      "display_title": "The Swiftie and The Scholar",
+      "blurb": "Exploring music through fan culture and scholarly analysis of contemporary artists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1828756726": {
       "topics": [
@@ -150767,11 +150891,30 @@
     },
     "1829991747": {
       "topics": [
-        "medicine"
+        "health",
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sleep improvement techniques using breathing and meditation methods.",
+      "display_title": "Breathing for Better Sleep",
+      "blurb": "Breathing techniques and relaxation methods for improved sleep quality.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1830012718": {
       "topics": [
@@ -150805,11 +150948,33 @@
     },
     "1830107601": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclear topic from limited episode information; may cover various leisure subjects.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1830150710": {
       "topics": [
@@ -150842,11 +151007,30 @@
     },
     "1830293385": {
       "topics": [
-        "business/non-profit"
+        "true-crime",
+        "society/law"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Crime investigation and legal case discussions.",
+      "display_title": "Dead Giveaway",
+      "blurb": "Exploring criminal cases, investigations, and legal proceedings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1830326608": {
       "topics": [
@@ -150971,11 +151155,33 @@
     },
     "1830895257": {
       "topics": [
-        "society"
+        "paranormal",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.7
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Covers conspiracy theories; limited signal on specific focus areas.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1830920814": {
       "topics": [
@@ -151283,11 +151489,30 @@
     },
     "1832453313": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "personal-journals"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual conversations about parenting and hobby interests among mothers.",
+      "display_title": "Broke Horse Moms",
+      "blurb": "Mothers discussing hobbies, parenting experiences, and lifestyle on a budget.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1832567482": {
       "topics": [
@@ -151408,11 +151633,30 @@
     },
     "1832838825": {
       "topics": [
-        "business/non-profit"
+        "health",
+        "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Healthcare policy discussions from a medical professional perspective.",
+      "display_title": "Policy Rx",
+      "blurb": "Healthcare policy analysis and medical perspectives on government health initiatives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1833063666": {
       "topics": [
@@ -151424,11 +151668,30 @@
     },
     "1833063933": {
       "topics": [
-        "science"
+        "science",
+        "nature"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.95
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science and nature documentary series covering research and discovery.",
+      "display_title": "NOVA Now",
+      "blurb": "Daily science news and perspectives on recent discoveries in nature and research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1833068694": {
       "topics": [
@@ -151642,11 +151905,30 @@
     },
     "1833991539": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical education and discussion of healthcare meaningful practice.",
+      "display_title": "Medicine with Meaning",
+      "blurb": "Medical professionals discuss clinical practice and health care approaches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1833994693": {
       "topics": [
@@ -151665,11 +151947,30 @@
     },
     "1834069371": {
       "topics": [
-        "news/tech"
+        "business/startups",
+        "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese tech entrepreneur discusses business ventures and startup strategy.",
+      "display_title": "罗永浩的十字路口",
+      "blurb": "Tech entrepreneur sharing perspectives on startups, business, and market opportunities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1834117753": {
       "topics": [
@@ -151882,11 +152183,29 @@
     "1834896651": {
       "topics": [
         "health/sexuality",
-        "fiction"
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adult audio content focused on sexual expression.",
+      "display_title": "Explicit Audio Porn",
+      "blurb": "Adult-oriented audio content for intimate listening.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1834939620": {
       "topics": [
@@ -151913,11 +152232,30 @@
     },
     "1835009529": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal and pop culture gossip and commentary show.",
+      "display_title": "The Chisme Corner",
+      "blurb": "Celebrity news, personal stories, and pop culture commentary from a Latina perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1835081063": {
       "topics": [
@@ -152004,11 +152342,33 @@
     },
     "1835422995": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "health/fitness"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclear primary focus; could relate to dance, activism, or fitness.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1835445815": {
       "topics": [
@@ -152038,16 +152398,52 @@
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog-focused podcast covering pet care, behavior, and dog ownership.",
+      "display_title": "Canine Connection",
+      "blurb": "Information and conversations about dogs, pet behavior, and dog ownership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1835504451": {
       "topics": [
-        "sports"
+        "sports",
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sports-related but specific focus area unclear from title.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1835520469": {
       "topics": [
@@ -152115,11 +152511,30 @@
     },
     "1835814585": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual conversations about dogs, pet ownership, and lifestyle.",
+      "display_title": "Dogs and Coffee",
+      "blurb": "Casual conversations about dogs and life experiences with pet owners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1835973979": {
       "topics": [
@@ -152228,11 +152643,30 @@
     },
     "1836334065": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "business/careers"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.95
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Project management professional certification training course.",
+      "display_title": "Certified - PMP",
+      "blurb": "Audio course for project management professional certification preparation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1836371073": {
       "topics": [
@@ -152826,11 +153260,30 @@
     },
     "1838525445": {
       "topics": [
-        "society/government"
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and edge computing industry insights and analysis.",
+      "display_title": "Intel at the Edge",
+      "blurb": "Technology industry analysis and edge computing trends and developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1838529843": {
       "topics": [
@@ -152908,11 +153361,33 @@
     },
     "1839047169": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "In-depth Christian bible study and scriptural analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1839050007": {
       "topics": [
@@ -153056,11 +153531,30 @@
     },
     "1839550659": {
       "topics": [
-        "business/non-profit"
+        "education",
+        "education/self-improvement"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Education policy and pedagogy discussion from academic perspective.",
+      "display_title": "The Education Equation",
+      "blurb": "Education research and pedagogy insights from academic experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1839630665": {
       "topics": [
@@ -153140,11 +153634,30 @@
     },
     "1839942885": {
       "topics": [
-        "news/tech"
+        "history/technology",
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/technology",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "History of technological innovation and scientific discovery.",
+      "display_title": "The Last Invention",
+      "blurb": "Exploring the history and impact of significant technological innovations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1839970777": {
       "topics": [
@@ -153214,11 +153727,30 @@
     },
     "1840226943": {
       "topics": [
-        "tv-film"
+        "kids-family",
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intergenerational conversations between generations on family topics.",
+      "display_title": "Let's Talk!",
+      "blurb": "Conversations bridging generational perspectives on families and society.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1840236194": {
       "topics": [
@@ -153481,11 +154013,30 @@
     },
     "1841650497": {
       "topics": [
-        "tv-film/history"
+        "tv-film/history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Retrospective analysis of Hammer Film Productions horror movies.",
+      "display_title": "Hammer Time",
+      "blurb": "Analysis and reviews of classic Hammer horror films and cinema history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1841709981": {
       "topics": [
@@ -153570,11 +154121,30 @@
     },
     "1841942565": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime stories and legal case analysis.",
+      "display_title": "10 to Life",
+      "blurb": "True crime narratives and criminal justice case exploration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1841953773": {
       "topics": [
@@ -153593,11 +154163,30 @@
     },
     "1842121245": {
       "topics": [
-        "hobbies"
+        "fiction",
+        "fiction/drama"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Grimdark fantasy fiction narrative and storytelling podcast.",
+      "display_title": "Acceptable Losses",
+      "blurb": "Dark fantasy fiction narratives and storytelling in the grimdark genre.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1842180454": {
       "topics": [
@@ -153773,11 +154362,33 @@
     },
     "1843374573": {
       "topics": [
-        "science"
+        "science",
+        "science/chemistry"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "science/chemistry",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science podcast; specific focus area unclear from limited information.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1843377796": {
       "topics": [
@@ -153789,11 +154400,30 @@
     },
     "1843400835": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion industry criticism and pop culture commentary.",
+      "display_title": "Back Row",
+      "blurb": "Fashion and culture criticism from industry perspective and pop culture analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1843407899": {
       "topics": [
@@ -153827,11 +154457,30 @@
     },
     "1843446105": {
       "topics": [
-        "society/government"
+        "news/politics",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political commentary and analysis of geopolitical conflicts.",
+      "display_title": "Ceasefire",
+      "blurb": "Analysis of geopolitical conflicts and political developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1843458331": {
       "topics": [
@@ -154171,11 +154820,30 @@
     },
     "1844970987": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep analysis of artistic and cultural masterpieces.",
+      "display_title": "Inside the Masterpiece",
+      "blurb": "In-depth exploration and analysis of artistic masterpieces.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1844999212": {
       "topics": [
@@ -154195,11 +154863,30 @@
     },
     "1845107703": {
       "topics": [
+        "health/nutrition",
         "medicine"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Diabetes management, nutrition, and medical guidance.",
+      "display_title": "The Diabetes Blueprint",
+      "blurb": "Diabetes prevention and management through nutrition and medical strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1845136428": {
       "topics": [
@@ -154339,11 +155026,30 @@
     },
     "1845980031": {
       "topics": [
-        "sports/football"
+        "sports/football",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports commentary, football analysis, and cultural conversations.",
+      "display_title": "The Ryen Russillo Show",
+      "blurb": "Sports analysis, interviews, and cultural commentary from sports perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1845989117": {
       "topics": [
@@ -154429,11 +155135,30 @@
     },
     "1846261845": {
       "topics": [
-        "kids-family"
+        "kids-family/stories",
+        "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bible stories and Christian teachings adapted for children.",
+      "display_title": "The Bible Recap Kids",
+      "blurb": "Bible stories presented for children's understanding and religious education.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1846423248": {
       "topics": [
@@ -154515,9 +155240,23 @@
       "topics": [
         "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Catholic Rosary prayer and religious devotion.",
+      "display_title": "Say The Rosary",
+      "blurb": "Guided Catholic Rosary prayer for spiritual devotion and practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1847244325": {
       "topics": [
@@ -154895,11 +155634,33 @@
     },
     "1848733323": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Attempts to integrate quantum science with Christian theology; highly speculative.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1848738449": {
       "topics": [
@@ -155023,11 +155784,33 @@
     },
     "1849178409": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Home-related instructions; unclear if real estate or DIY focus.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1849179004": {
       "topics": [
@@ -155105,11 +155888,29 @@
     "1849389195": {
       "topics": [
         "health/sexuality",
-        "fiction"
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language adult sexual narratives.",
+      "display_title": "Relatos sexuales explícitos",
+      "blurb": "Adult sexual storytelling in Spanish language.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1849398813": {
       "topics": [
@@ -155148,11 +155949,30 @@
     },
     "1849460193": {
       "topics": [
-        "sports/basketball"
+        "sports/basketball",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College basketball analysis, Southern Conference sports coverage.",
+      "display_title": "SoCon Fast Break",
+      "blurb": "College basketball news and analysis from Southern Conference perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:31.639Z"
     },
     "1849500990": {
       "topics": [
@@ -155562,11 +156382,30 @@
     },
     "1851087585": {
       "topics": [
-        "news/tech"
+        "history/technology",
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/technology",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "History of labor and technology intersection, industrial change.",
+      "display_title": "Blood in the Machine",
+      "blurb": "Exploring the history of labor and technology in industrial society.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1851118525": {
       "topics": [
@@ -155746,11 +156585,30 @@
     },
     "1851925239": {
       "topics": [
-        "gaming"
+        "gaming/design",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dungeons & Dragons actual play with sci-fi space pirate setting.",
+      "display_title": "Space Pirates D&D",
+      "blurb": "Dungeons & Dragons actual play podcast with space pirate adventure setting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1852045365": {
       "topics": [
@@ -155828,11 +156686,33 @@
     },
     "1852295289": {
       "topics": [
-        "science"
+        "psychology",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Behavioral psychology or neuroscience; specific focus area unclear.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1852305487": {
       "topics": [
@@ -156178,11 +157058,30 @@
     },
     "1853909745": {
       "topics": [
-        "medicine"
+        "health",
+        "health/fitness"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Preventive health, wellness, and fitness without medical intervention focus.",
+      "display_title": "More Health Less Healthcare",
+      "blurb": "Health and wellness strategies focusing on prevention and lifestyle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1853911531": {
       "topics": [
@@ -156193,19 +157092,57 @@
     },
     "1853958555": {
       "topics": [
-        "education/self-improvement"
+        "education/self-improvement",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Self-improvement, psychology, and personal growth discussions.",
+      "display_title": "The Florence Given Show",
+      "blurb": "Psychology and self-improvement conversations exploring personal development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1853967759": {
       "topics": [
-        "health/alternative"
+        "health/alternative",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Alternative health approaches and rapid wellness improvement methods.",
+      "display_title": "Get Better Faster",
+      "blurb": "Alternative health strategies and wellness improvement approaches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1853997354": {
       "topics": [
@@ -156332,11 +157269,30 @@
     },
     "1854841689": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.9
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual conversation about life experiences and relationships.",
+      "display_title": "The Chat",
+      "blurb": "Candid conversations about life experiences and relationships.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1854858291": {
       "topics": [
@@ -156508,11 +157464,30 @@
     },
     "1856265741": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career guidance and professional development networking.",
+      "display_title": "Next Step Network",
+      "blurb": "Career advice and professional development networking for job seekers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1856301064": {
       "topics": [
@@ -157104,11 +158079,30 @@
     },
     "1862654475": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice and family mental health support.",
+      "display_title": "Always Here",
+      "blurb": "Parenting guidance and family mental health support resources.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1862759379": {
       "topics": [
@@ -157579,19 +158573,60 @@
     },
     "1866690507": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "business/careers"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.95
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real estate licensing exam preparation course.",
+      "display_title": "Real Estate Exam Prep",
+      "blurb": "Real estate licensing exam preparation and study course.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1866716433": {
       "topics": [
-        "food"
+        "hobbies",
+        "travel"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Florida-focused lifestyle content; specific topic area unclear.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-76bd6eaa",
+      "classified_at": "2026-07-28T00:17:25.068Z"
     },
     "1866742314": {
       "topics": [
