@@ -13,7 +13,7 @@
       "duration_min": 182,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "science/physics"
       ],
       "hook": "A Fermilab physicist on antimatter, dark energy, and the hunt for one final theory.",
       "audio_url": "https://media.blubrry.com/takeituneasy/ins.blubrry.com/takeituneasy/lex_ai_don_lincoln.mp3",
@@ -33,7 +33,7 @@
       "duration_min": 264,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "computing"
       ],
       "hook": "How FFmpeg's engineers built the codec quietly running every video on the internet.",
       "audio_url": "https://media.blubrry.com/takeituneasy/ins.blubrry.com/takeituneasy/lex_ai_ffmpeg.mp3",
@@ -53,7 +53,7 @@
       "duration_min": 47,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/8f/c0/fb/8fc0fb3a-89f7-cfc7-e596-2fd3988a255b/mza_435383747906350604.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "A former Navy diver turned nuclear engineering department head on training the next generation.",
       "audio_url": "https://traffic.libsyn.com/secure/whynotnuclear/TON_BrianWoods_Audio_V1.mp3?dest-id=585143",
@@ -73,7 +73,7 @@
       "duration_min": 72,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/8f/c0/fb/8fc0fb3a-89f7-cfc7-e596-2fd3988a255b/mza_435383747906350604.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "YouTuber Kyle Hill on touring the Dresden nuclear plant and fixing nuclear's PR problem.",
       "audio_url": "https://traffic.libsyn.com/secure/whynotnuclear/TON_KyleHill_Audio_V1.mp3?dest-id=585143",
@@ -93,8 +93,8 @@
       "duration_min": 76,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/45/79/ff/4579ffe8-ae75-a586-df5a-940e3b0b8ae7/mza_12776813321781247935.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion",
-        "science/materials"
+        "science/materials",
+        "science/storytelling"
       ],
       "hook": "A historian of science traces three centuries of how the West learned to see nature.",
       "audio_url": "https://traffic.libsyn.com/secure/omegataupodcast/omegatau-398-surroundings.mp3",
@@ -114,8 +114,8 @@
       "duration_min": 115,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/45/79/ff/4579ffe8-ae75-a586-df5a-940e3b0b8ae7/mza_12776813321781247935.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion",
-        "science/materials"
+        "science/materials",
+        "engineering/energy-grid"
       ],
       "hook": "MIT's Jacopo Buongiorno on the next-generation reactors racing to beat climate change.",
       "audio_url": "https://traffic.libsyn.com/secure/omegataupodcast/omegatau-359-modernFission.mp3",
@@ -135,8 +135,8 @@
       "duration_min": 91,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/45/79/ff/4579ffe8-ae75-a586-df5a-940e3b0b8ae7/mza_12776813321781247935.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion",
-        "science/materials"
+        "science/materials",
+        "science/physics"
       ],
       "hook": "The graphite block built to absorb the full force of the LHC's particle beam.",
       "audio_url": "https://traffic.libsyn.com/secure/omegataupodcast/omegatau-383-theLHCBeamDump.mp3",
@@ -156,7 +156,7 @@
       "duration_min": 56,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/6d/f5/79/6df579b2-e716-1907-d000-305018e792a4/mza_14670425412905577992.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "Scaling EV charging past its biggest blocker: renters without a private driveway.",
       "audio_url": "https://api.substack.com/feed/podcast/202518293/cb2fb7511eb2aa3f34e708c0ee541a97.mp3",
@@ -176,7 +176,7 @@
       "duration_min": 64,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/6d/f5/79/6df579b2-e716-1907-d000-305018e792a4/mza_14670425412905577992.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "science/materials"
       ],
       "hook": "A 30-year semiconductor veteran now 3D-prints multi-material batteries instead of chips.",
       "audio_url": "https://api.substack.com/feed/podcast/198349912/fe5cfd695012370dfd7483aeca661aa9.mp3",
@@ -196,7 +196,7 @@
       "duration_min": 38,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "nature/earth-science"
       ],
       "hook": "Stardust Solutions' plan to disperse three million tons of reflective material into the sky.",
       "audio_url": "https://traffic.megaphone.fm/PSMI1239623090.mp3",
@@ -216,7 +216,7 @@
       "duration_min": 48,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "computing"
       ],
       "hook": "A startup is building AI data centers on 85-meter steel nodes anchored at sea.",
       "audio_url": "https://traffic.megaphone.fm/PSMI9554989058.mp3",
@@ -236,8 +236,8 @@
       "duration_min": 59,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/d9/7a/ca/d97acaa7-7646-8f6b-0cde-91a53600c658/mza_15311886742849519582.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion",
-        "business/startups"
+        "business/startups",
+        "engineering/ai-robotics"
       ],
       "hook": "A robotics researcher argues the real innovation engine in deep tech is the lab itself.",
       "audio_url": "https://www.buzzsprout.com/2317730/episodes/19315711-why-great-labs-need-breadth-professor-hod-lipson-on-robotics-ai-and-the-2030s.mp3",
@@ -257,8 +257,8 @@
       "duration_min": 64,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/8d/84/51/8d845189-47f1-f334-376d-2fe0f737415b/mza_10042864584469554243.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion",
-        "business/startups"
+        "business/startups",
+        "science/materials"
       ],
       "hook": "After 12 years inside TSMC and Samsung, he now grows graphene at wafer scale.",
       "audio_url": "https://www.buzzsprout.com/2317730/episodes/19047302-graphene-at-scale-how-paragraf-is-realising-the-wonder-material-s-potential-dr-simon-thomas.mp3",
@@ -278,7 +278,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "nature/earth-science"
       ],
       "hook": "David Suzuki's 1989 broadcast imagined 2039 — how close did it get?",
       "audio_url": "https://mgln.ai/e/12/cbc.mc.tritondigital.com/CBC_IDEAS_P/media/ideas/ideas-88V6yGPy-20260707.mp3",
@@ -298,7 +298,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "Oil writer Don Gillmor calls petroleum less a substance than a religion nobody can quit.",
       "audio_url": "https://mgln.ai/e/12/cbc.mc.tritondigital.com/CBC_IDEAS_P/media/ideas/ideas-keLmKS2Z-20260706.mp3",
@@ -318,7 +318,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "history/technology"
       ],
       "hook": "James Watt needed one weird number to sell steam engines: 33,000 foot-pounds a minute.",
       "audio_url": "https://mgln.ai/e/12/cbc.mc.tritondigital.com/CBC_IDEAS_P/media/ideas/ideas-hTi2Q2qt-20260625.mp3",
@@ -1575,7 +1575,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d9/98/81/d9988115-39bc-833b-74f6-16ce2f789938/mza_17133508082832459430.jpg/600x600bb.jpg",
       "topics": [
         "business/startups",
-        "engineering/energy-fusion"
+        "computing"
       ],
       "hook": "Search started as finding pages — AI is turning it into asking, reasoning, and acting.",
       "audio_url": "https://pscrb.fm/rss/p/media.transistor.fm/7eed9f55/b9387468.mp3",
@@ -1596,7 +1596,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ea/64/b1/ea64b123-ac34-dcd0-10d0-2be589e9f00e/mza_13351455589098294840.jpg/600x600bb.jpg",
       "topics": [
         "business/startups",
-        "engineering/energy-fusion"
+        "computing"
       ],
       "hook": "The inventor of the CMOS pixel sensor explains how cameras got small enough for phones.",
       "audio_url": "https://pscrb.fm/rss/p/media.transistor.fm/f7e7a9ef/3d6e4c77.mp3",
@@ -9087,7 +9087,7 @@
       "duration_min": 39,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/8f/c0/fb/8fc0fb3a-89f7-cfc7-e596-2fd3988a255b/mza_435383747906350604.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "newcleo's Stefano Buono on lead-cooled fast reactors that run on recycled nuclear waste as fuel.",
       "audio_url": "https://traffic.libsyn.com/secure/whynotnuclear/TON_StefanoBuono2_Audio_V1.mp3?dest-id=585143",
@@ -9107,7 +9107,7 @@
       "duration_min": 19,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/8f/c0/fb/8fc0fb3a-89f7-cfc7-e596-2fd3988a255b/mza_435383747906350604.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "Dual Fluid's reactor separates fuel and coolant into two liquid loops for higher temperatures.",
       "audio_url": "https://traffic.libsyn.com/secure/whynotnuclear/TON_ClaireSchaffnit_Audio_V1.mp3?dest-id=585143",
@@ -9127,7 +9127,7 @@
       "duration_min": 49,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/8f/c0/fb/8fc0fb3a-89f7-cfc7-e596-2fd3988a255b/mza_435383747906350604.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "A professor on heat pipes, compact heat exchangers, and combined-cycle systems for reactor thermal design.",
       "audio_url": "https://traffic.libsyn.com/secure/whynotnuclear/TON_BahmanZohuri_Audio_V1.mp3?dest-id=585143",
@@ -9147,7 +9147,7 @@
       "duration_min": 52,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/8f/c0/fb/8fc0fb3a-89f7-cfc7-e596-2fd3988a255b/mza_435383747906350604.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "How data-center electricity demand is reviving nuclear, from small reactors to factory-built plants.",
       "audio_url": "https://traffic.libsyn.com/secure/whynotnuclear/TON_NuclearNexusDC2_Audio_V1.mp3?dest-id=585143",
@@ -9167,7 +9167,7 @@
       "duration_min": 52,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/8f/c0/fb/8fc0fb3a-89f7-cfc7-e596-2fd3988a255b/mza_435383747906350604.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/ai-robotics"
       ],
       "hook": "Atomic Canyon's founder on building AI search tools for the nuclear industry's mountains of paperwork.",
       "audio_url": "https://traffic.libsyn.com/secure/whynotnuclear/TON_TreyLauderdale_Audio_V1.mp3?dest-id=585143",
@@ -9187,8 +9187,8 @@
       "duration_min": 196,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/45/79/ff/4579ffe8-ae75-a586-df5a-940e3b0b8ae7/mza_12776813321781247935.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion",
-        "science/materials"
+        "science/materials",
+        "engineering/energy-grid"
       ],
       "hook": "Radiochemists and geologists on Finland's Onkalo, the world's first deep geological nuclear-waste repository.",
       "audio_url": "https://traffic.libsyn.com/secure/omegataupodcast/omegatau-368-nuclearWasteStorage.mp3",
@@ -9208,8 +9208,8 @@
       "duration_min": 67,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/45/79/ff/4579ffe8-ae75-a586-df5a-940e3b0b8ae7/mza_12776813321781247935.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion",
-        "science/materials"
+        "science/materials",
+        "science/physics"
       ],
       "hook": "CERN's AWAKE uses plasma wakefields to accelerate particles far harder than radio-frequency cavities can.",
       "audio_url": "https://traffic.libsyn.com/secure/omegataupodcast/omegatau-340-AWAKE-b.mp3",
@@ -9229,8 +9229,8 @@
       "duration_min": 125,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/45/79/ff/4579ffe8-ae75-a586-df5a-940e3b0b8ae7/mza_12776813321781247935.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion",
-        "science/materials"
+        "science/materials",
+        "engineering/disasters"
       ],
       "hook": "Structural engineer Sean Brady on why buildings fail and how root-cause analysis finds out.",
       "audio_url": "https://traffic.libsyn.com/secure/omegataupodcast/omegatau-309-forensicEngineering.mp3",
@@ -9250,8 +9250,8 @@
       "duration_min": 62,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/45/79/ff/4579ffe8-ae75-a586-df5a-940e3b0b8ae7/mza_12776813321781247935.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion",
-        "science/materials"
+        "science/materials",
+        "nature/earth-science"
       ],
       "hook": "Harvard's David Keith on injecting reflective particles into the stratosphere to cool the planet.",
       "audio_url": "https://traffic.libsyn.com/secure/omegataupodcast/omegatau-385-solarGeoEngineering.mp3",
@@ -9271,7 +9271,7 @@
       "duration_min": 155,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/ai-robotics"
       ],
       "hook": "DeepMind's Nobel-winning CEO on AlphaFold, simulating reality, and what artificial general intelligence might become.",
       "audio_url": "https://media.blubrry.com/takeituneasy/content.blubrry.com/takeituneasy/lex_ai_demis_hassabis_2.mp3",
@@ -9291,7 +9291,7 @@
       "duration_min": 204,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "math"
       ],
       "hook": "Fields medalist Terence Tao on the hardest open problems and how AI could crack them.",
       "audio_url": "https://media.blubrry.com/takeituneasy/content.blubrry.com/takeituneasy/lex_ai_terence_tao.mp3",
@@ -9311,7 +9311,7 @@
       "duration_min": 187,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "space"
       ],
       "hook": "Theoretical physicist Janna Levin on black holes, gravitational waves, wormholes, and extra dimensions.",
       "audio_url": "https://media.blubrry.com/takeituneasy/content.blubrry.com/takeituneasy/lex_ai_janna_levin.mp3",
@@ -9331,7 +9331,7 @@
       "duration_min": 222,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "nature/paleontology"
       ],
       "hook": "Paleontologist Dave Hone on T-Rex biology, dinosaur behavior, and mass extinction.",
       "audio_url": "https://media.blubrry.com/takeituneasy/content.blubrry.com/takeituneasy/lex_ai_dave_hone.mp3",
@@ -9351,7 +9351,7 @@
       "duration_min": 36,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "Quaise Energy vaporizes rock with millimeter-wave drills to reach superhot geothermal twelve miles down.",
       "audio_url": "https://traffic.megaphone.fm/PSMI2811827165.mp3?updated=1772667347",
@@ -9371,7 +9371,7 @@
       "duration_min": 39,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "General Matter's CEO on rebuilding domestic uranium enrichment to end reliance on Russian fuel.",
       "audio_url": "https://traffic.megaphone.fm/PSMI8761545405.mp3?updated=1775085726",
@@ -9391,7 +9391,7 @@
       "duration_min": 50,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "Ex-Tesla engineer Drew Baglino on solid-state transformers replacing the grid's dumb 1970s hardware.",
       "audio_url": "https://traffic.megaphone.fm/PSMI9285210276.mp3?updated=1771433158",
@@ -9411,7 +9411,7 @@
       "duration_min": 36,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "An energy analyst maps the interlocking technology flywheels driving a decades-long electric supercycle.",
       "audio_url": "https://traffic.megaphone.fm/PSMI3503214148.mp3",
@@ -9431,7 +9431,7 @@
       "duration_min": 36,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "economics"
       ],
       "hook": "Why a third of seaborne fertilizer trade through the Strait of Hormuz threatens global food.",
       "audio_url": "https://traffic.megaphone.fm/PSMI8040732696.mp3",
@@ -13941,7 +13941,7 @@
       "duration_min": 44,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "Why data-center growth is slamming into a power grid that can't scale fast enough.",
       "explicit": false,
@@ -13962,7 +13962,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "culture"
       ],
       "hook": "Author John Vaillant on how fire shaped humanity — and how we're now reshaping fire.",
       "explicit": false,
@@ -13983,7 +13983,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "nature/earth-science"
       ],
       "hook": "David Suzuki's prescient 1989 radio warning that framed climate change as species survival.",
       "explicit": false,
@@ -14048,7 +14048,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "nature/earth-science"
       ],
       "hook": "Wetlands store more carbon than forests — time to rewrite the swamp's toxic-wasteland story.",
       "explicit": false,
@@ -15744,7 +15744,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "architecture"
       ],
       "hook": "Brutalism is now a hipster darling, but concrete carries housing, climate, and class baggage.",
       "explicit": false,
@@ -16569,7 +16569,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "history/technology"
       ],
       "hook": "Traces the button from mechanical switch to digital command, and what one press hides.",
       "explicit": false,
@@ -16590,7 +16590,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "culture/fashion"
       ],
       "hook": "Pedro Mendes on 150 years of denim, its authenticity myth, and 7,500 litres per pair.",
       "explicit": false,
@@ -19028,7 +19028,7 @@
       "duration_min": 35,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "Idle EV batteries hold enormous power; why vehicle-to-grid tech still hasn't scaled past pilots.",
       "explicit": false,
@@ -19049,7 +19049,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "society/law"
       ],
       "hook": "Two apartheid-era activists ask whether South Africa's peace accord and truth commission delivered real justice.",
       "explicit": false,
@@ -19070,7 +19070,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "society/government"
       ],
       "hook": "The 1995 Dayton Accord ended Bosnia's war—but does stopping the killing amount to real peace?",
       "explicit": false,
@@ -21292,7 +21292,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "psychology"
       ],
       "hook": "Cyberpsychologist Elaine Kasket questions what happens when grieving people turn to AI chatbots for comfort.",
       "explicit": false
