@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-28T00:57:29.484Z",
+  "built_at": "2026-07-28T08:58:29.578Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-28-54674e0d",
+    "last_batch_id": "fresh-2026-07-28-56d9725e",
     "last_batch_tier": 1
   },
   "entries": {
@@ -144591,9 +144591,23 @@
       "topics": [
         "gaming"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tabletop wargaming community podcast with strategy and rules discussion.",
+      "display_title": "The Pilgrimage - A Trench Crusade podcast",
+      "blurb": "Tabletop wargaming community for Trench Crusade players.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1807192667": {
       "topics": [
@@ -144723,11 +144737,33 @@
     },
     "1807842941": {
       "topics": [
-        "history"
+        "history",
+        "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "American presidential history and lesser-known historical scandals and events.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1807844158": {
       "topics": [
@@ -144805,11 +144841,30 @@
     },
     "1808309663": {
       "topics": [
-        "math"
+        "economics",
+        "economics/markets"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.95
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Economic analysis from heterodox perspective, financial systems and crisis prediction.",
+      "display_title": "Rebel Economics with Professor Steve Keen",
+      "blurb": "Economic analysis and financial system commentary from alternative perspective.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1808320376": {
       "topics": [
@@ -144922,8 +144977,22 @@
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily educational podcast for kids covering science, nature, and curiosity.",
+      "display_title": "Curious Kids Every Day",
+      "blurb": "Daily educational podcast for curious kids, inspired by thoughtful children's programming.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1808958290": {
       "topics": [
@@ -145141,11 +145210,33 @@
     },
     "1809841055": {
       "topics": [
+        "history",
         "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "American presidential history and lesser-known historical scandals and events.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1809863403": {
       "topics": [
@@ -145212,8 +145303,22 @@
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast created by and for young learners.",
+      "display_title": "Lyla's Loopcast",
+      "blurb": "Educational podcast focused on youth learning and engagement.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1810074471": {
       "topics": [
@@ -145351,11 +145456,30 @@
     },
     "1810729067": {
       "topics": [
-        "psychology"
+        "psychology",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Explores psychological and philosophical ideas related to Jungian psychology.",
+      "display_title": "Jung in the World",
+      "blurb": "Examines Jungian psychology and its application to contemporary culture.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1810829613": {
       "topics": [
@@ -145728,11 +145852,30 @@
     },
     "1812663737": {
       "topics": [
+        "culture",
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cultural and social commentary on contemporary topics.",
+      "display_title": "Spot On with Link Lauren",
+      "blurb": "Cultural and social commentary podcast.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1812672443": {
       "topics": [
@@ -146091,11 +146234,28 @@
     },
     "1814137961": {
       "topics": [
-        "personal-journals"
+        "medicine"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "AI applications in healthcare and medical practice.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1814144484": {
       "topics": [
@@ -146158,11 +146318,30 @@
     },
     "1814277557": {
       "topics": [
-        "craft"
+        "psychology",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Explores psychological and philosophical ideas related to Jungian psychology.",
+      "display_title": "The Sewing Social",
+      "blurb": "Examines Jungian psychology and its application to contemporary culture.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1814318141": {
       "topics": [
@@ -146192,9 +146371,26 @@
       "topics": [
         "medicine"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "AI applications in healthcare and medical practice.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1814497217": {
       "topics": [
@@ -146535,9 +146731,26 @@
       "topics": [
         "medicine"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "AI applications in healthcare and medical practice.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1816042888": {
       "topics": [
@@ -146549,11 +146762,30 @@
     },
     "1816043381": {
       "topics": [
+        "religion",
         "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.95
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Religious and theological discussion focused on Christian ministry.",
+      "display_title": "Magnified Ministries Podcast",
+      "blurb": "Religious and theological podcast covering ministry topics.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1816045479": {
       "topics": [
@@ -146587,11 +146819,30 @@
     },
     "1816059815": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Toy collecting hobby and collector community engagement.",
+      "display_title": "Toy Federation Podcast",
+      "blurb": "Community podcast for toy collectors and enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1816145496": {
       "topics": [
@@ -146649,19 +146900,55 @@
     },
     "1816362029": {
       "topics": [
-        "society"
+        "medicine"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "AI applications in healthcare and medical practice.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1816376195": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Non-profit sector and sustainable charitable giving strategies.",
+      "display_title": "Sustainable Giving",
+      "blurb": "Focuses on non-profit organizations and charitable giving.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1816387211": {
       "topics": [
@@ -146780,8 +147067,22 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestling discussion and commentary.",
+      "display_title": "What Do You Wanna Talk About? with Cody",
+      "blurb": "Professional wrestling podcast with insider commentary.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1817021601": {
       "topics": [
@@ -146969,11 +147270,30 @@
     },
     "1817459693": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment industry news and celebrity updates.",
+      "display_title": "Hot To Go",
+      "blurb": "Entertainment industry news and pop culture commentary.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1817473462": {
       "topics": [
@@ -146985,11 +147305,30 @@
     },
     "1817502749": {
       "topics": [
+        "education",
         "education/courses"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Teaching writing and communication skills instruction.",
+      "display_title": "Beyond the Paragraph: Teaching Writing in Middle School",
+      "blurb": "Teaching podcast focused on writing instruction for educators.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1817629689": {
       "topics": [
@@ -147417,11 +147756,30 @@
     },
     "1819072691": {
       "topics": [
-        "sports"
+        "sports",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports discussion and athlete interviews.",
+      "display_title": "The Musers The Podcast",
+      "blurb": "Sports podcast with analysis and athlete interviews.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1819090545": {
       "topics": [
@@ -147756,11 +148114,30 @@
     },
     "1820616215": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home and garden hobby pursuits for leisure engagement.",
+      "display_title": "Midlife Lady Leisure Pursuits",
+      "blurb": "Home and garden podcast for DIY and lifestyle interests.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1820648828": {
       "topics": [
@@ -147771,11 +148148,30 @@
     },
     "1820686169": {
       "topics": [
-        "food"
+        "food",
+        "food/cooking-science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.95
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Culinary arts and cooking content from professional chefs.",
+      "display_title": "The Chef's Cut",
+      "blurb": "Culinary podcast featuring chefs and food culture.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1820703126": {
       "topics": [
@@ -147809,12 +148205,25 @@
     },
     "1820923253": {
       "topics": [
-        "health/sexuality",
-        "fiction"
+        "health/sexuality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adult-oriented content exploring sexuality and intimate relationships.",
+      "display_title": "Naughty Sex Stories",
+      "blurb": "Adult-oriented podcast exploring sexuality and relationships.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1820925199": {
       "topics": [
@@ -148271,11 +148680,30 @@
     },
     "1823027687": {
       "topics": [
-        "society"
+        "society/government",
+        "news/politics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political and governmental commentary and analysis.",
+      "display_title": "Beyond the Human",
+      "blurb": "Covers government and political topics from a legal or policy perspective.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1823032544": {
       "topics": [
@@ -148998,11 +149426,30 @@
     },
     "1827047591": {
       "topics": [
-        "tv-film"
+        "culture/pop-culture",
+        "comedy"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment news and pop culture commentary with humor.",
+      "display_title": "Billy The Kidd In The Morning",
+      "blurb": "Entertainment industry news and pop culture commentary.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1827144050": {
       "topics": [
@@ -149261,11 +149708,25 @@
     },
     "1828521905": {
       "topics": [
-        "news/tech"
+        "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Technology discussion focusing on trust and security aspects.",
+      "display_title": "The In-Between Tech and Trust Podcast",
+      "blurb": "Technology podcast covering computing and trust issues.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1828590155": {
       "topics": [
@@ -149368,11 +149829,30 @@
     },
     "1829207363": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Non-profit sector and organizational culture discussion.",
+      "display_title": "Contagious Culture",
+      "blurb": "Non-profit podcast focusing on organizational culture.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1829287404": {
       "topics": [
@@ -149571,11 +150051,28 @@
     },
     "1830375095": {
       "topics": [
-        "science"
+        "medicine"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "AI applications in healthcare and medical practice.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1830477750": {
       "topics": [
@@ -149594,11 +150091,30 @@
     },
     "1830530855": {
       "topics": [
+        "culture",
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Documentary or investigative content on cultural topics.",
+      "display_title": "On Assignment",
+      "blurb": "Documentary-style podcast covering cultural topics.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1830563716": {
       "topics": [
@@ -149671,9 +150187,23 @@
       "topics": [
         "health/sexuality"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adult content related to sexuality and relationships.",
+      "display_title": "FREAK’N SEE Podcast",
+      "blurb": "Adult-oriented content exploring sexuality and relationships.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1830895257": {
       "topics": [
@@ -149802,11 +150332,33 @@
     },
     "1831429397": {
       "topics": [
-        "history"
+        "history",
+        "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "American presidential history and lesser-known historical scandals and events.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1831466851": {
       "topics": [
@@ -149855,11 +150407,30 @@
     },
     "1831825655": {
       "topics": [
-        "health/alternative"
+        "health/alternative",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness from alternative and holistic perspectives.",
+      "display_title": "The Health Continuum",
+      "blurb": "Health and wellness podcast exploring alternative approaches.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1831875614": {
       "topics": [
@@ -150153,11 +150724,30 @@
     },
     "1833077699": {
       "topics": [
+        "true-crime",
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Documentary-style exploration of criminal or tragic narratives.",
+      "display_title": "Fallen Angel",
+      "blurb": "Documentary podcast exploring crime and cultural narratives.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1833086317": {
       "topics": [
@@ -150296,11 +150886,30 @@
     },
     "1833698531": {
       "topics": [
-        "education/self-improvement"
+        "education/self-improvement",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Personal development combining scientific and spiritual perspectives.",
+      "display_title": "Shine In & Out: Where Science Meets Soul",
+      "blurb": "Self-improvement podcast blending science and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1833715207": {
       "topics": [
@@ -150410,11 +151019,30 @@
     },
     "1834180571": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "How-to and practical education content.",
+      "display_title": "The Coop",
+      "blurb": "How-to podcast with practical educational content.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1834191250": {
       "topics": [
@@ -150471,11 +151099,30 @@
     },
     "1834414307": {
       "topics": [
-        "gaming"
+        "gaming",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming discussion and gameplay tips.",
+      "display_title": "Here's What You Do",
+      "blurb": "Gaming podcast featuring game discussion and strategies.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1834448027": {
       "topics": [
@@ -150533,11 +151180,30 @@
     },
     "1834502483": {
       "topics": [
-        "sports/football"
+        "sports",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports entertainment featuring trick shots and athletic challenges.",
+      "display_title": "Almost Athletes with Dude Perfect",
+      "blurb": "Sports entertainment from creators known for trick shots.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1834514167": {
       "topics": [
@@ -150672,11 +151338,30 @@
     },
     "1835282231": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book summary and self-improvement content from bestselling author.",
+      "display_title": "The Let Them Theory by Mel Robbins, Book",
+      "blurb": "Book summary podcast discussing personal development.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1835291880": {
       "topics": [
@@ -150720,9 +151405,23 @@
       "topics": [
         "health/sexuality"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adult-oriented podcast with educational and social focus.",
+      "display_title": "Don’t Scare the Newbies!",
+      "blurb": "Adult-oriented podcast with educational content.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1835450563": {
       "topics": [
@@ -150799,11 +151498,30 @@
     },
     "1835670767": {
       "topics": [
-        "adventure"
+        "adventure/exploration",
+        "nature"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Outdoor advice and gear discussion for hiking and camping.",
+      "display_title": "Gear Abby: An Outdoor Advice Column For Your",
+      "blurb": "Outdoor advice podcast for hiking and camping.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1835683781": {
       "topics": [
@@ -150979,11 +151697,30 @@
     },
     "1836460505": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Non-profit and social impact sector discussion.",
+      "display_title": "The Good Road",
+      "blurb": "Non-profit podcast on social impact and community work.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1836460849": {
       "topics": [
@@ -151141,11 +151878,30 @@
     },
     "1836987791": {
       "topics": [
-        "kids-family"
+        "kids-family",
+        "kids-family/stories"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.95
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's storytelling with imaginative fantasy content.",
+      "display_title": "The Gnomes of Wondergarten",
+      "blurb": "Children's storytelling podcast with fantasy themes.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1836989412": {
       "topics": [
@@ -151156,11 +151912,30 @@
     },
     "1837018751": {
       "topics": [
-        "music"
+        "society",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Documentary exploration of cults and hidden communities.",
+      "display_title": "No Cover Charge Podcast",
+      "blurb": "Documentary podcast investigating cults and hidden movements.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1837044678": {
       "topics": [
@@ -151172,11 +151947,30 @@
     },
     "1837048391": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Non-profit or community project discussion and building.",
+      "display_title": "Jake's Garage",
+      "blurb": "Non-profit or community project podcast.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1837079690": {
       "topics": [
@@ -151456,11 +152250,30 @@
     },
     "1838342345": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Hobby-focused or community engagement podcast.",
+      "display_title": "We Da People Podcast",
+      "blurb": "Community and hobby-focused podcast.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1838417520": {
       "topics": [
@@ -151660,11 +152473,30 @@
     },
     "1839272903": {
       "topics": [
+        "nature",
         "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aquaculture and fish farming education and discussion.",
+      "display_title": "Get Aquacultured!",
+      "blurb": "Educational podcast on aquaculture and fish farming.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1839285239": {
       "topics": [
@@ -151770,12 +152602,25 @@
     },
     "1839630665": {
       "topics": [
-        "health/sexuality",
-        "fiction"
+        "health/sexuality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adult-oriented audio content exploring sexuality.",
+      "display_title": "Mesmerizing Sissy Training Audio",
+      "blurb": "Adult-oriented audio content on sexuality.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1839671254": {
       "topics": [
@@ -151787,11 +152632,30 @@
     },
     "1839695555": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports card collecting hobby and collector community.",
+      "display_title": "Sports Card Clubhouse",
+      "blurb": "Sports card collecting podcast for collectors and enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1839781664": {
       "topics": [
@@ -151943,11 +152807,28 @@
     },
     "1840450079": {
       "topics": [
-        "education/how-to"
+        "medicine"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "AI applications in healthcare and medical practice.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1840474338": {
       "topics": [
@@ -152018,11 +152899,33 @@
     },
     "1840893581": {
       "topics": [
-        "news/tech"
+        "history",
+        "society/government"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "American presidential history and lesser-known historical scandals and events.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1840913099": {
       "topics": [
@@ -152412,11 +153315,30 @@
     },
     "1843126397": {
       "topics": [
-        "religion"
+        "religion",
+        "religion/spirituality"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual and religious exploration and philosophy.",
+      "display_title": "Descent Into Light",
+      "blurb": "Spiritual and religious podcast exploring faith topics.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1843137773": {
       "topics": [
@@ -152691,11 +153613,30 @@
     },
     "1844409167": {
       "topics": [
-        "business"
+        "business",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical perspectives on business and entrepreneurship.",
+      "display_title": "Business History",
+      "blurb": "Business history podcast with entrepreneurship insights.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1844415792": {
       "topics": [
@@ -152706,11 +153647,30 @@
     },
     "1844431199": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design practices and creative process in business.",
+      "display_title": "Return on Design",
+      "blurb": "Design podcast discussing creative practices and thinking.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1844447336": {
       "topics": [
@@ -153053,11 +154013,30 @@
     },
     "1845989117": {
       "topics": [
-        "society"
+        "society",
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Documentary exploration of social and cultural topics.",
+      "display_title": "The Hidden Third",
+      "blurb": "Documentary podcast exploring social and cultural topics.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1846018881": {
       "topics": [
@@ -153182,9 +154161,26 @@
       "topics": [
         "medicine"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "AI applications in healthcare and medical practice.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:57:07.938Z"
     },
     "1846845573": {
       "topics": [
@@ -153458,11 +154454,30 @@
     },
     "1848114185": {
       "topics": [
-        "religion"
+        "religion",
+        "philosophy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Theological analysis and religious philosophy discussion.",
+      "display_title": "Bad Theology: Busted",
+      "blurb": "Theological analysis and religious philosophy podcast.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4.5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-56d9725e",
+      "classified_at": "2026-07-28T08:58:29.578Z"
     },
     "1848120606": {
       "topics": [
