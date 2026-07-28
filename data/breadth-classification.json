@@ -11209,6 +11209,1219 @@
       "batch_id": "fresh-2026-07-28-bf6fce47",
       "classified_at": "2026-07-28T00:55:27.804Z"
     },
+    "1117073822": {
+      "topics": [
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Disney travel guidance with resort tips, parks strategy, and cruise planning.",
+      "display_title": "Rope Drop Radio",
+      "blurb": "Weekly tips for planning Disney vacations, from parks to cruises.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1119009794": {
+      "topics": [
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental health entrepreneurs building private practices via interviews and business coaching.",
+      "display_title": "Private Practice Startup",
+      "blurb": "Mental health professionals building profitable private practices through expert interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1120485668": {
+      "topics": [
+        "automotive",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Car reviews, automotive history, Dukes of Hazzard analysis blending vehicles and pop culture.",
+      "display_title": "The Kibbe and Friends Show",
+      "blurb": "Hosts discuss cars, films, and Dukes of Hazzard with humor and expertise.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1120941458": {
+      "topics": [
+        "computing",
+        "news/tech"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gadget reviews, tech news, and consumer tech advice from industry commentator.",
+      "display_title": "Rich On Tech",
+      "blurb": "Weekly tech news covering gadget reviews, apps, and digital trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1122333284": {
+      "topics": [
+        "culture/fashion",
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion, menswear design, and cultural conversations with creatives and artists.",
+      "display_title": "Blamo!",
+      "blurb": "Conversations with designers, musicians, and creatives about fashion and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1124549378": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Detailed film analysis, filmmakers, thematic exploration, Christopher Nolan focus.",
+      "display_title": "The Cine-Files",
+      "blurb": "In-depth analysis of films, filmmakers, and cinema history and themes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1126543994": {
+      "topics": [
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily political news and cultural analysis with opinion and current events.",
+      "display_title": "No Spin News and Analysis",
+      "blurb": "Daily political and cultural news with commentary from Bill O'Reilly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1127162036": {
+      "topics": [
+        "adventure/exploration",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Whitetail hunting tactics, DIY strategies, and expert hunter interviews on fieldcraft.",
+      "display_title": "Truth From The Stand",
+      "blurb": "Expert hunting tactics and strategies from experienced whitetail hunters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1128955736": {
+      "topics": [
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investment strategy, market analysis, and financial wisdom from fund managers.",
+      "display_title": "The Meb Faber Show",
+      "blurb": "Investment insights from fund managers and financial experts worldwide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1129323212": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily New York Knicks roster moves, trades, and NBA analysis.",
+      "display_title": "Locked On Knicks",
+      "blurb": "Daily New York Knicks news, analysis, and roster discussions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1129353614": {
+      "topics": [
+        "tv-film/reviews",
+        "tv-film/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic Hollywood film analysis, Jimmy Stewart career, cinema history and themes.",
+      "display_title": "Talking um ... uh ... Jimmy Stewart",
+      "blurb": "Conversations about classic Hollywood films and Jimmy Stewart's career.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1130124620": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Knitting questions, techniques, and patterns from experienced fiber artists.",
+      "display_title": "VeryPink Knits",
+      "blurb": "Knitting tips, Q&A, and conversations from experienced knitters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1132914986": {
+      "topics": [
+        "music",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DJ-curated music mixes featuring electronic and dance tracks.",
+      "display_title": "The Martin Garrix Show",
+      "blurb": "Weekly music mixes featuring electronic and dance tracks.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1133194268": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestling discussion, history, current events from veteran commentator.",
+      "display_title": "Jim Cornette Experience",
+      "blurb": "Professional wrestling discussion covering current events and history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1136251922": {
+      "topics": [
+        "health/fitness",
+        "health/nutrition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Exercise science, nutrition, and wellness from registered dietitian nutritionist.",
+      "display_title": "Optimal Health Daily",
+      "blurb": "Daily health tips on fitness, nutrition, and evidence-based wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1137115592": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling history, WCW coverage, and insider perspective from veteran promoter.",
+      "display_title": "83 Weeks with Eric Bischoff",
+      "blurb": "Wrestling history and analysis from industry veteran Eric Bischoff.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1138381298": {
+      "topics": [
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Artist career guidance, business strategy, and professional development.",
+      "display_title": "The Art Biz",
+      "blurb": "Career guidance and business strategies for working visual artists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1139967050": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily NFL news, team coverage, trades, and expert analysis.",
+      "display_title": "Locked On NFL",
+      "blurb": "Daily NFL news, analysis, and expert commentary on all teams.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1140133658": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Torah study and Jewish history from Yeshiva perspective.",
+      "display_title": "KMTT - the Torah Podcast",
+      "blurb": "Daily Torah study and Jewish learning from Yeshivat Har Etzion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1143249680": {
+      "topics": [
+        "culture/design",
+        "architecture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Architecture, engineering innovation, and community infrastructure design.",
+      "display_title": "Speaking of Design",
+      "blurb": "Interviews with architects and engineers on community infrastructure projects.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1143358718": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "San Francisco 49ers daily roster moves, trades, and team analysis.",
+      "display_title": "Locked On 49ers",
+      "blurb": "Daily San Francisco 49ers news and expert analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1144508840": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Green Bay Packers daily coverage with roster analysis and draft strategy.",
+      "display_title": "Locked On Packers",
+      "blurb": "Daily Green Bay Packers news and roster analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1144959980": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nostalgic film reviews of 1980s-1990s movies with analysis and humor.",
+      "display_title": "Shat the Movies",
+      "blurb": "Reviews and analysis of beloved films from the 1980s and 1990s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1145089790": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime cases and criminal investigations from television documentary series.",
+      "display_title": "Snapped: Women Who Murder",
+      "blurb": "True crime stories investigating women convicted of murder.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1146579746": {
+      "topics": [
+        "paranormal",
+        "culture/mythology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal stories, haunted locations, occult history with comedic tone.",
+      "display_title": "Hillbilly Horror Stories",
+      "blurb": "Paranormal stories, occult topics, and mysteries told with humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1146941306": {
+      "topics": [
+        "health/mental",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental health, therapy techniques, relationships from licensed therapists.",
+      "display_title": "Therapist Uncensored",
+      "blurb": "Science-backed mental health insights and relationship guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1147092464": {
+      "topics": [
+        "society/law",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Legal analysis of current events and Supreme Court decisions from lawyer.",
+      "display_title": "Opening Arguments",
+      "blurb": "Legal analysis of current events and court decisions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1147257638": {
+      "topics": [
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business trends, economics, and innovation from Wharton School faculty.",
+      "display_title": "This Week in Business",
+      "blurb": "Business trends and economic insights from Wharton School experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1147264526": {
+      "topics": [
+        "health/alternative",
+        "health/nutrition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Autoimmune disease management through nutritional protocol and lifestyle.",
+      "display_title": "The Autoimmune Wellness Podcast",
+      "blurb": "Nutritional and wellness strategies for managing autoimmune conditions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1148183612": {
+      "topics": [
+        "health/mental",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal growth, wellness, relationships, and spirituality for young adults.",
+      "display_title": "Almost 30",
+      "blurb": "Personal growth conversations about relationships, spirituality, and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1150088852": {
+      "topics": [
+        "culture/pop-culture",
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports analysis and cultural commentary from professional athletes and insiders.",
+      "display_title": "Speakeasy",
+      "blurb": "Sports analysis mixed with cultural commentary from former athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1150623452": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chapter-by-chapter literary analysis of speculative fiction classics.",
+      "display_title": "Alzabo Soup",
+      "blurb": "Literary analysis of speculative fiction through close reading.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1150812218": {
+      "topics": [
+        "comedy/casual-hangs",
+        "sports/fantasy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports betting and personal anecdotes from unreliable sports personality.",
+      "display_title": "Shea in Irving Show",
+      "blurb": "Sports betting stories and personal anecdotes from unconventional perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1151634104": {
+      "topics": [
+        "religion/judaism",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish history across four thousand years through themes and personalities.",
+      "display_title": "The Jewish History Podcast",
+      "blurb": "Jewish history spanning four millennia through themes and key figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1152618068": {
+      "topics": [
+        "espionage",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "espionage",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intelligence operations, geopolitics, and espionage from experts and analysts.",
+      "display_title": "Secrets and Spies Podcast",
+      "blurb": "Espionage and geopolitical analysis from intelligence experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1154758766": {
+      "topics": [
+        "tv-film/after-shows"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality television and documentary discussion and analysis.",
+      "display_title": "Reality Life with Kate Casey",
+      "blurb": "Daily discussion of reality shows and documentary content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1155163742": {
+      "topics": [
+        "tv-film",
+        "fiction/comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unpiloted television scripts performed by celebrity actors in live readings.",
+      "display_title": "Dead Pilots Society",
+      "blurb": "Live readings of unproduced TV scripts with celebrity actors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1155660740": {
+      "topics": [
+        "education/how-to",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "HVAC technical training, diagnostics, and professional development for technicians.",
+      "display_title": "HVAC School",
+      "blurb": "Technical training and diagnostics for HVAC professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1155846302": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Award-winning UK true crime cases from sinister to unusual.",
+      "display_title": "They Walk Among Us",
+      "blurb": "Award-winning UK true crime cases ranging from sinister to surreal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1155856616": {
+      "topics": [
+        "nature/earth-science",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Environmental journalism covering biodiversity, climate, and conservation.",
+      "display_title": "Mongabay Newscast",
+      "blurb": "Environmental journalism on biodiversity, climate, and conservation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1156592336": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political journalism, insider perspectives, and current political analysis.",
+      "display_title": "The Chuck ToddCast",
+      "blurb": "Political journalism and insider perspectives on US politics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1158699464": {
+      "topics": [
+        "health/nutrition",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Emotional eating strategies, nutrition, and body wellness from holistic perspective.",
+      "display_title": "The No Sugarcoating Podcast",
+      "blurb": "Strategies for emotional eating, nutrition, and body acceptance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1158889592": {
+      "topics": [
+        "food"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Culinary stories, cooking techniques, and food culture from around world.",
+      "display_title": "Milk Street Radio",
+      "blurb": "Culinary stories and cooking advice from around the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1159426874": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Memphis Grizzlies daily coverage with roster analysis and draft discussion.",
+      "display_title": "Locked On Grizzlies",
+      "blurb": "Daily Memphis Grizzlies news and NBA analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1160860118": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized fiction podcast with audio drama about ghosts and secrets.",
+      "display_title": "Mabel",
+      "blurb": "Serialized fiction exploring ghosts, family secrets, and missed connections.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1161880916": {
+      "topics": [
+        "news/tech"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized journalism investigating major technology industry events and dramas.",
+      "display_title": "Foundering",
+      "blurb": "Serialized journalism investigating major technology industry events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1163094296": {
+      "topics": [
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily motivational audio clips from prosperity teachers and speakers.",
+      "display_title": "The Quote of the Day Show",
+      "blurb": "Daily inspirational audio from motivational and prosperity teachers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1163852618": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian church sermons, teachings, and worship from faith community.",
+      "display_title": "City Church Melissa",
+      "blurb": "Weekly sermons and Christian teachings from City Church.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1163990138": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Nintendo gaming news, rumors, classic and modern game analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
+    "1166726594": {
+      "topics": [
+        "culture/pop-culture",
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Oversized comic book Treasury editions from Marvel and DC analyzed.",
+      "display_title": "TreasuryCast",
+      "blurb": "Analysis of oversized comic Treasury editions from Marvel and DC.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-28-a2693644",
+      "classified_at": "2026-07-28T08:55:08.218Z"
+    },
     "1459232606": {
       "topics": [
         "news/politics",
@@ -12377,11 +13590,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-28T00:55:27.804Z",
+  "built_at": "2026-07-28T08:55:08.218Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-28-bf6fce47",
+    "last_batch_id": "fresh-2026-07-28-a2693644",
     "last_batch_tier": 1
   }
 }
