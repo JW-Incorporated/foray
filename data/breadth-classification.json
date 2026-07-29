@@ -14880,6 +14880,1297 @@
       "batch_id": "fresh-2026-07-29-930a283f",
       "classified_at": "2026-07-29T00:51:32.538Z"
     },
+    "1253053148": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Power Trip: The Power Trip Morning Show - Sports, Movies, Music, Comedy and more..",
+      "display_title": "The Power Trip",
+      "blurb": "The Power Trip Morning Show - Sports, Movies, Music, Comedy and more...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1253186678": {
+      "topics": [
+        "computing",
+        "business",
+        "engineering",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Syntax - Tasty Web Development: Full Stack Developers Wes Bos and Scott Tolinski dive deep into web de",
+      "display_title": "Syntax - Tasty Web Development Treats",
+      "blurb": "Full Stack Developers Wes Bos and Scott Tolinski dive deep into web development topics, explaining how they work and talking about their own experiences. They c",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1253570474": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Your Daily Prayer: Every morning, the team of women behind iBelieve.com bring you a devot",
+      "display_title": "Your Daily Prayer",
+      "blurb": "Every morning, the team of women behind iBelieve.com bring you a devotional and prayer to help you start your day in conversation with God. The Bible tells us t",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1254131606": {
+      "topics": [
+        "news",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AJ Benza: Fame is a Bitch: \"Fame is a Bitch\" with AJ Benza, deconstructs some of the biggest scan",
+      "display_title": "AJ Benza: Fame is a Bitch",
+      "blurb": "\"Fame is a Bitch\" with AJ Benza, deconstructs some of the biggest scandals and tragedies of our lifetime. These stories are about the powerful seduction and fat",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1255052408": {
+      "topics": [
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Capture The Magic Podcast - Di: A fun, honest and common sense approach to a Disney World and Universa",
+      "display_title": "Capture The Magic Podcast - Disney World |",
+      "blurb": "A fun, honest and common sense approach to a Disney World and Universal Studios Orlando vacation. We discuss the latest Disney and Universal Studios related new",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1258365194": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cannabis Cultivation and Scien: Welcome to the Cannabis Cultivation and Science podcast, I’m your host",
+      "display_title": "Cannabis Cultivation and Science Podcast",
+      "blurb": "Welcome to the Cannabis Cultivation and Science podcast, I’m your host, Tad Hussey of KIS Organics. This is the podcast where we discuss the cutting edge of org",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1258525394": {
+      "topics": [
+        "gaming",
+        "sports/golf",
+        "science",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/golf",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mind Caddie - Improve Your Men: Improve your golf mental game and play your best golf — consistently. ",
+      "display_title": "Mind Caddie - Improve Your Mental Golf Game",
+      "blurb": "Improve your golf mental game and play your best golf — consistently. Welcome to the Mind Caddie Podcast, the go-to golf psychology podcast for players who want",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1258635512": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify; using prior news/politics with low confidence.",
+      "display_title": "Radio Atlantic",
+      "blurb": "The Atlantic has long been known as an ideas-driven magazine. Now we’re bringing that same ethos to audio. Like the maga",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:51:11.265Z"
+    },
+    "1260186482": {
+      "topics": [
+        "gaming",
+        "tv-film",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "An American Workplace | A 'The: Two fans of 'The Office' watched through the show together! Chelsea Ho",
+      "display_title": "An American Workplace | A 'The Office' Podcast",
+      "blurb": "Two fans of 'The Office' watched through the show together! Chelsea Hopkins and Katie White discussed the beloved mockumentary TV series episode by episode with",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1260808808": {
+      "topics": [
+        "business",
+        "science",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Dropping Bombs: Laugh while you learn how to solve some of life's challenges! In fact,",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1260908468": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Right Reality | McBee Dyna: THE NUMMMMMMMBBBBBAAAAA ONEEEEEEE Podcast for The Challenge Cutthroat ",
+      "display_title": "The Right Reality | McBee Dynasty",
+      "blurb": "THE NUMMMMMMMBBBBBAAAAA ONEEEEEEE Podcast for The Challenge Cutthroat on Paramount Plus and McBee Dynasty on Bravo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1261400624": {
+      "topics": [
+        "business",
+        "relationships",
+        "business/founders",
+        "health",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Journey Beyond Divorce Podcast: The Journey Beyond Divorce Podcast is your trusted companion through e",
+      "display_title": "Journey Beyond Divorce Podcast",
+      "blurb": "The Journey Beyond Divorce Podcast is your trusted companion through every stage of divorce—emotional, legal, financial, and parental. With over nine years of i",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1261694828": {
+      "topics": [
+        "religion/buddhism",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist Wisdom Podcast with S: Scott Tusa, a meditation teacher and Buddhism mentor, shares practical",
+      "display_title": "Buddhist Wisdom Podcast with Scott Tusa",
+      "blurb": "Scott Tusa, a meditation teacher and Buddhism mentor, shares practical tips, guided meditations, and Buddhist wisdom. With over 25 years of experience, includin",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1261944206": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TRASHFUTURE: a podcast about business success and making yourself smarter with the ",
+      "display_title": "TRASHFUTURE",
+      "blurb": "a podcast about business success and making yourself smarter with the continued psychic trauma of capitalism by @raaleh, @HKesvani, @milo_edwards, @inthesedeser",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1262351840": {
+      "topics": [
+        "business",
+        "business/founders",
+        "economics",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "CRYPTO 101: Bryce Paul, acclaimed author of &#39;Crypto Revolution&#39;—with over ",
+      "display_title": "CRYPTO 101",
+      "blurb": "Bryce Paul, acclaimed author of &#39;Crypto Revolution&#39;—with over 100,000 copies sold and a foreword by ABC Shark Tank&#39;s Kevin Harrington—teams up with",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1262759912": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Manchester United Podcast: The American Red Devils Podcast gives you the latest Manchester United",
+      "display_title": "Manchester United Podcast",
+      "blurb": "The American Red Devils Podcast gives you the latest Manchester United News & Updates from this side of the pond. Manchester United is the largest club in the w",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1262809028": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "No Simple Road: More than just a Grateful Dead Podcast, more than a music and culture ",
+      "display_title": "No Simple Road",
+      "blurb": "More than just a Grateful Dead Podcast, more than a music and culture show, something other than a family of cosmic wanderers.... Join the hosts of No Simple Ro",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1264706714": {
+      "topics": [
+        "health/sexuality",
+        "relationships"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.5
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify; using prior health/sexuality,relationships with low confidence.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:51:11.265Z"
+    },
+    "1264843400": {
+      "topics": [
+        "news/politics",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Oprah's Super Soul: Awaken, discover and connect to the deeper meaning of the world around",
+      "display_title": "Oprah's Super Soul",
+      "blurb": "Awaken, discover and connect to the deeper meaning of the world around you with Oprah's Super Soul. Hear Oprah’s personal selection of her interviews with thoug",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1265845136": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stay Tuned with Preet: Join former U.S. Attorney Preet Bharara as he breaks down legal topics",
+      "display_title": "Stay Tuned with Preet",
+      "blurb": "Join former U.S. Attorney Preet Bharara as he breaks down legal topics in the news and engages thought leaders in a podcast about power, policy, and justice. Fr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1267716638": {
+      "topics": [
+        "health/nutrition",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Nutrition Science Podcast: If you are overwhelmed with all of the conflicting information in nutr",
+      "display_title": "The Nutrition Science Podcast",
+      "blurb": "If you are overwhelmed with all of the conflicting information in nutrition, this is the podcast for you. On this podcast, Dr. Adrian Chavez, who has a doctorat",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1267862312": {
+      "topics": [
+        "culture/books",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Double Love: Do you have sparkling blue-green eyes that are the colour of the Pacif",
+      "display_title": "Double Love",
+      "blurb": "Do you have sparkling blue-green eyes that are the colour of the Pacific Ocean? Do you have hair like spun gold? Are you tanned, energetic and a perfect size 6?",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1270288526": {
+      "topics": [
+        "sports/golf",
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Your Favorite Thing with Wells: Buckle up, Bros and Hoes. Join Wells Adams & Brandi Cyrus every Wednes",
+      "display_title": "Your Favorite Thing with Wells & Brandi",
+      "blurb": "Buckle up, Bros and Hoes. Join Wells Adams & Brandi Cyrus every Wednesday as they share their favorite, and sometimes least favorite, things: movies, TV shows,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1270453166": {
+      "topics": [
+        "religion/christianity",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pray the Word with David Platt: Short, daily meditations on God’s Word that not only drive us to pray,",
+      "display_title": "Pray the Word with David Platt",
+      "blurb": "Short, daily meditations on God’s Word that not only drive us to pray, but drive how we pray. Featuring teacher, author, and pastor David Platt. Learn more at:",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1272090974": {
+      "topics": [
+        "religion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Inspired Evolution with Amrit : Life is Spiritual. This Podcast is Your Guide. 🕊️🙏🏽 Lessons from th",
+      "display_title": "Inspired Evolution with Amrit Sandhu 🙏🏻",
+      "blurb": "Life is Spiritual. This Podcast is Your Guide. 🕊️🙏🏽 Lessons from the world’s leading voices in spirituality, consciousness, and personal growth with Amrit Sa",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1272785252": {
+      "topics": [
+        "computing",
+        "gaming",
+        "sports/golf",
+        "science",
+        "news",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/golf",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tech It Out: Making sense of technology by breaking down “geek speak into street sp",
+      "display_title": "Tech It Out",
+      "blurb": "Making sense of technology by breaking down “geek speak into street speak.\"",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1273613024": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Bend the Knee: A Song of Ice a: Bend the knee and join us each week as we re-read the epic fantasy ser",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1274217512": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Front Row Seat with Ken Colema: Ken Coleman is joined by industry leaders and world-class experts for ",
+      "display_title": "Front Row Seat with Ken Coleman",
+      "blurb": "Ken Coleman is joined by industry leaders and world-class experts for conversations about how to get better, move up, and lead well personally and professionall",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1274635046": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Eagle's Eye View: Your Weekly : The weekly cardiovascular update from Kim Eagle, MD, MACC for ACC.org ",
+      "display_title": "Eagle's Eye View: Your Weekly CV Update From",
+      "blurb": "The weekly cardiovascular update from Kim Eagle, MD, MACC for ACC.org covering the hottest cardiovascular topics, from new clinical guidelines to practice-chang",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1276042346": {
+      "topics": [
+        "tv-film/reviews",
+        "education",
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Evolution of Horror: Welcome horror fans! The Evolution of Horror is a weekly movie discuss",
+      "display_title": "The Evolution of Horror",
+      "blurb": "Welcome horror fans! The Evolution of Horror is a weekly movie discussion podcast that covers the history of horror cinema, one sub-genre at a time. From Univer",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1276416050": {
+      "topics": [
+        "science",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beyond Clean Podcast: Even though their tools and equipment touch nearly every surgical pati",
+      "display_title": "Beyond Clean Podcast",
+      "blurb": "Even though their tools and equipment touch nearly every surgical patient in the world, how much do you really know about the people, processes, and products us",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1276584758": {
+      "topics": [
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Qiological Podcast: Acupuncture and East Asian medicine was not developed in a laboratory.",
+      "display_title": "Qiological Podcast",
+      "blurb": "Acupuncture and East Asian medicine was not developed in a laboratory. It does not advance through double-blind controlled studies, nor does it respond well to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1276756430": {
+      "topics": [
+        "sports",
+        "sports/football",
+        "sports/baseball",
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/baseball",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Miller and Moulton: Home of the Miller and Moulton Podcast on the Florida Sports Network, ",
+      "display_title": "Miller and Moulton",
+      "blurb": "Home of the Miller and Moulton Podcast on the Florida Sports Network, where Florida sports fans go for no holds barred opinions on the biggest Florida sports st",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1281181784": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Morning After STL: The Morning After STL is the longest-running local sports morning show",
+      "display_title": "The Morning After STL",
+      "blurb": "The Morning After STL is the longest-running local sports morning show in St. Louis. Tim McKernan, Martin Kilcoyne, Doug Vaughn, and Jackson Burkett have the fo",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1281261434": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Canucks Central: Sat Shah has you covered with the most comprehensive Canucks show out ",
+      "display_title": "Canucks Central",
+      "blurb": "Sat Shah has you covered with the most comprehensive Canucks show out there. The only real choice for the die-hard Canucks fan.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1281790712": {
+      "topics": [
+        "comedy",
+        "business",
+        "relationships",
+        "kids-family/parenting",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Calm Parenting Podcast: Have a strong-willed child who doesn't respond to consequences, argues",
+      "display_title": "Calm Parenting Podcast",
+      "blurb": "Have a strong-willed child who doesn't respond to consequences, argues like an attorney, and refuses to do things your way? Good! You're in the right place. Cel",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1282044290": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Mark Groves Podcast: The Mark Groves Podcast is for heart-led humans eager to expand perspe",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1282526804": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "This Game Is Broken: This Game is Broken is a comedy board gaming panel show with Matthew J",
+      "display_title": "This Game Is Broken",
+      "blurb": "This Game is Broken is a comedy board gaming panel show with Matthew Jude, Dave Luza, Paula Deming and The Brother's Murph - Nick and Mike Murphy. New episodes",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1282786304": {
+      "topics": [
+        "tv-film/history",
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neon Brainiacs (A Retro Horror: Neon Brainiacs is a comedy podcast about retro horror movies with your",
+      "display_title": "Neon Brainiacs (A Retro Horror Movie Podcast)",
+      "blurb": "Neon Brainiacs is a comedy podcast about retro horror movies with your hosts, and independent filmmakers, Ben and Lance (and former co-host Gregg). Your heroes",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1288323368": {
+      "topics": [
+        "tv-film/after-shows"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify; using prior tv-film/after-shows with low confidence.",
+      "display_title": "Greatest Trek: New Star Trek Reviewed",
+      "blurb": "The unofficial, irreverent and filthy aftershow for all the new Star Trek television: From Discovery to Starfleet Academ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:51:11.265Z"
+    },
+    "1289105780": {
+      "topics": [
+        "comedy",
+        "gaming",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deadly Manners: Deadly Manners is a 10 episode, dark comedy murder-mystery series set ",
+      "display_title": "Deadly Manners",
+      "blurb": "Deadly Manners is a 10 episode, dark comedy murder-mystery series set in the winter of 1954. It follows the events during the night of the affluent Billings fam",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1289716034": {
+      "topics": [
+        "religion/judaism",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Orthodox Conundrum: The Orthodox Conundrum is a forum in which we look honestly at the Ort",
+      "display_title": "Orthodox Conundrum",
+      "blurb": "The Orthodox Conundrum is a forum in which we look honestly at the Orthodox Jewish community, identifying what works well and what does not, so that, through an",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1289889050": {
+      "topics": [
+        "philosophy",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "GreatMan Podcast: Manhood is not merely a product of biology, but rather the result of m",
+      "display_title": "GreatMan Podcast",
+      "blurb": "Manhood is not merely a product of biology, but rather the result of maturing, learning, and experience. While being born male is a matter of genetics, becoming",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1292381204": {
+      "topics": [
+        "computing",
+        "economics",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TFTC: A Bitcoin Podcast: TFTC is a podcast hosted by Marty Bent about Bitcoin. Join Marty, Edit",
+      "display_title": "TFTC: A Bitcoin Podcast",
+      "blurb": "TFTC is a podcast hosted by Marty Bent about Bitcoin. Join Marty, Editor in Chief of \"the best newsletter in Bitcoin\", as he sits down to discuss Bitcoin with i",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1292749928": {
+      "topics": [
+        "adventure/exploration",
+        "nature"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.5
+        },
+        {
+          "node": "nature",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify; using prior adventure/exploration,nature with low confidence.",
+      "display_title": "Speak the Language Podcast",
+      "blurb": "Hosted by Lake Pickle and Jordan Blissett, the Speak The Language Podcast is made with the goal to put out content that ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:51:11.265Z"
+    },
+    "1296082082": {
+      "topics": [
+        "food"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Craft Beer & Brewing Magazine : Listen to the podcast for those who make and drink great beer. Every w",
+      "display_title": "Craft Beer & Brewing Magazine Podcast",
+      "blurb": "Listen to the podcast for those who make and drink great beer. Every week we talk to professional brewers and industry experts about practical brewing advice, i",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
+    "1296639476": {
+      "topics": [
+        "science",
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Seven: Disturbing Chronicle St: Subscribe now to enjoy new editions released every week. You’ll hear t",
+      "display_title": "Seven: Disturbing Chronicle Stories of Scary, Paranormal &",
+      "blurb": "Subscribe now to enjoy new editions released every week. You’ll hear true accounts of the most disturbing kind!\"NOTICE: All content, audio files, RSS feeds, and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-084a61e4",
+      "classified_at": "2026-07-29T08:50:54.184Z"
+    },
     "1459232606": {
       "topics": [
         "news/politics",
@@ -16048,11 +17339,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-29T00:52:44.654Z",
+  "built_at": "2026-07-29T08:51:11.265Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-29-930a283f",
+    "last_batch_id": "fresh-2026-07-29-084a61e4",
     "last_batch_tier": 1
   }
 }
