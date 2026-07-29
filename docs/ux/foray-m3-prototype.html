@@ -482,6 +482,14 @@ function bumpOrCreate(id, delta, why, meta){
   return n;
 }
 
+// The fixture seeds S.tax with a full pre-populated demo taxonomy (so the
+// rest of the app has something to show when you skip straight to a route
+// via the harness). That means "show what changed" can't just mean "show
+// nonzero weights" — a brand-new user's onboarding summary needs to show
+// only what THIS session's answers actually touched, or it reports interests
+// the user never expressed.
+function touch(id){ if(!S.onbTouched.includes(id)) S.onbTouched.push(id); }
+
 function runTopicSearch(query){
   query = (query||'').trim();
   if(!query) return;
@@ -514,24 +522,48 @@ const TAX = [
   {id:'news.politics', path:'news',        name:'Politics',               w:-.62, conf:.9, at:'Wed'}
 ];
 
-const ONBOARD = [
-  {q:'What did you last fall down a rabbit hole on?', hint:'Type it how you would say it.',
-   opts:['Thermal imaging','Violin acoustics','Fab economics','Ancient siege engines'], gives:['eng.precision','sci.materials']},
-  {q:'When you bail on an episode, what usually did it?', hint:'This tunes the quality signal, not the topic.',
-   opts:['Padding and banter','A guest who cannot explain','Too slow to start','I finish most things'], gives:[]},
-  {q:'What do you put on when you do not want to think?', hint:'The comfort slot needs a target.',
-   opts:['Two friends talking','Comedy','A story','Nothing — silence'], gives:['com.hangs']},
-  {q:'Anything you never want to hear about?', hint:'Hard blocks. You can change these later.',
-   opts:['Politics','True crime','Celebrity interviews','Sports'], gives:['news.politics'], negative:true},
-  {q:'How much should I say before pressing play?', hint:'Intro verbosity.',
-   opts:['One line','A sentence of context','Skip it entirely'], gives:[]}
+// Deliberately diverse across taxonomy branches (issue: the old chip set was
+// all founder-shaped technical topics — see docs/ux/README.md "Onboarding
+// interview redesign" for the critique this replaced).
+const ONB_EXAMPLES = ['Volcanoes','True crime cases','Ancient Rome','How bread rises','Chess openings','Fixing old cars'];
+
+// A small hand-picked adjacency table: for each top-level taxonomy branch, a
+// few genuinely different branches worth offering as the exploration bridge
+// (this is a prototype stand-in for real semantic bridging — see the plan's
+// "Stretch" mechanic). Falls back to a neutral default set.
+const BRIDGE_MAP = {
+  engineering:['craft','science','space'], science:['engineering','nature','medicine'],
+  history:['culture','society','philosophy'], craft:['engineering','music','food'],
+  business:['economics','psychology','engineering'], comedy:['culture','music','tv-film'],
+  'true-crime':['psychology','society','history'], health:['psychology','food','sports'],
+  culture:['history','music','philosophy'], music:['culture','craft','comedy'],
+  psychology:['health','philosophy','society'], space:['science','engineering','philosophy'],
+  computing:['engineering','math','gaming'], economics:['business','society','history'],
+  nature:['science','adventure','food'], philosophy:['history','culture','psychology'],
+  sports:['health','psychology','adventure'], food:['craft','culture','health']
+};
+const BRIDGE_DEFAULT = ['history','science','culture'];
+
+const COMFORT_OPTIONS = [
+  {label:'Two friends talking', node:'comedy/casual-hangs'},
+  {label:'Comedy', node:'comedy'},
+  {label:'A story', node:'fiction'},
+  {label:'Silence works too', node:null}
 ];
+const BLOCK_OPTIONS = [
+  {label:'Politics', node:'news/politics'},
+  {label:'True crime', node:'true-crime'},
+  {label:'Celebrity interviews', node:'culture/pop-culture'},
+  {label:'Sports', node:'sports'}
+];
+const INTRO_OPTIONS = ['One line','A sentence of context','Skip it entirely'];
 
 /* ============================================================================
    STATE
    ============================================================================ */
 const S = {
-  route:'signin', tab:'today', onb:0, onbPicks:{},
+  route:'signin', tab:'today',
+  onbStep:1, onbTopic:'', onbNode:null, onbBridge:null, onbComfort:null, onbBlocks:[], onbIntro:1, onbTouched:[],
   tax:JSON.parse(JSON.stringify(TAX)),
   queue:null, qi:0, pos:0, playing:false, pickedCard:null,
   rate:1.25, demo:90, offline:false, dl:'ready', dlPct:100,
@@ -680,42 +712,92 @@ V.signinReturning = () => {
 </div>`;
 };
 
-V.onboard = () => {
-  const step = ONBOARD[S.onb], n = S.onb+1;
-  const picks = S.onbPicks[S.onb]||[];
+function nodeLabel(id){ const n=REAL_TAXONOMY.nodes.find(x=>x.id===id); return n?n.label:id; }
+
+V.onboard = () => S.onbStep===1 ? V.onboardStep1() : V.onboardStep2();
+
+// Step 1: one real question (what are you curious about), answered in your
+// own words, with a live preview of what Foray does with it — then one
+// Foray-specific question (the exploration bridge) that only appears once
+// step 1 has something to react to. Two things, one at a time, each with an
+// immediate visible effect — not five identical-looking question screens.
+// Recomputes S.onbNode from S.onbTopic and returns the preview+bridge
+// markup. Called both on full render and from the #onbTopic input listener
+// (which patches #onbPreviewWrap directly, WITHOUT a full render() — typing
+// must not steal focus/cursor position on every keystroke, same constraint
+// the topic-search box above already solves this way).
+function onbPreviewHTML(){
+  S.onbNode = S.onbTopic.trim() ? resolveTopicQuery(S.onbTopic) : null;
+  if(!S.onbNode){ S.onbBridge=null; return `<p class="note" style="margin-top:16px">Once you've typed something, I'll show what I'm picking up on.</p>`; }
+  const bridgeOpts = BRIDGE_MAP[branchOf(S.onbNode.id)] || BRIDGE_DEFAULT;
+  if(!bridgeOpts.includes(S.onbBridge)) S.onbBridge=null;
   return `
-  <div style="display:flex;flex-direction:column;height:100%">
-    <div class="hdr"><span class="kick">Interview · ${n} of ${ONBOARD.length}</span>
-      ${S.onb>0?'<button class="mono" data-act="onbBack" style="font-size:11px;color:var(--dim)">back</button>':''}</div>
-    <div class="bar" style="margin-bottom:26px"><i style="width:${n/ONBOARD.length*100}%"></i></div>
-    <h2 class="h1">${step.q}</h2>
-    <p class="lede">${step.hint}</p>
-    <div class="chips" style="margin-top:22px">
-      ${step.opts.map((o,i)=>`<button class="chip" data-act="onbPick" data-i="${i}" aria-pressed="${picks.includes(i)}">${o}</button>`).join('')}
+    <div class="card" style="margin-top:16px;border-left:2px solid var(--stretch)">
+      <p class="note" style="margin:0">Because of that, I'll lean toward:</p>
+      <div class="chips" style="margin-top:9px">
+        <span class="chip" style="pointer-events:none;background:var(--surface3)">${S.onbNode.label}</span>
+      </div>
     </div>
-    <div style="margin-top:18px"><input class="btn ghost" style="text-align:left;font-weight:400;color:var(--dim)" value="or type your own…" readonly></div>
-    <div style="margin-top:auto;display:grid;gap:8px">
-      <button class="btn" data-act="onbNext">${n===ONBOARD.length?'Build my first menu':'Next'}</button>
-      <p class="note" style="text-align:center">Answers seed your taxonomy. Everything is editable later.</p>
+    <h2 class="h1" style="margin-top:26px;font-size:20px">If I ever wander off-topic, which direction still makes sense to you?</h2>
+    <p class="lede">This is the one deliberately-different pick you'll see most days.</p>
+    <div class="chips" style="margin-top:14px">
+      ${bridgeOpts.map(b=>`<button class="chip" data-act="onbBridge" data-v="${b}" aria-pressed="${S.onbBridge===b}">${nodeLabel(b)}</button>`).join('')}
+    </div>`;
+}
+function refreshOnbPreview(){
+  document.getElementById('onbPreviewWrap').innerHTML = onbPreviewHTML();
+  const btn = document.getElementById('onbNext1Btn');
+  if(btn) btn.disabled = !(S.onbNode && S.onbBridge);
+  if(btn) btn.style.opacity = btn.disabled ? .4 : 1;
+}
+
+V.onboardStep1 = () => `
+  <div style="display:flex;flex-direction:column;height:100%">
+    <div class="hdr"><span class="kick">Getting started · 1 of 2</span></div>
+    <div class="bar" style="margin-bottom:26px"><i style="width:50%"></i></div>
+    <h2 class="h1">What have you been curious about lately?</h2>
+    <p class="lede">One thing is enough. Type it your way, or tap an example.</p>
+    <div class="chips" style="margin-top:18px">
+      ${ONB_EXAMPLES.map(o=>`<button class="chip" data-act="onbExample" data-v="${o}">${o}</button>`).join('')}
+    </div>
+    <input id="onbTopic" style="display:block;width:100%;margin-top:16px;padding:14px 16px;font-size:15px;color:var(--bone);background:var(--surface2);box-shadow:inset 0 0 0 1px var(--line);border:none;border-radius:12px;font-family:inherit" placeholder="Type here…" value="${S.onbTopic}">
+    <div id="onbPreviewWrap">${onbPreviewHTML()}</div>
+    <div style="margin-top:auto;display:grid;gap:8px;padding-top:18px">
+      <button id="onbNext1Btn" class="btn" data-act="onbNext1" ${(S.onbNode&&S.onbBridge)?'':'disabled'} style="opacity:${(S.onbNode&&S.onbBridge)?1:.4}">Next</button>
+      <p class="note" style="text-align:center">This tunes today's picks. You can change anything later.</p>
     </div>
   </div>`;
-};
 
-V.onbdone = () => `
-<div style="display:flex;flex-direction:column;height:100%">
-  <div class="hdr"><span class="kick">What I heard</span></div>
-  <h2 class="h1">Here is your starting shape.</h2>
-  <p class="lede">Weights, not categories. They move every time you finish or bail on something.</p>
-  <div style="margin-top:18px">
-    ${S.tax.filter(t=>Math.abs(t.w)>.3).slice(0,6).map(t=>`
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)">
-        <div><div style="font-size:13.5px;font-weight:500">${t.name}</div><div class="taxpath">${t.path}</div></div>
-        <div class="mono" style="font-size:11px;color:${t.w<0?'var(--err)':'var(--dim)'}">${t.w>0?'+':''}${t.w.toFixed(2)}</div>
-      </div>`).join('')}
-  </div>
-  <div style="margin-top:auto;display:grid;gap:8px">
-    <button class="btn" data-act="finishOnb">Open today's menu</button>
-    <p class="note" style="text-align:center">First week runs a higher exploration rate and shorter picks.</p>
+// Step 2: the remaining settings, bundled onto one screen instead of three
+// separate gates, plus the starting-shape summary folded in here instead of
+// being a third screen — this is the last thing before Today.
+V.onboardStep2 = () => `
+<div style="display:flex;flex-direction:column;height:100%;overflow:auto">
+  <div class="hdr"><span class="kick">Getting started · 2 of 2</span>
+    <button class="mono" data-act="onbBack2" style="font-size:11px;color:var(--dim)">back</button></div>
+  <div class="bar" style="margin-bottom:22px"><i style="width:100%"></i></div>
+
+  <p class="kick" style="margin-bottom:10px">When you want something easy</p>
+  <div class="chips">${COMFORT_OPTIONS.map(c=>`<button class="chip" data-act="onbComfort" data-v="${c.label}" aria-pressed="${S.onbComfort===c.label}">${c.label}</button>`).join('')}</div>
+
+  <p class="kick" style="margin:20px 0 10px">Anything you never want to hear about?</p>
+  <p class="note" style="margin:0 0 10px">Optional. These become hard blocks — Foray will never suggest them.</p>
+  <div class="chips">${BLOCK_OPTIONS.map(b=>`<button class="chip" data-act="onbBlock" data-v="${b.label}" aria-pressed="${S.onbBlocks.includes(b.label)}">${b.label}</button>`).join('')}</div>
+
+  <p class="kick" style="margin:20px 0 10px">How much should I say before playing something?</p>
+  <div class="chips">${INTRO_OPTIONS.map((o,i)=>`<button class="chip" data-act="onbIntro" data-v="${i}" aria-pressed="${S.onbIntro===i}">${o}</button>`).join('')}</div>
+
+  <p class="kick" style="margin:24px 0 10px">Your starting shape</p>
+  <p class="note" style="margin:0 0 10px">Weights, not categories — these move every time you finish or bail on something.</p>
+  ${S.tax.filter(t=>S.onbTouched.includes(t.id)).map(t=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)">
+      <div style="font-size:13.5px;font-weight:500">${t.name}</div>
+      <div class="mono" style="font-size:11px;color:${t.w<0?'var(--err)':'var(--dim)'}">${t.w>0?'+':''}${t.w.toFixed(2)}</div>
+    </div>`).join('') || '<p class="note">Nothing yet — go back and tell me what you\'re curious about.</p>'}
+
+  <div style="margin-top:22px;display:grid;gap:8px;padding-bottom:4px">
+    <button class="btn" data-act="finishOnb">Start listening</button>
+    <p class="note" style="text-align:center">Everything above is editable later in Settings and Interests.</p>
   </div>
 </div>`;
 
@@ -1216,6 +1298,7 @@ document.addEventListener('click', e=>{
 // cursor position on every character.
 document.addEventListener('input', e=>{
   if(e.target.id==='topicq') S.topicQueryDraft = e.target.value;
+  if(e.target.id==='onbTopic'){ S.onbTopic = e.target.value; refreshOnbPreview(); }
 });
 document.addEventListener('keydown', e=>{
   if(e.target.id==='topicq' && e.key==='Enter') act('topicsearch', e.target);
@@ -1225,17 +1308,33 @@ function act(a, el){
     case 'go': S.route=el.dataset.r; if(S.route!=='player') S.sheet=null; render(); break;
     case 'noop': break;
     case 'rebuild': S.sessionState='ready'; ev('session_build_requested',{on_demand:true}); toast('Menu rebuilt.'); render(); break;
-    case 'onbPick': {
-      const st=ONBOARD[S.onb], i=+el.dataset.i, cur=S.onbPicks[S.onb]||[];
-      S.onbPicks[S.onb] = cur.includes(i)? cur.filter(x=>x!==i) : cur.concat(i);
+    case 'onbExample': S.onbTopic=el.dataset.v; render(); break;
+    case 'onbBridge': S.onbBridge=el.dataset.v; render(); break;
+    case 'onbNext1': {
+      if(!(S.onbNode && S.onbBridge)) break;
+      bumpOrCreate(S.onbNode.id, .5, `from onboarding: "${S.onbTopic}"`, S.onbNode); touch(S.onbNode.id);
+      const bridgeNode = REAL_TAXONOMY.nodes.find(n=>n.id===S.onbBridge);
+      bumpOrCreate(S.onbBridge, .2, 'from onboarding: exploration bridge', bridgeNode); touch(S.onbBridge);
+      ev('onboarding_answer',{step:1, topic:S.onbTopic, node:S.onbNode.id, bridge:S.onbBridge});
+      S.onbStep=2; render(); break; }
+    case 'onbBack2': S.onbStep=1; render(); break;
+    case 'onbComfort': {
+      S.onbComfort=el.dataset.v;
+      const c=COMFORT_OPTIONS.find(x=>x.label===S.onbComfort);
+      if(c && c.node){ bumpOrCreate(c.node, .3, `from onboarding: comfort pick "${c.label}"`, REAL_TAXONOMY.nodes.find(n=>n.id===c.node)); touch(c.node); }
       render(); break; }
-    case 'onbBack': S.onb--; render(); break;
-    case 'onbNext': {
-      const st=ONBOARD[S.onb]; (st.gives||[]).forEach(g=>bump(g, st.negative?-.35:.3,'onboarding interview'));
-      ev('onboarding_answer',{step:S.onb, picks:(S.onbPicks[S.onb]||[]).length});
-      if(S.onb===ONBOARD.length-1){ S.route='onbdone'; } else S.onb++;
+    case 'onbBlock': {
+      const label=el.dataset.v;
+      if(S.onbBlocks.includes(label)){ S.onbBlocks=S.onbBlocks.filter(x=>x!==label); }
+      else {
+        S.onbBlocks=S.onbBlocks.concat(label);
+        const b=BLOCK_OPTIONS.find(x=>x.label===label);
+        if(b && b.node){ bumpOrCreate(b.node, -.8, `from onboarding: hard block "${label}"`, REAL_TAXONOMY.nodes.find(n=>n.id===b.node)); touch(b.node); }
+        if(!S.blocked.includes(label)) S.blocked=S.blocked.concat(label);
+      }
       render(); break; }
-    case 'finishOnb': S.route='today'; S.newUser=false; ev('onboarding_complete',{nodes:S.tax.length}); render(); break;
+    case 'onbIntro': S.onbIntro=+el.dataset.v; S.verbosity=S.onbIntro; render(); break;
+    case 'finishOnb': S.route='today'; S.newUser=false; ev('onboarding_complete',{nodes:S.tax.length,blocks:S.onbBlocks.length}); render(); break;
     case 'skipOnb': S.route='today'; S.newUser=false; ev('onboarding_skipped',{}); toast('Starting with a generalist menu — tune it anytime in Interests.'); render(); break;
     case 'pick': pick(el.dataset.id); break;
     case 'topicsearch': {
