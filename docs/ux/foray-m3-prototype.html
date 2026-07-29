@@ -524,7 +524,7 @@ const S = {
   fb:{}, saved:[], subs:['shw_ir','shw_pe','shw_lb'], blocked:[],
   lastPickArchetype:null, askedRating:false, ratings:0,
   breakNext:false, pttText:'', clock:7*60+12,
-  topicQueryDraft:'', onDemand:null
+  topicQueryDraft:'', onDemand:null, newUser:true
 };
 const show = k => SHOWS[k] || SHOWS.ir;
 const cur = () => S.queue ? S.queue[S.qi] : null;
@@ -610,19 +610,60 @@ setInterval(()=>{ S.clock++; const el=document.getElementById('clock'); if(el) e
    ============================================================================ */
 const V = {};
 
-V.signin = () => `
-<div style="display:flex;flex-direction:column;height:100%;padding-top:60px">
-  <div style="flex:1">
-    <p class="kick" style="color:var(--stretch)">Foray</p>
-    <h1 class="h1" style="font-size:36px;margin-top:14px">A short trip<br>somewhere you<br>would not have<br>gone.</h1>
-    <p class="lede">Four picks a day, chosen for you. One of them is deliberately outside what you already like.</p>
+V.signin = () => S.newUser ? V.signinNew() : V.signinReturning();
+
+V.signinNew = () => `
+<div style="display:flex;flex-direction:column;height:100%;padding-top:44px">
+  <div style="flex:1;overflow:auto">
+    <p class="kick" style="color:var(--stretch)">Foray · first time here</p>
+    <h1 class="h1" style="font-size:32px;margin-top:14px">A short trip<br>somewhere you<br>would not have<br>gone.</h1>
+    <p class="lede">Four hand-picked episodes a day. One of them is deliberately outside what you already like — that's not a bug, it's the point.</p>
+    <div style="margin-top:22px;display:grid;gap:14px">
+      <div style="display:flex;gap:11px">
+        <span class="art sm" style="background:var(--surface2);color:var(--stretch);display:grid;place-items:center;flex:none">1</span>
+        <p class="note" style="margin:0;padding-top:2px">A quick interview tunes what you'll see — a few weighted interests, not a fixed category picklist. Nothing is locked in.</p>
+      </div>
+      <div style="display:flex;gap:11px">
+        <span class="art sm" style="background:var(--surface2);color:var(--stretch);display:grid;place-items:center;flex:none">2</span>
+        <p class="note" style="margin:0;padding-top:2px">After that, what you finish, skip, or rate is what actually shapes tomorrow's picks — the interview is just a starting point.</p>
+      </div>
+      <div style="display:flex;gap:11px">
+        <span class="art sm" style="background:var(--surface2);color:var(--stretch);display:grid;place-items:center;flex:none">3</span>
+        <p class="note" style="margin:0;padding-top:2px">That's the only data used: listening behavior, to pick better episodes. Nothing is sold or shared, and every weight is visible and editable in Interests.</p>
+      </div>
+    </div>
   </div>
-  <div style="display:grid;gap:9px;padding-bottom:8px">
+  <div style="display:grid;gap:9px;padding-bottom:8px;padding-top:14px">
     <button class="btn" data-act="go" data-r="onboard">Continue with Apple</button>
     <button class="btn ghost" data-act="go" data-r="onboard">Continue with email</button>
+    <button class="mono" data-act="skipOnb" style="font-size:11.5px;color:var(--dim);padding:10px;text-align:center">Skip for now — start with a generalist menu</button>
     <p class="note" style="text-align:center">Audio plays from the publisher. Nothing is re-hosted or edited.</p>
   </div>
 </div>`;
+
+V.signinReturning = () => {
+  const cont = SESSION.menu.find(m=>m.archetype==='continue');
+  const finCount = 3 + (S.history||[]).length, contCount = cont ? 1 : 0;
+  return `
+<div style="display:flex;flex-direction:column;height:100%;padding-top:60px">
+  <div style="flex:1">
+    <p class="kick" style="color:var(--stretch)">Foray</p>
+    <h1 class="h1" style="font-size:32px;margin-top:14px">Welcome back.</h1>
+    <p class="lede">${cont ? `Pick up "${cont.card.title}" where you left off, or start something new below.` : "Start something new below — today's menu is ready."}</p>
+    <div class="card" style="margin-top:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><p class="title" style="font-size:14px;margin:0">Your listening history</p>
+          <span class="show">${finCount} finished · ${contCount} in progress</span></div>
+        <button class="mono" data-act="go" data-r="library" style="font-size:11px;color:var(--stretch)">Library →</button>
+      </div>
+    </div>
+  </div>
+  <div style="display:grid;gap:9px;padding-bottom:8px">
+    ${cont ? `<button class="btn" data-act="pick" data-id="${cont.card_id}">${ic('play')} Resume "${cont.card.title}"</button>` : ''}
+    <button class="btn ${cont?'ghost':''}" data-act="go" data-r="today">See today's picks</button>
+  </div>
+</div>`;
+};
 
 V.onboard = () => {
   const step = ONBOARD[S.onb], n = S.onb+1;
@@ -1128,6 +1169,7 @@ function paintDev(){
   document.getElementById('devroutes').innerHTML = routes.map(r=>
     `<button data-dev="route" data-r="${r[0]}" class="${S.route===r[0]?'on':''}">${r[1]}</button>`).join('');
   const st=[
+    ['newuser', !S.newUser?'returning user ✓':'returning user', !S.newUser],
     ['realdata', SESSION.real?'real backend data ✓':'real backend data', SESSION.real],
     ['offline', S.offline?'offline ✓':'offline', S.offline],
     ['lock','lock screen', S.overlay==='lock'],
@@ -1178,7 +1220,8 @@ function act(a, el){
       ev('onboarding_answer',{step:S.onb, picks:(S.onbPicks[S.onb]||[]).length});
       if(S.onb===ONBOARD.length-1){ S.route='onbdone'; } else S.onb++;
       render(); break; }
-    case 'finishOnb': S.route='today'; ev('onboarding_complete',{nodes:S.tax.length}); render(); break;
+    case 'finishOnb': S.route='today'; S.newUser=false; ev('onboarding_complete',{nodes:S.tax.length}); render(); break;
+    case 'skipOnb': S.route='today'; S.newUser=false; ev('onboarding_skipped',{}); toast('Starting with a generalist menu — tune it anytime in Interests.'); render(); break;
     case 'pick': pick(el.dataset.id); break;
     case 'topicsearch': {
       const input = document.getElementById('topicq');
@@ -1264,6 +1307,7 @@ function dev(a, el){
       paintLog(); break;
     }
     case 'realdata': SESSION = SESSION.real ? FIXTURE_SESSION : REAL_SESSION; S.queue=null; S.route='today'; S.seen={}; toast(SESSION.real?'Switched to real backend session.':'Switched to fixture session.'); render(); break;
+    case 'newuser': S.newUser=!S.newUser; S.route='signin'; render(); break;
   }
 }
 

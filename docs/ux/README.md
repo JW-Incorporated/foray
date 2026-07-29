@@ -84,3 +84,31 @@ closest real result but flags it as not an exact hit — e.g. searching "Greek
 mythology" surfaces a real Norse/Hawaiian mythology episode (Foray has zero
 Greek-mythology content today) with a note saying so, rather than pretending
 it's a direct match.
+
+## First-time vs. returning user
+
+The harness has a **"returning user"** toggle. It controls which sign-in
+screen renders (`V.signinNew` vs `V.signinReturning`) — these are two
+deliberately different first screens, not the same screen with minor copy
+changes:
+
+- **First-time (`V.signinNew`):** explains what the app does, what the
+  interview is for (weighted interests, not a fixed picklist — nothing's
+  locked in), and in plain language what data gets used and why (listening
+  behavior only, nothing sold/shared, every weight visible and editable in
+  Interests). Has an explicit **"Skip for now"** path — jumps straight to
+  Today without running the interview, with a toast pointing at Interests for
+  tuning later. Completing the interview (`finishOnb`) or skipping it
+  (`skipOnb`) both flip `S.newUser` to `false`, so navigating back to the
+  sign-in route afterward correctly shows the returning-user screen instead.
+- **Returning (`V.signinReturning`):** leads with "Welcome back," a one-line
+  summary of where they left off, a listening-history stat line (X finished,
+  Y in progress) with a direct link into Library, and two unambiguous
+  actions — resume the in-progress episode, or go straight to today's picks.
+  No re-explaining what the app is or re-running the interview.
+
+This was a specific ask (not a general "polish the onboarding" pass): make
+sure a first-time user understands the product and consents to how their
+answers are used before anything happens, with an easy out; make sure a
+returning user is welcomed back and pointed at continuing/starting/history
+without re-reading the pitch.
