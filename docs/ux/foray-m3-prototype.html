@@ -1642,13 +1642,46 @@ document.addEventListener('pointerdown', e=>{
 });
 
 /* ---------- drag: scrubber + taxonomy ---------- */
+// Horizontal drag controls (scrubber, interest sliders) embedded in a
+// vertically-scrolling page. touch-action:pan-y alone isn't enough — it lets
+// the browser scroll natively, but pointermove events still fire during that
+// scroll, and the old code updated the slider on every single pointermove
+// with zero regard for direction, so a vertical scroll gesture that started
+// on top of a slider ALSO dragged it sideways at the same time. This adds
+// real gesture disambiguation: on pointerdown, wait for the first
+// significant movement before deciding anything. If it's more vertical than
+// horizontal, treat it as a scroll and never touch the slider at all. Only
+// commit to dragging once horizontal movement clearly dominates.
+function dragControl(startEl, onMove, onCommit){
+  return (e0)=>{
+    const startX=e0.clientX, startY=e0.clientY;
+    let decided=null; // null = undecided, true = dragging, false = scrolling (abandoned)
+    const THRESH = 6;
+    const pointerId = e0.pointerId;
+    function tempMove(ev){
+      if(decided===false) return;
+      const dx=ev.clientX-startX, dy=ev.clientY-startY;
+      if(decided===null){
+        if(Math.abs(dx)<THRESH && Math.abs(dy)<THRESH) return; // not enough movement yet either way
+        if(Math.abs(dy) > Math.abs(dx)){ decided=false; startEl.onpointermove=null; return; } // scroll — bail, don't move the slider
+        decided=true; startEl.setPointerCapture(pointerId);
+      }
+      onMove(ev);
+    }
+    startEl.onpointermove = tempMove;
+    startEl.onpointerup = ()=>{
+      startEl.onpointermove=null;
+      if(decided===true) onCommit();
+    };
+  };
+}
 document.addEventListener('pointerdown', e=>{
   const sc=e.target.closest('#scrub'), tx=e.target.closest('[data-tax]');
-  if(sc){ const it=cur(); const move=ev2=>{ const r=sc.getBoundingClientRect();
+  if(sc){ const it=cur();
+    const move=ev2=>{ const r=sc.getBoundingClientRect();
       const p=Math.max(0,Math.min(1,(ev2.clientX-r.left)/r.width));
       S.pos=(it.start_offset||0)+p*it.expected_duration; paintProgress(); };
-    move(e); sc.setPointerCapture(e.pointerId); sc.onpointermove=move;
-    sc.onpointerup=()=>{ sc.onpointermove=null; ev('scrub',{to_sec:Math.round(S.pos)}); }; }
+    dragControl(sc, move, ()=>ev('scrub',{to_sec:Math.round(S.pos)}))(e); }
   if(tx){ const node=S.tax.find(t=>t.id===tx.dataset.tax); if(!node) return;
     const f=tx.querySelector('.f'), k=tx.querySelector('.k'), val=tx.parentElement.querySelector('.taxtop .mono');
     const move=ev2=>{ const r=tx.getBoundingClientRect();
@@ -1659,9 +1692,8 @@ document.addEventListener('pointerdown', e=>{
       f.style.left=(node.w<0?(50+node.w*50):50)+'%';
       f.style.width=(Math.abs(node.w)*50)+'%';
       if(val){ val.textContent=(node.w>0?'+':'')+node.w.toFixed(2); val.style.color=node.w<0?'var(--err)':'var(--stretch)'; } };
-    move(e); tx.setPointerCapture(e.pointerId); tx.onpointermove=move;
-    tx.onpointerup=()=>{ tx.onpointermove=null; node.at='just now'; node.recent='you dragged this yourself';
-      ev('interest_override',{node:node.id, weight:node.w}); render(); }; }
+    dragControl(tx, move, ()=>{ node.at='just now'; node.recent='you dragged this yourself';
+      ev('interest_override',{node:node.id, weight:node.w}); render(); })(e); }
 });
 
 document.getElementById('devtoggle').addEventListener('click', e=>{
