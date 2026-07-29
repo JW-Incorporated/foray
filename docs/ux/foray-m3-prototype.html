@@ -11,7 +11,12 @@
 :root{
   --ground:#131211; --surface:#1C1A18; --surface2:#262320; --surface3:#332E29;
   --line:rgba(237,232,224,.11); --line2:rgba(237,232,224,.2);
-  --bone:#EDE8E0; --dim:#9A938A; --dimmer:#6B655D;
+  --bone:#EDE8E0; --dim:#9A938A; --dimmer:#948D82;
+  /* --dimmer was #6B655D — 2.7-3.5:1 contrast against every surface in this
+     app, below WCAG AA's 4.5:1 minimum for text this size. It's used for
+     .kick (section labels) and .note (explanatory copy) — the text most
+     responsible for telling the user what a screen means, rendered in the
+     least legible color available. #948D82 clears 4.5:1 on every surface. */
   --deep:#C8A24A; --stretch:#5FA8A0; --narr:#B5654A; --comfort:#8A8FB0; --cont:#EDE8E0;
   --ok:#7FA85C; --warn:#D98B3A; --err:#C1584B;
   --ui:'Archivo',system-ui,sans-serif; --mono:'DM Mono',ui-monospace,monospace;
@@ -55,7 +60,7 @@ body.kiosk .scr{border-radius:0;height:100dvh}
 .view::-webkit-scrollbar{display:none}
 .view.pad0{padding-left:0;padding-right:0}
 .tabs{flex:none;display:flex;border-top:1px solid var(--line);padding:9px 0 22px;background:var(--ground)}
-.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--dimmer);padding:2px 0}
+.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--dimmer);padding:2px 0}
 .tabs button svg{width:19px;height:19px}
 .tabs button.on{color:var(--bone)}
 
@@ -63,7 +68,7 @@ body.kiosk .scr{border-radius:0;height:100dvh}
 .h1{font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.1;margin:0}
 .h2{font-size:17px;font-weight:600;letter-spacing:-.02em;margin:0}
 .lede{font-size:13.5px;line-height:1.5;color:var(--dim);margin:8px 0 0}
-.kick{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--dimmer);margin:0}
+.kick{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dimmer);margin:0}
 .mono{font-family:var(--mono)}
 .hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:6px 0 14px}
 .card{background:var(--surface);border-radius:16px;padding:14px;border:1px solid var(--line);margin-bottom:10px}
@@ -95,7 +100,7 @@ body.kiosk .scr{border-radius:0;height:100dvh}
 .bar{height:3px;border-radius:2px;background:var(--surface3);overflow:hidden}
 .bar i{display:block;height:100%;background:var(--bone)}
 .divider{height:1px;background:var(--line);margin:16px 0}
-.note{font-size:11.5px;color:var(--dimmer);line-height:1.45}
+.note{font-size:13px;color:var(--dimmer);line-height:1.5}
 .banner{display:flex;gap:9px;align-items:center;padding:9px 12px;border-radius:10px;font-size:12px;margin-bottom:12px}
 .banner.warn{background:rgba(217,139,58,.14);color:var(--warn)}
 .banner.err{background:rgba(193,88,75,.16);color:var(--err)}
@@ -164,7 +169,7 @@ body.kiosk .scr{border-radius:0;height:100dvh}
 .tax{padding:12px 0;border-bottom:1px solid var(--line)}
 .taxtop{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
 .taxname{font-size:13.5px;font-weight:500}
-.taxpath{font-family:var(--mono);font-size:9.5px;color:var(--dimmer)}
+.taxpath{font-family:var(--mono);font-size:10.5px;color:var(--dimmer)}
 .taxbar{height:22px;display:flex;align-items:center;position:relative;cursor:pointer;touch-action:none}
 .taxbar .t{height:5px;width:100%;background:var(--surface2);border-radius:3px;position:relative;overflow:hidden}
 .taxbar .z{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line2)}
@@ -581,7 +586,7 @@ const INTRO_OPTIONS = ['One line','A sentence of context','Skip it entirely'];
    ============================================================================ */
 const S = {
   route:'signin', tab:'today',
-  onbStep:1, onbTopic:'', onbNode:null, onbBridge:null, onbComfort:null, onbBlocks:[], onbIntro:1, onbTouched:[],
+  onbStep:1, onbTopic:'', onbNode:null, onbBridge:null, onbComfort:null, onbBlocks:[], onbIntro:1, onbTouched:[], blockConfirm:null, buildNotify:false,
   tax:JSON.parse(JSON.stringify(TAX)),
   queue:null, qi:0, pos:0, playing:false, pickedCard:null,
   rate:1.25, demo:90, offline:false, dl:'ready', dlPct:100,
@@ -593,6 +598,11 @@ const S = {
 };
 const show = k => SHOWS[k] || SHOWS.ir;
 const cur = () => S.queue ? S.queue[S.qi] : null;
+// Feedback (More/Less/Save) was a single global {more,down,saved} object, so
+// Save could show "on" for an episode you never saved — whatever the last
+// episode's feedback state was just carried over visually. Keyed by
+// episode_ref so each episode's buttons reflect only that episode.
+function curFb(episodeRef){ return S.fb[episodeRef] || (S.fb[episodeRef] = {more:false, down:false, saved:false}); }
 const fmt = s => { s=Math.max(0,Math.round(s)); const m=Math.floor(s/60); return m+':'+String(s%60).padStart(2,'0'); };
 const mins = s => Math.round(s/60)+' min';
 
@@ -650,7 +660,11 @@ function handleBroken(){
   const it=cur();
   ev('error', {kind:'enclosure_unreachable', episode_ref:it.episode_ref, http:404});
   it.errored=true; S.playing=false; render();
-  setTimeout(()=>{ if(!cur()||!cur().errored) return; toast('Skipped — that file would not load.','err'); S.playing=true; advance('error'); },3400);
+  // Used to auto-advance after 3.4s regardless of what the user did in the
+  // meantime — if they'd already tapped "Back to the menu" (which doesn't
+  // touch S.queue/S.qi), this timer still fired later and silently skipped
+  // the queue out from under them on a screen they weren't even looking at.
+  // The two buttons on the error screen are now the only way to proceed.
 }
 function pushHistory(it){
   const c=it.card; S.history=S.history||[];
@@ -818,11 +832,30 @@ V.onboardStep2 = () => `
 
   <p class="kick" style="margin:24px 0 10px">Your starting shape</p>
   <p class="note" style="margin:0 0 10px">Weights, not categories — these move every time you finish or bail on something.</p>
-  ${S.tax.filter(t=>S.onbTouched.includes(t.id)).map(t=>`
+  ${(() => {
+    // Comfort/blocks aren't applied to S.tax until "Start listening" (see
+    // finishOnb), so this preview blends what step 1 already committed with
+    // a live, not-yet-applied preview of the current step-2 selections —
+    // otherwise changing your mind here would show nothing changing.
+    const applied = S.tax.filter(t=>S.onbTouched.includes(t.id))
+      .map(t=>({name:t.name, w:t.w, pending:false}));
+    const pending = [];
+    if(S.onbComfort){
+      const c=COMFORT_OPTIONS.find(x=>x.label===S.onbComfort);
+      if(c && c.node) pending.push({name:nodeLabel(c.node), w:.3, pending:true});
+    }
+    for(const label of S.onbBlocks){
+      const b=BLOCK_OPTIONS.find(x=>x.label===label);
+      if(b && b.node) pending.push({name:nodeLabel(b.node), w:-.8, pending:true});
+    }
+    const rows = applied.concat(pending);
+    if(!rows.length) return '<p class="note">Nothing yet — go back and tell me what you\'re curious about.</p>';
+    return rows.map(t=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)">
-      <div style="font-size:13.5px;font-weight:500">${t.name}</div>
+      <div style="font-size:13.5px;font-weight:500">${t.name}${t.pending?' <span class="note" style="font-size:11px">(pending)</span>':''}</div>
       <div class="mono" style="font-size:11px;color:${t.w<0?'var(--err)':'var(--dim)'}">${t.w>0?'+':''}${t.w.toFixed(2)}</div>
-    </div>`).join('') || '<p class="note">Nothing yet — go back and tell me what you\'re curious about.</p>'}
+    </div>`).join('');
+  })()}
 
   <div style="margin-top:22px;display:grid;gap:8px;padding-bottom:4px">
     <button class="btn" data-act="finishOnb">Start listening</button>
@@ -831,7 +864,7 @@ V.onboardStep2 = () => `
 </div>`;
 
 V.today = () => {
-  if(S.sessionState==='building') return stateCard('Building your menu','The curator is scoring candidates and writing the intros. This normally finishes before you wake up.', 'bell', [['Notify me when it is ready','noop']]);
+  if(S.sessionState==='building') return stateCard('Building your menu','The curator is scoring candidates and writing the intros. This normally finishes before you wake up.', 'bell', [[S.buildNotify?'Notified — I\'ll let you know ✓':'Notify me when it is ready','notifyBuild']]);
   if(S.sessionState==='expired') return stateCard('This menu is from this morning','It expired at 9pm. Nothing here is fresh enough to bother you with.','alert',[['Build a new one','rebuild']]);
   if(S.sessionState==='none') return stateCard('Nothing scheduled','No menu is built for right now. You can ask for one on demand.','plus',[['Build a menu','rebuild']]);
 
@@ -963,12 +996,12 @@ V.player = () => {
       <button class="tbtn" data-act="seek" data-d="30">${ic('fwd30')}</button>
     </div>
     <div class="fb">
-      <button class="${S.fb.more?'on':''}" data-act="fb" data-k="more">${ic('plus')}MORE LIKE THIS</button>
-      <button class="${S.fb.down?'on':''}" data-act="fb" data-k="down">${ic('minus')}LESS</button>
-      <button class="${S.fb.saved?'on':''}" data-act="fb" data-k="save">${ic('down')}SAVE</button>
+      <button class="${curFb(it.episode_ref).more?'on':''}" data-act="fb" data-k="more">${ic('plus')}MORE LIKE THIS</button>
+      <button class="${curFb(it.episode_ref).down?'on':''}" data-act="fb" data-k="down">${ic('minus')}LESS</button>
+      <button class="${curFb(it.episode_ref).saved?'on':''}" data-act="fb" data-k="save">${ic('down')}SAVE</button>
       <button data-act="sheet" data-s="show">${ic('block')}SHOW</button>
     </div>
-    <button class="ptt" data-act="ptt">${ic('mic')} Hold to talk</button>
+    <button class="ptt" id="pttHold">${ic('mic')} Hold to talk</button>
     <div style="margin-top:auto;padding:14px 0 6px;border-top:1px solid var(--line);display:flex;gap:9px;align-items:flex-start">
       <span style="color:var(--stretch);flex:none;width:15px">${ic('seam',1.4)}</span>
       <p class="note" style="margin:0">${nextIt ? (nextIt.type==='outro_tts' ? 'Last item in this run. Nothing queues after it.' : `Next: ${show(S.queue[S.qi+2]?.card.show||nextIt.card.show).name}, after a short handoff.`) : 'Last item.'}</p>
@@ -1084,9 +1117,13 @@ V.queue = () => {
 
 V.library = () => {
   const tab = S.libTab||'continuing';
+  // Only one card_id in the fixture (c_cont) is actually resumable — a
+  // second hardcoded "continuing" row used to sit here with the same
+  // data-id, so its Resume button silently opened the FIRST item instead of
+  // the one it was labeled as. Rather than fake a second in-progress item
+  // with no real queue behind it, only show what's actually resumable.
   const conts = [
-    {t:'The inefficiency paradox', s:'lb', pct:39, left:'28 min'},
-    {t:'Why fabs cost what they cost', s:'ir', pct:64, left:'14 min'}
+    {t:'The inefficiency paradox', s:'lb', pct:39, left:'28 min', id:'c_cont'}
   ];
   const fin = (S.history||[]).concat([
     {title:'Building for scale', show:'ir', when:'Mon'},
@@ -1103,7 +1140,7 @@ V.library = () => {
       <div class="art sm" style="background:${show(c.s).c}">${show(c.s).art}</div>
       <div style="flex:1;min-width:0"><p class="title" style="font-size:13.5px">${c.t}</p><span class="show">${show(c.s).name} · ${c.left} left</span></div>
     </div><div class="bar" style="margin-top:11px"><i style="width:${c.pct}%"></i></div>
-    <button class="btn ghost sm wide" style="margin-top:11px" data-act="pick" data-id="c_cont">Resume</button></div>`).join('')
+    <button class="btn ghost sm wide" style="margin-top:11px" data-act="pick" data-id="${c.id}">Resume</button></div>`).join('')
   : tab==='finished'? fin.map(f=>`
     <div style="display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line);align-items:center">
       <div class="art sm" style="background:${show(f.show).c}">${show(f.show).art}</div>
@@ -1234,6 +1271,21 @@ function ovLock(){
     </div>
   </div>`;
 }
+// The "Less" feedback button set S.sheet='less' but the sheet container
+// only ever rendered the 'show' sheet — tapping Less silently did nothing
+// visible beyond the toast, despite the toast promising a follow-up
+// ("Say 'less X' to name what you mean"). This is that follow-up.
+function lessSheet(){
+  return `<div class="sheet"><div class="grab"></div>
+    <p class="title" style="margin-bottom:4px">What was it?</p>
+    <p class="note" style="margin-bottom:16px">Optional — helps more than a plain thumbs-down.</p>
+    <div style="display:grid;gap:8px">
+      ${['Padding and banter','A guest who could not explain','Too slow to start','Not my thing right now'].map(r=>
+        `<button class="btn ghost" data-act="lessReason" data-r="${r}">${r}</button>`).join('')}
+      <button class="btn" data-act="closeSheet">Skip</button>
+    </div>
+  </div>`;
+}
 function shSheet(){
   const it=cur(); const sh=show(it?it.card.show:'ir');
   return `<div class="sheet"><div class="grab"></div>
@@ -1244,7 +1296,10 @@ function shSheet(){
     <div style="display:grid;gap:8px">
       <button class="btn ghost" data-act="sub" data-id="${sh.id}">${S.subs.includes(sh.id)?'Unfollow':'Follow'}</button>
       <button class="btn ghost" data-act="openEp">Open the full episode elsewhere</button>
-      <button class="btn ghost" style="color:var(--err)" data-act="block" data-n="${sh.name}">Never suggest this show again</button>
+      ${S.blockConfirm===sh.name
+        ? `<button class="btn" style="background:var(--err);color:var(--bone)" data-act="block" data-n="${sh.name}">Tap again to confirm — cannot be undone</button>
+           <button class="mono" data-act="cancelBlock" style="font-size:12px;color:var(--dim);text-align:center">Never mind</button>`
+        : `<button class="btn ghost" style="color:var(--err)" data-act="confirmBlock" data-n="${sh.name}">Never suggest this show again</button>`}
       <button class="btn" data-act="closeSheet">Done</button>
     </div>
     <p class="note" style="margin-top:12px">Blocking is a hard rule, not a weight. It is the only irreversible taste control.</p>
@@ -1265,7 +1320,7 @@ function render(){
   document.getElementById('tabs').style.display = showTabs?'flex':'none';
   document.getElementById('rtstat').innerHTML = (S.offline?ic('plane'):ic('wifi')) + (S.dl!=='ready'?' ⇣':'');
   document.getElementById('overlay').innerHTML = S.overlay==='ptt'?ovPTT():S.overlay==='lock'?ovLock():'';
-  document.getElementById('sheet').innerHTML = S.sheet==='show'?shSheet():'';
+  document.getElementById('sheet').innerHTML = S.sheet==='show'?shSheet():S.sheet==='less'?lessSheet():'';
   paintToast(); paintLog(); paintDev();
   if(r==='today') SESSION.menu.forEach(m=>{ if(!S.seen?.[m.card_id]){ (S.seen=S.seen||{})[m.card_id]=1; ev('card_shown',{card_id:m.card_id,archetype:m.archetype}); }});
 }
@@ -1336,6 +1391,7 @@ function act(a, el){
   switch(a){
     case 'go': S.route=el.dataset.r; if(S.route!=='player') S.sheet=null; render(); break;
     case 'noop': break;
+    case 'notifyBuild': S.buildNotify=true; ev('notify_when_ready',{}); toast('You\'ll get a notification when today\'s menu is ready.'); render(); break;
     case 'rebuild': S.sessionState='ready'; ev('session_build_requested',{on_demand:true}); toast('Menu rebuilt.'); render(); break;
     case 'onbExample': S.onbTopic=el.dataset.v; render(); break;
     case 'onbBridge': S.onbBridge=el.dataset.v; render(); break;
@@ -1351,23 +1407,33 @@ function act(a, el){
       ev('onboarding_answer',{step:1, topic:S.onbTopic, node:S.onbNode?S.onbNode.id:null, bridge:S.onbBridge});
       S.onbStep=2; render(); break; }
     case 'onbBack2': S.onbStep=1; render(); break;
-    case 'onbComfort': {
-      S.onbComfort=el.dataset.v;
-      const c=COMFORT_OPTIONS.find(x=>x.label===S.onbComfort);
-      if(c && c.node){ bumpOrCreate(c.node, .3, `from onboarding: comfort pick "${c.label}"`, REAL_TAXONOMY.nodes.find(n=>n.id===c.node)); touch(c.node); }
-      render(); break; }
+    // onbComfort/onbBlock only update the SELECTION (pure UI state) — no
+    // weights or blocks are applied here. Applying weights incrementally on
+    // every tap meant changing your mind (re-picking comfort, or tapping a
+    // block chip to deselect it) never undid the earlier bump: multiple
+    // comfort weights could stack while only one looked selected, and a
+    // "deselected" block silently stayed in S.blocked. Deferring the actual
+    // mutation to finishOnb means what's visibly selected always matches
+    // what gets applied — you can safely change your mind right up to the
+    // end (matches the copy that already promises this: "you can change
+    // anything later" / editable-until-you-leave the screen).
+    case 'onbComfort': S.onbComfort = (S.onbComfort===el.dataset.v) ? null : el.dataset.v; render(); break;
     case 'onbBlock': {
       const label=el.dataset.v;
-      if(S.onbBlocks.includes(label)){ S.onbBlocks=S.onbBlocks.filter(x=>x!==label); }
-      else {
-        S.onbBlocks=S.onbBlocks.concat(label);
+      S.onbBlocks = S.onbBlocks.includes(label) ? S.onbBlocks.filter(x=>x!==label) : S.onbBlocks.concat(label);
+      render(); break; }
+    case 'onbIntro': S.onbIntro=+el.dataset.v; S.verbosity=S.onbIntro; render(); break;
+    case 'finishOnb': {
+      if(S.onbComfort){
+        const c=COMFORT_OPTIONS.find(x=>x.label===S.onbComfort);
+        if(c && c.node){ bumpOrCreate(c.node, .3, `from onboarding: comfort pick "${c.label}"`, REAL_TAXONOMY.nodes.find(n=>n.id===c.node)); touch(c.node); }
+      }
+      for(const label of S.onbBlocks){
         const b=BLOCK_OPTIONS.find(x=>x.label===label);
         if(b && b.node){ bumpOrCreate(b.node, -.8, `from onboarding: hard block "${label}"`, REAL_TAXONOMY.nodes.find(n=>n.id===b.node)); touch(b.node); }
         if(!S.blocked.includes(label)) S.blocked=S.blocked.concat(label);
       }
-      render(); break; }
-    case 'onbIntro': S.onbIntro=+el.dataset.v; S.verbosity=S.onbIntro; render(); break;
-    case 'finishOnb': S.route='today'; S.newUser=false; ev('onboarding_complete',{nodes:S.tax.length,blocks:S.onbBlocks.length}); render(); break;
+      S.route='today'; S.newUser=false; ev('onboarding_complete',{nodes:S.tax.length,blocks:S.onbBlocks.length}); render(); break; }
     case 'skipOnb': S.route='today'; S.newUser=false; ev('onboarding_skipped',{}); toast('Starting with a generalist menu — tune it anytime in Interests.'); render(); break;
     case 'pick': pick(el.dataset.id); break;
     case 'topicsearch': {
@@ -1392,26 +1458,32 @@ function act(a, el){
       ev('seek',{delta_sec:+el.dataset.d, at_sec:Math.round(S.pos)}); paintProgress(); break; }
     case 'skipItem': ev('skip_item',{from:S.qi}); advance('skipped'); break;
     case 'fb': {
-      const k=el.dataset.k, it=cur();
-      if(k==='more'){ S.fb.more=!S.fb.more; if(S.fb.more){ ev('thumbs',{value:1, episode_ref:it.episode_ref});
+      const k=el.dataset.k, it=cur(); if(!it) break;
+      const fb = curFb(it.episode_ref);
+      if(k==='more'){ fb.more=!fb.more; if(fb.more){ ev('thumbs',{value:1, episode_ref:it.episode_ref});
         bump('eng.precision',.08,'more like this'); bump('sci.materials',.05,'more like this'); toast('Noted. Weights moved — see You.'); } }
-      if(k==='down'){ S.fb.down=!S.fb.down; if(S.fb.down){ ev('thumbs',{value:-1, episode_ref:it.episode_ref});
-        S.sheet='less'; bump('eng.precision',-.04,'thumbs down'); toast('Logged. Say “less X” to name what you mean.'); } }
-      if(k==='save'){ S.fb.saved=!S.fb.saved; if(S.fb.saved){ ev('saved',{episode_ref:it.episode_ref});
+      if(k==='down'){ fb.down=!fb.down; if(fb.down){ ev('thumbs',{value:-1, episode_ref:it.episode_ref});
+        S.sheet='less'; bump('eng.precision',-.04,'thumbs down'); } else { S.sheet=null; } }
+      if(k==='save'){ fb.saved=!fb.saved; if(fb.saved){ ev('saved',{episode_ref:it.episode_ref});
         S.saved.unshift({title:it.card.title, show:it.card.show, when:'today'}); toast('Saved. Topic good, timing wrong — noted that way.'); } }
       render(); break; }
-    case 'ptt': S.overlay='ptt'; S.pttText=''; ev('voice_ptt_open',{}); render(); break;
+    case 'lessReason': {
+      const it=cur(); if(!it) break;
+      ev('thumbs_reason',{episode_ref:it.episode_ref, reason:el.dataset.r});
+      toast('Got it — noted why.'); S.sheet=null; render(); break; }
     case 'say': {
       const c=el.dataset.c; S.pttText=c;
       render();
       setTimeout(()=>{ handleVoice(c); }, 700); break; }
     case 'closeOv': S.overlay=null; render(); break;
     case 'sheet': S.sheet=el.dataset.s; render(); break;
-    case 'closeSheet': S.sheet=null; render(); break;
+    case 'closeSheet': S.sheet=null; S.blockConfirm=null; render(); break;
     case 'sub': { const id=el.dataset.id; S.subs = S.subs.includes(id)? S.subs.filter(x=>x!==id): S.subs.concat(id);
       ev('subscription',{show_id:id, following:S.subs.includes(id)}); render(); break; }
     case 'unsub': S.subs=S.subs.filter(x=>x!==el.dataset.id); ev('subscription',{show_id:el.dataset.id,following:false}); render(); break;
-    case 'block': { const n=el.dataset.n; S.blocked.push(n); S.sheet=null;
+    case 'confirmBlock': S.blockConfirm=el.dataset.n; render(); break;
+    case 'cancelBlock': S.blockConfirm=null; render(); break;
+    case 'block': { const n=el.dataset.n; S.blocked.push(n); S.sheet=null; S.blockConfirm=null;
       ev('blocklist_add',{show:n}); toast('Blocked. That is a hard rule, not a weight.'); render(); break; }
     case 'openEp': toast('Hands off to the publisher — Foray never re-hosts audio.'); break;
     case 'rate': S.askedRating=true; S.ratings++; ev('pick_rating',{value:el.dataset.v, archetype:S.lastPickArchetype});
@@ -1431,7 +1503,10 @@ function handleVoice(c){
   if(c==='Less politics'){ bump('news.politics',-.2,'said “less politics”'); toast('Earcon: falling. Politics pushed down.'); }
   if(c==='Something different'){ toast('Session-only. Your durable taste is untouched.'); ev('mood_shift',{scope:'session_only'}); }
   if(c==='Save this'){ const it=cur(); if(it){ S.saved.unshift({title:it.card.title,show:it.card.show,when:'today'}); toast('Saved.'); } else toast('Nothing playing to save.'); }
-  if(c==='Never this show again'){ const it=cur(); if(it){ S.blocked.push(show(it.card.show).name); toast('Hard block applied.'); } else toast('Nothing playing.'); }
+  // Was a one-tap irreversible block with no confirmation, same issue as the
+  // show sheet's block button — route it through that same confirm step
+  // instead of applying immediately.
+  if(c==='Never this show again'){ const it=cur(); if(it){ S.sheet='show'; S.blockConfirm=show(it.card.show).name; } else toast('Nothing playing.'); }
   S.overlay=null; render();
 }
 function dev(a, el){
@@ -1457,6 +1532,19 @@ function dev(a, el){
     case 'newuser': S.newUser=!S.newUser; S.route='signin'; render(); break;
   }
 }
+
+/* ---------- press-and-hold: the mic button really is hold-to-talk now.
+   It used to be a plain click target (open on click, close on a separate
+   "Release" button) despite the label — press-and-hold on pointerdown/up,
+   release on lift/cancel/leaving the button while pressed. ---------- */
+document.addEventListener('pointerdown', e=>{
+  const ptt=e.target.closest('#pttHold'); if(!ptt) return;
+  S.overlay='ptt'; S.pttText=''; ev('voice_ptt_open',{}); render();
+  const release=()=>{ if(S.overlay==='ptt'){ S.overlay=null; render(); }
+    document.removeEventListener('pointerup',release); document.removeEventListener('pointercancel',release); };
+  document.addEventListener('pointerup',release);
+  document.addEventListener('pointercancel',release);
+});
 
 /* ---------- drag: scrubber + taxonomy ---------- */
 document.addEventListener('pointerdown', e=>{
