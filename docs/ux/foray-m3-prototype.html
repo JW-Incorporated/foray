@@ -170,12 +170,13 @@ body.kiosk .scr{border-radius:0;height:100dvh}
 .taxtop{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
 .taxname{font-size:13.5px;font-weight:500}
 .taxpath{font-family:var(--mono);font-size:11.5px;color:var(--dimmer)}
-.taxbar{height:22px;display:flex;align-items:center;position:relative;cursor:pointer;touch-action:none}
-.taxbar .t{height:5px;width:100%;background:var(--surface2);border-radius:3px;position:relative;overflow:hidden}
+.taxbar{height:30px;display:flex;align-items:center;position:relative;cursor:pointer;touch-action:none;border-radius:8px}
+.taxbar:focus-visible{outline:2px solid var(--stretch);outline-offset:3px}
+.taxbar .t{height:8px;width:100%;background:var(--surface2);border-radius:4px;position:relative;overflow:hidden}
 .taxbar .z{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line2)}
-.taxbar .f{position:absolute;height:5px;border-radius:3px;background:var(--bone)}
+.taxbar .f{position:absolute;height:8px;border-radius:4px;background:var(--bone)}
 .taxbar .f.neg{background:var(--err)}
-.taxbar .k{position:absolute;width:13px;height:13px;border-radius:50%;background:var(--bone);transform:translateX(-6px)}
+.taxbar .k{position:absolute;width:20px;height:20px;border-radius:50%;background:var(--bone);transform:translateX(-10px);box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .ev{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12px;line-height:1.4}
 .ev .d{width:3px;border-radius:2px;flex:none;margin:2px 0}
 
@@ -591,7 +592,7 @@ const S = {
   onbStep:1, onbTopic:'', onbNode:null, onbBridge:null, onbComfort:null, onbBlocks:[], onbIntro:1, onbTouched:[], blockConfirm:null, buildNotify:false,
   tax:JSON.parse(JSON.stringify(TAX)),
   queue:null, qi:0, pos:0, playing:false, pickedCard:null,
-  rate:1.25, demo:90, offline:false, dl:'ready', dlPct:100,
+  rate:1.25, rateByShow:{rd:1}, demo:90, offline:false, dl:'ready', dlPct:100,
   sessionState:'ready', events:[], toast:null, overlay:null, sheet:null,
   fb:{}, saved:[], subs:['shw_ir','shw_pe','shw_lb'], blocked:[],
   lastPickArchetype:null, askedRating:false, ratings:0,
@@ -676,10 +677,11 @@ function endSession(){
   S.playing=false; ev('session_end',{session_id:SESSION.session_id, items_played:S.qi+1});
   S.route='sessionend'; render();
 }
+function effectiveRate(){ const it=cur(); if(!it) return S.rate; return S.rateByShow[it.card.show] ?? S.rate; }
 setInterval(()=>{
   if(!S.playing || S.route!=='player') return;
   const it=cur(); if(!it || it.errored) return;
-  S.pos += .25 * S.rate * (S.demo/1);
+  S.pos += .25 * effectiveRate() * (S.demo/1);
   const end = (it.start_offset||0) + it.expected_duration;
   if(S.pos >= end){ advance('finished'); return; }
   paintProgress();
@@ -748,6 +750,20 @@ V.signinReturning = () => {
 };
 
 function nodeLabel(id){ const n=REAL_TAXONOMY.nodes.find(x=>x.id===id); return n?n.label:id; }
+
+// The raw weight (e.g. "+0.82") is real and worth keeping visible — it's
+// what the product actually is (a continuous weight vector, not fixed
+// categories), and collapsing it to three buttons like "Less/Neutral/More"
+// would be a real loss of fidelity, not just a legibility fix. What was
+// missing was a plain-language read on that number for anyone who doesn't
+// want to interpret a decimal — so both are shown together.
+function weightLabel(w){
+  if(w<=-.6) return 'Avoid';
+  if(w<-.2) return 'Less interested';
+  if(w<.2) return 'Neutral';
+  if(w<.6) return 'Interested';
+  return 'Strong interest';
+}
 
 V.onboard = () => S.onbStep===1 ? V.onboardStep1() : V.onboardStep2();
 
@@ -824,14 +840,24 @@ V.onboardStep2 = () => `
     <button class="mono" data-act="onbBack2" style="font-size:11px;color:var(--dim)">back</button></div>
   <div class="bar" style="margin-bottom:22px"><i style="width:100%"></i></div>
 
-  <p class="kick" style="margin-bottom:10px">Pick what "easy listening" means to you</p>
+  <div style="display:flex;gap:11px;margin-bottom:10px">
+    <span class="art sm" style="background:var(--surface2);color:var(--stretch);display:grid;place-items:center;flex:none;width:26px;height:26px;font-size:12px">1</span>
+    <div style="flex:1"><p class="kick" style="margin:0">Pick what "easy listening" means to you</p></div>
+  </div>
   <div class="chips">${COMFORT_OPTIONS.map(c=>`<button class="chip" data-act="onbComfort" data-v="${c.label}" aria-pressed="${S.onbComfort===c.label}">${c.label}</button>`).join('')}</div>
 
-  <p class="kick" style="margin:20px 0 10px">Anything you never want to hear about?</p>
-  <p class="note" style="margin:0 0 10px">Optional. These become hard blocks — Foray will never suggest them.</p>
+  <div style="display:flex;gap:11px;margin:22px 0 10px">
+    <span class="art sm" style="background:var(--surface2);color:var(--stretch);display:grid;place-items:center;flex:none;width:26px;height:26px;font-size:12px">2</span>
+    <div style="flex:1"><p class="kick" style="margin:0">Anything you never want to hear about?</p></div>
+  </div>
+  <p class="note" style="margin:0 0 10px">Optional — skip if nothing comes to mind. These become hard blocks; Foray will never suggest them.</p>
   <div class="chips">${BLOCK_OPTIONS.map(b=>`<button class="chip" data-act="onbBlock" data-v="${b.label}" aria-pressed="${S.onbBlocks.includes(b.label)}">${b.label}</button>`).join('')}</div>
 
-  <p class="kick" style="margin:20px 0 10px">How much should I say before playing something?</p>
+  <div style="display:flex;gap:11px;margin:22px 0 10px">
+    <span class="art sm" style="background:var(--surface2);color:var(--stretch);display:grid;place-items:center;flex:none;width:26px;height:26px;font-size:12px">3</span>
+    <div style="flex:1"><p class="kick" style="margin:0">How much should I say before playing something?</p></div>
+  </div>
+  <p class="note" style="margin:0 0 10px">Already set to a reasonable default — change it if you'd rather.</p>
   <div class="chips">${INTRO_OPTIONS.map((o,i)=>`<button class="chip" data-act="onbIntro" data-v="${i}" aria-pressed="${S.onbIntro===i}">${o}</button>`).join('')}</div>
 
   <p class="kick" style="margin:24px 0 10px">Your starting shape</p>
@@ -1179,14 +1205,20 @@ V.interests = () => `
     <div class="tax" ${t.flash?'style="background:rgba(95,168,160,.08);border-radius:8px"':''}>
       <div class="taxtop">
         <div><div class="taxname">${t.name}</div><div class="taxpath">${t.path} · last signal ${t.at}</div></div>
-        <div class="mono" style="font-size:11px;color:${t.w<0?'var(--err)':t.flash?'var(--stretch)':'var(--dim)'}">${t.w>0?'+':''}${t.w.toFixed(2)}</div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:500;color:${t.w<0?'var(--err)':t.flash?'var(--stretch)':'var(--bone)'}">${weightLabel(t.w)}</div>
+          <div class="mono" style="font-size:11px;color:var(--dimmer)">${t.w>0?'+':''}${t.w.toFixed(2)}</div>
+        </div>
       </div>
-      <div class="taxbar" data-tax="${t.id}">
+      <div class="taxbar" data-tax="${t.id}" tabindex="0" role="slider" aria-label="${t.name} interest" aria-valuemin="-1" aria-valuemax="1" aria-valuenow="${t.w}" aria-valuetext="${weightLabel(t.w)}, ${t.w.toFixed(2)}">
         <span class="t"></span><span class="z"></span>
         <span class="f ${t.w<0?'neg':''}" style="left:${t.w<0?(50+t.w*50):50}%;width:${Math.abs(t.w)*50}%"></span>
         <span class="k" style="left:${50+t.w*50}%"></span>
       </div>
-      ${t.recent?`<p class="note" style="margin-top:6px;color:var(--stretch)">${t.recent}</p>`:''}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <p class="note" style="margin:0;color:var(--stretch)">${t.recent?(t.flash?'Saved — '+t.recent:t.recent):''}</p>
+        ${t.w!==0?`<button class="mono" data-act="resetWeight" data-id="${t.id}" style="font-size:11px;color:var(--dim);padding:4px 6px">Reset</button>`:''}
+      </div>
     </div>`).join('')}
   </div>
   <p class="kick" style="margin:22px 0 8px">Recent signals</p>
@@ -1219,10 +1251,19 @@ V.settings = () => `
   <p class="kick" style="margin:20px 0 10px">Playback</p>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <p class="title" style="font-size:14px;margin:0">Speed</p>
+      <p class="title" style="font-size:14px;margin:0">Default speed</p>
       <div class="chips">${[1,1.25,1.5,1.75].map(r=>`<button class="chip" data-act="set" data-k="rate" data-v="${r}" aria-pressed="${S.rate===r}">${r}×</button>`).join('')}</div>
     </div>
-    <p class="note" style="margin-top:10px">Remembered per show. Ruins &amp; Dust plays at 1.0× because you keep turning it down.</p>
+    <p class="note" style="margin-top:10px">Applies to any show without its own override below.</p>
+    ${Object.keys(S.rateByShow).length ? `
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+      <p class="note" style="margin-bottom:8px">Learned per show, the same way the listening window is — not something you set directly.</p>
+      ${Object.entries(S.rateByShow).map(([showId,r])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
+          <span style="font-size:13px">${show(showId).name} — ${r}×</span>
+          <button class="mono" data-act="clearRateOverride" data-id="${showId}" style="font-size:12px;color:var(--dim);padding:6px">Reset</button>
+        </div>`).join('')}
+    </div>` : ''}
   </div>
   <p class="kick" style="margin:20px 0 10px">Downloads</p>
   <div class="card">
@@ -1398,6 +1439,19 @@ document.addEventListener('input', e=>{
 });
 document.addEventListener('keydown', e=>{
   if(e.target.id==='topicq' && e.key==='Enter') act('topicsearch', e.target);
+  const tx = e.target.closest?.('[data-tax]');
+  if(tx){
+    const node = S.tax.find(t=>t.id===tx.dataset.tax); if(!node) return;
+    const step = {ArrowLeft:-.05, ArrowRight:.05, ArrowDown:-.05, ArrowUp:.05, Home:-1-node.w, End:1-node.w}[e.key];
+    if(step===undefined) return;
+    e.preventDefault();
+    node.w = Math.max(-1, Math.min(1, +(node.w+step).toFixed(2)));
+    node.at='just now'; node.recent='you dragged this yourself'; node.flash=true;
+    setTimeout(()=>{ node.flash=false; },1800);
+    ev('interest_override',{node:node.id, weight:node.w});
+    render();
+    document.querySelector(`[data-tax="${node.id}"]`)?.focus();
+  }
 });
 function act(a, el){
   switch(a){
@@ -1504,6 +1558,11 @@ function act(a, el){
       render(); break;
     case 'libTab': S.libTab=el.dataset.k; render(); break;
     case 'set': { const k=el.dataset.k, v=el.dataset.v; S[k]= k==='rate'? +v : +v; ev('setting_changed',{key:k,value:v}); render(); break; }
+    case 'clearRateOverride': { const id=el.dataset.id; delete S.rateByShow[id]; ev('rate_override_cleared',{show_id:id}); toast(`${show(id).name} now uses your default speed.`); render(); break; }
+    case 'resetWeight': { const node=S.tax.find(t=>t.id===el.dataset.id); if(!node) break;
+      node.w=0; node.at='just now'; node.recent='you reset this'; node.flash=true;
+      setTimeout(()=>{ node.flash=false; },1800);
+      ev('interest_override',{node:node.id, weight:0, reset:true}); render(); break; }
     case 'wrongwindow': ev('window_correction',{}); toast('Noted. It will re-derive from the next ten sessions.'); break;
   }
 }
