@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-29T00:13:57.609Z",
+  "built_at": "2026-07-29T08:11:12.961Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-29-ddec9baf",
+    "last_batch_id": "fresh-2026-07-29-7239beb9",
     "last_batch_tier": 1
   },
   "entries": {
@@ -410,10 +410,40 @@
     },
     "73802466": {
       "topics": [
-        "comedy/interviews"
+        "comedy",
+        "comedy/casual-hangs",
+        "food",
+        "food/cooking-science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.6
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        },
+        {
+          "node": "food",
+          "confidence": 0.45
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Comedy, Casual hangs, Food, Cooking Science. 4 relevant topics.",
+      "display_title": "Bob & Sheri",
+      "blurb": "bob & sheri: bob lacey is the long suffering co-host of the syndicated &#34;bob and sheri show.&#34; Hiding in Plain Sight (Airdate 7/28/2026).",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "73802554": {
       "topics": [
@@ -724,10 +754,40 @@
     },
     "75648468": {
       "topics": [
-        "news/daily"
+        "computing",
+        "computing/history",
+        "nature",
+        "nature/animal-cognition"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.6
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.6
+        },
+        {
+          "node": "nature",
+          "confidence": 0.45
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Computing, History, Nature, Animal Cognition. 4 relevant topics.",
+      "display_title": "Democracy Now! Video",
+      "blurb": "democracy now! is an independent daily tv & radio news program, hosted by award-winning journalists Democracy Now! 2026-07-28 Tuesday.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "75908431": {
       "topics": [
@@ -847,10 +907,40 @@
     },
     "78149892": {
       "topics": [
-        "religion/buddhism"
+        "history",
+        "history/technology",
+        "psychology",
+        "psychology/decision-making"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.45
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about History, History of technology, Psychology, Decision Making. 4 relevant topics.",
+      "display_title": "Chobo-Ji's Zen Podcast",
+      "blurb": "rinzai zen dharma talks given at the seattle zen temple dai bai zan cho bo zen ji or other locations Rinzairoku - Jishu Chapters 19.2 & 19.3.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "78304589": {
       "topics": [
@@ -861,10 +951,30 @@
     },
     "78311760": {
       "topics": [
-        "gaming"
+        "history",
+        "history/technology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about History, History of technology. 2 relevant topics.",
+      "display_title": "CAGcast",
+      "blurb": "since 2005, the cagcast has been a pretty silly podcast about video games and the topics that affect CAGcast #847: Resynced and Evolved.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "78370505": {
       "topics": [
@@ -1199,10 +1309,40 @@
     },
     "79900698": {
       "topics": [
-        "business/careers"
+        "engineering",
+        "philosophy",
+        "philosophy/ideas",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.45
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.45
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.45
+        },
+        {
+          "node": "craft",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Engineering, Philosophy, Ideas, Craft & making. 4 relevant topics.",
+      "display_title": "The Project Management Podcast",
+      "blurb": "become the project manager everyone wants on their team. tune in to the project management podcast™ Episode 556: Rethinking the PMO: Identity, Design.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "79906946": {
       "topics": [
@@ -1237,10 +1377,40 @@
     },
     "80028216": {
       "topics": [
-        "religion/judaism"
+        "psychology",
+        "psychology/decision-making",
+        "craft",
+        "craft/diy-home"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.45
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.45
+        },
+        {
+          "node": "craft",
+          "confidence": 0.45
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Psychology, Decision Making, Craft & making, DIY & home. 4 relevant topics.",
+      "display_title": "Pardes from Jerusalem",
+      "blurb": "pardes from jerusalem features a weekly discussion using torah, talmud and other jewish texts to exp Ekev 5786: Learning to Begin Again.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "80106872": {
       "topics": [
@@ -1258,17 +1428,77 @@
     },
     "81294582": {
       "topics": [
-        "culture/books"
+        "science",
+        "history",
+        "history/technology",
+        "medicine"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.45
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Science, History, History of technology, Medicine. 4 relevant topics.",
+      "display_title": "Podcast – Cory Doctorow's craphound.com",
+      "blurb": "cory doctorow's literary works Post-political.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "81415836": {
       "topics": [
-        "philosophy"
+        "engineering",
+        "history",
+        "history/technology",
+        "psychology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.45
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Engineering, History, History of technology, Psychology. 4 relevant topics.",
+      "display_title": "Entitled Opinions (about Life and Literature)",
+      "blurb": "the narcotic of intelligent conversation Werner Herzog on Truth.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "81501666": {
       "topics": [
@@ -1381,10 +1611,40 @@
     },
     "82775064": {
       "topics": [
-        "sports/fantasy"
+        "psychology",
+        "psychology/decision-making",
+        "craft",
+        "craft/diy-home"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Psychology, Decision Making, Craft & making, DIY & home. 4 relevant topics.",
+      "display_title": "The Final Lap Weekly - NASCAR Talk Show",
+      "blurb": "each week, hosts kerry murphey and toby christie discuss the fallout following the nascar cup series Indianapolis Fantasy NASCAR Picks: Brickyard Sleep.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "83213431": {
       "topics": [
@@ -1660,10 +1920,30 @@
     },
     "95185416": {
       "topics": [
-        "tv-film/animation"
+        "computing",
+        "computing/history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.45
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Computing, History. 2 relevant topics.",
+      "display_title": "Ze Shows – Anime Pulse",
+      "blurb": "we&#039;ve got our fingers on the pulse of anime, manga, video games, movies with reviews, rants, an Popcorn Pulse 268: The Johnny Bucket.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "98746009": {
       "topics": [
@@ -2155,10 +2435,30 @@
     },
     "121493688": {
       "topics": [
-        "music"
+        "music",
+        "music/theory-production"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.45
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Music, Theory Production. 2 relevant topics.",
+      "display_title": "Piano Puzzler",
+      "blurb": "every week on performance today™, bruce adolphe re-writes a familiar tune in the style of a classica Performance Today - Piano Puzzler 10/29/2025.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "121493804": {
       "topics": [
@@ -2235,10 +2535,40 @@
     },
     "122477592": {
       "topics": [
-        "automotive"
+        "sports",
+        "sports/biomechanics",
+        "history",
+        "history/technology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.6
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Sports, Biomechanics, History, History of technology. 4 relevant topics.",
+      "display_title": "PRN - Garage Pass Podcast",
+      "blurb": "prn - garage pass podcast Dale Earnhardt Jr Left Emotional After Carson Kvap.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "124686671": {
       "topics": [
@@ -3334,10 +3664,40 @@
     },
     "185795418": {
       "topics": [
-        "religion/buddhism"
+        "food",
+        "food/cooking-science",
+        "psychology",
+        "psychology/decision-making"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.45
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.45
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.45
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Food, Cooking Science, Psychology, Decision Making. 4 relevant topics.",
+      "display_title": "Deer Park Dharmacast",
+      "blurb": "dharma from deer park monastery, a meditation practice center in the tradition of the vietnamese zen 466: Riding the Waves of Life: Finding a Soulmate.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "185803769": {
       "topics": [
@@ -3933,10 +4293,40 @@
     },
     "206320332": {
       "topics": [
-        "tv-film/reviews"
+        "food",
+        "food/cooking-science",
+        "history",
+        "history/technology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.45
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.45
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Food, Cooking Science, History, History of technology. 4 relevant topics.",
+      "display_title": "Daytime Confidential",
+      "blurb": "sudsing up your ipod, daytime confidential is the first podcast featuring daytime gossip, news, rumo 2026 Daytime Emmy Award Nominations.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "206603090": {
       "topics": [
@@ -4738,10 +5128,40 @@
     },
     "255329844": {
       "topics": [
-        "comedy/casual-hangs"
+        "music",
+        "music/theory-production",
+        "history",
+        "history/technology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.6
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Music, Theory Production, History, History of technology. 4 relevant topics.",
+      "display_title": "Jim and Them",
+      "blurb": "jim and them dubbed \"the face of evil\" and \"disgusting filth pigs\" by washed up 80s child star corey Porta Potty Man - #922 Part 2.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "255620843": {
       "topics": [
@@ -4818,10 +5238,40 @@
     },
     "257048136": {
       "topics": [
-        "religion/spirituality"
+        "music",
+        "music/theory-production",
+        "history",
+        "history/technology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.6
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Music, Theory Production, History, History of technology. 4 relevant topics.",
+      "display_title": "Druidcast - A Druid Podcast",
+      "blurb": "a podcast brought to you by the order of bards ovates and druids. your host is damh the bard and eac DruidCast - A Druid Podcast Episode 227.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "257441540": {
       "topics": [
@@ -4880,10 +5330,30 @@
     },
     "260010384": {
       "topics": [
-        "aviation"
+        "sports",
+        "sports/biomechanics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.45
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Sports, Biomechanics. 2 relevant topics.",
+      "display_title": "Naval Air",
+      "blurb": "a podcast about naval aviation starting with the early 80’s. Naval Air #35 – Forward Deployment in the Western.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "260335249": {
       "topics": [
@@ -4924,10 +5394,40 @@
     },
     "261059112": {
       "topics": [
-        "kids-family/parenting"
+        "craft",
+        "craft/diy-home",
+        "food",
+        "food/cooking-science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.6
+        },
+        {
+          "node": "food",
+          "confidence": 0.45
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Craft & making, DIY & home, Food, Cooking Science. 4 relevant topics.",
+      "display_title": "Focus on the Family Parenting Podcast",
+      "blurb": "christian mom or dad, could you use some encouragement and support? put your ear buds in for this ch Hope for the Overly Stressed Mom.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "261059123": {
       "topics": [
@@ -5184,10 +5684,40 @@
     },
     "267200514": {
       "topics": [
-        "health/fitness"
+        "sports",
+        "sports/biomechanics",
+        "computing",
+        "computing/history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.95
+        },
+        {
+          "node": "computing",
+          "confidence": 0.6
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Sports, Biomechanics, Computing, History. 4 relevant topics.",
+      "display_title": "The Strength Coach Podcast",
+      "blurb": "the strength coach podcast is one of the longest running (since 2007) strength & conditioning and fi Mike Boyle- Better Conditioning: Using Locomotion.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "267257453": {
       "topics": [
@@ -5213,10 +5743,40 @@
     },
     "267824646": {
       "topics": [
-        "culture/art"
+        "space",
+        "space/rockets",
+        "craft",
+        "craft/diy-home"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.6
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Space, Rockets, Craft & making, DIY & home. 4 relevant topics.",
+      "display_title": "Comic Book Noise",
+      "blurb": "making noise about comic books Comic Book Noise 883: The Last Episode of Comic Bo.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "267928081": {
       "topics": [
@@ -5361,10 +5921,40 @@
     },
     "271866252": {
       "topics": [
-        "sports/baseball"
+        "engineering",
+        "psychology",
+        "psychology/decision-making",
+        "philosophy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.6
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.45
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.45
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Engineering, Psychology, Decision Making, Philosophy. 4 relevant topics.",
+      "display_title": "Talkin' Mets",
+      "blurb": "a podcast dedicated entirely to new york mets baseball, hosted by longtime radio voice mike silva. f The Deadline that Defines the Mets.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "272018688": {
       "topics": [
@@ -5457,10 +6047,35 @@
     },
     "273916368": {
       "topics": [
-        "religion/judaism"
+        "engineering",
+        "philosophy",
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.45
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.45
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Engineering, Philosophy, Ideas. 3 relevant topics.",
+      "display_title": "Ta Shma",
+      "blurb": "bringing you recent lectures, classes, and programs from the hadar institute, ta shma is where you g R. Shai Held: Hope After Hope Is Lost.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "274450056": {
       "topics": [
@@ -5744,10 +6359,40 @@
     },
     "280313970": {
       "topics": [
-        "news/daily"
+        "engineering",
+        "history",
+        "history/technology",
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.45
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        },
+        {
+          "node": "business",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Engineering, History, History of technology, Business. 4 relevant topics.",
+      "display_title": "WorldviewTube",
+      "blurb": "worldview tube operates three studios and two control rooms, producing over a dozen programs, includ Mike Lee Exposes the Senate Process John Thune Say.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "280383574": {
       "topics": [
@@ -6003,12 +6648,40 @@
     },
     "287114592": {
       "topics": [
+        "medicine",
         "medicine/biology",
-        "science",
-        "nature"
+        "food",
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.45
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Medicine, Biology, Food, Cooking Science. 4 relevant topics.",
+      "display_title": "Ask the Naked Scientists",
+      "blurb": "how many organs could you donate and remain alive? how many planet earths could fit inside the sun? Why a helium balloon flies backwards when you hit.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "287700520": {
       "topics": [
@@ -6063,10 +6736,40 @@
     },
     "288898242": {
       "topics": [
-        "automotive"
+        "history",
+        "history/technology",
+        "economics",
+        "economics/markets"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.6
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.6
+        },
+        {
+          "node": "economics",
+          "confidence": 0.45
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about History, History of technology, Economics, Markets. 4 relevant topics.",
+      "display_title": "MotorWeek",
+      "blurb": "we thought a podcast would be the perfect vehicle for taking viewers behind-the-scenes of motorweek. First Ride in $25K Slate Truck, A Trip on Route 66.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "289338154": {
       "topics": [
@@ -6094,10 +6797,40 @@
     },
     "290159292": {
       "topics": [
-        "culture/performing-arts"
+        "psychology",
+        "psychology/decision-making",
+        "economics",
+        "economics/markets"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.45
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.45
+        },
+        {
+          "node": "economics",
+          "confidence": 0.45
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Psychology, Decision Making, Economics, Markets. 4 relevant topics.",
+      "display_title": "Old Time Radio Theater",
+      "blurb": "enjoy the fun and excitement of listening to thrilling old time radio mystery shows. experience a pr CBS Radio Mystery Theater - Dig Me Deadly - Episod.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "290618642": {
       "topics": [
@@ -6148,10 +6881,29 @@
     "292546170": {
       "topics": [
         "music",
-        "history"
+        "music/theory-production"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.45
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Music, Theory Production. 2 relevant topics.",
+      "display_title": "THEMIXLAB",
+      "blurb": "founded by dj fresh vince, themixlab is formulated to surpass the masses with dope mixtapes and musi Episode 256: New Year's Eve Mix 2026.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "292651411": {
       "topics": [
@@ -6178,10 +6930,40 @@
     },
     "293185092": {
       "topics": [
-        "culture/performing-arts"
+        "history",
+        "history/technology",
+        "music",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.75
+        },
+        {
+          "node": "music",
+          "confidence": 0.6
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about History, History of technology, Music, Theory Production. 4 relevant topics.",
+      "display_title": "The Moonlit Road Podcast - Southern Ghost Stories",
+      "blurb": "leave the highway behind for the dark back roads of the american south. since 1997, the moonlit road Don't Fish on Sunday! | A Virginia Fishing Folktal.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "293376147": {
       "topics": [
@@ -161040,11 +161822,40 @@
     },
     "1874682540": {
       "topics": [
-        "food"
+        "food",
+        "food/cooking-science",
+        "history",
+        "history/technology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.95
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Food, Cooking Science, History, History of technology. 4 relevant topics.",
+      "display_title": "The Side Dish from America’s Test Kitchen",
+      "blurb": "what happens when two of tv’s top cooking hosts ditch their aprons to go off-script? america’s test Desert Island Discs & Dishes.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1874737247": {
       "topics": [
@@ -161083,11 +161894,35 @@
     },
     "1874809908": {
       "topics": [
-        "personal-journals"
+        "psychology",
+        "computing",
+        "computing/history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.45
+        },
+        {
+          "node": "computing",
+          "confidence": 0.45
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Psychology, Computing, History. 3 relevant topics.",
+      "display_title": "Grapevine Weekly Open AA Meeting",
+      "blurb": "each week aa grapevine holds an open virtual aa meeting with a host and two speakers. we record the Grapevine Weekly Open AA Meeting, July 22, 2026 [S.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1874816215": {
       "topics": [
@@ -168449,12 +169284,40 @@
     },
     "1896859380": {
       "topics": [
-        "business/careers",
-        "education/self-improvement"
+        "psychology",
+        "psychology/decision-making",
+        "engineering",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.45
+        },
+        {
+          "node": "business",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Psychology, Decision Making, Engineering, Business. 4 relevant topics.",
+      "display_title": "Stop Drifting Professionally with TJ Walker",
+      "blurb": "stop drifting professionally with tj walker is a strategic goal-setting podcast for ambitious profes Stop Drifting Professionally with TJ Walker - Stra.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1896864053": {
       "topics": [
@@ -168557,11 +169420,40 @@
     },
     "1896875316": {
       "topics": [
-        "society/law"
+        "engineering",
+        "craft",
+        "craft/diy-home",
+        "history"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Engineering, Craft & making, DIY & home, History. 4 relevant topics.",
+      "display_title": "Is This Really Legal?",
+      "blurb": "every week, liz oyer answers a question many people are asking: is this really legal? with expert gu Finding Your Own Justice.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1896875825": {
       "topics": [
@@ -168735,11 +169627,40 @@
     },
     "1896885744": {
       "topics": [
-        "education/self-improvement"
+        "engineering",
+        "science",
+        "craft",
+        "craft/diy-home"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Engineering, Science, Craft & making, DIY & home. 4 relevant topics.",
+      "display_title": "The Creative Habit",
+      "blurb": "the creative habit is part of the ultamize personal development podcast network, designed to help yo Lock It In and Repeat - The Creative Habit Podcast.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1896886128": {
       "topics": [
@@ -168877,11 +169798,40 @@
     },
     "1896897438": {
       "topics": [
-        "religion/christianity"
+        "history",
+        "history/technology",
+        "music",
+        "music/theory-production"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.6
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.6
+        },
+        {
+          "node": "music",
+          "confidence": 0.45
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about History, History of technology, Music, Theory Production. 4 relevant topics.",
+      "display_title": "He Speaks with Kate",
+      "blurb": "does god still speak today? and how can you recognize his voice in your own life? hosted by kate man S1E1: Hearing God Through His Word with Steve Coon.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1896897571": {
       "topics": [
@@ -168915,11 +169865,40 @@
     },
     "1896899112": {
       "topics": [
-        "sports/golf"
+        "food",
+        "food/cooking-science",
+        "engineering",
+        "history"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.45
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.45
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.45
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Food, Cooking Science, Engineering, History. 4 relevant topics.",
+      "display_title": "Playing Privileges",
+      "blurb": "jake stoutland and simon holt are pulling back the curtain on the greatest private club experiences 08: Golf's Greatest Locker Rooms.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1896901579": {
       "topics": [
@@ -168939,11 +169918,30 @@
     },
     "1896901980": {
       "topics": [
-        "society/government"
+        "history",
+        "history/technology"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about History, History of technology. 2 relevant topics.",
+      "display_title": "The LOWDOWN",
+      "blurb": "the lowdown is ai generated open-source news summaries for general informational awareness. this pro The LOWDOWN - 28 July 2026 - Deciphering PLA Kill.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1896902067": {
       "topics": [
@@ -169044,11 +170042,40 @@
     },
     "1896907488": {
       "topics": [
-        "society"
+        "psychology",
+        "medicine",
+        "medicine/biology",
+        "music"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.45
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.45
+        },
+        {
+          "node": "music",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Psychology, Medicine, Biology, Music. 4 relevant topics.",
+      "display_title": "Girl Overboard",
+      "blurb": "a documentary podcast in ten parts telling a story of love, addiction, loss, and what remains. for m E10: The Distant Shore.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1896907501": {
       "topics": [
@@ -169066,12 +170093,40 @@
     },
     "1896908028": {
       "topics": [
-        "engineering/ai-robotics",
-        "psychology"
+        "medicine",
+        "medicine/biology",
+        "engineering",
+        "history"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.6
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.6
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.45
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Medicine, Biology, Engineering, History. 4 relevant topics.",
+      "display_title": "Cognitive Revolution and the Age of AI",
+      "blurb": "this series of podcasts are based on essays and published articles by jiajie zhang and created by no Governing Distributed Intelligence: AI Policy Must.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1896908186": {
       "topics": [
@@ -169112,12 +170167,40 @@
     },
     "1896909246": {
       "topics": [
-        "engineering/ai-robotics",
-        "psychology/decision-making"
+        "psychology",
+        "psychology/decision-making",
+        "engineering",
+        "craft"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Psychology, Decision Making, Engineering, Craft & making. 4 relevant topics.",
+      "display_title": "AI Decision Making Daily: Think Faster, Smarter, and",
+      "blurb": "ai decision making daily: think faster, smarter, and with confidence is a practical personal develop AI Decision Making Daily Trailer - Think Faster, S.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1896911155": {
       "topics": [
@@ -169197,11 +170280,40 @@
     },
     "1896916854": {
       "topics": [
-        "business/management"
+        "psychology",
+        "psychology/decision-making",
+        "business",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Psychology, Decision Making, Business, Startups & deep tech. 4 relevant topics.",
+      "display_title": "Momentum Management",
+      "blurb": "welcome to momentum management, the podcast where leadership, strategy, and continuous growth come t Building Employee Trust [Episode 18].",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1896917264": {
       "topics": [
@@ -169302,11 +170414,40 @@
     },
     "1896928002": {
       "topics": [
-        "history"
+        "food",
+        "food/cooking-science",
+        "history",
+        "history/technology"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.6
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Food, Cooking Science, History, History of technology. 4 relevant topics.",
+      "display_title": "Here For The History",
+      "blurb": "alice loxton and ben henderson reveal the surprising moments in history behind the traditions, custo Package Holiday: Why do Brits go to Benidorm?.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1896928296": {
       "topics": [
@@ -169332,11 +170473,40 @@
     },
     "1896929262": {
       "topics": [
-        "sports"
+        "sports",
+        "sports/biomechanics",
+        "history",
+        "history/technology"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.6
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Sports, Biomechanics, History, History of technology. 4 relevant topics.",
+      "display_title": "Yesterday in Sports",
+      "blurb": "yesterday in sports is a daily sports recap podcast from underdog podcasts , hosted by chris horwede Marlins-Phillies Drama, Jamal Adams & Chicharito.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1896929683": {
       "topics": [
@@ -169607,11 +170777,40 @@
     },
     "1896944136": {
       "topics": [
-        "fiction/drama"
+        "music",
+        "music/theory-production",
+        "computing",
+        "computing/history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.6
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.6
+        },
+        {
+          "node": "computing",
+          "confidence": 0.45
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Music, Theory Production, Computing, History. 4 relevant topics.",
+      "display_title": "The Sound Of Home",
+      "blurb": "a native american soldier, a prisoner of war, is rescued and returns home, where he becomes an unexp Episode Eight.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "1896944966": {
       "topics": [
@@ -169720,11 +170919,30 @@
     },
     "6782156496": {
       "topics": [
-        "music"
+        "music",
+        "music/theory-production"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.6
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Music, Theory Production. 2 relevant topics.",
+      "display_title": "The Me That Remains Podcast - Amy Grant",
+      "blurb": "in this 8-part series, amy grant talks with khalil ekulona about the making of her new album, \"the m The Me That Remains | Album Podcast | Episode 6.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "6782550038": {
       "topics": [
@@ -169880,11 +171098,40 @@
     },
     "6783602256": {
       "topics": [
-        "education/self-improvement"
+        "psychology",
+        "psychology/decision-making",
+        "economics",
+        "economics/markets"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.45
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.45
+        },
+        {
+          "node": "economics",
+          "confidence": 0.45
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Psychology, Decision Making, Economics, Markets. 4 relevant topics.",
+      "display_title": "Audiobooks For",
+      "blurb": "podcast dedicated to providing information related to personal, economic, spiritual growth, etc. Dont Believe Everything You Think.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "6783602472": {
       "topics": [
@@ -170075,11 +171322,40 @@
     },
     "6784807422": {
       "topics": [
-        "fiction/comedy"
+        "history",
+        "history/technology",
+        "business",
+        "business/startups"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.45
+        },
+        {
+          "node": "business",
+          "confidence": 0.45
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about History, History of technology, Business, Startups & deep tech. 4 relevant topics.",
+      "display_title": "Fantastic Castle",
+      "blurb": "an all-ages cooperative storytelling podcast created using dungeons and dragons, brought to you by n Fantastic Castle - Ch. 6: Roll with the Pinches.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "6784811553": {
       "topics": [
@@ -170354,11 +171630,40 @@
     },
     "6786040938": {
       "topics": [
-        "relationships"
+        "engineering",
+        "psychology",
+        "psychology/decision-making",
+        "philosophy"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.45
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.45
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.45
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Engineering, Psychology, Decision Making, Philosophy. 4 relevant topics.",
+      "display_title": "Simply Relational",
+      "blurb": "welcome to simply relational , the podcast that helps you elevate marriages and equip parents to lea Parenting Wisdom Why Connection Is the Key to Corr.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "6786047115": {
       "topics": [
@@ -170379,12 +171684,40 @@
     },
     "6786055830": {
       "topics": [
-        "personal-journals",
-        "health/mental"
+        "psychology",
+        "psychology/decision-making",
+        "economics",
+        "economics/markets"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.6
+        },
+        {
+          "node": "economics",
+          "confidence": 0.45
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Psychology, Decision Making, Economics, Markets. 4 relevant topics.",
+      "display_title": "Currently Spiraling",
+      "blurb": "currently spiraling is a podcast about what happens when life doesn't go according to plan. hosted b if you’re waiting for life to happen.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "6786098297": {
       "topics": [
@@ -170441,11 +171774,40 @@
     },
     "6786390084": {
       "topics": [
-        "sports/volleyball"
+        "sports",
+        "sports/biomechanics",
+        "engineering",
+        "psychology"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.6
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.6
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.45
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Sports, Biomechanics, Engineering, Psychology. 4 relevant topics.",
+      "display_title": "Win By Two Volleyball Podcast",
+      "blurb": "the official podcast of pakmen volleyball. hosted by jessy satti win by two features conversations w 006 - Wayne Wilkins.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "6786414044": {
       "topics": [
@@ -170742,11 +172104,40 @@
     },
     "6788185998": {
       "topics": [
-        "food"
+        "medicine",
+        "medicine/biology",
+        "food",
+        "food/cooking-science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.6
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about Medicine, Biology, Food, Cooking Science. 4 relevant topics.",
+      "display_title": "The Grains & Grit Extra Gritty Podcast",
+      "blurb": "this podcast is an extension of grains & grit youtube channel - but unfiltered, unedited, and extra Am I a Food \"Purist\"/Crunchy Mom? | Season 2. Ep.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "6788197016": {
       "topics": [
@@ -170816,11 +172207,30 @@
     },
     "6788496504": {
       "topics": [
-        "religion/christianity"
+        "sports",
+        "sports/biomechanics"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.45
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about Sports, Biomechanics. 2 relevant topics.",
+      "display_title": "Max Lucado Daily Sermons",
+      "blurb": "max lucado daily sermons brings you inspiring, bible-centered messages filled with hope, grace, and The Lord is My Shepherd - Max Lucado Daily Sermons.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-7239beb9",
+      "classified_at": "2026-07-29T08:11:12.961Z"
     },
     "6788561159": {
       "topics": [
