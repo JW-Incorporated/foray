@@ -765,7 +765,7 @@ function weightLabel(w){
   return 'Strong interest';
 }
 
-V.onboard = () => S.onbStep===1 ? V.onboardStep1() : V.onboardStep2();
+V.onboard = () => (V['onboardStep'+S.onbStep] || V.onboardStep1)();
 
 // Step 1: one real question (what are you curious about), answered in your
 // own words, with a live preview of what Foray does with it — then one
@@ -834,39 +834,56 @@ V.onboardStep1 = () => `
 // Step 2: the remaining settings, bundled onto one screen instead of three
 // separate gates, plus the starting-shape summary folded in here instead of
 // being a third screen — this is the last thing before Today.
+// Screens 2-5: one question per screen. This replaced a single dense screen
+// with all three questions plus a numbered-badge treatment — Joey tried it
+// and said it still wasn't right. A number next to a question doesn't fix
+// too-much-at-once; it just labels it. This is the actual fix: single-select
+// questions (comfort, intro length) auto-advance ~350ms after you tap, so
+// each screen is genuinely one fast tap, not a new "read + decide + click
+// Next" gate — that's what makes more screens not reopen the "seven gates"
+// problem the original 5-screen onboarding had.
+function onbHeader(step){
+  return `<div class="hdr"><span class="kick">Getting started · ${step} of 5</span>
+    <button class="mono" data-act="onbBackStep" style="font-size:11px;color:var(--dim)">back</button></div>
+  <div class="bar" style="margin-bottom:26px"><i style="width:${step/5*100}%"></i></div>`;
+}
+
 V.onboardStep2 = () => `
+<div style="display:flex;flex-direction:column;height:100%">
+  ${onbHeader(2)}
+  <h2 class="h1">What does "easy listening" mean to you?</h2>
+  <p class="lede">Pick one — this is the comfort-pick slot in your daily menu.</p>
+  <div class="chips" style="margin-top:18px">${COMFORT_OPTIONS.map(c=>`<button class="chip" data-act="onbComfort" data-v="${c.label}" aria-pressed="${S.onbComfort===c.label}">${c.label}</button>`).join('')}</div>
+</div>`;
+
+V.onboardStep3 = () => `
+<div style="display:flex;flex-direction:column;height:100%">
+  ${onbHeader(3)}
+  <h2 class="h1">Anything you never want to hear about?</h2>
+  <p class="lede">Optional — skip if nothing comes to mind. These become hard blocks; Foray will never suggest them.</p>
+  <div class="chips" style="margin-top:18px">${BLOCK_OPTIONS.map(b=>`<button class="chip" data-act="onbBlock" data-v="${b.label}" aria-pressed="${S.onbBlocks.includes(b.label)}">${b.label}</button>`).join('')}</div>
+  <div style="margin-top:auto;display:grid;gap:8px;padding-top:18px">
+    <button class="btn" data-act="onbNextStep">${S.onbBlocks.length ? 'Next' : 'Skip — nothing to block'}</button>
+  </div>
+</div>`;
+
+V.onboardStep4 = () => `
+<div style="display:flex;flex-direction:column;height:100%">
+  ${onbHeader(4)}
+  <h2 class="h1">How much should I say before playing something?</h2>
+  <p class="lede">Already set to a reasonable default — tap to change it, or just continue.</p>
+  <div class="chips" style="margin-top:18px">${INTRO_OPTIONS.map((o,i)=>`<button class="chip" data-act="onbIntro" data-v="${i}" aria-pressed="${S.onbIntro===i}">${o}</button>`).join('')}</div>
+  <div style="margin-top:auto;display:grid;gap:8px;padding-top:18px">
+    <button class="btn ghost" data-act="onbNextStep">Continue</button>
+  </div>
+</div>`;
+
+V.onboardStep5 = () => `
 <div style="display:flex;flex-direction:column;height:100%;overflow:auto">
-  <div class="hdr"><span class="kick">Getting started · 2 of 2</span>
-    <button class="mono" data-act="onbBack2" style="font-size:11px;color:var(--dim)">back</button></div>
-  <div class="bar" style="margin-bottom:22px"><i style="width:100%"></i></div>
-
-  <div style="display:flex;gap:11px;margin-bottom:10px">
-    <span class="art sm" style="background:var(--surface2);color:var(--stretch);display:grid;place-items:center;flex:none;width:26px;height:26px;font-size:12px">1</span>
-    <div style="flex:1"><p class="kick" style="margin:0">Pick what "easy listening" means to you</p></div>
-  </div>
-  <div class="chips">${COMFORT_OPTIONS.map(c=>`<button class="chip" data-act="onbComfort" data-v="${c.label}" aria-pressed="${S.onbComfort===c.label}">${c.label}</button>`).join('')}</div>
-
-  <div style="display:flex;gap:11px;margin:22px 0 10px">
-    <span class="art sm" style="background:var(--surface2);color:var(--stretch);display:grid;place-items:center;flex:none;width:26px;height:26px;font-size:12px">2</span>
-    <div style="flex:1"><p class="kick" style="margin:0">Anything you never want to hear about?</p></div>
-  </div>
-  <p class="note" style="margin:0 0 10px">Optional — skip if nothing comes to mind. These become hard blocks; Foray will never suggest them.</p>
-  <div class="chips">${BLOCK_OPTIONS.map(b=>`<button class="chip" data-act="onbBlock" data-v="${b.label}" aria-pressed="${S.onbBlocks.includes(b.label)}">${b.label}</button>`).join('')}</div>
-
-  <div style="display:flex;gap:11px;margin:22px 0 10px">
-    <span class="art sm" style="background:var(--surface2);color:var(--stretch);display:grid;place-items:center;flex:none;width:26px;height:26px;font-size:12px">3</span>
-    <div style="flex:1"><p class="kick" style="margin:0">How much should I say before playing something?</p></div>
-  </div>
-  <p class="note" style="margin:0 0 10px">Already set to a reasonable default — change it if you'd rather.</p>
-  <div class="chips">${INTRO_OPTIONS.map((o,i)=>`<button class="chip" data-act="onbIntro" data-v="${i}" aria-pressed="${S.onbIntro===i}">${o}</button>`).join('')}</div>
-
-  <p class="kick" style="margin:24px 0 10px">Your starting shape</p>
+  ${onbHeader(5)}
+  <p class="kick">Your starting shape</p>
   <p class="note" style="margin:0 0 10px">Weights, not categories — these move every time you finish or bail on something.</p>
   ${(() => {
-    // Comfort/blocks aren't applied to S.tax until "Start listening" (see
-    // finishOnb), so this preview blends what step 1 already committed with
-    // a live, not-yet-applied preview of the current step-2 selections —
-    // otherwise changing your mind here would show nothing changing.
     const applied = S.tax.filter(t=>S.onbTouched.includes(t.id))
       .map(t=>({name:t.name, w:t.w, pending:false}));
     const pending = [];
@@ -886,7 +903,6 @@ V.onboardStep2 = () => `
       <div class="mono" style="font-size:11px;color:${t.w<0?'var(--err)':'var(--dim)'}">${t.w>0?'+':''}${t.w.toFixed(2)}</div>
     </div>`).join('');
   })()}
-
   <div style="margin-top:22px;display:grid;gap:8px;padding-bottom:4px">
     <button class="btn" data-act="finishOnb">Start listening</button>
     <p class="note" style="text-align:center">Everything above is editable later in Settings and Interests.</p>
@@ -1472,23 +1488,31 @@ function act(a, el){
       }
       ev('onboarding_answer',{step:1, topic:S.onbTopic, node:S.onbNode?S.onbNode.id:null, bridge:S.onbBridge});
       S.onbStep=2; render(); break; }
-    case 'onbBack2': S.onbStep=1; render(); break;
-    // onbComfort/onbBlock only update the SELECTION (pure UI state) — no
-    // weights or blocks are applied here. Applying weights incrementally on
-    // every tap meant changing your mind (re-picking comfort, or tapping a
-    // block chip to deselect it) never undid the earlier bump: multiple
-    // comfort weights could stack while only one looked selected, and a
-    // "deselected" block silently stayed in S.blocked. Deferring the actual
-    // mutation to finishOnb means what's visibly selected always matches
-    // what gets applied — you can safely change your mind right up to the
-    // end (matches the copy that already promises this: "you can change
-    // anything later" / editable-until-you-leave the screen).
-    case 'onbComfort': S.onbComfort = (S.onbComfort===el.dataset.v) ? null : el.dataset.v; render(); break;
+    case 'onbBackStep': S.onbStep=Math.max(1,S.onbStep-1); render(); break;
+    case 'onbNextStep': S.onbStep=Math.min(5,S.onbStep+1); render(); break;
+    // onbComfort/onbBlock/onbIntro only update the SELECTION (pure UI state)
+    // — no weights or blocks are applied here. Applying weights
+    // incrementally on every tap meant changing your mind (re-picking
+    // comfort, or tapping a block chip to deselect it) never undid the
+    // earlier bump: multiple comfort weights could stack while only one
+    // looked selected, and a "deselected" block silently stayed in
+    // S.blocked. Deferring the actual mutation to finishOnb means what's
+    // visibly selected always matches what gets applied.
+    case 'onbComfort': {
+      S.onbComfort = (S.onbComfort===el.dataset.v) ? null : el.dataset.v; render();
+      // Single-select, so a tap is a complete answer — auto-advance instead
+      // of making the user also find and tap a separate Next button. The
+      // brief delay lets the selected state actually be visible first.
+      if(S.onbComfort) setTimeout(()=>{ if(S.onbStep===2){ S.onbStep=3; render(); } }, 350);
+      break; }
     case 'onbBlock': {
       const label=el.dataset.v;
       S.onbBlocks = S.onbBlocks.includes(label) ? S.onbBlocks.filter(x=>x!==label) : S.onbBlocks.concat(label);
       render(); break; }
-    case 'onbIntro': S.onbIntro=+el.dataset.v; S.verbosity=S.onbIntro; render(); break;
+    case 'onbIntro': {
+      S.onbIntro=+el.dataset.v; S.verbosity=S.onbIntro; render();
+      setTimeout(()=>{ if(S.onbStep===4){ S.onbStep=5; render(); } }, 350);
+      break; }
     case 'finishOnb': {
       if(S.onbComfort){
         const c=COMFORT_OPTIONS.find(x=>x.label===S.onbComfort);
