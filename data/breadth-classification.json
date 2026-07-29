@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-28T16:11:36.511Z",
+  "built_at": "2026-07-29T00:13:57.609Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-28-783dbae1",
+    "last_batch_id": "fresh-2026-07-29-ddec9baf",
     "last_batch_tier": 1
   },
   "entries": {
@@ -153780,11 +153780,40 @@
     },
     "1838536758": {
       "topics": [
-        "society"
+        "tv-film",
+        "true-crime",
+        "computing",
+        "personal-journals"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering tv-film, true-crime.",
+      "display_title": "Curse of: America’s Next Top Model",
+      "blurb": "When America s Next Top Model premiered in the early 2000s, it looked like a golden ticket: a glamor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1838578913": {
       "topics": [
@@ -155909,11 +155938,40 @@
     },
     "1847995986": {
       "topics": [
-        "tv-film"
+        "history/military-modern",
+        "computing",
+        "religion",
+        "business/non-profit"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering military-modern, computing.",
+      "display_title": "Tier1 Podcast",
+      "blurb": "Hosted by former Delta Force Operator, Brent Tucker, Tier1 Podcast delivers firsthand insight into e.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1848020264": {
       "topics": [
@@ -156407,11 +156465,40 @@
     },
     "1849500990": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/stand-up",
+        "kids-family/parenting",
+        "computing",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering stand-up, parenting.",
+      "display_title": "Talkin’ Schmitt",
+      "blurb": "Your bestie (or sworn nemesis), Brittany Schmitt, is back with a weekly podcast where she debriefs y.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1849667703": {
       "topics": [
@@ -157828,11 +157915,40 @@
     },
     "1855648416": {
       "topics": [
-        "sports"
+        "computing",
+        "sports",
+        "gaming",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering computing, sports.",
+      "display_title": "Game Over with Max Kellerman and  Rich Paul",
+      "blurb": "Sports media veteran Max Kellerman and super-agent Rich Paul discuss the most pressing topics in spo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1855659068": {
       "topics": [
@@ -158933,11 +159049,40 @@
     },
     "1865533062": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "culture/design",
+        "kids-family/parenting",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering tennis, design.",
+      "display_title": "The BIG T",
+      "blurb": "Enter the greenroom of tennis legends, coaches and insiders as Brad Gilbert, Andrea Petkovic, Mark P.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1865545247": {
       "topics": [
@@ -160222,11 +160367,40 @@
     },
     "1871465022": {
       "topics": [
-        "health"
+        "space",
+        "tv-film",
+        "kids-family/parenting",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering space, tv-film.",
+      "display_title": "Womb and Word Podcast",
+      "blurb": "A space created to empower Pregnant & Postpartum Mothers Through Maternal Health Education & Advocac.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1871513277": {
       "topics": [
@@ -160368,11 +160542,25 @@
     },
     "1872693174": {
       "topics": [
-        "education/courses"
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering computing.",
+      "display_title": "聽 CLEC 說投資",
+      "blurb": "CLEC投資理財頻道 富有是天賦，快樂是人權分享正確理財心法，助大家財務自由過上想過的生活. CLEC投資理財頻道是James所創立的。旨在協助大家更快地達到財務自由。頻道提供深入淺出的投資和理財知識.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1872772233": {
       "topics": [
@@ -160523,11 +160711,30 @@
     },
     "1873423536": {
       "topics": [
-        "comedy/interviews"
+        "comedy/stand-up",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering stand-up, art.",
+      "display_title": "Chisme With DoKnow",
+      "blurb": "Chisme With DoKnow, is a podcasted created by Doknow World a young Mexican comedian, actor, influenc.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1873451083": {
       "topics": [
@@ -160721,11 +160928,40 @@
     },
     "1874350782": {
       "topics": [
-        "space"
+        "space",
+        "kids-family/parenting",
+        "computing",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering space, parenting.",
+      "display_title": "SEA: Space Exploration & Astronomy",
+      "blurb": "I make chilled-out \"info-tainment\" videos on all-things space related, from the moment of the Big Ba.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1874385512": {
       "topics": [
@@ -160886,11 +161122,43 @@
     },
     "1874948322": {
       "topics": [
-        "science/physics"
+        "space",
+        "science/physics",
+        "tv-film",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering space, physics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1874953738": {
       "topics": [
@@ -160974,11 +161242,40 @@
     },
     "1875762318": {
       "topics": [
+        "computing",
+        "history",
+        "religion",
         "personal-journals"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering computing, history.",
+      "display_title": "Cowboy Coffee Hour with Cowboy Kent and Shannon",
+      "blurb": "Welcome to Cowboy Coffee Hour: gather round for stories from the trail from Cowboy Kent and Shannon.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1875766041": {
       "topics": [
@@ -161027,11 +161324,40 @@
     },
     "1875984132": {
       "topics": [
-        "music"
+        "comedy/stand-up",
+        "true-crime",
+        "computing",
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering stand-up, true-crime.",
+      "display_title": "The Real Report with Tony Yayo and Uncle",
+      "blurb": "The Real Report brings together hip hop veterans and long-time friends Tony Yayo and Uncle Murda for.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1876020761": {
       "topics": [
@@ -161141,11 +161467,43 @@
     },
     "1876387218": {
       "topics": [
-        "society"
+        "true-crime",
+        "kids-family/parenting",
+        "computing",
+        "personal-journals"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering true-crime, parenting.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1876485443": {
       "topics": [
@@ -161277,11 +161635,40 @@
     },
     "1876982736": {
       "topics": [
-        "hobbies"
+        "kids-family/parenting",
+        "computing",
+        "music",
+        "personal-journals"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering parenting, computing.",
+      "display_title": "The Retriever Han’ler Podcast",
+      "blurb": "With hosts, Jordan and Bethany Kiebler, listen to us talk about retriever training, duck and goose h.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1877017948": {
       "topics": [
@@ -161489,11 +161876,40 @@
     },
     "1878152484": {
       "topics": [
-        "society"
+        "tv-film",
+        "true-crime",
+        "kids-family/parenting",
+        "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering tv-film, true-crime.",
+      "display_title": "Chameleon: Gallery of Lies",
+      "blurb": "He partied with Andy Warhol. He helped Jeff Koons create a 43-foot-tall puppy made out of flowers. C.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1878190662": {
       "topics": [
@@ -161577,11 +161993,40 @@
     },
     "1878484920": {
       "topics": [
+        "computing",
+        "sports",
+        "health",
         "gaming"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering computing, sports.",
+      "display_title": "Tile Talk",
+      "blurb": "American Mahjong discussion, forum, and game play.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1878539148": {
       "topics": [
@@ -162047,11 +162492,40 @@
     },
     "1880735244": {
       "topics": [
-        "education/courses"
+        "kids-family/parenting",
+        "computing",
+        "psychology",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering parenting, computing.",
+      "display_title": "Resilient Parenting with Dr. Kate",
+      "blurb": "Parenting is one of the most rewarding yet overwhelming roles any of us will ever take on. From mana.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1880737933": {
       "topics": [
@@ -162093,11 +162567,40 @@
     },
     "1880915808": {
       "topics": [
-        "medicine"
+        "culture/design",
+        "computing",
+        "health",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering design, computing.",
+      "display_title": "Call Your Doctor",
+      "blurb": "If you’re Googling “Is this normal?” or spiraling down a “What’s wrong with me?” rabbit hole… you’ve.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1880937045": {
       "topics": [
@@ -162411,11 +162914,40 @@
     },
     "1882831266": {
       "topics": [
-        "sports"
+        "computing",
+        "sports",
+        "gaming",
+        "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering computing, sports.",
+      "display_title": "BTunleashed",
+      "blurb": "BT is taking his strong opinions, raw emotion, and unfiltered passion straight to his own channel. N.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1882857116": {
       "topics": [
@@ -162564,11 +163096,40 @@
     },
     "1884061566": {
       "topics": [
-        "science/chemistry"
+        "space",
+        "science/chemistry",
+        "kids-family/parenting",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering space, chemistry.",
+      "display_title": "Chain Reaction by ACS",
+      "blurb": "Chain Reaction links chemistry's past to its future, revealing how this ever‑evolving science shapes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1884063406": {
       "topics": [
@@ -163006,11 +163567,40 @@
     },
     "1885876008": {
       "topics": [
-        "history"
+        "computing",
+        "history",
+        "personal-journals",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering computing, history.",
+      "display_title": "In Pursuit with Colleen Shogan",
+      "blurb": "We call it the American experiment, and over the last 250 years, we've learned a lot about what's wo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1885884853": {
       "topics": [
@@ -163052,11 +163642,40 @@
     },
     "1885981800": {
       "topics": [
-        "culture/design"
+        "space",
+        "culture/design",
+        "kids-family/parenting",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering space, design.",
+      "display_title": "The Install: Life & Design with Paloma and",
+      "blurb": "The Install: Life & Design with Paloma and Caroline is a weekly conversation about creativity, busin.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1885988006": {
       "topics": [
@@ -163098,11 +163717,40 @@
     },
     "1886219604": {
       "topics": [
-        "education/self-improvement"
+        "comedy/stand-up",
+        "culture/design",
+        "computing",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering stand-up, design.",
+      "display_title": "Getting Naked: The Podcast",
+      "blurb": "Hosted by Valerie Bertinelli and based off her hit best-selling book, \"Getting Naked: The Podcast\" o.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1886231303": {
       "topics": [
@@ -163173,11 +163821,40 @@
     },
     "1886539926": {
       "topics": [
-        "society"
+        "kids-family/parenting",
+        "computing",
+        "sports",
+        "gaming"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering parenting, computing.",
+      "display_title": "The Obit Project",
+      "blurb": "Stories about the lives of real Montanans after they die. Co-hosted by old friends and colleagues Ja.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1886542246": {
       "topics": [
@@ -163366,11 +164043,40 @@
     },
     "1886984526": {
       "topics": [
+        "kids-family/parenting",
+        "computing",
+        "sports",
         "gaming"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering parenting, computing.",
+      "display_title": "The Mahjcast",
+      "blurb": "The Mahjcast, from Jason and Ira—the Mahj Bros—is where mahjong meets culture, community, and conver.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1887104942": {
       "topics": [
@@ -163418,11 +164124,35 @@
     },
     "1887344928": {
       "topics": [
-        "automotive"
+        "computing",
+        "sports",
+        "gaming"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering computing, sports.",
+      "display_title": "Eleven After Nine | A Porsche Culture Podcast",
+      "blurb": "A Porsche podcast for everyday owners — Derek from ElevenAfterNine has honest conversations about bu.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1887346526": {
       "topics": [
@@ -163441,11 +164171,35 @@
     },
     "1887643194": {
       "topics": [
-        "religion/christianity"
+        "computing",
+        "religion",
+        "business/non-profit"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering computing, religion.",
+      "display_title": "Mayhem Faith | Powered by Get Strong Ministries",
+      "blurb": "Mayhem Faith | Get Strong Ministries mission is to help people follow Jesus in every area of life. T.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1887678339": {
       "topics": [
@@ -163484,11 +164238,40 @@
     },
     "1887898014": {
       "topics": [
-        "tv-film"
+        "space",
+        "computing",
+        "sports",
+        "music"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering space, computing.",
+      "display_title": "Up Next with Variety",
+      "blurb": "Up Next with Variety host Tiana DeNicola features conversations with the talent young audiences are.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1887928474": {
       "topics": [
@@ -163528,19 +164311,77 @@
     },
     "1888186476": {
       "topics": [
-        "kids-family/parenting"
+        "space",
+        "kids-family/parenting",
+        "computing",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering space, parenting.",
+      "display_title": "The Parent Chat with Dylan Dreyer",
+      "blurb": "You know her as TODAY’s candid third hour host. But Dylan Dreyer is also a mom of 3 boys, trying to.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1888205148": {
       "topics": [
-        "business/non-profit"
+        "computing",
+        "business/non-profit",
+        "personal-journals",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering computing, non-profit.",
+      "display_title": "The Ethnos360 Podcast",
+      "blurb": "Vital topics, honest conversations and unpacking the Great Commission Curious about missions? Wonder.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1888256604": {
       "topics": [
@@ -163637,11 +164478,35 @@
     },
     "1888584588": {
       "topics": [
+        "space",
+        "computing",
         "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering space, computing.",
+      "display_title": "MBT EN – Understanding Mentalization-Based Treatment",
+      "blurb": "MBT – An Introduction to Mentalization-Based Treatment Discover how understanding your own mind — an.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1888620937": {
       "topics": [
@@ -163705,11 +164570,40 @@
     },
     "1888998804": {
       "topics": [
-        "history"
+        "kids-family/parenting",
+        "computing",
+        "society/government",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering parenting, computing.",
+      "display_title": "Mattie On The Homefront",
+      "blurb": "Mattie on the Homefront is a podcast about a father and a son discovering their family. After findin.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1889126933": {
       "topics": [
@@ -163804,11 +164698,38 @@
     },
     "1889648496": {
       "topics": [
-        "religion/christianity"
+        "computing",
+        "history",
+        "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering computing, history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1889649445": {
       "topics": [
@@ -164189,11 +165110,40 @@
     },
     "1891885380": {
       "topics": [
-        "comedy/casual-hangs"
+        "kids-family/parenting",
+        "computing",
+        "health",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering parenting, computing.",
+      "display_title": "The Pittsburgh Poddy - Two Sisters Talking Crap",
+      "blurb": "Two sisters, one city, and absolutely no shortage of opinions. The Pittsburgh Poddy is a weekly podc.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1891886722": {
       "topics": [
@@ -164256,11 +165206,40 @@
     },
     "1892399034": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "kids-family/parenting",
+        "music",
+        "personal-journals"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering tv-film, parenting.",
+      "display_title": "The McBride Rewind by Josh McBride",
+      "blurb": "The McBride Rewind is a interview-style radio show hosted by TV personality and pop culture insider.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1892472472": {
       "topics": [
@@ -164288,11 +165267,40 @@
     },
     "1892673402": {
       "topics": [
-        "health/sexuality"
+        "kids-family/parenting",
+        "computing",
+        "personal-journals",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering parenting, computing.",
+      "display_title": "The Secret Life of Swingers",
+      "blurb": "Get ready to pull back the curtain and step into a world where curiosity meets desire. The Secret Li.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1892678715": {
       "topics": [
@@ -164310,11 +165318,40 @@
     },
     "1892916678": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "kids-family/parenting",
+        "computing",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering tennis, parenting.",
+      "display_title": "SNAP: The John McEnroe Default Saga",
+      "blurb": "SNAP: The John McEnroe Default Saga is a four-part narrative audio podcast that brings to life the s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1892917941": {
       "topics": [
@@ -164354,11 +165391,43 @@
     },
     "1893048984": {
       "topics": [
-        "business/non-profit"
+        "space",
+        "kids-family/parenting",
+        "computing",
+        "religion"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering space, parenting.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1893107709": {
       "topics": [
@@ -164445,11 +165514,40 @@
     },
     "1893484122": {
       "topics": [
-        "fiction/sci-fi"
+        "computing",
+        "music",
+        "personal-journals",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering computing, music.",
+      "display_title": "Last Resort",
+      "blurb": "A troubled influencer looking for rest and rejuvenation at a private wellness resort gets more than.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1893511175": {
       "topics": [
@@ -164890,11 +165988,40 @@
     },
     "1895275506": {
       "topics": [
-        "education/self-improvement"
+        "kids-family/parenting",
+        "computing",
+        "religion",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering parenting, computing.",
+      "display_title": "CALLED TO BE SEEN",
+      "blurb": "Welcome to Called To Be Seen—the podcast for women who know they’re meant for more but refuse to bui.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1895278526": {
       "topics": [
@@ -164952,11 +166079,40 @@
     },
     "1895360346": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/stand-up",
+        "computing",
+        "economics",
+        "religion"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering stand-up, computing.",
+      "display_title": "Jimmy Carr: Crowd Work",
+      "blurb": "Jimmy Car invites audiences to challenge him with their boldest heckles. Filmed live during his sell.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1895392289": {
       "topics": [
@@ -165158,11 +166314,40 @@
     },
     "1895900328": {
       "topics": [
+        "computing",
+        "economics",
+        "psychology",
         "business/non-profit"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering computing, economics.",
+      "display_title": "Pilali Podcast",
+      "blurb": "PILALI: A podcast by Funder Hui. Weaving trust and impact into our future. Pilali is a storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1895936019": {
       "topics": [
@@ -165500,11 +166685,40 @@
     },
     "1896342396": {
       "topics": [
-        "business/marketing"
+        "computing",
+        "sports",
+        "business",
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering computing, sports.",
+      "display_title": "Brand Safe",
+      "blurb": "Brand Safe isn’t the Tana Mongeau you think it is. A little less mess, a lot more meaning. After yea.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1896344403": {
       "topics": [
@@ -165524,11 +166738,35 @@
     },
     "1896350430": {
       "topics": [
-        "society/government"
+        "computing",
+        "society/government",
+        "culture/art"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering computing, government.",
+      "display_title": "The Thin Line w/ Imran Ali",
+      "blurb": "The Thin Line is a show where law enforcement professionals get together to talk about the actual re.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1896355501": {
       "topics": [
@@ -165745,11 +166983,40 @@
     },
     "1896578748": {
       "topics": [
+        "computing",
+        "psychology",
+        "business",
         "personal-journals"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering computing, psychology.",
+      "display_title": "Lay Low Pod",
+      "blurb": "Welcome to the Lay Low Pod — the podcast about becoming who you were always meant to be. Hosted by e.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1896586373": {
       "topics": [
@@ -165868,12 +167135,40 @@
     },
     "1896640356": {
       "topics": [
-        "computing/history",
-        "society"
+        "kids-family/parenting",
+        "computing",
+        "sports",
+        "gaming"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering parenting, computing.",
+      "display_title": "Artifacts: Stories from the Emotional History of the",
+      "blurb": "Artifacts is a storytelling podcast about the moments technology quietly changed what it meant to be.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1896640782": {
       "topics": [
@@ -166073,11 +167368,35 @@
     },
     "1896739404": {
       "topics": [
-        "sports"
+        "computing",
+        "sports",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering computing, sports.",
+      "display_title": "SWIM Live",
+      "blurb": "Real conversations shaping swimming and water safety in Australia. SWIM Live is a podcast sharing re.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1896741301": {
       "topics": [
@@ -166134,11 +167453,40 @@
     },
     "1896759282": {
       "topics": [
-        "education/self-improvement"
+        "culture/design",
+        "kids-family/parenting",
+        "computing",
+        "health"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering design, parenting.",
+      "display_title": "The POP Podcast",
+      "blurb": "Welcome to the POP Podcast, where Progression Over Perfection is the goal. Hosted by Michael Todd an.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1896760409": {
       "topics": [
@@ -166248,12 +167596,40 @@
     },
     "1896779544": {
       "topics": [
-        "society/law",
-        "society/government"
+        "tv-film",
+        "kids-family/parenting",
+        "computing",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering tv-film, parenting.",
+      "display_title": "In Dissent",
+      "blurb": "In Dissent traces the founding ideals of the Declaration of Independence from the revolutionary mome.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1896779934": {
       "topics": [
@@ -166368,11 +167744,40 @@
     },
     "1896789750": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "culture/design",
+        "computing",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering true-crime, design.",
+      "display_title": "Fighting Crime",
+      "blurb": "Fighting Crime dives into the world of crime to uncover the evidence of what actually works to impro.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1896790106": {
       "topics": [
@@ -166433,12 +167838,43 @@
     },
     "1896801264": {
       "topics": [
-        "engineering/ai-robotics",
-        "business"
+        "culture/design",
+        "computing",
+        "business",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering design, computing.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1896802404": {
       "topics": [
@@ -166860,11 +168296,40 @@
     },
     "1896854346": {
       "topics": [
-        "music"
+        "computing",
+        "religion",
+        "music",
+        "culture/art"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast covering computing, religion.",
+      "display_title": "The Rare Legacy Show Podcast",
+      "blurb": "Rare Legacy Show Podcast is here. We have varied of Music and Talk for our listeners. Our Podcast ha.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-ddec9baf",
+      "classified_at": "2026-07-29T00:13:57.609Z"
     },
     "1896854588": {
       "topics": [
