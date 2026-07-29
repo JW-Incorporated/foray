@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-28T16:30:54.767Z",
+  "built_at": "2026-07-29T00:30:32.033Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-28-5274ca87",
+    "last_batch_id": "fresh-2026-07-29-c1da8d5b",
     "last_batch_tier": 1
   },
   "entries": {
@@ -868,17 +868,52 @@
     },
     "76207297": {
       "topics": [
-        "medicine"
+        "medicine",
+        "medicine/neuroscience"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.95
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth interviews on intensive care medicine and critical care team perspectives.",
+      "display_title": "SCCM Podcast",
+      "blurb": "Expert interviews on critical care medicine topics from peer-reviewed journals and thought leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:29:47.041Z"
     },
     "76591483": {
       "topics": [
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Torah study classes following traditional Jewish learning cycles.",
+      "display_title": "Chabad.org - Daily Torah Study",
+      "blurb": "Daily Tanya, Rambam, and Mitzvah classes following Jewish study schedules.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:29:47.041Z"
     },
     "76699727": {
       "topics": [
@@ -1468,10 +1503,30 @@
     },
     "83213431": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Commentary on contemporary political and policy issues.",
+      "display_title": "We the People",
+      "blurb": "Commentary on current political and policy events from The New Yorker.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:29:47.041Z"
     },
     "83260487": {
       "topics": [
@@ -1697,10 +1752,30 @@
     },
     "93465727": {
       "topics": [
-        "food"
+        "food",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scotch whisky history and tasting exploration.",
+      "display_title": "WhiskyCast",
+      "blurb": "each week's episode feature...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "94571049": {
       "topics": [
@@ -1779,7 +1854,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic teachings and Quranic recitation.",
+      "display_title": "Holy Quran Daily Podcast",
+      "blurb": "Islamic religious teachings...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "105924375": {
       "topics": [
@@ -1886,11 +1976,25 @@
     },
     "112831729": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language instruction and vocabulary learning.",
+      "display_title": "Learn Japanese | JapanesePod101.com (Audio)",
+      "blurb": "Language lessons and vocabu...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "115156841": {
       "topics": [
@@ -2366,10 +2470,30 @@
     },
     "129558037": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy",
+        "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improvisational comedy and sketches.",
+      "display_title": "Superego",
+      "blurb": "Comedy sketches and improvi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "129584472": {
       "topics": [
@@ -2585,10 +2709,25 @@
     },
     "138752347": {
       "topics": [
-        "culture/books"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language instruction and vocabulary learning.",
+      "display_title": "Poetry Off the Shelf",
+      "blurb": "Language lessons and vocabu...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "138767891": {
       "topics": [
@@ -2970,10 +3109,30 @@
     },
     "155974141": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political analysis and commentary.",
+      "display_title": "Common Sense with Dan Carlin",
+      "blurb": "loud, fast-talking and dece...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "156274672": {
       "topics": [
@@ -3186,7 +3345,25 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cricket news and sports analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "170258744": {
       "topics": [
@@ -3215,7 +3392,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ice hockey news and player coverage.",
+      "display_title": "Puck Podcast",
+      "blurb": "Ice hockey news and match a...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "173001861": {
       "topics": [
@@ -4153,11 +4345,30 @@
     },
     "209859739": {
       "topics": [
-        "economics/markets",
-        "business"
+        "business",
+        "economics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal finance and money management.",
+      "display_title": "Money Girl",
+      "blurb": "laura adams provides short ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "209991975": {
       "topics": [
@@ -4220,7 +4431,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music commentary and artist coverage.",
+      "display_title": "Song of the Day",
+      "blurb": "Music and audio content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "212039902": {
       "topics": [
@@ -4748,7 +4974,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music DJ sets and genre-specific coverage.",
+      "display_title": "DNBRADIO.com - Fresh Jungle, Drum and Bass, DNB",
+      "blurb": "Music and audio content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "253568181": {
       "topics": [
@@ -4767,10 +5008,30 @@
     },
     "253984147": {
       "topics": [
-        "sports/golf"
+        "comedy",
+        "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improvisational comedy and sketches.",
+      "display_title": "The Golf Psychology Podcast",
+      "blurb": "Comedy sketches and improvi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "254078311": {
       "topics": [
@@ -5118,11 +5379,25 @@
     },
     "262223371": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language instruction and vocabulary learning.",
+      "display_title": "Learn Korean | KoreanClass101.com",
+      "blurb": "Language lessons and vocabu...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "262361074": {
       "topics": [
@@ -5171,10 +5446,28 @@
     },
     "263174305": {
       "topics": [
-        "travel"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Books, writing, and literary topics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "263456080": {
       "topics": [
@@ -5288,7 +5581,25 @@
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Pet behavior and animal guidance.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 16w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "266288159": {
       "topics": [
@@ -5378,10 +5689,30 @@
     },
     "267928081": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Theater and performing arts content.",
+      "display_title": "Orson Welles On The Air",
+      "blurb": "orson welles had quite a ca...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "268003768": {
       "topics": [
@@ -5392,10 +5723,30 @@
     },
     "268213039": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political analysis and commentary.",
+      "display_title": "The Political Scene | The New Yorker",
+      "blurb": "join the new yorker’s write...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "268557178": {
       "topics": [
@@ -5406,11 +5757,30 @@
     },
     "268565125": {
       "topics": [
-        "music",
-        "history"
+        "music/classical",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/classical",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classical music education for children with entertaining approach.",
+      "display_title": "Classics For Kids",
+      "blurb": "Classical music education for young listeners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:32.033Z"
     },
     "268613141": {
       "topics": [
@@ -5490,11 +5860,25 @@
     },
     "270572701": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language instruction and vocabulary learning.",
+      "display_title": "Learn Spanish | SpanishPod101.com",
+      "blurb": "Language lessons and vocabu...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "271202930": {
       "topics": [
@@ -5549,10 +5933,28 @@
     },
     "272960227": {
       "topics": [
-        "sports/baseball"
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Pet behavior and animal guidance.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "273148505": {
       "topics": [
@@ -5638,10 +6040,25 @@
     },
     "275924761": {
       "topics": [
-        "religion/hinduism"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Books, writing, and literary topics.",
+      "display_title": "Mantra, Kirtan and Stotra: Sanskrit Chants",
+      "blurb": "mantra-chants from yoga vid...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "276157864": {
       "topics": [
@@ -5729,10 +6146,30 @@
     },
     "278131039": {
       "topics": [
-        "sports/tennis"
+        "comedy",
+        "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improvisational comedy and sketches.",
+      "display_title": "Essential Tennis Podcast - Instruction, Lessons, Tips",
+      "blurb": "Comedy sketches and improvi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "278170377": {
       "topics": [
@@ -5883,11 +6320,25 @@
     },
     "280789489": {
       "topics": [
-        "economics/markets",
-        "business"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Books, writing, and literary topics.",
+      "display_title": "InvestTalk",
+      "blurb": "investtalk is your daily gu...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "281128135": {
       "topics": [
@@ -6190,7 +6641,22 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian teachings and commentary.",
+      "display_title": "Love Worth Finding on Oneplace.com",
+      "blurb": "Christian teachings and spi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "288425495": {
       "topics": [
@@ -6395,10 +6861,30 @@
     },
     "294540619": {
       "topics": [
-        "culture/art"
+        "culture/performing-arts",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Theater and performing arts content.",
+      "display_title": "The Art of Photography",
+      "blurb": "the art of photography is y...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "294809296": {
       "topics": [
@@ -6527,7 +7013,22 @@
         "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career development and workplace guidance.",
+      "display_title": "Career Tools",
+      "blurb": "Career development and work...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "300765836": {
       "topics": [
@@ -6583,10 +7084,25 @@
     },
     "302754403": {
       "topics": [
-        "music"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Books, writing, and literary topics.",
+      "display_title": "Cocktail Nation",
+      "blurb": "join kooper in the sydney p...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "303672420": {
       "topics": [
@@ -6702,7 +7218,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soccer news and match analysis.",
+      "display_title": "Superscoreboard",
+      "blurb": "Soccer news and match cover...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "307580286": {
       "topics": [
@@ -6748,7 +7279,22 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Books, writing, and literary topics.",
+      "display_title": "The Creative Penn Podcast For Writers",
+      "blurb": "writing craft and creative ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "309501861": {
       "topics": [
@@ -6769,14 +7315,47 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game discussion and coverage.",
+      "display_title": "The Starting Zone: The World of Warcraft Podcast!",
+      "blurb": "Video game news and gamepla...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "310512541": {
       "topics": [
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Buddhist teachings and meditation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "310512556": {
       "topics": [
@@ -7014,10 +7593,30 @@
     },
     "324173353": {
       "topics": [
-        "religion/christianity"
+        "news/politics",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political analysis and commentary.",
+      "display_title": "Breakpoint",
+      "blurb": "join john stonestreet for a...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "324698394": {
       "topics": [
@@ -7182,10 +7781,33 @@
     },
     "327751771": {
       "topics": [
-        "sports/soccer"
+        "news/politics",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Political analysis and commentary.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "327760868": {
       "topics": [
@@ -7373,10 +7995,25 @@
     },
     "337004125": {
       "topics": [
-        "gaming"
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel and tourism discussion.",
+      "display_title": "IGN UK Podcast",
+      "blurb": "hear the magic that happens...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "337502156": {
       "topics": [
@@ -7416,7 +8053,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Radio drama and fictional narratives.",
+      "display_title": "The Archers Omnibus",
+      "blurb": "the week's events in ambridge.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "339001481": {
       "topics": [
@@ -7444,10 +8096,25 @@
     },
     "339875623": {
       "topics": [
-        "sports/tennis"
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pet behavior and animal guidance.",
+      "display_title": "TENNIS.com Podcast",
+      "blurb": "Pet behavior and animal car...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "339986758": {
       "topics": [
@@ -7600,11 +8267,25 @@
     },
     "349344193": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel and tourism discussion.",
+      "display_title": "The Orvis Hunting and Shooting Podcast",
+      "blurb": "the orvis hunting and shoot...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "349470184": {
       "topics": [
@@ -7821,10 +8502,30 @@
     },
     "355187485": {
       "topics": [
+        "comedy",
         "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improvisational comedy and sketches.",
+      "display_title": "I Think You're Overthinking It",
+      "blurb": "Comedy sketches and improvi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "355813248": {
       "topics": [
@@ -7924,10 +8625,25 @@
     },
     "361294213": {
       "topics": [
-        "sports/rugby"
+        "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game discussion and coverage.",
+      "display_title": "This Week in League NRL Podcast",
+      "blurb": "Video game news and gamepla...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "361910564": {
       "topics": [
@@ -7987,7 +8703,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic teachings and Quranic recitation.",
+      "display_title": "الشيخ عبدالرحمن السديس",
+      "blurb": "Islamic religious teachings...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "365878132": {
       "topics": [
@@ -8012,11 +8743,25 @@
     },
     "366931951": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game discussion and coverage.",
+      "display_title": "Startups For the Rest of Us",
+      "blurb": "Video game news and gamepla...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "367330921": {
       "topics": [
@@ -8069,7 +8814,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic teachings and Quranic recitation.",
+      "display_title": "Sacred Learning",
+      "blurb": "Islamic religious teachings...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "369032477": {
       "topics": [
@@ -8126,10 +8886,25 @@
     },
     "371168365": {
       "topics": [
-        "religion/christianity"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Books, writing, and literary topics.",
+      "display_title": "In the Market with Janet Parshall",
+      "blurb": "in the market with janet pa...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "372257397": {
       "topics": [
@@ -8172,7 +8947,22 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu spirituality and teachings.",
+      "display_title": "Krishna's Mercy",
+      "blurb": "Hindu spiritual teachings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-c1da8d5b",
+      "classified_at": "2026-07-29T00:30:17.995Z"
     },
     "375239762": {
       "topics": [
