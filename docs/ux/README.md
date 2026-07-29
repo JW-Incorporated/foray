@@ -4,11 +4,22 @@
 
 A single self-contained HTML file — no build step, no dependencies to install.
 Open it directly in a browser (double-click, or `file://` it) to click through
-the app.
+the app. Live: https://jw-incorporated.github.io/foray/docs/ux/foray-m3-prototype.html
 
-The panel on the right of the page is **not part of the app** — it's a harness
-that forces app states (onboarding, player states, download/offline/building/
-expired/404, etc.) so every screen is reachable without live data or a backend.
+**Defaults to full-screen "real webapp" mode** — no fake-phone bezel, no
+desktop chrome, just the app edge to edge (a centered readable column on wide
+viewports, full-bleed on mobile widths). That's the link to share with anyone
+who just wants to see the product.
+
+For internal review — checking the harness-forced states, the fixture, the
+event log — click **"Exit demo mode"** in the top-right corner. That reveals
+the annotated desktop preview: the phone-bezel mockup plus the intro copy and
+harness panel described below. Click **"Full-screen demo"** to go back.
+
+The panel on the right of that annotated preview is **not part of the app** —
+it's a harness that forces app states (onboarding, player states,
+download/offline/building/expired/404, etc.) so every screen is reachable
+without live data or a backend.
 
 The `FIXTURE_SESSION` constant near the top of the `<script>` block is the
 original hand-built reference: it mirrors our session doc v1 shape and is
