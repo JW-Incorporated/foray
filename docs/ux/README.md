@@ -40,8 +40,17 @@ the M3 prototype PR asked Wyatt to check the `SESSION` fixture against.
 
 Front and center on the Today screen: a user can type a topic they already
 have in mind — something they just heard about, not one of the four
-algorithmic picks — and get a curated result for it immediately, and the
+algorithmic picks — and get a real results list for it immediately, and the
 topic gets folded into their taxonomy weights for future menus.
+
+Results render as their own clearly-labeled **"SEARCH RESULTS · &lt;topic&gt;"**
+list (badge + count + one row per match, each independently playable) —
+visually distinct from the algorithmic menu, which now sits under its own
+**"Today's menu"** divider below. Originally this was a single card blended in
+above the four archetype cards; that read as ambiguous (was it a 5th
+algorithmic pick or something else?) and collapsed multi-result topics like
+"science" down to one item, so it was redesigned into a proper list with an
+explicit section boundary.
 
 **How it works:**
 - `data/taxonomy.json` (149 nodes) and a slim, broad-coverage slice of
@@ -53,8 +62,10 @@ topic gets folded into their taxonomy weights for future menus.
   node labels/ids — no embeddings, this is a placeholder for the
   semantic-search work already roadmapped in
   `docs/curation/personalization-and-depth-plan.md` (§"Semantic search").
-- `findEpisodesForNode()` looks for real episodes tagged under the resolved
-  node in the bundled slice.
+- `findEpisodesForNode()` returns up to 8 real episodes tagged under the
+  resolved node from the bundled slice; each row that doesn't literally
+  mention the typed query is flagged "closest match" individually, rather
+  than one blanket note for the whole result set.
 - `bumpOrCreate()` extends the existing `bump()` taxonomy-mutation pattern to
   **create** a new taxonomy row if the user has never touched that node
   before — the actual "automatically add to our algo" mechanic — then shows

@@ -478,7 +478,7 @@ function runTopicSearch(query){
     render();
     return;
   }
-  const matches = findEpisodesForNode(node.id);
+  const matches = findEpisodesForNode(node.id, 8);
   S.onDemand = {query, node, matches};
   ev('search', {query, resolved_node:node.id, matched_count:matches.length});
   bumpOrCreate(node.id, .3, `from your search: "${query}"`, node);
@@ -684,46 +684,51 @@ V.today = () => {
       <button class="btn go" data-act="topicsearch">${ic('play',1.5)}</button>
     </div>
   </div>
-  ${onDemandCard()}
+  ${onDemandSection()}
   ${real}${off}${dl}
+  <p class="kick" style="margin:${S.onDemand?'20px':'0'} 0 10px;color:var(--dim)">Today's menu</p>
   ${SESSION.menu.map(m=>card(m)).join('')}
   <p class="note" style="text-align:center;padding:6px 0 14px">${SESSION.real ? 'Real session-builder output. Alternates and categories exist in the data but aren’t wired into this screen yet.' : 'Four picks, one of them deliberately off your path.<br>No feed, no more to load.'}</p>`;
 };
-function onDemandCard(){
+function onDemandSection(){
   const od = S.onDemand; if(!od) return '';
   if(!od.node){
-    return `<div class="card" style="border-left:2px solid var(--err)">
-      <span class="badge"><i style="background:var(--err)"></i>ON DEMAND</span>
+    return `<div class="card" style="border-left:2px solid var(--err);margin-bottom:16px">
+      <span class="badge"><i style="background:var(--err)"></i>SEARCH · NO MATCH</span>
       <p class="why" style="margin-top:10px">Couldn't place "${od.query}" in what Foray understands yet. Try different words.</p>
     </div>`;
   }
   if(!od.matches.length){
-    return `<div class="card" style="border-left:2px solid var(--stretch)">
-      <span class="badge"><i style="background:var(--stretch)"></i>ON DEMAND · ${od.node.label}</span>
+    return `<div class="card" style="border-left:2px solid var(--stretch);margin-bottom:16px">
+      <span class="badge"><i style="background:var(--stretch)"></i>SEARCH RESULTS · ${od.node.label}</span>
       <p class="why" style="margin-top:10px">We don't have ${od.node.label.toLowerCase()} yet — added it to what we're looking to source next, and to your interests, so menus start leaning that way as we do.</p>
     </div>`;
   }
-  const ep = od.matches[0], sh = show(registerRealShow(ep.show));
-  // taxonomy matched, but does the episode actually mention what they typed?
-  // (the mythology node catches Norse/Czech folklore too — "Greek mythology"
-  // shouldn't quietly present a Norse episode as if it were a real hit)
-  const hay = (ep.title+' '+ep.hook).toLowerCase();
-  const literalHit = tokenizeQuery(od.query).some(t=>hay.includes(t));
-  return `<div class="card" style="border-left:2px solid var(--stretch)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
-      <span class="badge"><i style="background:var(--stretch)"></i>ON DEMAND · ${od.node.label}</span>
-      <span class="show">${ep.duration_min} min</span>
+  const qTokens = tokenizeQuery(od.query);
+  const rows = od.matches.map(ep=>{
+    const hay = (ep.title+' '+ep.hook).toLowerCase();
+    return {ep, literalHit: qTokens.some(t=>hay.includes(t))};
+  });
+  const anyLiteral = rows.some(r=>r.literalHit);
+  return `
+  <div class="results">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+      <span class="badge"><i style="background:var(--stretch)"></i>SEARCH RESULTS · ${od.node.label}</span>
+      <span class="show">${od.matches.length} found</span>
     </div>
-    <div class="row">
-      <div class="art" style="background:${sh.c}">${sh.art}</div>
-      <div style="flex:1;min-width:0">
-        <p class="title">${ep.title}</p>
-        <span class="show">${sh.name}</span>
-      </div>
+    ${anyLiteral ? '' : `<p class="note" style="color:var(--stretch);margin:8px 0 0">None of these say "${od.query}" specifically — closest we have in ${od.node.label.toLowerCase()}.</p>`}
+    <div class="card" style="padding:2px 14px;margin-top:10px">
+      ${rows.map((r,i)=>`
+      <div style="display:flex;gap:11px;padding:11px 0;align-items:center;${i<rows.length-1?'border-bottom:1px solid var(--line)':''}">
+        <div class="art sm" style="background:${show(registerRealShow(r.ep.show)).c}">${show(registerRealShow(r.ep.show)).art}</div>
+        <div style="flex:1;min-width:0">
+          <p class="title" style="font-size:13px;margin:0 0 2px">${r.ep.title}</p>
+          <span class="show">${r.ep.show} · ${r.ep.duration_min} min${r.literalHit?'':' · closest match'}</span>
+        </div>
+        <button class="art sm" data-act="playondemand" data-i="${i}" style="background:var(--surface2);color:var(--bone);display:grid;place-items:center;flex:none">${ic('play',1.4)}</button>
+      </div>`).join('')}
     </div>
-    ${literalHit ? '' : `<p class="note" style="margin-top:10px;color:var(--stretch)">Not an exact match — we don't have "${od.query}" specifically, this is the closest in ${od.node.label.toLowerCase()}.</p>`}
-    <p class="why">${ep.hook}</p>
-    <button class="btn" style="margin-top:12px" data-act="playondemand" data-i="0">${ic('play')} Play</button>
+    <p class="note" style="margin:10px 0 0">Added ${od.node.label} to your interests.</p>
   </div>`;
 }
 function stateCard(t,b,icon,acts){
