@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-29T00:37:04.424Z",
+  "built_at": "2026-07-29T08:37:22.986Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-29-8f48276d",
+    "last_batch_id": "fresh-2026-07-29-9f8da2cf",
     "last_batch_tier": 1
   },
   "entries": {
@@ -13296,7 +13296,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish religious show.",
+      "display_title": "Rabbi Shalom Rosner on The Parsha",
+      "blurb": "Rabbi Shalom Rosner on The Parsha",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "554307258": {
       "topics": [
@@ -16147,10 +16162,40 @@
     },
     "716979718": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "education/language-learning",
+        "medicine",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting guidance show.",
+      "display_title": "Mindful Mama: Raising Kind, Confident Kids Without Losing...",
+      "blurb": "How do you raise kind, confident kids without losing your cool? How do you manage kids’ behavior, help them regulate their big emotions, AND stay grounded? Mindful Parenting is.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "717653288": {
       "topics": [
@@ -16324,11 +16369,25 @@
     },
     "732618322": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "hobbies"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "hobbies show.",
+      "display_title": "Gun & Gear Review Podcast",
+      "blurb": "Gun Reviews   Gear Reviews   Firearms Insider Podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "732915228": {
       "topics": [
@@ -16362,10 +16421,35 @@
     },
     "733644928": {
       "topics": [
-        "medicine"
+        "medicine",
+        "culture/art",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "health and medicine show.",
+      "display_title": "Medgeeks with Andrew Reid",
+      "blurb": "Better health, with better science. Medgeeks teaches the mechanisms underlying chronic disease and the upstream drivers of health, translating the primary literature for.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "734373360": {
       "topics": [
@@ -16401,7 +16485,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "aviation news show.",
+      "display_title": "Plane Talking UK Podcast",
+      "blurb": "Carlos, Nev & Matt bring you a weekly Podcast that will focus on the Aviation news relating to us long suffering passengers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "740235285": {
       "topics": [
@@ -16469,10 +16568,33 @@
     },
     "757953988": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Christian teaching show.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "762922035": {
       "topics": [
@@ -16630,17 +16752,67 @@
     },
     "783201244": {
       "topics": [
-        "sports/cricket"
+        "sports/cricket",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "cricket coverage show.",
+      "display_title": "Can't Bowl Can't Throw Cricket Show",
+      "blurb": "The internet's only cricket podcast. Hosted by Cat Jones and Dan Liebke.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "784600888": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "education/language-learning",
+        "culture/art",
+        "craft/photography"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "poetry and literature show.",
+      "display_title": "The New Yorker: Poetry",
+      "blurb": "Readings and conversation with The New Yorker's poetry editor, Kevin Young.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "784889506": {
       "topics": [
@@ -16753,10 +16925,40 @@
     },
     "793236670": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "culture/art",
+        "news/politics",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.6
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "news commentary show.",
+      "display_title": "Best of the Spectator",
+      "blurb": "Home to the Spectator's best podcasts on everything from politics to religion, literature to food and drink, and more. A new podcast every day from writers worth listening to..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "794058155": {
       "topics": [
@@ -16874,10 +17076,33 @@
     },
     "809264944": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "true crime stories show.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "812399885": {
       "topics": [
@@ -16896,11 +17121,25 @@
     },
     "814040014": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English conversation show.",
+      "display_title": "Hapa英会話 Podcast",
+      "blurb": ".",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "814715884": {
       "topics": [
@@ -16934,10 +17173,40 @@
     },
     "814828594": {
       "topics": [
-        "tv-film/interviews"
+        "true-crime",
+        "culture/art",
+        "tv-film",
+        "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "true crime stories show.",
+      "display_title": "NECROMANIACS PODCAST",
+      "blurb": "Welcome to the Necromaniacs Podcast. Listen to the musings of Mike Hill and Mike Scondotto on horror films, giallo, science fiction, comics and horror soundtracks",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "816329544": {
       "topics": [
@@ -16948,10 +17217,30 @@
     },
     "817315462": {
       "topics": [
-        "religion/islam"
+        "religion/islam",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic Quran recitation show.",
+      "display_title": "Saud Al-Shuraim",
+      "blurb": "Saud Al-Shuraim born in Riyadh in January 1966, Saud Al-Shuraim is a name to reckon given his outstanding education pertaining to Islamic Sciences and Qur an recitation. He has an.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "817422023": {
       "topics": [
@@ -17023,10 +17312,35 @@
     },
     "823390462": {
       "topics": [
-        "culture/art"
+        "education/language-learning",
+        "culture/art",
+        "craft/photography"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English conversation show.",
+      "display_title": "podcast - Suggested Donation",
+      "blurb": "Suggested Donation is a podcast devoted to the arts in all forms. Hosted by two contemporary painters, Tony Curanaj and Edward Minoff, the conversations provide an insight into.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "823602911": {
       "topics": [
@@ -17053,10 +17367,40 @@
     },
     "825614458": {
       "topics": [
-        "business/careers"
+        "aviation",
+        "education/language-learning",
+        "culture/art",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "aviation news show.",
+      "display_title": "The Cardone Zone",
+      "blurb": "THE CARDONE ZONE is the one place to find everything Grant Cardone: Real Estate Investing Made Simple, Power Player interviews with superstar entrepreneurs, authors, experts,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "826194407": {
       "topics": [
@@ -17068,11 +17412,40 @@
     },
     "827233918": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "education/language-learning",
+        "medicine",
+        "culture/art",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English conversation show.",
+      "display_title": "The TrainingBeta Podcast: A Climbing Training Podcast",
+      "blurb": "Hosted by climber, nutritionist, and mindset coach, Neely Quinn, The TrainingBeta Podcast is a regular conversation with rock climbing’s best and brightest, including pro rock.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "827905050": {
       "topics": [
@@ -17194,11 +17567,40 @@
     },
     "834314596": {
       "topics": [
+        "education/language-learning",
+        "medicine",
         "economics/markets",
-        "business"
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English conversation show.",
+      "display_title": "Retirement Answer Man",
+      "blurb": "A top retirement podcast. Roger Whitney, CFP®, CIMA®, CPWA®, RMA, guides you on how to actually do retirement well financially and personally. This retirement podcast isn't afraid.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "834368356": {
       "topics": [
@@ -17217,10 +17619,30 @@
     },
     "834629128": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "craft/photography"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "visual arts show.",
+      "display_title": "Savvy Painter Podcast with Antrese Wood",
+      "blurb": "Savvy Painter, hosted by Antrese Wood, offers a treasure trove of insights artists can't afford to miss. Visit https://savvypainter.com Antrese's teachings focus on nurturing a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "836615633": {
       "topics": [
@@ -17387,7 +17809,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "baseball show.",
+      "display_title": "FutureSox Podcast",
+      "blurb": "Your go-to podcast on the future of the Chicago White Sox. Three times a week, we discuss top prospects, player development, baseball operations, and more. Additionally, we.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "850148806": {
       "topics": [
@@ -17506,7 +17943,25 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "TV show discussion show.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "858864457": {
       "topics": [
@@ -17655,10 +18110,30 @@
     },
     "868740010": {
       "topics": [
-        "science/physics"
+        "science/physics",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "physics research show.",
+      "display_title": "Physique de la matière condensée - Antoine Georges",
+      "blurb": "Les recherches menées au sein de la chaire du Pr Antoine Georges portent sur la « matière quantique à fortes corrélations ». Les électrons d'une molécule ou d'un solide, les.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "868740183": {
       "topics": [
@@ -17691,10 +18166,30 @@
     },
     "869022718": {
       "topics": [
-        "comedy/interviews"
+        "medicine",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "health and medicine show.",
+      "display_title": "The Show with Sam & Joe",
+      "blurb": "A totes casual podcast in which Sam Antonioli and Joseph Birdsong talk about entertainment, tech, weird news, music, and life. Hosted on Acast. See acast.com/privacy for more.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "869336291": {
       "topics": [
@@ -17715,7 +18210,22 @@
         "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "visual arts show.",
+      "display_title": "The Potters Cast",
+      "blurb": "Pottery",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "870065983": {
       "topics": [
@@ -17727,10 +18237,30 @@
     },
     "870178510": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting guidance show.",
+      "display_title": "Read-Aloud Revival ®",
+      "blurb": "Sarah Mackenzie helps your family fall in love with books, and helps *you* fall in love with homeschooling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "870239631": {
       "topics": [
@@ -17806,11 +18336,35 @@
     },
     "876523888": {
       "topics": [
-        "economics/markets",
-        "business"
+        "culture/art",
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "visual arts show.",
+      "display_title": "Slate Money",
+      "blurb": "A weekly roundup of the most important stories from the worlds of business and finance, hosted by Felix Salmon.Want more Slate Money? Subscribe to Slate Plus to unlock weekly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "877672766": {
       "topics": [
@@ -17836,10 +18390,25 @@
     },
     "879106372": {
       "topics": [
-        "business/marketing"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "business and entrepreneurship show.",
+      "display_title": "BNI & The Power of One",
+      "blurb": "BNI podcast focusing on Success, Increased Referrals, Tips, Strategies, and taking your BNI membership to new levels through the Power of One!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "879249120": {
       "topics": [
@@ -18226,10 +18795,25 @@
     },
     "897537010": {
       "topics": [
-        "sports/soccer"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "visual arts show.",
+      "display_title": "Nos Audietis",
+      "blurb": "An unofficial podcast about the Seattle Sounders produced by Sounder at Heart's Jeremiah Oshan and Aaron Campeau, with Likkit Pocinwong",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "897720614": {
       "topics": [
@@ -18488,10 +19072,33 @@
     },
     "905809474": {
       "topics": [
-        "health/alternative"
+        "education/language-learning",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "English conversation show.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 35w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "905813866": {
       "topics": [
@@ -18537,10 +19144,30 @@
     },
     "906463114": {
       "topics": [
-        "culture/books"
+        "education/language-learning",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English conversation show.",
+      "display_title": "From the Front Porch",
+      "blurb": "Welcome to From the Front Porch, a weekly conversational podcast on books, small business, and life in the South, produced by The Bookshelf, an independent bookstore in.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "906576942": {
       "topics": [
@@ -18572,10 +19199,34 @@
     },
     "907466068": {
       "topics": [
-        "tv-film/after-shows"
+        "religion/christianity",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Christian teaching show.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8",
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "907990904": {
       "topics": [
@@ -18922,10 +19573,25 @@
     },
     "921792544": {
       "topics": [
-        "travel"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "visual arts show.",
+      "display_title": "The RV Atlas Podcast",
+      "blurb": "The RV Atlas is a weekly show exploring RV and family travel. Every episode has a feature segment highlighting the RV industry, the campground industry, tips and tricks, or.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "921854276": {
       "topics": [
@@ -18972,10 +19638,33 @@
     },
     "923004172": {
       "topics": [
-        "business/management"
+        "culture/art",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "visual arts show.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "923017367": {
       "topics": [
@@ -19165,10 +19854,30 @@
     },
     "928069318": {
       "topics": [
-        "fiction/sci-fi"
+        "aviation",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "aviation news show.",
+      "display_title": "EOS 10",
+      "blurb": "Doctors in space, a deposed alien prince, a super gay space pirate and a fiery nurse who'll help you win your bar fight. #audiofiction from @justinmclachlan and PlanetM.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "928159684": {
       "topics": [
@@ -19318,10 +20027,28 @@
     },
     "935345158": {
       "topics": [
-        "gaming"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "visual arts show.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "935548315": {
       "topics": [
@@ -19392,11 +20119,30 @@
     },
     "939201604": {
       "topics": [
-        "music",
-        "history"
+        "aviation",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "aviation news show.",
+      "display_title": "Women of Substance Music Podcast",
+      "blurb": "Women of Substance Radio is an Award-Wining Podcast featuring the best music by Female Indie Artists and Female-Fronted Indie Bands in all genres. Founded by musician Bree Noble.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "939293583": {
       "topics": [
@@ -19469,10 +20215,25 @@
     },
     "942230950": {
       "topics": [
-        "craft"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "visual arts show.",
+      "display_title": "Teaching Your Brain to Knit",
+      "blurb": "Margaret and Catherine talk about what they are learning from their knitting, something about the brain or learning, Behind the Redwood Curtain, the area where they live along the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "942258146": {
       "topics": [
@@ -19773,11 +20534,35 @@
     },
     "954194668": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "medicine",
+        "business",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "health and medicine show.",
+      "display_title": "The Global Energy & Environmental Law Podcast",
+      "blurb": "A discussion of global and local environmental law issues. Produced by the EinStrong Foundation and the International Environmental Law Committee of the American Branch of the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "954892507": {
       "topics": [
@@ -19809,10 +20594,35 @@
     },
     "955075042": {
       "topics": [
-        "business/careers"
+        "medicine",
+        "culture/art",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "health and medicine show.",
+      "display_title": "The Productivity Show",
+      "blurb": "Asian Efficiency is the leading website on time management and productivity. Learn how to be efficient, get things done (GTD), and stay motivated.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "955100693": {
       "topics": [
@@ -19962,10 +20772,39 @@
     "957223102": {
       "topics": [
         "education/language-learning",
-        "linguistics/language"
+        "culture/art",
+        "business",
+        "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English conversation show.",
+      "display_title": "Espresso English Podcast",
+      "blurb": "On the Espresso English podcast, you'll learn English grammar, vocabulary, phrases, idioms, and more. Espresso English lessons are clear and practical, making it easy to learn the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "957265404": {
       "topics": [
@@ -20046,10 +20885,30 @@
     },
     "959621656": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "baseball show.",
+      "display_title": "The D1Baseball Podcast",
+      "blurb": "The D1Baseball Podcast is your home for college baseball news, analysis, rankings, and breaking stories — all from the trusted experts at D1Baseball. Hosted by Mike Rooney ,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "959855329": {
       "topics": [
@@ -20098,11 +20957,30 @@
     },
     "961418092": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "education/language-learning",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English conversation show.",
+      "display_title": "The Hunting Dog Podcast",
+      "blurb": "The Hunting Dog Podcast is a series of interviews with friends, family and industry professionals all related to the world of hunting with dogs. Expect minimal good information,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "961451375": {
       "topics": [
@@ -20234,10 +21112,30 @@
     },
     "964583650": {
       "topics": [
-        "business/management"
+        "culture/art",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "visual arts show.",
+      "display_title": "GSD Mode Podcast",
+      "blurb": "Interviews, Tips & Strategies to help Real Estate Professionals and Entrepreneurs DOMINATE their Businesses! For more FREE Training & Resources, Go To: https://www.GSDMode.com",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "964623770": {
       "topics": [
@@ -20287,10 +21185,29 @@
     },
     "965689888": {
       "topics": [
-        "sports/basketball"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "visual arts show.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8",
+        "blurb: 35w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "965818306": {
       "topics": [
@@ -20354,11 +21271,25 @@
     },
     "966670774": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "film and horror show.",
+      "display_title": "Gritty Podcast",
+      "blurb": "This is the GRITTY podcast where we talk about ALL things GRITTY. Life isn't fair and a little GRIT can make all the difference.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "966696129": {
       "topics": [
@@ -20420,24 +21351,79 @@
     },
     "966771430": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish religious show.",
+      "display_title": "Rambam With Rabbi Gordon",
+      "blurb": "Rabbi Gordon studies one chapter a day from Maimonides’ classic legal work of Mishneh Torah. The original Hebrew text is read and then translated and clearly explained in English.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "966781846": {
       "topics": [
-        "gaming"
+        "education/language-learning",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English conversation show.",
+      "display_title": "ACG - The Best Gaming Podcast",
+      "blurb": "🎧 The Best Gaming Podcast: The #1 Friday Gaming Podcast You Can't Miss! 🎮 Join ACG, YouTube's authentic, authoritative voice in gaming, every Friday in The Best Gaming Podcast,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "967090792": {
       "topics": [
-        "sports/football"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "visual arts show.",
+      "display_title": "KNBR Podcast",
+      "blurb": "KNBR is the THE Sports Leader and official radio home of the San Francisco Giants and San Francisco 49ers!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "967315845": {
       "topics": [
@@ -20463,10 +21449,43 @@
     },
     "968091220": {
       "topics": [
-        "sports/wrestling"
+        "culture/art",
+        "economics/markets",
+        "business",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.5
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "visual arts show.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "968271818": {
       "topics": [
@@ -20589,7 +21608,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic Quran recitation show.",
+      "display_title": "محمد صديق المنشاوي | المصحف المعلم - Mohammed...",
+      "blurb": "المصحف الكامل للقارئ من موقع المكتبة الصوتية للقرآن الكريم http://www.mp3quran.net Mp3 Quran Mohammed Siddiq Al-Minshawi | Almusshaf Al Mo'lim",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "971548245": {
       "topics": [
@@ -20660,11 +21694,25 @@
     },
     "972673390": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "visual arts show.",
+      "display_title": "Learn French with French Podcasts - Français avec...",
+      "blurb": "Learn French listening to French podcasts made by French teacher Pierre. You can often have the podcast transcripts in the BLOG http://francaisavecpierre.com . Whenever there is a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-9f8da2cf",
+      "classified_at": "2026-07-29T08:37:22.986Z"
     },
     "973303969": {
       "topics": [
