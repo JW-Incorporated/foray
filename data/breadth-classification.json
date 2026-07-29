@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-29T08:57:32.057Z",
+  "built_at": "2026-07-29T16:58:33.675Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-29-fd7799cd",
+    "last_batch_id": "fresh-2026-07-29-4bf50c59",
     "last_batch_tier": 1
   },
   "entries": {
@@ -8258,10 +8258,30 @@
     },
     "342927791": {
       "topics": [
-        "food"
+        "food",
+        "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.95
+        },
+        {
+          "node": "science/chemistry",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "British investigative food journalism spanning supply chains, social aspects, nutrition, sustainability.",
+      "display_title": "The Food Programme",
+      "blurb": "Investigative journalism exploring food systems, agriculture, health, and culinary culture. Episodes span chocolate crises to school nutrition standards.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "343172752": {
       "topics": [
@@ -8418,10 +8438,30 @@
     },
     "350580455": {
       "topics": [
-        "comedy/interviews"
+        "comedy/casual-hangs",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form comedy conversation with spiritual, philosophical undertones exploring consciousness, culture, absurdism.",
+      "display_title": "Duncan Trussell Family Hour",
+      "blurb": "Comedian Duncan Trussell hosts surreal, wide-ranging conversations with guests exploring spirituality, culture, and the multiverse.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "350709629": {
       "topics": [
@@ -8524,10 +8564,25 @@
     },
     "354628391": {
       "topics": [
-        "news/politics"
+        "society/law"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Political talk radio with heavy fringe/conspiracy focus; strong ideological bent makes taxonomy placement uncertain.",
+      "display_title": "Renegade Talk Radio",
+      "blurb": "Alternative political commentary covering geopolitics, war, and free-speech advocacy from a contrarian perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "354668519": {
       "topics": [
@@ -8603,10 +8658,25 @@
     },
     "358195817": {
       "topics": [
-        "news/daily"
+        "society/law"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "French daily news magazine show; limited episode signal in English suggests broad current-affairs scope.",
+      "display_title": "RTL Matin",
+      "blurb": "French morning news and current affairs program with interviews, culture, and humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "359208879": {
       "topics": [
@@ -8643,7 +8713,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dedicated New York Red Bulls MLS fan podcast with weekly player/coach interviews and listener questions.",
+      "display_title": "Seeing Red! The NY Soccer Roundup",
+      "blurb": "Weekly MLS podcast focusing on New York Red Bulls news, player interviews, and fan questions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "361221823": {
       "topics": [
@@ -8694,10 +8779,25 @@
     },
     "365474033": {
       "topics": [
-        "religion/islam"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic religious content; Quranic recitations by a prominent Islamic scholar.",
+      "display_title": "الشيخ مشاري العفاسي",
+      "blurb": "Recitations of the Quran by renowned Islamic scholar Sheikh Mishari Al-Afasy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "365849059": {
       "topics": [
@@ -8715,10 +8815,25 @@
     },
     "366349073": {
       "topics": [
-        "religion/spirituality"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Catholic contemplative spirituality; homilies on Christian theology, social justice, mysticism.",
+      "display_title": "Homilies by Fr. Richard Rohr",
+      "blurb": "Spiritual homilies from contemplative priest exploring Christian theology, nonviolence, and social transformation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "366644508": {
       "topics": [
@@ -8922,10 +9037,25 @@
     },
     "373784825": {
       "topics": [
-        "religion/islam"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic religious content; Quranic recitations by prominent Islamic scholar.",
+      "display_title": "الشيخ أبو بكر الشاطري",
+      "blurb": "Recitations of the Quran by Islamic scholar Sheikh Abu Bakr Al-Shatri.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "374202913": {
       "topics": [
@@ -9376,10 +9506,30 @@
     },
     "394647425": {
       "topics": [
-        "music"
+        "music/theory-production",
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Musicians and independent culture creators interviewed on inspiration, craft, creative practice.",
+      "display_title": "100 Words Or Less: The Podcast",
+      "blurb": "Host Ray Harkins interviews musicians and independent artists about their creative practices and inspirations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "394775318": {
       "topics": [
@@ -9670,17 +9820,47 @@
     },
     "412457621": {
       "topics": [
-        "kids-family/parenting"
+        "psychology/decision-making"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting and family stories; humor, vulnerability, identity exploration within family contexts.",
+      "display_title": "The Longest Shortest Time",
+      "blurb": "Humorous, candid stories about parenting, family relationships, and raising children.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "412684163": {
       "topics": [
-        "business/marketing"
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Small-business marketing strategies; direct mail, lead generation, psychology, sales tactics.",
+      "display_title": "I Love Marketing",
+      "blurb": "Marketing strategies and tactics for entrepreneurs, including direct mail, lead generation, and sales psychology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "413505303": {
       "topics": [
@@ -9774,10 +9954,25 @@
     },
     "417051167": {
       "topics": [
-        "religion/buddhism"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Zen Buddhism dharma talks on Buddhist teachings, meditation, Zen philosophy.",
+      "display_title": "TREELEAF ZENDO PODCAST",
+      "blurb": "Dharma talks exploring Zen Buddhist teachings and contemplative practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "417328124": {
       "topics": [
@@ -9796,10 +9991,29 @@
     "420447017": {
       "topics": [
         "economics/markets",
-        "business"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian financial wisdom; budgeting, investing, generosity through faith lens.",
+      "display_title": "Faith & Finance",
+      "blurb": "Biblical financial guidance on investing, budgeting, and giving from a Christian perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "420929545": {
       "topics": [
@@ -9834,10 +10048,25 @@
     },
     "422559275": {
       "topics": [
-        "religion/islam"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic religious content; Quranic recitations.",
+      "display_title": "القارئ محمد أيوب",
+      "blurb": "Quranic recitations in Arabic by renowned Islamic scholar.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "423487977": {
       "topics": [
@@ -9856,10 +10085,25 @@
     },
     "424296011": {
       "topics": [
-        "religion/islam"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic religious content; Quranic recitations.",
+      "display_title": "القارئ ادريس ابكر",
+      "blurb": "Quranic recitations in Arabic.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "424397634": {
       "topics": [
@@ -10058,11 +10302,25 @@
     },
     "427774337": {
       "topics": [
-        "education/language-learning",
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics/language",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning with current-events news; grammar, vocabulary, conversation practice.",
+      "display_title": "News in Slow French",
+      "blurb": "French language learning podcast with news, grammar lessons, and conversation practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "428989929": {
       "topics": [
@@ -10099,7 +10357,22 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Notre Dame football and recruiting analysis; team news, player interviews, rankings.",
+      "display_title": "Blue & Gold: Notre Dame Football",
+      "blurb": "Coverage of Notre Dame football, recruiting news, and team analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "429857721": {
       "topics": [
@@ -10334,18 +10607,52 @@
     },
     "442469909": {
       "topics": [
-        "space",
+        "space/rockets",
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and space science; asteroids, Moon missions, planetary science.",
+      "display_title": "Naked Astronomy",
+      "blurb": "Astronomy and space exploration science from the Naked Scientists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "443236145": {
       "topics": [
-        "religion/buddhism"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Zen Buddhism dharma teachings; meditation, practice, awakening.",
+      "display_title": "Austin Zen Center Dharma Talks",
+      "blurb": "Zen Buddhist dharma talks on meditation and spiritual practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "444083093": {
       "topics": [
@@ -10394,10 +10701,25 @@
     },
     "448641515": {
       "topics": [
-        "tv-film/reviews"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV series analysis and recap; Breaking Bad episode discussion and cultural critique.",
+      "display_title": "Breaking Good",
+      "blurb": "Episode recaps and analysis of AMC's Breaking Bad series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "448795390": {
       "topics": [
@@ -10491,17 +10813,57 @@
     },
     "454268537": {
       "topics": [
-        "sports/soccer"
+        "sports/soccer",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language sports discussion blending soccer with pop culture, music, fitness.",
+      "display_title": "Ahora o Nunca",
+      "blurb": "Latin American sports coverage combining soccer with pop culture, music, and lifestyle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "454714085": {
       "topics": [
-        "medicine"
+        "sports/biomechanics",
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physical therapy clinical interviews; injury rehab, running mechanics, patient management.",
+      "display_title": "Physio Edge",
+      "blurb": "Physiotherapy interviews on clinical assessment, rehabilitation techniques, and sports medicine.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "454755642": {
       "topics": [
@@ -10565,7 +10927,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Minnesota Twins fan podcast; team analysis, trades, roster decisions.",
+      "display_title": "Gleeman and The Geek",
+      "blurb": "Minnesota Twins baseball analysis, trades, and roster discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "458066753": {
       "topics": [
@@ -10613,11 +10990,25 @@
     },
     "459436811": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror cinema, genre television, weird fiction, folklore; classic tales and atmospheric storytelling.",
+      "display_title": "Hypnogoria",
+      "blurb": "Horror cinema, weird fiction, and folklore exploration with atmospheric classic tale readings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "459476611": {
       "topics": [
@@ -10763,10 +11154,25 @@
     },
     "468609197": {
       "topics": [
-        "gaming"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy-focused casual conversation from Achievement Hunter community; banter, gaming culture.",
+      "display_title": "Internet Box",
+      "blurb": "Casual comedy conversations from the Achievement Hunter community about games and pop culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "468957505": {
       "topics": [
@@ -10942,10 +11348,25 @@
     },
     "474303851": {
       "topics": [
-        "tv-film/animation"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Masters of the Universe animation history; cartoon analysis across multiple incarnations.",
+      "display_title": "Powers of Grayskull",
+      "blurb": "Analysis of Masters of the Universe cartoons and toy line history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "474472126": {
       "topics": [
@@ -10959,7 +11380,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philadelphia 76ers basketball analysis; team news, roster, draft, season discussion.",
+      "display_title": "Rights to Ricky Sanchez",
+      "blurb": "Philadelphia 76ers basketball analysis and news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "474762601": {
       "topics": [
@@ -11032,11 +11468,25 @@
     },
     "479042177": {
       "topics": [
-        "music",
-        "history"
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "1950s rhythm & blues music history; Jump Blues, early rock foundations.",
+      "display_title": "Juke In The Back",
+      "blurb": "1950s rhythm and blues music history exploring the roots of rock and roll.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "479679002": {
       "topics": [
@@ -11187,11 +11637,25 @@
     },
     "489940415": {
       "topics": [
-        "music",
-        "history"
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music mixes and selection from Big Tigger; DJ culture, hip-hop, contemporary music.",
+      "display_title": "BT RADIO: MIXES & MORE",
+      "blurb": "Music mixes and DJ selections from Big Tigger.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "490027390": {
       "topics": [
@@ -11228,7 +11692,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror audio drama anthology; paranormal, supernatural storytelling.",
+      "display_title": "Campfire Radio Theater",
+      "blurb": "Audio drama horror anthology featuring paranormal and supernatural tales.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "492711030": {
       "topics": [
@@ -11449,10 +11928,25 @@
     },
     "501572453": {
       "topics": [
-        "medicine"
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Diabetes clinical research journal summaries; peer-reviewed medical updates for practitioners.",
+      "display_title": "DOC Updates",
+      "blurb": "Monthly diabetes research updates for healthcare professionals from American Diabetes Association journals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "501893769": {
       "topics": [
@@ -11648,7 +12142,22 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy baseball advice; strategy, rankings, roster decisions.",
+      "display_title": "Razzball Fantasy Baseball",
+      "blurb": "Fantasy baseball strategy and advice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "511729395": {
       "topics": [
@@ -11706,7 +12215,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Post-apocalyptic audio drama; sci-fi storytelling with camp humor.",
+      "display_title": "Our Fair City",
+      "blurb": "Campy post-apocalyptic audio drama from Chicago-based HartLife NFP.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "515547619": {
       "topics": [
@@ -11747,11 +12271,25 @@
     },
     "517676879": {
       "topics": [
-        "music",
-        "history"
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Electronic dance music; rave culture, harder styles, DJ mixes.",
+      "display_title": "Keeping The Rave Alive!",
+      "blurb": "Electronic dance music and rave culture featuring hard styles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "518190148": {
       "topics": [
@@ -11809,10 +12347,25 @@
     },
     "521840357": {
       "topics": [
-        "religion/buddhism"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teaching audiobook; monastic practice, meditation, Theravada wisdom.",
+      "display_title": "The Collected Teachings of Ajahn Chah",
+      "blurb": "Buddhist monastic teachings on meditation and spiritual practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "523121474": {
       "topics": [
@@ -11832,10 +12385,30 @@
     },
     "523651655": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "craft/instrument-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/instrument-making",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ceramic artist interviews; pottery, sculpture, creative practice, technique.",
+      "display_title": "Tales of a Red Clay Rambler",
+      "blurb": "Interviews with ceramic artists worldwide about pottery and creative practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "523996362": {
       "topics": [
@@ -11875,10 +12448,25 @@
     },
     "527373269": {
       "topics": [
-        "tv-film/reviews"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Streaming film criticism; movie reviews, recommendations, releases.",
+      "display_title": "Filmspotting: Streaming Video Unit",
+      "blurb": "Film reviews and recommendations for streaming movies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "527446250": {
       "topics": [
@@ -12013,11 +12601,25 @@
     },
     "535203893": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running motivation and coaching; advice for all levels and ages.",
+      "display_title": "Run to the Top",
+      "blurb": "Running coaching and motivation for runners of all levels.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "536209167": {
       "topics": [
@@ -12102,10 +12704,25 @@
     },
     "543622289": {
       "topics": [
-        "religion/buddhism"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist dharma talks; Theravada Buddhism, monastic practice, meditation.",
+      "display_title": "108 Talks by Ajahn Sumedho",
+      "blurb": "Buddhist dharma talks on meditation and spiritual practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "544473518": {
       "topics": [
@@ -12116,10 +12733,25 @@
     },
     "545045867": {
       "topics": [
-        "news/politics"
+        "society/law"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Foreign policy interviews; antiwar perspective, journalists, activists, whistleblowers.",
+      "display_title": "Scott Horton Show",
+      "blurb": "Interviews on foreign policy, antiwar advocacy, and geopolitics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "545367760": {
       "topics": [
@@ -12198,10 +12830,25 @@
     },
     "551719271": {
       "topics": [
-        "tv-film/reviews"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Star Trek episode analysis; all series, ethical themes, cultural critique.",
+      "display_title": "Mission Log",
+      "blurb": "Episode-by-episode analysis of Star Trek exploring themes and cultural significance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "551847084": {
       "topics": [
@@ -12505,7 +13152,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tottenham Hotspur fan podcast; team analysis, matches, strategy.",
+      "display_title": "The Fighting Cock",
+      "blurb": "Tottenham Hotspur fan analysis and discussion podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "577245086": {
       "topics": [
@@ -12647,7 +13309,22 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Author interviews across fiction, nonfiction, poetry; literary craft discussion.",
+      "display_title": "Between The Covers",
+      "blurb": "Conversations with authors discussing fiction, nonfiction, and poetry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "583758126": {
       "topics": [
@@ -12759,11 +13436,25 @@
     },
     "591460709": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "12-step Al-Anon recovery program; stories, tools, family relationships with addiction.",
+      "display_title": "The Recovery Show",
+      "blurb": "12-step recovery support for families of alcoholics and addicts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "592032637": {
       "topics": [
@@ -12895,10 +13586,25 @@
     },
     "594376523": {
       "topics": [
-        "gaming"
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game rankings and analysis; gaming history, critique.",
+      "display_title": "Hardcore Gaming 101",
+      "blurb": "Video game rankings and analysis from Hardcore Gaming 101.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "594419649": {
       "topics": [
@@ -12933,10 +13639,25 @@
     },
     "595299041": {
       "topics": [
-        "tv-film/animation"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pixar animation news, reviews, history; family-friendly discussion.",
+      "display_title": "Pixar Post",
+      "blurb": "Pixar animation news, reviews, and history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "595399272": {
       "topics": [
@@ -13019,10 +13740,25 @@
     },
     "597919007": {
       "topics": [
-        "news/politics"
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Progressive news and political commentary; current events, media critique.",
+      "display_title": "The Young Turks",
+      "blurb": "Progressive political news and commentary on current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "598146807": {
       "topics": [
@@ -13059,7 +13795,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Oklahoma City Thunder basketball analysis; team news, trades, roster.",
+      "display_title": "Down to Dunk",
+      "blurb": "Oklahoma City Thunder basketball analysis and news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "599849932": {
       "topics": [
@@ -13292,10 +14043,25 @@
     },
     "613437137": {
       "topics": [
-        "news/daily"
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily national news broadcast; breaking news, current events.",
+      "display_title": "CBS Evening News",
+      "blurb": "National and world news from the CBS Evening News.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-4bf50c59",
+      "classified_at": "2026-07-29T16:58:33.675Z"
     },
     "615387910": {
       "topics": [
