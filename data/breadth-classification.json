@@ -16171,6 +16171,1669 @@
       "batch_id": "fresh-2026-07-29-084a61e4",
       "classified_at": "2026-07-29T08:50:54.184Z"
     },
+    "1296728288": {
+      "topics": [
+        "tv-film/reviews",
+        "comedy/interviews",
+        "relationships",
+        "business/marketing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.4
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.17
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.15
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reviews focused on television and film content.",
+      "display_title": "Hallmarkies Podcast",
+      "blurb": "We at Hallmarkies Podcast are your romcom and Christmas movie experts! We love Hallmark movies and shows! Each week we give you our thoughts on the la.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1297439270": {
+      "topics": [
+        "business/founders",
+        "religion/christianity",
+        "history",
+        "news/commentary"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.72
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.53
+        },
+        {
+          "node": "history",
+          "confidence": 0.34
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.24
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "I Don't Have Enough FAITH to Be an",
+      "blurb": "Cross Examining ideas against the truth and Christianity. Brought to you by CrossExamined.org and AFR.net",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1298103854": {
+      "topics": [
+        "sports/basketball",
+        "tv-film/reviews",
+        "business/founders",
+        "news/commentary"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.6
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.27
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.24
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.24
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA basketball coverage and team analysis.",
+      "display_title": "Brooklyn Buzz: A Brooklyn Nets Podcast",
+      "blurb": "Brooklyn Buzz is an NBA podcast that focuses solely on the Brooklyn Nets.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1298708750": {
+      "topics": [
+        "society",
+        "religion/spirituality",
+        "news/commentary",
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.96
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.6
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.24
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "Against Everyone with Conner Habib",
+      "blurb": "Against Everyone with Conner Habib is a podcast of deep but accessible and fun explorations of art, spirituality, philosophy, activism, and culture. T.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1299443864": {
+      "topics": [
+        "business/marketing",
+        "business/founders",
+        "business/startups",
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 1
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.72
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.4
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.27
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business marketing and sales strategy instruction.",
+      "display_title": "Marketing Your Business - Marketing Strategies for Business",
+      "blurb": "Marketing Your Business is a podcast dedicated to all things marketing. It's a behind-the-scenes look at the marketing tactics and strategies that lea.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1299826850": {
+      "topics": [
+        "history",
+        "news/commentary",
+        "comedy/interviews",
+        "news/politics"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.51
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.24
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.17
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Historical narratives and cultural storytelling.",
+      "display_title": "Ridiculous History",
+      "blurb": "History is beautiful, brutal and, often, ridiculous. Join Ben Bowlin and Noel Brown as they dive into some of the weirdest stories from across the spa.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1300400330": {
+      "topics": [
+        "business/startups",
+        "business/founders",
+        "history",
+        "business/marketing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.34
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship and business building guidance.",
+      "display_title": "MCMANUS (Formerly Mind Shift) with Erwin & Aaron",
+      "blurb": "McManus: On Being Human Formerly known as Mind Shift and The Battle Ready Podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1300757042": {
+      "topics": [
+        "relationships",
+        "comedy/interviews",
+        "tv-film/reviews",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 1
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.4
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.27
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.24
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dating advice and relationship psychology insights.",
+      "display_title": "We Met At Acme",
+      "blurb": "We Met At Acme is the OG dating podcast and a lifestyle tool for the next generation of adults. In each episode, you'll learn about attachment styles,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1300947212": {
+      "topics": [
+        "food",
+        "tv-film/reviews",
+        "comedy/interviews",
+        "history"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.51
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.4
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        },
+        {
+          "node": "history",
+          "confidence": 0.17
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Beverage tasting and culinary appreciation.",
+      "display_title": "This is My Bourbon Podcast",
+      "blurb": "Lexington, Kentucky native Perry Ritter shares his passion for bourbon with friends, family, and the community at large, through interviews and conver.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1303300874": {
+      "topics": [
+        "medicine",
+        "tv-film/reviews",
+        "news/commentary",
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.27
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.24
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical education and clinical procedure guidance.",
+      "display_title": "Procedure Ready: Ob/Gyn",
+      "blurb": "Procedure Ready: Ob/Gyn (formerly called Pimped Ob/Gyn) is a podcast aimed at medical, PA, and NP students who are entering their clinical rotation in.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1303318652": {
+      "topics": [
+        "craft/diy-home",
+        "tv-film/reviews",
+        "comedy/interviews",
+        "food"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.69
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.4
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.4
+        },
+        {
+          "node": "food",
+          "confidence": 0.17
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "Down The Garden Path Podcast",
+      "blurb": "Join landscape designer Joanne Shaw for practical, down-to-earth tips, expert interviews, and seasonal advice to help you create a beautiful, low-main.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1303660358": {
+      "topics": [
+        "news/politics",
+        "news/commentary",
+        "business/marketing",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 1
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.96
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.45
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and political commentary.",
+      "display_title": "The Fox News Rundown",
+      "blurb": "The FOX News Rundown is your daily news podcast for making sense of the big issues directly impacting your life. Go beyond the headlines every morning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1303668524": {
+      "topics": [
+        "tv-film/reviews",
+        "comedy/interviews",
+        "relationships",
+        "history"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.67
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.34
+        },
+        {
+          "node": "history",
+          "confidence": 0.17
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reviews focused on television and film content.",
+      "display_title": "The Tiny Meat Gang Podcast",
+      "blurb": "Comedian Noel Miller makes you laugh, hopefully. Premium eps on http://tmgstudios.tv",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1303870112": {
+      "topics": [
+        "psychology",
+        "economics",
+        "society",
+        "comedy/interviews"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.69
+        },
+        {
+          "node": "economics",
+          "confidence": 0.6
+        },
+        {
+          "node": "society",
+          "confidence": 0.48
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Human behavior and decision-making science.",
+      "display_title": "Behavioral Grooves Podcast",
+      "blurb": "Stories, science and secrets from the world’s brightest thought-leaders. Behavioral Grooves is the podcast that satisfies your curiosity of why we do.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1304192102": {
+      "topics": [
+        "history",
+        "news/commentary",
+        "business/careers",
+        "news/politics"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.6
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.48
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.2
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.17
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and cultural storytelling.",
+      "display_title": "Cocaine & Rhinestones: The History of Country Music",
+      "blurb": "Step right up. Come on in.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1305309644": {
+      "topics": [
+        "science",
+        "nature",
+        "medicine/biology",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "Immune",
+      "blurb": "A podcast about the body's defenders against disease.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1307361758": {
+      "topics": [
+        "business/marketing",
+        "business/founders",
+        "business/startups",
+        "comedy/interviews"
+      ],
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.3
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.24
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.2
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Business marketing and sales strategy instruction.",
+      "display_title": "Working Cows - Regenerative Ranching to Maximize Profitability",
+      "blurb": "What is the key to becoming a more regenerative ranch? How do we increase the effectiveness of our management of the Land, Animals, Money, and People.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1307457770": {
+      "topics": [
+        "religion/buddhism",
+        "religion/spirituality",
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.2
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.13
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist chanting and meditation practice.",
+      "display_title": "Buddhist Chanting",
+      "blurb": "Set in traditional Pāli, the language of the Buddha, these morning and evening puja chants have been used for centuries to deepen faith, brighten the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1308717668": {
+      "topics": [
+        "true-crime",
+        "business/careers",
+        "psychology",
+        "business/startups"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.4
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.34
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.2
+        }
+      ],
+      "needs_review": true,
+      "rationale": "True crime investigations and fraud narratives.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1309888040": {
+      "topics": [
+        "comedy",
+        "fiction/comedy",
+        "business/founders",
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.69
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.24
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy interviews and humorous conversations.",
+      "display_title": "Lawful Stupid - A DnD 5e Actual Play",
+      "blurb": "We at Lawful Stupid are a D&D 5e actual play podcast who actually love to play DnD! We love everything about the Tabletop RPG Community and consistent.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1310637866": {
+      "topics": [
+        "business/careers",
+        "business/marketing",
+        "tv-film/reviews",
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.3
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.27
+        },
+        {
+          "node": "society",
+          "confidence": 0.24
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "Agent Survival Guide | Empowering Insurance Agents to",
+      "blurb": "Bringing insurance agents tips and strategies for making sales, staying compliant, marketing yourself, getting leads, and more! Think of the Agent Sur.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1313000372": {
+      "topics": [
+        "business/careers",
+        "business/founders",
+        "comedy/interviews",
+        "fiction/comedy"
+      ],
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.4
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.24
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        },
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.17
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "The Insurance Guys Podcast",
+      "blurb": "The Insurance Guys podcast is dedicated to agents by agents. Scott Howell and Bradley Flowers discuss all aspects of becoming an insurance agent and g.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1314170606": {
+      "topics": [
+        "news/politics",
+        "history",
+        "news/commentary",
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.86
+        },
+        {
+          "node": "history",
+          "confidence": 0.34
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.24
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.17
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and political commentary.",
+      "display_title": "All In with Chris Hayes",
+      "blurb": "The biggest news and political stories of the day with a commitment to in-depth reporting that consistently seeks to hold our leaders accountable.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1315130618": {
+      "topics": [
+        "business/founders",
+        "business/marketing",
+        "business/careers",
+        "news/politics"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.72
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.6
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.51
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1315352438": {
+      "topics": [
+        "health/fitness",
+        "business/founders",
+        "business/startups",
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.48
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.2
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "ElkShape",
+      "blurb": "Elk Hunting, Fitness, & Discipline",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1316200856": {
+      "topics": [
+        "medicine",
+        "society",
+        "economics",
+        "news/commentary"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.6
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        },
+        {
+          "node": "economics",
+          "confidence": 0.6
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical education and clinical procedure guidance.",
+      "display_title": "The Medical Mind",
+      "blurb": "APA's Medical Mind Podcast covers the latest in psychiatric medicine and emerging trends in the field of mental health care. APA members and other hea.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1317082634": {
+      "topics": [
+        "sports/rugby",
+        "sports/basketball",
+        "news/commentary",
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.3
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.24
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "Weekend Sport with Jason Pine",
+      "blurb": "Weekend Sport with Jason Pine on Newstalk ZB brings you all the action and reaction to the sporting weekend.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1317356120": {
+      "topics": [
+        "business/founders",
+        "history",
+        "news/politics",
+        "psychology"
+      ],
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.48
+        },
+        {
+          "node": "history",
+          "confidence": 0.34
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.34
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.34
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "The Peter McCormack Show",
+      "blurb": "The Peter McCormack Show - politics, macro, Bitcoin and AI, long-form interviews. Twice-weekly conversations about money, power, and the shifts reshap.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1318465262": {
+      "topics": [
+        "tv-film/interviews",
+        "tv-film/reviews",
+        "comedy/interviews",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.27
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.17
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reviews focused on television and film content.",
+      "display_title": "The Boo Crew",
+      "blurb": "Join your hosts Leone D'Antonio, Trevor Shand, and Lauren Shand as they bring you discussions and interviews covering all things horror! Our guests ar.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1318746656": {
+      "topics": [
+        "psychology",
+        "business/marketing",
+        "relationships",
+        "tv-film/reviews"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.51
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.45
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.34
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.27
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Human behavior and decision-making science.",
+      "display_title": "Mental Selling: The Sales Performance Podcast",
+      "blurb": "Mental Selling: The Sales Performance Podcast is a show for motivated problem solvers in sales, leadership and customer service. Each episode features.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1320375866": {
+      "topics": [
+        "sports/cricket",
+        "comedy/interviews",
+        "history",
+        "food"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.4
+        },
+        {
+          "node": "history",
+          "confidence": 0.34
+        },
+        {
+          "node": "food",
+          "confidence": 0.34
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "Two For None",
+      "blurb": "Two for None is a comedy cricket podcast featuring two great mates who are terrible cricketers but what they lack in skill they make up for in banter,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1323783266": {
+      "topics": [
+        "math",
+        "tv-film/reviews",
+        "business/careers",
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.4
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.4
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "Odds and Evenings",
+      "blurb": "Playing around with maths and puzzles was something that the two hosts spent their time at university doing together. Now in their late twenties with.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1325638028": {
+      "topics": [
+        "science/chemistry",
+        "business/founders",
+        "comedy/interviews",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.24
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.17
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1326561266": {
+      "topics": [
+        "tv-film/interviews",
+        "tv-film/reviews",
+        "business/careers",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.53
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.2
+        },
+        {
+          "node": "history",
+          "confidence": 0.17
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reviews focused on television and film content.",
+      "display_title": "The Movie Crypt",
+      "blurb": "Filmmakers Adam Green (FROZEN, the HATCHET franchise), Joe Lynch (MAYHEM, EVERLY), and Arwen the Yorkie host this inspirational and educational progra.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1330225136": {
+      "topics": [
+        "economics/markets",
+        "business",
+        "tv-film/reviews",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.4
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.24
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "BiggerPockets Money Podcast",
+      "blurb": "Intermediate to advanced personal finance strategies for people serious about the FIRE (financial independence retire early) movement—not just dreamin.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1330279268": {
+      "topics": [
+        "music",
+        "comedy/interviews"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.6
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "AXE TO GRIND PODCAST",
+      "blurb": "THEE Hardcore Podcast, hosted by Tom, Bob, and Patrick.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1330329512": {
+      "topics": [
+        "news/tech",
+        "computing",
+        "history",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.34
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.24
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "CoRecursive: Coding Stories",
+      "blurb": "The stories and people behind the code. Hear stories of software development from interesting people.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1330534712": {
+      "topics": [
+        "aviation",
+        "tv-film/reviews",
+        "comedy/interviews",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.4
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.2
+        },
+        {
+          "node": "history",
+          "confidence": 0.17
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1330833158": {
+      "topics": [
+        "adventure/exploration",
+        "nature",
+        "history",
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.34
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "Wet Fly Swing Fly Fishing Podcast",
+      "blurb": "Dave from the Wet Fly Swing Fly Fishing Blog interviews the biggest names in fly fishing and fly tying today. He digs out all of the best fly fishing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1331020118": {
+      "topics": [
+        "business/marketing",
+        "business/startups",
+        "business/non-profit",
+        "business/founders"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business marketing and sales strategy instruction.",
+      "display_title": "Responsive Lab Podcast",
+      "blurb": "Welcome to The Responsive Lab, presented by Virtuous. In this podcast, we're exploring how nonprofits leverage technology to deepen donor engagement..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1332200318": {
+      "topics": [
+        "comedy/interviews",
+        "relationships",
+        "medicine",
+        "food"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.34
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.3
+        },
+        {
+          "node": "food",
+          "confidence": 0.17
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy interviews and humorous conversations.",
+      "display_title": "IDIOT with Laura Clery",
+      "blurb": "Welcome to my podcast where I tell you more than you ever asked about. I will make you laugh until you pee, always tell you the truth, share with you.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1332402254": {
+      "topics": [
+        "education/self-improvement",
+        "psychology",
+        "business/founders",
+        "tv-film/reviews"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.48
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "Slay Girl Slay",
+      "blurb": "The Slay Girl Slay podcast is a space created to uplift, motivate, and inspire women to be fearless in the pursuit of their dreams, go after what they.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1333185866": {
+      "topics": [
+        "travel",
+        "tv-film/reviews",
+        "business/startups",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.4
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.4
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.24
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "Sailing Doodles Podcast",
+      "blurb": "Bobby and Laura are sailing around the world with two full size labradoodles and document their adventures as they go! In the podcast series they will.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1333863338": {
+      "topics": [
+        "kids-family/education",
+        "relationships",
+        "tv-film/reviews",
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.34
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.27
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.2
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "Bedtime Explorers",
+      "blurb": "Slow down and snuggle down with Kinderling's relaxing meditation series, specially designed to soothe kids to sleep. Join mindfulness coach Amy Taylor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1334232884": {
+      "topics": [
+        "health/fitness",
+        "psychology",
+        "comedy/interviews",
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.51
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.4
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.27
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed-topic podcast covering varied subjects.",
+      "display_title": "The Ready State Podcast",
+      "blurb": "A podcast about health, aging, fitness, recovery, nutrition, parenting, and living well, featuring conversations with leading experts, coaches, and th.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-29-b935f5c8",
+      "classified_at": "2026-07-29T16:59:48.602Z"
+    },
     "1459232606": {
       "topics": [
         "news/politics",
@@ -17339,11 +19002,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-29T08:51:11.265Z",
+  "built_at": "2026-07-29T16:59:48.602Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-29-084a61e4",
+    "last_batch_id": "fresh-2026-07-29-b935f5c8",
     "last_batch_tier": 1
   }
 }
