@@ -148,11 +148,22 @@ function render() {
   }
   ui.tNow.textContent = formatTimestamp(pos, EXACT);
   ui.tLeft.textContent = dur ? `-${formatTimestamp(Math.max(0, dur - pos), EXACT)}` : "--:--";
+  syncCardButtons();
+}
+
+function syncCardButtons() {
+  // Reflect play state on the originating card so the page and the bar agree.
+  document.querySelectorAll("[data-play]").forEach((b) => {
+    const on = current && b.dataset.play === current.id && isPlaying();
+    if (on) b.dataset.playing = "1"; else delete b.dataset.playing;
+    b.textContent = on ? "❚❚" : "▶";
+  });
 }
 
 function setNowPlaying(item, why) {
   current = item;
   ui.root.hidden = false;
+  document.body.classList.add("fp-open");
   ui.title.textContent = item.title || "";
   ui.show.textContent = item.show || "";
   ui.sTitle.textContent = item.title || "";
@@ -195,11 +206,17 @@ function bind() {
     await manager.stop();
     ui.root.hidden = true;
     ui.sheet.hidden = true;
+    document.body.classList.remove("fp-open", "fp-expanded");
     current = null;
+    syncCardButtons();
   });
 
-  ui.info.addEventListener("click", () => { ui.sheet.hidden = !ui.sheet.hidden; });
-  ui.collapse.addEventListener("click", () => { ui.sheet.hidden = true; });
+  const setExpanded = (open) => {
+    ui.sheet.hidden = !open;
+    document.body.classList.toggle("fp-expanded", open);
+  };
+  ui.info.addEventListener("click", () => setExpanded(ui.sheet.hidden));
+  ui.collapse.addEventListener("click", () => setExpanded(false));
 
   ui.backBtn.addEventListener("click", async () => {
     await manager.seek(Math.max(0, (backend.currentTime ?? 0) - SEEK_BACK), { precise: true });
