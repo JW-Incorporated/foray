@@ -18928,6 +18928,1179 @@
       "batch_id": "fresh-2026-07-30-3f96b486",
       "classified_at": "2026-07-30T00:54:15.888Z"
     },
+    "1367963156": {
+      "topics": [
+        "economics/markets",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.92
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Investment-focused discussions on markets, policy, and economic trends with technical analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1368074498": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily political commentary and news from conservative talk radio host Lars Larson.",
+      "display_title": "The Lars Larson Show Pacific Northwest Podcast",
+      "blurb": "Daily podcast of political talk and conservative news commentary from Lars Larson, focusing on Pacific Northwest issues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1368713096": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dallas sports radio best-of compilation featuring football discussion, humor, and opinion.",
+      "display_title": "The Ticket Top 10",
+      "blurb": "Best-of compilation from Dallas sports radio featuring top football discussions, funny moments, and sports opinion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1370651486": {
+      "topics": [
+        "education/how-to",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.88
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bar exam prep strategies and study techniques for aspiring lawyers, hosted by two experienced bar exam coaches.",
+      "display_title": "The Bar Exam Toolbox Podcast",
+      "blurb": "Bar exam preparation podcast offering study strategies, memory techniques, and practical advice for passing the bar.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1370718758": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth ATP and WTA coverage with focus on Canadian players and athlete interviews.",
+      "display_title": "Match Point Canada",
+      "blurb": "Canada's premier tennis podcast covering ATP and WTA with focus on Canadian players and interviews with top athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1372613288": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.91
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Minnesota Wild and NHL discussion from sports journalists Michael Russo and Anthony LaPanta.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 15w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1372615640": {
+      "topics": [
+        "comedy/casual-hangs",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Short-form autobiographical storytelling from everyday Midwestern life told in conversational, nostalgic style.",
+      "display_title": "7 Minute Stories w/ Aaron Calafato",
+      "blurb": "Unscripted personal narratives from Aaron Calafato, featuring true stories told in about seven minutes with Midwestern nostalgia.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:52:38.738Z"
+    },
+    "1372879808": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual reviews of made-for-TV Hallmark movies with humor and friendship among hosts.",
+      "display_title": "Deck The Hallmark",
+      "blurb": "Friends review and rank Hallmark made-for-TV movies, mixing genuine critique with humor and friendly banter.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1372957034": {
+      "topics": [
+        "food",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.91
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chicago food enthusiasts discuss restaurants, fat culture, and eating experiences with humor.",
+      "display_title": "I'm Fat Podcast",
+      "blurb": "Chicago-based food podcast exploring restaurants, food culture, and eating experiences with lots of laughs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1373165672": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.88
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly running advice from coaches, athletes, and celebrities covering training, injury, and performance.",
+      "display_title": "Runner's World Podcast",
+      "blurb": "Running advice from elite coaches and athletes covering training techniques, injury prevention, and performance strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1373312240": {
+      "topics": [
+        "science",
+        "nature"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.87
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weather science and meteorology from Weather Channel experts discussing forecasting and extreme weather.",
+      "display_title": "Weather Geeks",
+      "blurb": "Weather science and meteorology from Weather Channel experts covering forecasting, hurricanes, and climate impacts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1373797694": {
+      "topics": [
+        "food",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.92
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Napa Valley wine and food stories featuring vintners, winemakers, and industry innovators.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1374942074": {
+      "topics": [
+        "psychology",
+        "health/nutrition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Body-positive wellness podcast rejecting diet culture and exploring intuitive eating and body neutrality.",
+      "display_title": "Good Bodies",
+      "blurb": "Wellness podcast exploring body positivity, intuitive eating, and rejecting toxic diet culture with humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:52:38.738Z"
+    },
+    "1377843908": {
+      "topics": [
+        "science",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.82
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Eclectic science facts and pop culture trivia from Popular Science magazine writers.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1381257272": {
+      "topics": [
+        "health/alternative",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.88
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness interviews with experts on protocols for nutrition, sleep, performance, and longevity.",
+      "display_title": "Dhru Purohit Show",
+      "blurb": "Health expert interviews covering protocols for wellness, longevity, sleep optimization, and performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:52:38.738Z"
+    },
+    "1383599078": {
+      "topics": [
+        "psychology",
+        "philosophy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.88
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.78
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Self-improvement and mindset podcast covering mindfulness, confidence, and practical life strategies.",
+      "display_title": "New Mindset, Who Dis?",
+      "blurb": "Practical self-improvement advice on mindset, confidence, and living purposefully, updated twice weekly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:52:38.738Z"
+    },
+    "1385062988": {
+      "topics": [
+        "gaming",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game discussion and commentary from game developers and documentary creators.",
+      "display_title": "Noclip Crewcast",
+      "blurb": "Video game discussion and documentary series from Noclip covering game design, industry news, and gameplay.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1385864210": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Los Angeles Dodgers coverage from fan perspective with player updates and team analysis.",
+      "display_title": "Dodgers Nation Podcast Network",
+      "blurb": "LA Dodgers baseball coverage featuring team analysis, player trades, and fan perspectives on season updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1386867488": {
+      "topics": [
+        "tv-film/reviews",
+        "religion/spirituality",
+        "culture/mythology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Film and literature analysis through symbolism lens, exploring mythological and spiritual themes.",
+      "display_title": "The Symbolic World",
+      "blurb": "Analysis of symbolism in sacred stories, film, and contemporary culture exploring spiritual and mythic dimensions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:52:38.738Z"
+    },
+    "1386936932": {
+      "topics": [
+        "news/politics",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.83
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Kansas City and national news and politics from conservative talk radio host Pete Mundo.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1387136186": {
+      "topics": [
+        "craft/filmmaking",
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Behind-the-scenes production design from film and TV from Emmy-winning set decorator Kim Wannop.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:52:38.738Z"
+    },
+    "1387529624": {
+      "topics": [
+        "psychology",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychologists discuss science, academia, and controversies in accessible conversation format.",
+      "display_title": "Two Psychologists Four Beers",
+      "blurb": "Two psychologists discuss current events in science and academia, exploring research controversies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1388517902": {
+      "topics": [
+        "comedy/stand-up"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ADHD-fueled comedy podcast with irreverent humor and personal anecdotes from two comedians.",
+      "display_title": "Wicked Funny Podcast",
+      "blurb": "Comedy podcast from comedians Brian Beaudoin and Cory Gee mixing humor, personal stories, and audience interaction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1391240708": {
+      "topics": [
+        "science",
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.88
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily weather story and meteorology updates from AccuWeather covering extreme weather and climate.",
+      "display_title": "AccuWeather Daily",
+      "blurb": "Daily weather stories from AccuWeather covering meteorology, hurricanes, storms, and climate impacts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1391405612": {
+      "topics": [
+        "culture/design",
+        "architecture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design-focused interviews exploring how creators and architects shape lives through intentional design.",
+      "display_title": "Design Your Life with Vince Frost",
+      "blurb": "Design philosophy interviews from CEO Vince Frost exploring how architecture and design shape daily life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1391657450": {
+      "topics": [
+        "tv-film/history",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.92
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chronological film history of Marx Brothers from vaudeville through complete filmography.",
+      "display_title": "Full Marx - A Marx Bros. Podcast",
+      "blurb": "Chronological Marx Brothers film analysis from vaudeville beginnings through their complete filmography.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1391915810": {
+      "topics": [
+        "news/tech",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.88
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cybersecurity and social engineering tactics in cyber crime from CyberWire hosts.",
+      "display_title": "Hacking Humans",
+      "blurb": "Cybersecurity podcast exploring social engineering, deception tactics, and cyber threat intelligence.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1392545186": {
+      "topics": [
+        "religion/christianity",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian theology and church history from multiple denominational perspectives with guest experts.",
+      "display_title": "The Remnant Radio's Podcast",
+      "blurb": "Christian theology podcast exploring church history and theological debates from multiple perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1392662714": {
+      "topics": [
+        "sports/fantasy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily fantasy sports picks and strategy for MLB, NBA, NFL, MMA, NASCAR, and golf.",
+      "display_title": "Stokastic Daily Fantasy",
+      "blurb": "Daily fantasy sports picks and strategy across multiple sports including MLB, NBA, NFL, and golf.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1396139984": {
+      "topics": [
+        "culture/art",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Female illustrators share careers, industry challenges, and strategies for success in art.",
+      "display_title": "The Women of Illustration Podcast",
+      "blurb": "Female illustrators discuss careers, building client bases, and succeeding in male-dominated art industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1397232326": {
+      "topics": [
+        "tv-film/history",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.88
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film critics review obscure horror, sci-fi, and fantasy movies from cinema history.",
+      "display_title": "Movie Oubliette",
+      "blurb": "Cult film criticism exploring obscure and forgotten horror, sci-fi, and fantasy movies from cinema history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1397527832": {
+      "topics": [
+        "fiction/comedy",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improvised D&D campaign with five friends combining fantasy adventure with humor and food.",
+      "display_title": "DnDnD",
+      "blurb": "Improvised D&D campaign with five friends weaving fantasy adventure, roleplay, and comedy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1397767808": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dutch-language daily Eredivisie and European football news and analysis.",
+      "display_title": "AD Voetbal podcast",
+      "blurb": "Daily Dutch football podcast covering Eredivisie, Champions League, and European football news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1399009172": {
+      "topics": [
+        "culture/design",
+        "architecture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.89
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Architecture practice and design philosophy from experienced architect and small firm owner.",
+      "display_title": "Life of an Architect",
+      "blurb": "Architecture insights from practicing architects exploring design philosophy, practice management, and career.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1399040612": {
+      "topics": [
+        "craft/diy-home",
+        "nature"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.88
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gardening and horticulture from irreverent expert Sarah Wilson with practical growing advice.",
+      "display_title": "Roots and All - Gardening Podcast",
+      "blurb": "Gardening podcast from horticulturist Sarah Wilson covering practical growing, native plants, and nature.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1399177286": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Minnesota Timberwolves and NBA coverage from beat writer Dane Moore.",
+      "display_title": "The Dane Moore NBA Podcast",
+      "blurb": "Minnesota Timberwolves and NBA analysis from beat writer Dane Moore covering roster moves and strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1402680092": {
+      "topics": [
+        "business/careers",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "HR professional development covering hiring, retention, compliance, and workplace transformation.",
+      "display_title": "Honest HR",
+      "blurb": "HR professional development podcast offering hiring strategies, compliance advice, and workplace insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1403064308": {
+      "topics": [
+        "nature"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Birding adventures and bird conservation from enthusiast couple Hannah and Erik.",
+      "display_title": "Hannah and Erik Go Birding",
+      "blurb": "Birding podcast featuring adventure stories, bird identification, and conservation from enthusiast couple.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1406061656": {
+      "topics": [
+        "relationships",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.92
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Research-backed relationship advice from psychologist Dr. Abby Medcalf covering communication and boundaries.",
+      "display_title": "Relationships Made Easy",
+      "blurb": "Psychologist-hosted relationship podcast with research-backed strategies for communication and emotional intimacy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1406174660": {
+      "topics": [
+        "religion/christianity",
+        "kids-family"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Catholic faith lessons for children covering theology, saints, and Gospel passages.",
+      "display_title": "Catholic Sprouts: Daily Podcast for Catholic Kids",
+      "blurb": "Daily Catholic faith podcast for children covering scripture, sacraments, saints, and theology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1406179184": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Pokémon GO game updates, strategy, and community from dedicated players.",
+      "display_title": "GOCast: a Pokémon GO Podcast",
+      "blurb": "Pokémon GO podcast covering weekly game updates, strategy, PvP battles, and community events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1406222390": {
+      "topics": [
+        "kids-family/education",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.92
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "American history education for children covering colonial period and founding fathers chronologically.",
+      "display_title": "Growing Patriots",
+      "blurb": "American history podcast for children covering colonial period and founding fathers chronologically.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1407577718": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation through storytelling with primary sources and victim testimonials.",
+      "display_title": "Invisible Choir",
+      "blurb": "True crime podcast examining murders through investigative storytelling and victim testimonials.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1408859036": {
+      "topics": [
+        "news/tech",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.88
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Legal technology innovation and practice transformation from tech innovation expert Bob Ambrogi.",
+      "display_title": "LawNext",
+      "blurb": "Legal technology and innovation podcast exploring new practice models and access-to-justice solutions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
+    "1409420546": {
+      "topics": [
+        "education",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.88
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Speech-language pathology professional development and therapy strategies for school-age children.",
+      "display_title": "The Speech Link with Char Boshart",
+      "blurb": "Speech therapy podcast offering SLP professional development and evidence-based therapy strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-b7921724",
+      "classified_at": "2026-07-30T08:51:57.673Z"
+    },
     "1459232606": {
       "topics": [
         "news/politics",
@@ -20096,11 +21269,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-30T00:54:15.888Z",
+  "built_at": "2026-07-30T08:52:38.738Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-30-3f96b486",
+    "last_batch_id": "fresh-2026-07-30-b7921724",
     "last_batch_tier": 1
   }
 }
