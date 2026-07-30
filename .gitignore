@@ -9,3 +9,10 @@ backend/output/
 data/catalog-breadth-intl.json
 *.checkpoint
 data-local/
+
+# Vercel build output (tools/web/prepare-dist.mjs)
+dist/
+.vercel/
+
+.vercel
+.env*
