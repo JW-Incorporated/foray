@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-30T08:20:01.321Z",
+  "built_at": "2026-07-30T16:17:27.686Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-30-0065314b",
+    "last_batch_id": "fresh-2026-07-30-0a25ddc5",
     "last_batch_tier": 1
   },
   "entries": {
@@ -21158,11 +21158,55 @@
     },
     "958230465": {
       "topics": [
+        "health/fitness",
+        "culture/art",
+        "business/founders",
+        "business/startups",
         "economics/markets",
-        "business"
+        "sports/biomechanics",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "health/fitness show",
+      "display_title": "The Twenty Minute VC (20VC): Venture Cap",
+      "blurb": "The Twenty Minute VC (20VC) interviews the world's greatest venture capitalists with prior guests including Sequoia's Doug Leone and Benchmark's Bill...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "958778095": {
       "topics": [
@@ -22230,10 +22274,50 @@
     },
     "980467527": {
       "topics": [
+        "culture/art",
+        "tv-film/after-shows",
+        "news/commentary",
+        "news/daily",
+        "culture/pop-culture",
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "culture/art show",
+      "display_title": "The Jock and Nerd Podcast",
+      "blurb": "Geek out with a millennial Jock, a Gen-X Nerd and a grumpy puppet! Anthony, Imran and Rugboy deliver comic book and superhero TV and movie news, revie...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "980669909": {
       "topics": [
@@ -25556,10 +25640,35 @@
     },
     "1052521113": {
       "topics": [
-        "sports/wrestling"
+        "sports/wrestling",
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports/wrestling show",
+      "display_title": "Jobber Radio",
+      "blurb": "Jobber Radio is a place for some guys to sit around and talk about all avenues of the sport known as professional wrestling",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1052606381": {
       "topics": [
@@ -25638,10 +25747,50 @@
     },
     "1054081827": {
       "topics": [
-        "sports/basketball"
+        "sports/basketball",
+        "math",
+        "culture/art",
+        "education/courses",
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        },
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports/basketball show",
+      "display_title": "Game Theory Podcast",
+      "blurb": "Sam Vecenie, a Senior NBA Writer at The Athletic, talks all about basketball",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1054135564": {
       "topics": [
@@ -25653,10 +25802,80 @@
     },
     "1054230417": {
       "topics": [
-        "food"
+        "sports/endurance",
+        "food/fermentation",
+        "culture/art",
+        "business/founders",
+        "craft/diy-home",
+        "business/startups",
+        "nature",
+        "economics/markets",
+        "food",
+        "tv-film/reviews",
+        "culture/pop-culture",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "food/fermentation",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        },
+        {
+          "node": "food",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports/endurance show",
+      "display_title": "Cider Chat",
+      "blurb": "Interviewing cidermakers, importers, orchardists, foodies, farmers and cider enthusiasts around the world",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1054509922": {
       "topics": [
@@ -25675,11 +25894,35 @@
     },
     "1054640091": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "business/startups",
+        "comedy/casual-hangs",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "business/startups show",
+      "display_title": "Radio Ronin",
+      "blurb": "CHUNGA IS ON RADIO RONIN! Radio Ronin is a slightly irrelevant & incorrect look at current events, pop culture and the hosts' own daily misadventures...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1054720784": {
       "topics": [
@@ -25730,10 +25973,45 @@
     },
     "1055347185": {
       "topics": [
-        "health/fitness"
+        "sports/wrestling",
+        "health/fitness",
+        "culture/art",
+        "sports/biomechanics",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports/wrestling show",
+      "display_title": "Westside Barbell",
+      "blurb": "The Conjugate Method, straight from the source",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1055348656": {
       "topics": [
@@ -25872,10 +26150,39 @@
     "1059573987": {
       "topics": [
         "health/nutrition",
-        "food"
+        "culture/art",
+        "health/alternative",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "health/nutrition show",
+      "display_title": "Healthful Pursuit Podcast",
+      "blurb": "Join Functional Medicine Practitioner and Holistic Nutritionist, Leanne Vogel as we seek answers on the fringes of the health space",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1059619918": {
       "topics": [
@@ -25902,10 +26209,45 @@
     },
     "1059982941": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "sports/basketball",
+        "culture/art",
+        "education/courses",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "religion/judaism show",
+      "display_title": "Daf Yomi for Women - Hadran",
+      "blurb": "Hadran",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1060110806": {
       "topics": [
@@ -25924,10 +26266,30 @@
     },
     "1060199031": {
       "topics": [
-        "religion/spirituality"
+        "religion/spirituality",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "religion/spirituality show",
+      "display_title": "Ultraculture With Jason Louv",
+      "blurb": "Jason Louv brings together thinkers from the worlds of spirituality, high technology and the counterculture with some of the most challenging issues w...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1060567066": {
       "topics": [
@@ -25976,10 +26338,45 @@
     },
     "1061727141": {
       "topics": [
-        "news/commentary"
+        "culture/art",
+        "news/commentary",
+        "news/politics",
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "culture/art show",
+      "display_title": "O'Connor & Company",
+      "blurb": "Enjoy O'Connor & Company from the nation's capital! Heard weekdays 6am to 9am on the Salem Radio Network",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1062077484": {
       "topics": [
@@ -26052,10 +26449,40 @@
     },
     "1063165791": {
       "topics": [
-        "news/daily"
+        "health/nutrition",
+        "news/commentary",
+        "news/daily",
+        "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "health/nutrition show",
+      "display_title": "The Health Ranger Report",
+      "blurb": "Wisdom, commentary and improv entertainment from the Health Ranger!!!!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1063252175": {
       "topics": [
@@ -26351,10 +26778,45 @@
     },
     "1069316145": {
       "topics": [
-        "math"
+        "math",
+        "music",
+        "culture/art",
+        "education/courses",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "math show",
+      "display_title": "Modellansatz - English episodes only",
+      "blurb": "On closer inspection, we find science and especially mathematics throughout our everyday lives, from the tap to automatic speed regulation on motorway...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1069426980": {
       "topics": [
@@ -26557,10 +27019,45 @@
     },
     "1071755499": {
       "topics": [
-        "food"
+        "business/founders",
+        "food",
+        "business/startups",
+        "economics/markets",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "business/founders show",
+      "display_title": "Bartender at Large",
+      "blurb": "An online series about craft cocktails around the world & the bartenders who make them",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1071831261": {
       "topics": [
@@ -26648,10 +27145,40 @@
     },
     "1073212119": {
       "topics": [
-        "music"
+        "music",
+        "news/commentary",
+        "news/daily",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "music show",
+      "display_title": "Vinyl Emergency",
+      "blurb": "Musicians, record label owners, visual artists and beyond describe how vinyl records have shaped their lives and careers",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1073226719": {
       "topics": [
@@ -26762,17 +27289,102 @@
     },
     "1074541605": {
       "topics": [
-        "culture/art"
+        "music",
+        "culture/art",
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "music show",
+      "display_title": "The Comics Canon",
+      "blurb": "The Comics Canon is the podcast that reads, reviews, and renders judgment on the greatest comic book stories of yesterday and today",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1074822039": {
       "topics": [
-        "gaming"
+        "math",
+        "gaming",
+        "culture/art",
+        "news/commentary",
+        "news/daily",
+        "education/courses",
+        "gaming/design",
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "math show",
+      "display_title": "The XB2 — An Xbox & Gaming Podcast",
+      "blurb": "The world's best Xbox and gaming podcast is here: The XB2",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1075724531": {
       "topics": [
@@ -26805,11 +27417,40 @@
     },
     "1076142249": {
       "topics": [
+        "culture/art",
+        "business/founders",
         "business/startups",
-        "business/founders"
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "culture/art show",
+      "display_title": "Libros para Emprendedores",
+      "blurb": "En cada episodio se resume un libro de utilidad para emprendedores o para aquellos que quieran serlo algún día",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1076239915": {
       "topics": [
@@ -26851,10 +27492,30 @@
     },
     "1076668995": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "religion/buddhism show",
+      "display_title": "Ordinary Mind Zendo",
+      "blurb": "Dharma Talks address a psychologically minded Zen practice adapted to the needs of American students practicing in the context of their everyday lives",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1076806340": {
       "topics": [
@@ -26895,18 +27556,82 @@
     },
     "1077823917": {
       "topics": [
+        "sports/endurance",
+        "culture/art",
         "health/mental",
-        "psychology"
+        "comedy/casual-hangs",
+        "psychology",
+        "tv-film/reviews",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports/endurance show",
+      "display_title": "Dopey: On the Dark Comedy of Drug Addict",
+      "blurb": "Dopey Podcast is the world’s greatest podcast on drugs, addiction and dumb shit",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1078007055": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/after-shows",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "tv-film/after-shows show",
+      "display_title": "黑水公园",
+      "blurb": "黑水公园是一档以电影、剧集、科幻、动漫为载体，畅谈人生的趣谈节目。 （金花微信：uwwwsc；金花微博：黑水公园_金花）",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1078098622": {
       "topics": [
@@ -26942,10 +27667,65 @@
     },
     "1078657833": {
       "topics": [
-        "craft/diy-home"
+        "sports/endurance",
+        "health/nutrition",
+        "culture/art",
+        "craft/diy-home",
+        "nature",
+        "health/alternative",
+        "tv-film/reviews",
+        "culture/pop-culture",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports/endurance show",
+      "display_title": "Orchard People",
+      "blurb": "Learn how to grow and care for fruit trees with fruit tree care educator Susan Poizner of OrchardPeople",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1078665131": {
       "topics": [
@@ -26963,11 +27743,55 @@
     },
     "1078826997": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "sports/endurance",
+        "health/fitness",
+        "culture/art",
+        "sports/biomechanics",
+        "tv-film/reviews",
+        "culture/pop-culture",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports/endurance show",
+      "display_title": "Life in the Peloton, presented by MAAP",
+      "blurb": "Ever wondered what life is like as a professional cyclist? Australian ex-professional cyclist Mitch Docker takes you inside the world of Professional...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1079001185": {
       "topics": [
@@ -26978,10 +27802,55 @@
     },
     "1079095743": {
       "topics": [
-        "comedy/casual-hangs"
+        "business/startups",
+        "health/fitness",
+        "music",
+        "news/commentary",
+        "news/daily",
+        "economics/markets",
+        "sports/biomechanics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "business/startups show",
+      "display_title": "CoolGames Inc",
+      "blurb": "Griffin McElroy and Nick Robinson created a new video game every week with your help",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1079107543": {
       "topics": [
@@ -27144,10 +28013,35 @@
     },
     "1081130355": {
       "topics": [
-        "business/management"
+        "culture/art",
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "culture/art show",
+      "display_title": "Well-Oiled Operations with Stacy Tuschl",
+      "blurb": "Are you ready to leverage the power of business process improvement tools to enhance your profit margins and achieve a better work-life balance? Welco...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1081481629": {
       "topics": [
@@ -27217,10 +28111,40 @@
     },
     "1082504877": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "culture/art",
+        "education/courses",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "religion/judaism show",
+      "display_title": "On the Other Hand: Ten Minutes of Torah",
+      "blurb": "On the Other Hand: Ten Minutes of Torah, a podcast presented by ReformJudaism",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1082548342": {
       "topics": [
@@ -27268,11 +28192,30 @@
     },
     "1083356109": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "tv-film/reviews show",
+      "display_title": "Simpodden Hultén och Jansson",
+      "blurb": "I Simpodden Hultén & Jansson snackas det simning på tvären och längden",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1083410032": {
       "topics": [
@@ -27374,11 +28317,50 @@
     },
     "1085828103": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "religion/buddhism",
+        "sports/endurance",
+        "culture/art",
+        "education/self-improvement",
+        "tv-film/reviews",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "religion/buddhism show",
+      "display_title": "Slow German",
+      "blurb": "In this podcast, German podcaster Annik Rubens talks slowly about topics of everyday German life, from beergardens to recycling",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1086221755": {
       "topics": [
@@ -27603,15 +28585,84 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "true-crime show",
+      "display_title": "Someone Knows Something",
+      "blurb": "Someone Knows Something is the investigative true crime series by award-winning documentarian David Ridgen",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:27.686Z"
     },
     "1089649401": {
       "topics": [
-        "news",
-        "business"
+        "health/nutrition",
+        "culture/art",
+        "business/founders",
+        "news/commentary",
+        "business/startups",
+        "news/daily",
+        "economics/markets",
+        "health/alternative",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "health/nutrition show",
+      "display_title": "The Hospital Finance Podcast",
+      "blurb": "If you’re concerned about revenue at your hospital, then The Hospital Finance podcast is your go-to source for information and insights that can help...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1089780289": {
       "topics": [
@@ -27630,10 +28681,30 @@
     },
     "1090136163": {
       "topics": [
+        "gaming/design",
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "gaming/design show",
+      "display_title": "Dev Game Club",
+      "blurb": "Join hosts and industry veterans Brett Douville and Tim Longo as they discuss older titles and the impact they had on the games industry, as well as a...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:27.686Z"
     },
     "1090253610": {
       "topics": [
@@ -27796,10 +28867,50 @@
     },
     "1092247887": {
       "topics": [
-        "sports/baseball"
+        "culture/art",
+        "tv-film/after-shows",
+        "news/commentary",
+        "news/daily",
+        "culture/pop-culture",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "culture/art show",
+      "display_title": "Giants Talk: A San Francisco Giants Podc",
+      "blurb": "NBC Sports Bay Area’s Alex Pavlovic and Cole Kuiper bring you comprehensive coverage of the San Francisco Giants",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1092361338": {
       "topics": [
@@ -27893,10 +29004,40 @@
     },
     "1093135143": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "culture/art",
+        "education/self-improvement",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "religion/buddhism show",
+      "display_title": "Wild Heart Meditation Center",
+      "blurb": "Wild Heart Meditation Center's podcast offers an assortment of talks given on topics as they relate to Buddhist practice",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1093260018": {
       "topics": [
@@ -27938,10 +29079,30 @@
     },
     "1094394003": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "culture/art show",
+      "display_title": "Talking Out Your Glass podcast",
+      "blurb": "Former editor of Glass Art magazine Shawn Waggoner interviews internationally respected artists and experts in hot, warm and cold glass",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1094490100": {
       "topics": [
@@ -27976,10 +29137,40 @@
     },
     "1095157047": {
       "topics": [
-        "aviation"
+        "culture/art",
+        "craft/diy-home",
+        "nature",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "culture/art show",
+      "display_title": "Flite Test Community Podcast",
+      "blurb": "Welcome to the Flite Test Community Podcast, A Podcast by the community, for the community!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1095195175": {
       "topics": [
@@ -28476,17 +29667,77 @@
     },
     "1106679693": {
       "topics": [
-        "culture/design"
+        "culture/art",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "culture/art show",
+      "display_title": "Clever with Amy Devers",
+      "blurb": "Clever is an award-winning, independent podcast that offers a window into the humanity behind the design of the world around us",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1106762925": {
       "topics": [
-        "travel"
+        "business/startups",
+        "music",
+        "culture/art",
+        "economics/markets",
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "business/startups show",
+      "display_title": "Mountain & Prairie with Ed Roberson",
+      "blurb": "Long-form conversations with remarkable people connected to the land, communities, and culture of the American West",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1107033358": {
       "topics": [
@@ -28687,17 +29938,102 @@
     },
     "1112194905": {
       "topics": [
-        "news/daily"
+        "tv-film/reviews",
+        "news/commentary",
+        "news/daily",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "tv-film/reviews show",
+      "display_title": "The Sean Hannity Show",
+      "blurb": "Sean Hannity is a multimedia superstar, spending four hours a day every day reaching out to millions of Americans on radio, television and the Interne...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1112233641": {
       "topics": [
-        "culture/art"
+        "religion/judaism",
+        "tv-film/reviews",
+        "business/founders",
+        "education/courses",
+        "news/commentary",
+        "business/startups",
+        "news/daily",
+        "economics/markets",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "religion/judaism show",
+      "display_title": "Hyperallergic",
+      "blurb": "News, developments, and stirrings in the art world with host Hrag Vartanian, cofounder and editor-in-chief of Hyperallergic",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1112383789": {
       "topics": [
@@ -28820,10 +30156,30 @@
     },
     "1115023437": {
       "topics": [
-        "sports/hockey"
+        "culture/art",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "culture/art show",
+      "display_title": "The Instigator Podcast",
+      "blurb": "A Buffalo Sabres podcast hosted by Chris and Tyler of the Buffalo blog Two in the Box",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1115048476": {
       "topics": [
@@ -28896,10 +30252,40 @@
     },
     "1116295539": {
       "topics": [
-        "philosophy"
+        "health/fitness",
+        "culture/art",
+        "sports/biomechanics",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "health/fitness show",
+      "display_title": "Living Free in Tennessee - Nicole Sauce",
+      "blurb": "Helping you live the live you life you choose on your terms",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1116303051": {
       "topics": [
@@ -29014,25 +30400,149 @@
     },
     "1118073831": {
       "topics": [
-        "comedy/stand-up"
+        "sports/basketball",
+        "music",
+        "culture/art",
+        "comedy/casual-hangs",
+        "food",
+        "tv-film/reviews",
+        "culture/pop-culture",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "food",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports/basketball show",
+      "display_title": "Chad the Birdcast",
+      "blurb": "Chad the Bird continues to build a following around Chicagoland with his audio and video bits that have amassed 358K TikTok followers, 17k YouTube sub...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1118213859": {
       "topics": [
+        "business/startups",
+        "tv-film/reviews",
+        "health/mental",
+        "psychology",
         "economics/markets",
-        "business"
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "business/startups show",
+      "display_title": "The Dividend Cafe",
+      "blurb": "The Dividend Cafe is your portal for market perspective that is virtually conflict-free, rooted in deep philosophical commitments about how capital sh...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1118636511": {
       "topics": [
-        "tv-film/reviews"
+        "business/startups",
+        "culture/art",
+        "economics/markets",
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "business/startups show",
+      "display_title": "Dorking Out",
+      "blurb": "The podcast for anyone who loves to dork out about movies",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1118781520": {
       "topics": [
@@ -29051,10 +30561,40 @@
     },
     "1118969643": {
       "topics": [
-        "relationships"
+        "culture/art",
+        "health/mental",
+        "psychology",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "culture/art show",
+      "display_title": "Betrayal Trauma Recovery",
+      "blurb": "No woman wants to face the horror of her husband&#8217;s betrayal",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1119009794": {
       "topics": [
@@ -29065,10 +30605,45 @@
     },
     "1119040005": {
       "topics": [
-        "religion/spirituality"
+        "tv-film/reviews",
+        "business/founders",
+        "business/startups",
+        "economics/markets",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "tv-film/reviews show",
+      "display_title": "The Daily + Weekly by Vince Miller",
+      "blurb": "Get ready to be inspired and transformed with Vince Miller, a renowned author and speaker who has dedicated his life to teaching through the Bible",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1119389968": {
       "topics": [
@@ -29087,10 +30662,35 @@
     },
     "1120117659": {
       "topics": [
-        "medicine"
+        "culture/art",
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "culture/art show",
+      "display_title": "Peds in a Pod: A Pediatric Board Review",
+      "blurb": "Are you a Pediatrician? Pediatrics Resident? Or maybe Family Medicine? Join us for Pediatric Board Review from your hosts Candyce Mehler, DO & Taylor...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-0a25ddc5",
+      "classified_at": "2026-07-30T16:17:10.746Z"
     },
     "1120202831": {
       "topics": [
