@@ -209,6 +209,15 @@ function snapshot(id, src) {
     artwork_url: src.artwork_url ?? null,
     topics: src.topics || [],
     hook: src.hook || src.summary || src.title,
+    // Audio provenance (#21) + DAI flag (#22). This projection is a whitelist,
+    // so anything not named here is dropped — which is exactly how in-app
+    // playback shipped invisible: every card item lost audio_url on the way
+    // through, so playBtn() rendered nothing on all four cards.
+    audio_url: src.audio_url ?? null,
+    audio_type: src.audio_type ?? null,
+    audio_bytes: src.audio_bytes ?? null,
+    duration_sec: src.duration_sec ?? null,
+    dai_suspected: src.dai_suspected ?? false,
   };
   state.itemIndex[id] = snap;
   return snap;
