@@ -20101,6 +20101,1101 @@
       "batch_id": "fresh-2026-07-30-b7921724",
       "classified_at": "2026-07-30T08:51:57.673Z"
     },
+    "1410851204": {
+      "topics": [
+        "education/language-learning",
+        "linguistics/language"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Italian language learning podcast with transcripts and exercises for learners.",
+      "display_title": "Podcast 100% in Italiano",
+      "blurb": "Italian language learning podcast at natural speed with cultural topics for learners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1411449986": {
+      "topics": [
+        "news/daily"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news podcast from Süddeutsche Zeitung covering current events and politics.",
+      "display_title": "Auf den Punkt",
+      "blurb": "German daily news podcast from Süddeutsche Zeitung with current events and interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1412385746": {
+      "topics": [
+        "medicine",
+        "medicine/biology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Clinical OB/GYN education podcast for medical professionals with evidence-based topics.",
+      "display_title": "Dr. Chapa's OBGYN Clinical Pearls",
+      "blurb": "Clinical OB/GYN podcast for healthcare providers covering evidence-based women's health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1413384728": {
+      "topics": [
+        "craft",
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.95
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Creative lifestyle podcast covering sewing, quilting, knitting, and home decor projects.",
+      "display_title": "Make and Decorate with Stephanie",
+      "blurb": "Craft and home decor podcast featuring maker techniques for sewing, quilting, and knitting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1413504428": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-running Tudor era history podcast with expert interviews on English Renaissance period.",
+      "display_title": "Talking Tudors",
+      "blurb": "Tudor history podcast featuring expert interviews on England's Renaissance dynasty.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1413850820": {
+      "topics": [
+        "music",
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Folk music podcast featuring walking interviews with musicians in inspiring landscapes.",
+      "display_title": "Folk on Foot",
+      "blurb": "Folk musicians share stories while walking through landscapes that inspire their work.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1414116530": {
+      "topics": [
+        "religion/hinduism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual discourses from religious teacher Satguru Mata Sudiksha Ji on Hindu spirituality.",
+      "display_title": "Satguru Mata Sudiksha Ji Discourses",
+      "blurb": "Spiritual discourses on Hindu teachings and practices from visiting spiritual teacher.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1415491130": {
+      "topics": [
+        "psychology",
+        "medicine/neuroscience"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychotherapy and neuroscience podcast covering mental health, psychology, and brain science.",
+      "display_title": "The Science of Psychotherapy",
+      "blurb": "Psychotherapy and neuroscience podcast exploring mental health through brain science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1415546090": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual video game podcast discussing games, industry news, and player experiences.",
+      "display_title": "Into the Aether",
+      "blurb": "Low-key video game podcast covering the latest games and industry trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1416582200": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish podcast addressing intimacy and sexuality within Torah and Halacha guidelines.",
+      "display_title": "Intimate Judaism",
+      "blurb": "Jewish podcast addressing intimacy and family life within halakhic traditions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1417125932": {
+      "topics": [
+        "tv-film/history",
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Animation and Studio Ghibli podcast with critical perspective and filmmaker interviews.",
+      "display_title": "Ghibliotheque",
+      "blurb": "Animation podcast exploring Studio Ghibli films and animation filmmakers worldwide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1420201694": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Star Trek analysis podcast examining themes, storytelling, and cultural significance.",
+      "display_title": "Secrets of Star Trek",
+      "blurb": "Star Trek podcast exploring storytelling, themes, and cultural significance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1420216970": {
+      "topics": [
+        "news/politics",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "American politics and government podcast with journalists and policy experts.",
+      "display_title": "DSR's Words Matter",
+      "blurb": "American politics podcast with journalists analyzing policy and government news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1422483488": {
+      "topics": [
+        "psychology",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astrology and advice podcast with psychic readings and listener guidance.",
+      "display_title": "Ghost of a Podcast",
+      "blurb": "Astrology and advice podcast with psychic readings and personal guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1422812354": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mississippi State sports coverage focused on Bulldogs football and basketball analysis.",
+      "display_title": "Thunder & Lightning",
+      "blurb": "Mississippi State Bulldogs sports podcast covering football and basketball.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1422970856": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brazilian Jiu-Jitsu podcast with training tips, interviews, and grappling analysis.",
+      "display_title": "The Chewjitsu Podcast",
+      "blurb": "Brazilian Jiu-Jitsu podcast covering training, technique, and fighter interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1423965506": {
+      "topics": [
+        "health",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Menopause and midlife health podcast with practical medical advice for women.",
+      "display_title": "Health By Heather Hirsch",
+      "blurb": "Menopause and midlife health podcast with practical medical insights for women.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1424411912": {
+      "topics": [
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Clinical medicine podcast discussing influential Annals of Internal Medicine articles.",
+      "display_title": "Annals On Call Podcast",
+      "blurb": "Clinical medicine podcast featuring discussions of influential medical research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1425178922": {
+      "topics": [
+        "society",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Anthropology and human sciences podcast exploring origins and human stories.",
+      "display_title": "SAPIENS",
+      "blurb": "Anthropology podcast exploring human stories and what it means to be human.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1425596102": {
+      "topics": [
+        "comedy/stand-up"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "German comedy podcast with two comedians discussing culture and current topics.",
+      "display_title": "Alliteration Am Arsch",
+      "blurb": "German comedy podcast with cultural commentary from two Ruhrpott comedians.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1428880766": {
+      "topics": [
+        "medicine/neuroscience",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neuroscience and AI podcast exploring intelligence, consciousness, and cognitive science.",
+      "display_title": "Brain Inspired",
+      "blurb": "Neuroscience and AI podcast exploring intelligence and consciousness research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1429317218": {
+      "topics": [
+        "business/non-profit"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Non-profit fundraising podcast addressing challenges and best practices for fundraisers.",
+      "display_title": "The Fundraising Talent Podcast",
+      "blurb": "Non-profit fundraising podcast exploring donor relations and development strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1430094842": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily BYU Cougars sports podcast covering football and basketball with analysis.",
+      "display_title": "Locked On Cougars",
+      "blurb": "Daily BYU Cougars sports podcast with expert analysis and insider information.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1432259450": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth tennis analysis podcast with draw previews and match breakdowns.",
+      "display_title": "Monday Match Analysis",
+      "blurb": "In-depth tennis podcast with match analysis, previews, and professional commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1432369172": {
+      "topics": [
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Behavior and psychology podcast examining human behavior, deception, and motivation.",
+      "display_title": "People Who Read People",
+      "blurb": "Psychology podcast exploring human behavior and deception detection techniques.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1432653128": {
+      "topics": [
+        "religion/christianity",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian podcast addressing relationships, faith, and personal growth with spiritual guidance.",
+      "display_title": "The Christian Bae",
+      "blurb": "Christian podcast exploring faith, relationships, and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1432721126": {
+      "topics": [
+        "news/tech",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.95
+        },
+        {
+          "node": "computing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Electronics industry podcast covering semiconductor innovation and tech trends.",
+      "display_title": "EE Times Current",
+      "blurb": "Electronics industry podcast covering semiconductor innovation and tech trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1432888130": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Alabama Crimson Tide sports podcast covering football and basketball.",
+      "display_title": "Locked On Bama",
+      "blurb": "Daily Alabama Crimson Tide sports podcast with expert analysis and coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1433583146": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game news and discussion podcast with industry updates and game reviews.",
+      "display_title": "WhatCulture Gaming",
+      "blurb": "Video game podcast with breaking news, reviews, and industry discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1434079616": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Columbus Blue Jackets hockey podcast with news and analysis from The Athletic.",
+      "display_title": "Front & Nationwide",
+      "blurb": "Columbus Blue Jackets hockey podcast with news and expert NHL analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1434243584": {
+      "topics": [
+        "computing",
+        "philosophy",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Multi-topic interview podcast covering technology, philosophy, science, and ideas.",
+      "display_title": "Lex Fridman Podcast",
+      "blurb": "Interview podcast exploring technology, philosophy, science, and ideas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1434273182": {
+      "topics": [
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Creative professionals podcast featuring artist interviews and career guidance.",
+      "display_title": "The Creative Endeavour",
+      "blurb": "Creative professionals podcast featuring artist interviews and career insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1434282974": {
+      "topics": [
+        "economics",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Development economics podcast covering research and practical development topics.",
+      "display_title": "VoxDev Development Economics",
+      "blurb": "Development economics podcast covering research and international development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1434321470": {
+      "topics": [
+        "education",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "School librarians podcast addressing professional issues and challenges.",
+      "display_title": "School Librarians United",
+      "blurb": "School librarians podcast addressing professional challenges and solutions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1434577946": {
+      "topics": [
+        "music",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music history podcast featuring interviews with musicians and industry figures.",
+      "display_title": "Andrew Loog Oldham's Sounds and Vision",
+      "blurb": "Music history podcast featuring interviews with musicians and music industry figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1434698084": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cleveland Browns film breakdown podcast with detailed analysis and player coverage.",
+      "display_title": "Browns Film Breakdown",
+      "blurb": "Cleveland Browns podcast with detailed film analysis and player breakdown.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1435056782": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Persian audiobook podcast reading short stories in Persian at night.",
+      "display_title": "داستان شب",
+      "blurb": "Persian audiobook podcast featuring short stories and classic literature readings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1435114916": {
+      "topics": [
+        "fiction/comedy",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio fiction comedy podcast with mystery storyline and comedic elements.",
+      "display_title": "Arden",
+      "blurb": "Audio fiction comedy podcast with mystery storylines and comedic narrative.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1435335050": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Multi-sport talk show covering football, basketball, and sports news.",
+      "display_title": "The Jim Rome Show",
+      "blurb": "Multi-sport talk show covering football, basketball, and sports commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1435356068": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Diesel truck podcast covering technical topics and industry news for enthusiasts.",
+      "display_title": "America's Diesel Podcast",
+      "blurb": "Diesel truck podcast covering technical advice and industry news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1435395422": {
+      "topics": [
+        "health/fitness",
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Endurance sports training podcast with athlete and coach interviews.",
+      "display_title": "Endurance Unlimited",
+      "blurb": "Endurance sports training podcast with athlete interviews and coaching insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1435526900": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tampa Bay Lightning hockey podcast with daily news and offseason coverage.",
+      "display_title": "Lightning Power Lunch",
+      "blurb": "Tampa Bay Lightning hockey podcast with daily news and team coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1436358056": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Catholic podcast discussing faith, church topics, and Catholicism.",
+      "display_title": "The Catholic Talk Show",
+      "blurb": "Catholic podcast exploring faith, church topics, and Catholic practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1436406950": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily LSU Tigers sports podcast covering football and basketball.",
+      "display_title": "Locked On LSU",
+      "blurb": "Daily LSU Tigers sports podcast with expert analysis and insider coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
+    "1436541194": {
+      "topics": [
+        "nature",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nature and science podcast exploring wonder in the natural and human world.",
+      "display_title": "Constant Wonder",
+      "blurb": "Science and nature podcast exploring wonder in the natural and human world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-c63a5258",
+      "classified_at": "2026-07-30T16:53:11.111Z"
+    },
     "1459232606": {
       "topics": [
         "news/politics",
@@ -21269,11 +22364,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-30T08:52:38.738Z",
+  "built_at": "2026-07-30T16:53:11.111Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-30-b7921724",
+    "last_batch_id": "fresh-2026-07-30-c63a5258",
     "last_batch_tier": 1
   }
 }
