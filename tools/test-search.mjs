@@ -253,9 +253,14 @@ for (const query of ["nuclear fusion energy", "true crime cold case", "startups 
    (bbq) or a direct show-name query (smartless) must NOT be shrunk by
    the per-show cap -- diversify()'s backfill exists exactly for this. */
 {
+  // Assert the BEHAVIOUR (the per-show cap did not shrink this), not a pick
+  // count. The count is a function of catalogue size, which the nightly grows
+  // by design — this assertion was `=== 4` and broke the nightly pipeline on
+  // 2026-07-29 when a new bbq episode landed and made it 5. The `smartless`
+  // check below was always written this way; this one now matches it.
   const bbq = search("how bbq works");
-  check(`"how bbq works" (single-show sparse) keeps all 4 picks, not capped down`, bbq.picks.length === 4,
-    `got ${bbq.picks.length} picks`);
+  check(`"how bbq works" (single-show sparse) isn't capped to ${SE.PER_SHOW_CAP}`, bbq.picks.length > SE.PER_SHOW_CAP,
+    `got ${bbq.picks.length} picks, expected more than the per-show cap since backfill should keep the sparse list intact`);
   const smartless = search("smartless");
   check(`"smartless" (direct show-name query) isn't capped to ${SE.PER_SHOW_CAP}`, smartless.picks.length > SE.PER_SHOW_CAP,
     `got ${smartless.picks.length} picks, expected the full un-capped list since there's nothing to diversify with`);
