@@ -318,3 +318,64 @@ button.danger {
   cursor: pointer;
   padding: 6px 0;
 }
+
+/* ---------- in-app player (#25) ---------- */
+
+.play-btn {
+  position: absolute; top: 8px; right: 44px;
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 1px solid #30363d; background: #0d1117cc; color: #e6edf3;
+  font-size: 13px; line-height: 1; cursor: pointer; z-index: 2;
+}
+.play-btn:hover { background: #1f6feb; border-color: #1f6feb; }
+
+#foray-player {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+  background: #0d1117; border-top: 1px solid #30363d;
+  /* Android gesture bar / iPhone home indicator (#39 will formalise this). */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.fp-progress { height: 3px; background: #21262d; }
+.fp-fill { height: 100%; width: 0; background: #1f6feb; transition: width .25s linear; }
+
+.fp-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+.fp-art { width: 40px; height: 40px; border-radius: 4px; flex: 0 0 auto; }
+.fp-info {
+  flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 2px;
+  background: none; border: 0; color: inherit; text-align: left; cursor: pointer; padding: 0;
+}
+.fp-title, .fp-show { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-title { font-size: 13px; color: #e6edf3; }
+.fp-show { font-size: 11px; color: #8b949e; }
+
+/* Big targets — this is a car product (04_VOICE_AUDIO_SPEC safety framing). */
+.fp-play, .fp-close {
+  flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid #30363d; background: #161b22; color: #e6edf3;
+  font-size: 14px; cursor: pointer;
+}
+.fp-play:hover { background: #1f6feb; border-color: #1f6feb; }
+.fp-close { font-size: 12px; color: #8b949e; }
+
+.fp-sheet { padding: 4px 16px 16px; border-top: 1px solid #21262d; }
+.fp-s-title { font-size: 15px; margin: 8px 0 2px; color: #e6edf3; }
+.fp-s-show { font-size: 12px; color: #8b949e; margin: 0 0 8px; }
+.fp-s-why { font-size: 13px; color: #adbac7; margin: 0 0 12px; }
+.fp-scrub { width: 100%; accent-color: #1f6feb; }
+.fp-times { display: flex; justify-content: space-between; font-size: 11px; color: #8b949e; }
+.fp-row { display: flex; justify-content: center; align-items: center; gap: 18px; margin: 14px 0 6px; }
+.fp-btn {
+  min-width: 56px; height: 48px; border-radius: 8px;
+  border: 1px solid #30363d; background: #161b22; color: #e6edf3;
+  font-size: 13px; cursor: pointer;
+}
+.fp-big { min-width: 72px; font-size: 18px; }
+.fp-btn:hover { border-color: #1f6feb; }
+.fp-row2 { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
+.fp-rate, .fp-collapse {
+  border: 1px solid #30363d; background: #161b22; color: #e6edf3;
+  border-radius: 6px; padding: 8px 12px; font-size: 12px; cursor: pointer;
+}
+.fp-open { font-size: 12px; color: #58a6ff; }
+.fp-note { font-size: 11px; color: #8b949e; margin: 10px 0 0; }

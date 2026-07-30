@@ -42,5 +42,7 @@
 
 <script src="search-engine.js"></script>
 <script src="app.js"></script>
+<!-- ES module; deferred by spec, so app.js checks window.ForayPlayer lazily on click. -->
+<script type="module" src="player/client.js"></script>
 </body>
 </html>
