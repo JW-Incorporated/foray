@@ -109,6 +109,11 @@ async function ensureAnonSession() {
    local-only types (see the client-integration spec §3). episode_id/session_id
    stay null; durable ids ride in payload as episode_slug/session_key. */
 const SB_ARCHETYPES = new Set(["deep-learn", "stretch", "narrative", "comfort", "continue"]);
+/* The player (player/client.js) is an ES module and cannot import from this
+   classic script, so the event pipeline is handed over explicitly rather than
+   duplicated. */
+window.forayLogEvent = (type, payload) => logEvent(type, payload);
+
 function toEventRow(e, userId) {
   const p = e.payload || {};
   const row = (type, payload, archetype) => ({ user_id: userId, ts: e.ts, type, archetype: archetype || null, payload });
@@ -238,6 +243,14 @@ function playerPref() { return lsGet("cp_player", "apple"); }
 function playLink(item) {
   if (playerPref() === "pocketcasts") return `https://pca.st/itunes/${item.apple_collection_id}`;
   return appleLink(item);
+}
+
+/* In-app play button. Items with no audio_url keep the link-out to Apple
+   Podcasts instead (#21 leaves ~9 unresolvable, plus video-only items) — the
+   card itself stays a link either way, so nothing regresses for them. */
+function playBtn(item) {
+  if (!item || !item.audio_url) return "";
+  return `<button class="play-btn" data-play="${esc(item.id)}" aria-label="Play ${esc(item.title)}">▶</button>`;
 }
 
 /* Family mode (corner-case 28): hide explicit-rated episodes and the comedy
@@ -456,6 +469,28 @@ function bindPickLogging(scope) {
   });
 }
 
+function bindPlay(scope) {
+  scope.querySelectorAll("[data-play]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", async (e) => {
+      // The button sits inside the card's <a>; without this the link-out fires
+      // and the browser navigates away mid-play.
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.play;
+      const item = state.itemIndex[id] || episode(id);
+      if (!item || !window.ForayPlayer) return;
+      const ok = await window.ForayPlayer.play(item, { why: whyFor(id, item) });
+      if (!ok) return;
+      logEvent("play_started", { episode_id: id, topics: item.topics || [] });
+      const history = pickedHistory();
+      if (!history.includes(id)) lsSet("cp_history", history.concat(id).slice(-200));
+      trySyncEvents();
+    });
+  });
+}
+
 function bindStars(scope) {
   scope.querySelectorAll("[data-star]").forEach(btn => {
     if (btn._bound) return;
@@ -507,7 +542,7 @@ function miniCard(slot) {
       <h3>${esc(item.title)}</h3>
       <p class="mc-hook">${esc(why)}</p>
     </div>
-    ${starBtn(item.id)}
+    ${playBtn(item)}${starBtn(item.id)}
   </a>`;
 }
 
@@ -559,6 +594,7 @@ function renderHome() {
 
   bindPickLogging($("#view"));
   bindStars($("#view"));
+  bindPlay($("#view"));
 }
 
 function epRow(item, idx, ctx, nextIdx) {
@@ -568,7 +604,7 @@ function epRow(item, idx, ctx, nextIdx) {
       <div class="t">${esc(item.title)}</div>
       <div class="s">${esc(item.show)} · ${fmtDur(item.duration_min)}</div>
     </div>
-    ${starBtn(item.id)}
+    ${playBtn(item)}${starBtn(item.id)}
     <a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
        data-ev="picked" data-ep="${item.id}" data-ctx="${ctx}">Play</a>
   </div>`;
@@ -605,6 +641,7 @@ function renderPlaylistDetail(id) {
   });
   bindPickLogging($("#view"));
   bindStars($("#view"));
+  bindPlay($("#view"));
 }
 
 function renderPlaylists() {
