@@ -11,9 +11,14 @@
 :root{
   --ground:#131211; --surface:#1C1A18; --surface2:#262320; --surface3:#332E29;
   --line:rgba(237,232,224,.11); --line2:rgba(237,232,224,.2);
-  --bone:#EDE8E0; --dim:#9A938A; --dimmer:#6B655D;
+  --bone:#EDE8E0; --dim:#9A938A; --dimmer:#948D82;
+  /* --dimmer was #6B655D — 2.7-3.5:1 contrast against every surface in this
+     app, below WCAG AA's 4.5:1 minimum for text this size. It's used for
+     .kick (section labels) and .note (explanatory copy) — the text most
+     responsible for telling the user what a screen means, rendered in the
+     least legible color available. #948D82 clears 4.5:1 on every surface. */
   --deep:#C8A24A; --stretch:#5FA8A0; --narr:#B5654A; --comfort:#8A8FB0; --cont:#EDE8E0;
-  --ok:#7FA85C; --warn:#D98B3A; --err:#C1584B;
+  --ok:#7FA85C; --warn:#D98B3A; --err:#D97E71; /* was #C1584B — 3.55-4.25:1, same class of AA failure as --dimmer */
   --ui:'Archivo',system-ui,sans-serif; --mono:'DM Mono',ui-monospace,monospace;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -55,15 +60,15 @@ body.kiosk .scr{border-radius:0;height:100dvh}
 .view::-webkit-scrollbar{display:none}
 .view.pad0{padding-left:0;padding-right:0}
 .tabs{flex:none;display:flex;border-top:1px solid var(--line);padding:9px 0 22px;background:var(--ground)}
-.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--dimmer);padding:2px 0}
+.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--dimmer);padding:5px 0;border-radius:10px}
 .tabs button svg{width:19px;height:19px}
-.tabs button.on{color:var(--bone)}
+.tabs button.on{color:var(--bone);background:var(--surface2)}
 
 /* ---------- primitives ---------- */
 .h1{font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.1;margin:0}
 .h2{font-size:17px;font-weight:600;letter-spacing:-.02em;margin:0}
 .lede{font-size:13.5px;line-height:1.5;color:var(--dim);margin:8px 0 0}
-.kick{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--dimmer);margin:0}
+.kick{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dimmer);margin:0}
 .mono{font-family:var(--mono)}
 .hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:6px 0 14px}
 .card{background:var(--surface);border-radius:16px;padding:14px;border:1px solid var(--line);margin-bottom:10px}
@@ -79,9 +84,9 @@ body.kiosk .scr{border-radius:0;height:100dvh}
 .art.lg{width:74px;height:74px;border-radius:14px;font-size:21px}
 .art.sm{width:38px;height:38px;border-radius:8px;font-size:12px}
 .title{font-size:15px;font-weight:600;line-height:1.25;margin:0 0 3px;letter-spacing:-.01em}
-.show{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
-.why{font-size:12.5px;line-height:1.45;color:var(--dim);margin:11px 0 0}
-.badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:var(--surface2);color:var(--dim)}
+.show{font-family:var(--mono);font-size:12px;color:var(--dim)}
+.why{font-size:14px;line-height:1.5;color:var(--dim);margin:11px 0 0}
+.badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:var(--surface2);color:var(--dim)}
 .badge i{width:6px;height:6px;border-radius:50%;display:block}
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border-radius:12px;padding:14px;font-size:14.5px;font-weight:600;background:var(--bone);color:#17140F;transition:transform .12s}
 .btn:active{transform:scale(.98)}
@@ -95,7 +100,7 @@ body.kiosk .scr{border-radius:0;height:100dvh}
 .bar{height:3px;border-radius:2px;background:var(--surface3);overflow:hidden}
 .bar i{display:block;height:100%;background:var(--bone)}
 .divider{height:1px;background:var(--line);margin:16px 0}
-.note{font-size:11.5px;color:var(--dimmer);line-height:1.45}
+.note{font-size:13px;color:var(--dimmer);line-height:1.5}
 .banner{display:flex;gap:9px;align-items:center;padding:9px 12px;border-radius:10px;font-size:12px;margin-bottom:12px}
 .banner.warn{background:rgba(217,139,58,.14);color:var(--warn)}
 .banner.err{background:rgba(193,88,75,.16);color:var(--err)}
@@ -119,11 +124,11 @@ body.kiosk .scr{border-radius:0;height:100dvh}
 .sitem.now{box-shadow:inset 0 0 0 1.5px var(--bone)}
 .sitem i{position:absolute;top:0;bottom:0;left:0;background:var(--c);opacity:.8}
 .sitem.tts i{background:var(--dim)}
-.scrub{height:22px;display:flex;align-items:center;position:relative;margin-top:16px;cursor:pointer;touch-action:none}
+.scrub{height:22px;display:flex;align-items:center;position:relative;margin-top:16px;cursor:pointer;touch-action:pan-y}
 .scrub .t{height:4px;width:100%;background:var(--surface3);border-radius:2px}
 .scrub .f{position:absolute;height:4px;background:var(--bone);border-radius:2px}
 .scrub .k{position:absolute;width:15px;height:15px;border-radius:50%;background:var(--bone);transform:translateX(-7px);box-shadow:0 2px 8px rgba(0,0,0,.6)}
-.times{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:6px}
+.times{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11.5px;color:var(--dim);margin-top:6px}
 .transport{display:flex;align-items:center;justify-content:space-between;padding:0 12px;margin-top:18px}
 .tbtn{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--line2)}
 .tbtn.main{width:70px;height:70px;background:var(--bone);color:#17140F;box-shadow:none}
@@ -155,7 +160,7 @@ body.kiosk .scr{border-radius:0;height:100dvh}
 .wavebars{display:flex;gap:3px;justify-content:center;align-items:center;height:36px}
 .wavebars i{width:3px;border-radius:2px;background:var(--stretch);animation:vb .7s ease-in-out infinite alternate}
 @keyframes vb{from{height:5px}to{height:32px}}
-.toast{position:absolute;left:16px;right:16px;bottom:96px;z-index:30;background:var(--surface3);border:1px solid var(--line2);border-radius:13px;padding:12px 14px;font-size:12.5px;display:flex;gap:10px;align-items:flex-start;animation:up .22s ease}
+.toast{position:absolute;left:16px;right:16px;bottom:96px;z-index:30;background:var(--surface3);border:1px solid var(--line2);border-radius:13px;padding:14px 16px;font-size:14px;line-height:1.4;display:flex;gap:10px;align-items:flex-start;animation:up .22s ease}
 @keyframes up{from{transform:translateY(14px);opacity:0}}
 .sheet{position:absolute;left:0;right:0;bottom:0;z-index:25;background:var(--surface);border-radius:22px 22px 0 0;padding:10px 20px 26px;border-top:1px solid var(--line2);animation:up .22s ease;max-height:78%;overflow-y:auto}
 .grab{width:34px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 14px}
@@ -164,13 +169,14 @@ body.kiosk .scr{border-radius:0;height:100dvh}
 .tax{padding:12px 0;border-bottom:1px solid var(--line)}
 .taxtop{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
 .taxname{font-size:13.5px;font-weight:500}
-.taxpath{font-family:var(--mono);font-size:9.5px;color:var(--dimmer)}
-.taxbar{height:22px;display:flex;align-items:center;position:relative;cursor:pointer;touch-action:none}
-.taxbar .t{height:5px;width:100%;background:var(--surface2);border-radius:3px;position:relative;overflow:hidden}
+.taxpath{font-family:var(--mono);font-size:11.5px;color:var(--dimmer)}
+.taxbar{height:30px;display:flex;align-items:center;position:relative;cursor:pointer;touch-action:pan-y;border-radius:8px}
+.taxbar:focus-visible{outline:2px solid var(--stretch);outline-offset:3px}
+.taxbar .t{height:8px;width:100%;background:var(--surface2);border-radius:4px;position:relative;overflow:hidden}
 .taxbar .z{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line2)}
-.taxbar .f{position:absolute;height:5px;border-radius:3px;background:var(--bone)}
+.taxbar .f{position:absolute;height:8px;border-radius:4px;background:var(--bone)}
 .taxbar .f.neg{background:var(--err)}
-.taxbar .k{position:absolute;width:13px;height:13px;border-radius:50%;background:var(--bone);transform:translateX(-6px)}
+.taxbar .k{position:absolute;width:20px;height:20px;border-radius:50%;background:var(--bone);transform:translateX(-10px);box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .ev{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12px;line-height:1.4}
 .ev .d{width:3px;border-radius:2px;flex:none;margin:2px 0}
 
@@ -262,7 +268,9 @@ const I = {
   wifi:'<path d="M2 8a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor"/>',
   plane:'<path d="M10 3h4l-1 7 8 4v2l-8-2-1 5 3 2v1l-5-1-5 1v-1l3-2-1-5-8 2v-2l8-4z" fill="currentColor" stroke="none"/>',
   alert:'<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
-  bell:'<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6M10 21h4"/>'
+  bell:'<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6M10 21h4"/>',
+  info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5h.01"/><path d="M11 11h1.3v5.5"/>',
+  bookmark:'<path d="M6 3.5h12v17l-6-4-6 4z"/>'
 };
 const ic=(n,s=1.6)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${s}" stroke-linecap="round" stroke-linejoin="round">${I[n]}</svg>`;
 
@@ -439,7 +447,25 @@ const REAL_SESSION = adaptRealSession(REAL_SESSION_RAW);
 const REAL_TAXONOMY = {"version":1,"notes":"Two-level interest taxonomy per 03_CURATION_SPEC. Custom nodes anchor to Apple Podcasts standard categories (the industry taxonomy) for interop; weights are user-editable. depth is a per-episode attribute, not a taxonomy dimension (see docs/research/curation-practices.md).","nodes":[{"id":"engineering","parent":null,"label":"Engineering","apple_anchor":"Science","weight":0.9,"confidence":0.9,"last_evidence_at":"2026-07-07"},{"id":"engineering/energy-fusion","parent":"engineering","label":"Fusion & energy systems","apple_anchor":"Science > Physics","weight":1,"confidence":0.95,"last_evidence_at":"2026-07-07"},{"id":"engineering/precision-mfg","parent":"engineering","label":"Precision manufacturing","apple_anchor":"Technology","weight":0.7,"confidence":0.7,"last_evidence_at":"2026-07-07"},{"id":"science/materials","parent":"science","label":"Materials science","apple_anchor":"Science > Chemistry","weight":0.7,"confidence":0.6,"last_evidence_at":"2026-07-07"},{"id":"science","parent":null,"label":"Science","apple_anchor":"Science","weight":0.6,"confidence":0.7,"last_evidence_at":"2026-07-07"},{"id":"history","parent":null,"label":"History","apple_anchor":"History","weight":0.8,"confidence":0.8,"last_evidence_at":"2026-07-07"},{"id":"history/military-ancient","parent":"history","label":"Ancient military history","apple_anchor":"History","weight":0.85,"confidence":0.8,"last_evidence_at":"2026-07-07"},{"id":"history/technology","parent":"history","label":"History of technology","apple_anchor":"History","weight":0.75,"confidence":0.7,"last_evidence_at":"2026-07-07"},{"id":"craft","parent":null,"label":"Craft & making","apple_anchor":"Leisure > Crafts","weight":0.6,"confidence":0.6,"last_evidence_at":"2026-07-07"},{"id":"craft/instrument-making","parent":"craft","label":"Instrument making","apple_anchor":"Music","weight":0.6,"confidence":0.5,"last_evidence_at":"2026-07-07"},{"id":"craft/diy-home","parent":"craft","label":"DIY & home","apple_anchor":"Leisure > Home & Garden","weight":0.5,"confidence":0.5,"last_evidence_at":"2026-07-07"},{"id":"business","parent":null,"label":"Business","apple_anchor":"Business","weight":0.5,"confidence":0.5,"last_evidence_at":"2026-07-07"},{"id":"business/startups","parent":"business","label":"Startups & deep tech","apple_anchor":"Business > Entrepreneurship","weight":0.6,"confidence":0.6,"last_evidence_at":"2026-07-07"},{"id":"comedy","parent":null,"label":"Comedy","apple_anchor":"Comedy","weight":0.6,"confidence":0.7,"last_evidence_at":"2026-07-07"},{"id":"comedy/casual-hangs","parent":"comedy","label":"Casual hangs","apple_anchor":"Comedy > Improv","weight":0.65,"confidence":0.7,"last_evidence_at":"2026-07-07"},{"id":"architecture","parent":null,"label":"Architecture","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"architecture/infrastructure","parent":"architecture","label":"Infrastructure","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"aviation","parent":null,"label":"Aviation","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"aviation/accidents","parent":"aviation","label":"Accidents","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"espionage","parent":null,"label":"Espionage","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"espionage/cold-war-tech","parent":"espionage","label":"Cold War Tech","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"food","parent":null,"label":"Food","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"food/cooking-science","parent":"food","label":"Cooking Science","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"linguistics","parent":null,"label":"Linguistics","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"linguistics/language","parent":"linguistics","label":"Language","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"math","parent":null,"label":"Math","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"math/puzzles","parent":"math","label":"Puzzles","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"medicine","parent":null,"label":"Medicine","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"medicine/biology","parent":"medicine","label":"Biology","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"music","parent":null,"label":"Music","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"music/theory-production","parent":"music","label":"Theory Production","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"nature","parent":null,"label":"Nature","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"nature/animal-cognition","parent":"nature","label":"Animal Cognition","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"nature/ocean-science","parent":"nature","label":"Ocean Science","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports","parent":null,"label":"Sports","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/biomechanics","parent":"sports","label":"Biomechanics","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"space","parent":null,"label":"Space","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"space/rockets","parent":"space","label":"Rockets","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"computing","parent":null,"label":"Computing","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"computing/history","parent":"computing","label":"History","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"economics","parent":null,"label":"Economics","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"economics/markets","parent":"economics","label":"Markets","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"psychology","parent":null,"label":"Psychology","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"psychology/decision-making","parent":"psychology","label":"Decision Making","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"nature/earth-science","parent":"nature","label":"Earth Science","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"engineering/disasters","parent":"engineering","label":"Disasters","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"automotive","parent":null,"label":"Automotive","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"automotive/racing","parent":"automotive","label":"Racing","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"engineering/energy-grid","parent":"engineering","label":"Energy Grid","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"philosophy","parent":null,"label":"Philosophy","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"philosophy/ideas","parent":"philosophy","label":"Ideas","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"craft/photography","parent":"craft","label":"Photography","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"craft/filmmaking","parent":"craft","label":"Filmmaking","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"science/storytelling","parent":"science","label":"Storytelling","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"business/founders","parent":"business","label":"Founders","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"history/military-modern","parent":"history","label":"Military Modern","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"cities","parent":null,"label":"Cities","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"cities/urbanism","parent":"cities","label":"Urbanism","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"science/chemistry","parent":"science","label":"Chemistry","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"adventure","parent":null,"label":"Adventure","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"adventure/exploration","parent":"adventure","label":"Exploration","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"gaming","parent":null,"label":"Gaming","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"gaming/design","parent":"gaming","label":"Design","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"medicine/neuroscience","parent":"medicine","label":"Neuroscience","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"society","parent":null,"label":"Society","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"society/law","parent":"society","label":"Law","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"food/fermentation","parent":"food","label":"Fermentation","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"nature/paleontology","parent":"nature","label":"Paleontology","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"history/archaeology","parent":"history","label":"Archaeology","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"nature/weather","parent":"nature","label":"Weather","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"culture","parent":null,"label":"Culture","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"culture/mythology","parent":"culture","label":"Mythology","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"culture/art","parent":"culture","label":"Art","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"music/classical","parent":"music","label":"Classical","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/endurance","parent":"sports","label":"Endurance","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"transport","parent":null,"label":"Transport","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"transport/maritime","parent":"transport","label":"Maritime","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"transport/trains","parent":"transport","label":"Trains","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"craft/woodworking","parent":"craft","label":"Woodworking","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"engineering/ai-robotics","parent":"engineering","label":"Ai Robotics","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"news","parent":null,"label":"News & Current Affairs","apple_anchor":"News","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"true-crime","parent":null,"label":"True Crime","apple_anchor":"True Crime","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"religion","parent":null,"label":"Religion & Spirituality","apple_anchor":"Religion & Spirituality","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"kids-family","parent":null,"label":"Kids & Family","apple_anchor":"Kids & Family","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"fiction","parent":null,"label":"Fiction & Audio Drama","apple_anchor":"Fiction","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"tv-film","parent":null,"label":"TV & Film","apple_anchor":"TV & Film","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"health","parent":null,"label":"Health & Fitness","apple_anchor":"Health & Fitness","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"education","parent":null,"label":"Education","apple_anchor":"Education","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"personal-journals","parent":null,"label":"Personal Journals","apple_anchor":"Society & Culture > Personal Journals","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"relationships","parent":null,"label":"Relationships","apple_anchor":"Society & Culture > Relationships","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"hobbies","parent":null,"label":"Hobbies & Leisure","apple_anchor":"Leisure","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"travel","parent":null,"label":"Travel & Places","apple_anchor":"Society & Culture > Places & Travel","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"news/politics","parent":"news","label":"Politics","apple_anchor":"News > Politics","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"news/daily","parent":"news","label":"Daily News","apple_anchor":"News > Daily News","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"news/commentary","parent":"news","label":"News Commentary","apple_anchor":"News > News Commentary","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"news/tech","parent":"news","label":"Tech News","apple_anchor":"News > Tech News","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"religion/christianity","parent":"religion","label":"Christianity","apple_anchor":"Religion & Spirituality > Christianity","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"religion/buddhism","parent":"religion","label":"Buddhism","apple_anchor":"Religion & Spirituality > Buddhism","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"religion/judaism","parent":"religion","label":"Judaism","apple_anchor":"Religion & Spirituality > Judaism","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"religion/islam","parent":"religion","label":"Islam","apple_anchor":"Religion & Spirituality > Islam","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"religion/hinduism","parent":"religion","label":"Hinduism","apple_anchor":"Religion & Spirituality > Hinduism","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"religion/spirituality","parent":"religion","label":"Spirituality","apple_anchor":"Religion & Spirituality > Spirituality","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"kids-family/stories","parent":"kids-family","label":"Stories for Kids","apple_anchor":"Kids & Family > Stories for Kids","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"kids-family/education","parent":"kids-family","label":"Education for Kids","apple_anchor":"Kids & Family > Education for Kids","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"kids-family/parenting","parent":"kids-family","label":"Parenting","apple_anchor":"Kids & Family > Parenting","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"fiction/sci-fi","parent":"fiction","label":"Science Fiction","apple_anchor":"Fiction > Science Fiction","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"fiction/drama","parent":"fiction","label":"Drama","apple_anchor":"Fiction > Drama","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"fiction/comedy","parent":"fiction","label":"Comedy Fiction","apple_anchor":"Fiction > Comedy Fiction","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"tv-film/reviews","parent":"tv-film","label":"Film & TV Reviews","apple_anchor":"TV & Film > Film Reviews","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"tv-film/interviews","parent":"tv-film","label":"Film Interviews","apple_anchor":"TV & Film > Film Interviews","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"tv-film/history","parent":"tv-film","label":"Film History","apple_anchor":"TV & Film > Film History","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"tv-film/after-shows","parent":"tv-film","label":"After Shows","apple_anchor":"TV & Film > After Shows","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"tv-film/animation","parent":"tv-film","label":"Animation & Manga","apple_anchor":"TV & Film > Animation & Manga","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"health/mental","parent":"health","label":"Mental Health","apple_anchor":"Health & Fitness > Mental Health","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"health/fitness","parent":"health","label":"Fitness","apple_anchor":"Health & Fitness > Fitness","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"health/nutrition","parent":"health","label":"Nutrition","apple_anchor":"Health & Fitness > Nutrition","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"health/alternative","parent":"health","label":"Alternative Health","apple_anchor":"Health & Fitness > Alternative Health","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"health/sexuality","parent":"health","label":"Sexuality","apple_anchor":"Health & Fitness > Sexuality","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"education/language-learning","parent":"education","label":"Language Learning","apple_anchor":"Education > Language Learning","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"education/how-to","parent":"education","label":"How To","apple_anchor":"Education > How To","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"education/courses","parent":"education","label":"Courses","apple_anchor":"Education > Courses","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"education/self-improvement","parent":"education","label":"Self-Improvement","apple_anchor":"Education > Self-Improvement","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"business/careers","parent":"business","label":"Careers","apple_anchor":"Business > Careers","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"business/management","parent":"business","label":"Management","apple_anchor":"Business > Management","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"business/marketing","parent":"business","label":"Marketing","apple_anchor":"Business > Marketing","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"business/non-profit","parent":"business","label":"Non-Profit","apple_anchor":"Business > Non-Profit","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"society/government","parent":"society","label":"Government","apple_anchor":"Government","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"comedy/stand-up","parent":"comedy","label":"Stand-Up","apple_anchor":"Comedy > Stand-Up","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"comedy/interviews","parent":"comedy","label":"Comedy Interviews","apple_anchor":"Comedy > Comedy Interviews","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"culture/books","parent":"culture","label":"Books","apple_anchor":"Arts > Books","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"culture/design","parent":"culture","label":"Design","apple_anchor":"Arts > Design","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"culture/fashion","parent":"culture","label":"Fashion & Beauty","apple_anchor":"Arts > Fashion & Beauty","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"culture/performing-arts","parent":"culture","label":"Performing Arts","apple_anchor":"Arts > Performing Arts","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"nature/pets","parent":"nature","label":"Pets & Animals","apple_anchor":"Kids & Family > Pets & Animals","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"science/physics","parent":"science","label":"Physics","apple_anchor":"Science > Physics","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/soccer","parent":"sports","label":"Soccer","apple_anchor":"Sports > Soccer","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/football","parent":"sports","label":"Football","apple_anchor":"Sports > Football","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/baseball","parent":"sports","label":"Baseball","apple_anchor":"Sports > Baseball","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/basketball","parent":"sports","label":"Basketball","apple_anchor":"Sports > Basketball","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/hockey","parent":"sports","label":"Hockey","apple_anchor":"Sports > Hockey","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/cricket","parent":"sports","label":"Cricket","apple_anchor":"Sports > Cricket","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/rugby","parent":"sports","label":"Rugby","apple_anchor":"Sports > Rugby","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/tennis","parent":"sports","label":"Tennis","apple_anchor":"Sports > Tennis","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/golf","parent":"sports","label":"Golf","apple_anchor":"Sports > Golf","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/wrestling","parent":"sports","label":"Wrestling","apple_anchor":"Sports > Wrestling","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/volleyball","parent":"sports","label":"Volleyball","apple_anchor":"Sports > Volleyball","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"sports/fantasy","parent":"sports","label":"Fantasy Sports","apple_anchor":"Sports > Fantasy Sports","weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"paranormal","parent":null,"label":"Paranormal","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"},{"id":"culture/pop-culture","parent":"culture","label":"Pop Culture","apple_anchor":null,"weight":0.5,"confidence":0.3,"last_evidence_at":"2026-07-09"}],"episode_attributes":{"depth":["low","medium","high"],"format":["interview","narrative","panel","solo","documentary","hang"],"evergreen":"boolean"}};
 const SLIM_DISCOVER = [{"id":"lex-fridman-podcast--don-lincoln-physics","show":"Lex Fridman Podcast","title":"#497 – Biggest Mysteries in Physics: Antimatter, Dark Energy & ToE – Don Lincoln","hook":"A Fermilab physicist on antimatter, dark energy, and the hunt for one final theory.","topics":["science/physics"],"duration_min":182},{"id":"lex-fridman-podcast--ffmpeg-video","show":"Lex Fridman Podcast","title":"#496 – FFmpeg: The Incredible Technology Behind Video on the Internet","hook":"How FFmpeg's engineers built the codec quietly running every video on the internet.","topics":["computing"],"duration_min":264},{"id":"titans-of-nuclear--brian-woods","show":"Titans of Nuclear","title":"Ep 458: Brian Woods - Head, School of Nuclear Science & Engineering, Oregon State University","hook":"A former Navy diver turned nuclear engineering department head on training the next generation.","topics":["engineering/energy-grid"],"duration_min":47},{"id":"titans-of-nuclear--kyle-hill","show":"Titans of Nuclear","title":"Ep 445: Kyle Hill - Science Communicator & Founder, [THE FACILITY]","hook":"YouTuber Kyle Hill on touring the Dresden nuclear plant and fixing nuclear's PR problem.","topics":["engineering/energy-grid"],"duration_min":72},{"id":"omega-tau--surroundings","show":"omega tau","title":"Surroundings","hook":"A historian of science traces three centuries of how the West learned to see nature.","topics":["science/materials","science/storytelling"],"duration_min":76},{"id":"omega-tau--modern-fission-reactors","show":"omega tau","title":"Modern Fission Reactors","hook":"MIT's Jacopo Buongiorno on the next-generation reactors racing to beat climate change.","topics":["science/materials","engineering/energy-grid"],"duration_min":115},{"id":"omega-tau--lhc-beam-dump","show":"omega tau","title":"The LHC Beam Dump","hook":"The graphite block built to absorb the full force of the LHC's particle beam.","topics":["science/materials","science/physics"],"duration_min":91},{"id":"cleantechies-podcast--ev-chargers-apartments","show":"CleanTechies Podcast","title":"#288 Why Your Apartment Building Doesn't Have EV Chargers (And How to Fix It) | Carter Li (SWTCH Energy)","hook":"Scaling EV charging past its biggest blocker: renters without a private driveway.","topics":["engineering/energy-grid"],"duration_min":56},{"id":"cleantechies-podcast--3d-printed-batteries","show":"CleanTechies Podcast","title":"#285 CleanTechies Pod: 3D Printed Batteries w/ Robert Bagheri (Sakuu)","hook":"A 30-year semiconductor veteran now 3D-prints multi-material batteries instead of chips.","topics":["science/materials"],"duration_min":64},{"id":"catalyst-shayle-kann--solar-geoengineering","show":"Catalyst with Shayle Kann","title":"Inside the most sophisticated plan for solar geoengineering","hook":"Stardust Solutions' plan to disperse three million tons of reflective material into the sky.","topics":["nature/earth-science"],"duration_min":38},{"id":"catalyst-shayle-kann--data-centers-high-seas","show":"Catalyst with Shayle Kann","title":"Building inference data centers on the high seas","hook":"A startup is building AI data centers on 85-meter steel nodes anchored at sea.","topics":["computing"],"duration_min":48},{"id":"lab-to-market-leadership--hod-lipson-robotics","show":"Lab to Market Leadership","title":"Why Great Labs Need Breadth | Professor Hod Lipson on Robotics, AI and the 2030s","hook":"A robotics researcher argues the real innovation engine in deep tech is the lab itself.","topics":["business/startups","engineering/ai-robotics"],"duration_min":59},{"id":"lab-to-market-leadership--graphene-at-scale","show":"Lab to Market Leadership","title":"Graphene at Scale: How Paragraf Is Realising the Wonder Material's Potential | Dr Simon Thomas","hook":"After 12 years inside TSMC and Samsung, he now grows graphene at wafer scale.","topics":["business/startups","science/materials"],"duration_min":64},{"id":"cbc-ideas--suzuki-survival-guide","show":"CBC Ideas","title":"Suzuki's Survival Guide | A Warning","hook":"David Suzuki's 1989 broadcast imagined 2039 — how close did it get?","topics":["nature/earth-science"],"duration_min":54},{"id":"cbc-ideas--oil-complicated-saviour","show":"CBC Ideas","title":"Why oil is a 'complicated saviour' to the world","hook":"Oil writer Don Gillmor calls petroleum less a substance than a religion nobody can quit.","topics":["engineering/energy-grid"],"duration_min":54},{"id":"cbc-ideas--33000-horsepower","show":"CBC Ideas","title":"The 33,000 Horsepower Gamechanger | The Greatest Numbers of All Time","hook":"James Watt needed one weird number to sell steam engines: 33,000 foot-pounds a minute.","topics":["history/technology"],"duration_min":54},{"id":"stuff-you-should-know--kola-deepest-hole","show":"Stuff You Should Know","title":"Kola: The World's Deepest Hole","hook":"During the Cold War, the USSR raced not to space but eight miles straight down.","topics":["science/materials","history/technology"],"duration_min":46},{"id":"stuff-you-should-know--alaska-earthquake-1964","show":"Stuff You Should Know","title":"Alaska Earthquake of 1964","hook":"The 1964 Alaska quake was the second largest ever recorded — this is that story.","topics":["science/materials","history/technology"],"duration_min":37},{"id":"stuff-you-should-know--nuclear-fusion-reactors","show":"Stuff You Should Know","title":"The Stuff You Should Know Doin' Science Playlist: Can Nuclear Fusion Reactors Save The World?","hook":"Physicists have chased a working fusion reactor for decades — where the science stands now.","topics":["science/materials","history/technology"],"duration_min":44},{"id":"inside-chips--proteantecs-ceo","show":"Inside Chips (Semiconductor Engineering)","title":"One-on-One With proteanTecs CEO Shai Cohen","hook":"proteanTecs' CEO on monitoring chip health from data centers to quantum, in real time.","topics":["engineering/precision-mfg"],"duration_min":28},{"id":"inside-chips--pdf-solutions-manufacturing","show":"Inside Chips (Semiconductor Engineering)","title":"Big Changes Ahead For Semiconductor Manufacturing","hook":"PDF Solutions' CEO on how 3D-ICs are about to reshape the chip supply chain.","topics":["engineering/precision-mfg"],"duration_min":23},{"id":"being-an-engineer--rittenhouse-engineering-school","show":"Being an Engineer","title":"S7E28 Justin Rittenhouse | What Engineering School Doesn't Teach You About Industry","hook":"A mechanical engineer on the gap between what engineering school teaches and what industry needs.","topics":["engineering/precision-mfg","craft/diy-home"],"duration_min":49},{"id":"being-an-engineer--coffee-tamper","show":"Being an Engineer","title":"S7E27 Daniel Kurnianto | The Engineering Journey Behind the World's First Electronic Coffee Tamper","hook":"The 19-year engineering journey behind the world's first electronic espresso tamper.","topics":["engineering/precision-mfg","craft/diy-home"],"duration_min":50},{"id":"being-an-engineer--rod-scholl-fea","show":"Being an Engineer","title":"S7E21 Rod Scholl | Pro Tips from 30-Year Analyst For Accurate Simulations (FEA & CFD)","hook":"A 30-year FEA analyst on the mistakes that quietly wreck your simulation results.","topics":["engineering/precision-mfg","craft/diy-home"],"duration_min":47},{"id":"fall-of-civilizations--persia","show":"Fall of Civilizations Podcast","title":"20. Persia - An Empire in Ashes","hook":"How the Achaemenid Persian Empire rose from a ruined world to rule millions.","topics":["history/military-ancient","history/technology"],"duration_min":329},{"id":"fall-of-civilizations--mongols-1","show":"Fall of Civilizations Podcast","title":"19. The Mongols - Terror of the Steppe (Part 1)","hook":"The Mongol Empire's rise across the Eurasian steppe, told across two long episodes.","topics":["history/military-ancient","history/technology"],"duration_min":241},{"id":"the-rest-is-history--hamilton-part-3","show":"The Rest Is History","title":"Hamilton: Duel to the Death (Part 3)","hook":"How Alexander Hamilton went from impoverished orphan to a fatal duel with Aaron Burr.","topics":["history/technology","history/military-ancient"],"duration_min":76},{"id":"conan-obrien-needs-a-friend--danny-mcbride","show":"Conan O'Brien Needs a Friend","title":"Danny McBride Returns","hook":"Danny McBride on pitching his Halloween sequel directly to John Carpenter.","topics":["comedy/casual-hangs"],"duration_min":57},{"id":"conan-obrien-needs-a-friend--josh-groban","show":"Conan O'Brien Needs a Friend","title":"Josh Groban","hook":"Josh Groban on his breakout moment: singing with Celine Dion at the Grammys, age 16.","topics":["comedy/casual-hangs"],"duration_min":67},{"id":"conan-obrien-needs-a-friend--andrew-scott","show":"Conan O'Brien Needs a Friend","title":"Andrew Scott","hook":"Andrew Scott on playing every single part in a one-man stage adaptation of Vanya.","topics":["comedy/casual-hangs"],"duration_min":63},{"id":"smartless--ike-barinholtz","show":"SmartLess","title":"\"Ike Barinholtz\"","hook":"Ike Barinholtz on hustling, college bottle service, and a chaotic Southwest flight home.","topics":["comedy/casual-hangs"],"duration_min":54},{"id":"smartless--sting","show":"SmartLess","title":"\"Sting\"","hook":"Sting on digital silence, noblesse oblige, and why it's cool to say you like jazz.","topics":["comedy/casual-hangs"],"duration_min":61},{"id":"smartless--cillian-murphy","show":"SmartLess","title":"\"Cillian Murphy\"","hook":"Cillian Murphy on law school, rock and roll, and choosing energy over perfection.","topics":["comedy/casual-hangs"],"duration_min":64},{"id":"acquired--disney","show":"Acquired","title":"The Walt Disney Company","hook":"How Disney became the most successful machine ever built for monetizing nostalgia.","topics":["business/startups","history/technology"],"duration_min":271},{"id":"acquired--vanguard","show":"Acquired","title":"Vanguard","hook":"Vanguard quietly became the single largest owner of most S&P 500 companies.","topics":["business/startups","history/technology"],"duration_min":228},{"id":"acquired--ferrari","show":"Acquired","title":"Ferrari","hook":"Ferrari has sold just 330,000 cars in 79 years — that scarcity is the whole business.","topics":["business/startups","history/technology"],"duration_min":239},{"id":"founders--soichiro-honda","show":"Founders","title":"#423 Soichiro Honda","hook":"What David Senra learned rereading the life of Honda's founder, Soichiro Honda.","topics":["business/startups"],"duration_min":48},{"id":"techsurge-deep-tech-podcast--google-search","show":"TechSurge: Deep Tech Podcast","title":"Google's Chief Technologist on Intelligent Search in the Age of AI","hook":"Search started as finding pages — AI is turning it into asking, reasoning, and acting.","topics":["business/startups","computing"],"duration_min":78},{"id":"techsurge-deep-tech-podcast--pixels-to-intelligence","show":"TechSurge: Deep Tech Podcast","title":"Pixels to Intelligence: The Next Era of Imaging","hook":"The inventor of the CMOS pixel sensor explains how cameras got small enough for phones.","topics":["business/startups","computing"],"duration_min":51},{"id":"luthier-on-luthier--marco-bortolozzo","show":"Luthier on Luthier with Michael Bashkin","title":"115. Marco Bortolozzo","hook":"A classical guitar maker on the mentorship that shaped his Olympic-ring rosette design.","topics":["craft/instrument-making"],"duration_min":57},{"id":"luthier-on-luthier--juha-ruokangas","show":"Luthier on Luthier with Michael Bashkin","title":"109. Juha Ruokangas","hook":"A Finnish luthier's Valve Bucker pickup and guitars built from Arctic birch.","topics":["craft/instrument-making"],"duration_min":85},{"id":"fretboard-journal-guitar-podcast--louis-campbell","show":"The Fretboard Journal Guitar Podcast","title":"Louis Campbell","hook":"A guitarist who studied with Martin Simpson plays electric guitar like a piano.","topics":["craft/instrument-making"],"duration_min":40},{"id":"gastropod--bringing-home-the-bacon","show":"Gastropod","title":"Bringing Home the Bacon: From Shakespeare to the Baconator","hook":"Why bacon was reviled for centuries before becoming America's favorite breakfast meat.","topics":["food/cooking-science"],"duration_min":48},{"id":"gastropod--what-the-shell-lobster","show":"Gastropod","title":"What the Shell? Cracking the Lobster's Mysteries","hook":"Cracking open the biology behind the New England lobster roll's favorite ingredient.","topics":["food/cooking-science"],"duration_min":44},{"id":"the-bbq-central-show--grant-pinkerton","show":"The BBQ Central Show","title":"Grant Pinkerton: Pinkerton's Barbecue","hook":"A Houston pitmaster on running one of Texas's most respected barbecue joints.","topics":["food/cooking-science"],"duration_min":63},{"id":"the-bbq-central-show--steven-raichlen","show":"The BBQ Central Show","title":"Steven Raichlen Is A Man On Fire! Emma Nguyen Just Wins!","hook":"Barbecue Bible author Steven Raichlen talks smoke, fire, and grilling technique on air.","topics":["food/cooking-science"],"duration_min":60},{"id":"black-box-down--potomac-river","show":"Black Box Down","title":"Frozen Flight Crashes In the Potomac River","hook":"Air Florida Flight 90 crashed into the frozen Potomac, leaving only six survivors.","topics":["aviation/accidents"],"duration_min":62},{"id":"black-box-down--hardover-rudder","show":"Black Box Down","title":"Pilots Fight Hardover Rudder to Regain Control of Aircraft","hook":"Northwest Flight 85's rudder jammed mid-flight, forcing a terrifying uncontrolled bank.","topics":["aviation/accidents"],"duration_min":50},{"id":"flight-safety-detectives--evtol-challenges","show":"Flight Safety Detectives","title":"eVTOL Aircraft Face Critical Technical Challenges - Episode 329","hook":"A safety-certification engineer on the real technical hurdles facing flying air taxis.","topics":["aviation/accidents"],"duration_min":48},{"id":"flight-safety-detectives--behind-the-scenes-investigation","show":"Flight Safety Detectives","title":"Behind the Scenes of a Real Aviation Accident Investigation - Episode 323","hook":"Former NTSB investigators walk through day one of a real crash investigation.","topics":["aviation/accidents"],"duration_min":56},{"id":"this-podcast-will-kill-you--histoplasmosis","show":"This Podcast Will Kill You","title":"Ep 210 Histoplasmosis: Bats, birds, and budding yeast","hook":"A fungal lung infection spread by bats and birds is quietly becoming common.","topics":["medicine/biology"],"duration_min":79},{"id":"this-podcast-will-kill-you--oropouche-virus","show":"This Podcast Will Kill You","title":"Ep 206 Oropouche Virus: More than a smidge worrisome","hook":"A little-known virus spreads through biting midges instead of mosquitoes or ticks.","topics":["medicine/biology"],"duration_min":73},{"id":"two-scientists-walk-into-a-bar--wild-world-of-eyeballs","show":"Two Scientists Walk Into a Bar","title":"S7E01: The Wild World of Eyeballs","hook":"Scientists pushing the boundaries of vision treatment open a new season on eyeballs.","topics":["medicine/biology"],"duration_min":37},{"id":"two-scientists-walk-into-a-bar--ai-antibiotics","show":"Two Scientists Walk Into a Bar","title":"S6E02: AI and the Quest for New Antibiotics","hook":"Nearly a decade after sounding the antibiotic-resistance alarm, AI joins the search.","topics":["medicine/biology"],"duration_min":36},{"id":"lingthusiasm--on-the-nose","show":"Lingthusiasm","title":"109: On the nose - How the nose shapes language","hook":"How your nose shapes both spoken language and the grammar of signed language.","topics":["linguistics/language"],"duration_min":46},{"id":"lingthusiasm--hotdog-sandwich-definitions","show":"Lingthusiasm","title":"106: Is a hotdog a sandwich? The problem with definitions","hook":"Burritos, ravioli, and ice cream sandwiches expose a messy problem of definitions.","topics":["linguistics/language"],"duration_min":34},{"id":"the-allusionist--suburbia","show":"The Allusionist","title":"226. Suburbia","hook":"A social historian unpacks the loaded, contradictory meanings packed into one word.","topics":["linguistics/language"],"duration_min":44},{"id":"the-allusionist--banned-books","show":"The Allusionist","title":"218. Banned Books","hook":"The American Library Association's president on what book banning looks like now.","topics":["linguistics/language"],"duration_min":40},{"id":"science-for-sport-podcast--joe-truman","show":"Science for Sport Podcast","title":"Joe Truman: Training of a GB Track Sprinter","hook":"A GB track sprinter on a decade climbing British Cycling's talent pathway.","topics":["sports/biomechanics"],"duration_min":24},{"id":"science-for-sport-podcast--acceleration-plyometrics","show":"Science for Sport Podcast","title":"Acceleration, Plyometrics and the Transfer to Performance","hook":"An Olympic bobsled medalist on what plyometrics actually transfer to performance.","topics":["sports/biomechanics"],"duration_min":34},{"id":"just-fly-performance-podcast--scott-leech","show":"Just Fly Performance Podcast","title":"522: Scott Leech on Constraint-Led Speed Training, AI, and the Future of Coaching","hook":"Training athletes with constraints and games instead of rigid drills, plus AI.","topics":["sports/biomechanics"],"duration_min":82},{"id":"just-fly-performance-podcast--chris-chase","show":"Just Fly Performance Podcast","title":"515: Chris Chase on Plyometrics, Deceleration and Tendon Resilience","hook":"An NBA performance coach on tendon resilience and the biomechanics of landing.","topics":["sports/biomechanics"],"duration_min":102},{"id":"the-outlaw-ocean--repo-man-of-the-seas","show":"The Outlaw Ocean","title":"S2 E4: The repo man of the seas","hook":"A real-life sea repo man who extracts seized ships from hostile foreign ports.","topics":["nature/ocean-science"],"duration_min":49},{"id":"the-outlaw-ocean--the-dark-fleet","show":"The Outlaw Ocean","title":"S1 E2: The Dark Fleet","hook":"A 110-day, 10,000-mile chase after Interpol's most wanted illegal fishing ship.","topics":["nature/ocean-science"],"duration_min":53},{"id":"the-sound-aquatic--learning-to-speak-whale","show":"The Sound Aquatic","title":"Episode 4: Learning to Speak Whale","hook":"Whale clans pass down their own distinct dialects to calves like a culture.","topics":["nature/ocean-science"],"duration_min":30},{"id":"the-sound-aquatic--how-not-to-get-lost","show":"The Sound Aquatic","title":"Episode 2: How Not to Get Lost in the Ocean","hook":"How marine animals navigate the ocean using whispers, songs, grunts, and clicks.","topics":["nature/ocean-science"],"duration_min":26},{"id":"song-exploder--paul-mccartney-ripples-in-a-pond","show":"Song Exploder","title":"Paul McCartney - Ripples in a Pond","hook":"Paul McCartney breaks down the making of a brand new 2026 song.","topics":["music/theory-production"],"duration_min":24},{"id":"song-exploder--fleetwood-mac-go-your-own-way","show":"Song Exploder","title":"Fleetwood Mac - Go Your Own Way","hook":"Lindsey Buckingham on writing this song as his band was quietly splitting apart.","topics":["music/theory-production"],"duration_min":21},{"id":"switched-on-pop--world-cup-music","show":"Switched on Pop","title":"Music only the World Cup could make","hook":"Why the World Cup keeps producing its own strange, unrepeatable pop hits.","topics":["music/theory-production"],"duration_min":38},{"id":"switched-on-pop--jacob-collier","show":"Switched on Pop","title":"Jacob Collier can make anyone sing","hook":"A musician fluent in western harmony, negative harmony, and microtonalism at once.","topics":["music/theory-production"],"duration_min":55},{"id":"my-favorite-theorem--kyne-santos","show":"My Favorite Theorem","title":"Episode 95 - Kyne Santos","hook":"A drag queen and math educator on why she loves the Fundamental Theorem of Calculus.","topics":["math/puzzles"],"duration_min":36},{"id":"my-favorite-theorem--sarah-hart","show":"My Favorite Theorem","title":"Episode 86 - Sarah Hart","hook":"A mathematician traces the hidden cycloid curve lurking inside Moby-Dick.","topics":["math/puzzles"],"duration_min":41},{"id":"99-percent-invisible--the-mapl-test","show":"99% Invisible","title":"The MAPL Test","hook":"A quirky radio rule that quietly reshaped who gets heard in Canadian music.","topics":["architecture/infrastructure"],"duration_min":40},{"id":"99-percent-invisible--roboump","show":"99% Invisible","title":"RoboUmp Hits the Big Leagues","hook":"Umpires blow 34,000 calls a year -- can automated strike zones fix that?","topics":["architecture/infrastructure"],"duration_min":32},{"id":"the-worlds-best-construction-podcast--norway-mega-tunnel","show":"The World's Best Construction Podcast","title":"Norway is Building The World's Deepest Mega-Tunnel - #193","hook":"Norway is boring the world's deepest tunnel straight through solid bedrock.","topics":["architecture/infrastructure"],"duration_min":43},{"id":"the-worlds-best-construction-podcast--chernobyl-dome","show":"The World's Best Construction Podcast","title":"How Teams Are Working to Fix Chernobyl's Dome - #187","hook":"Inside the ongoing engineering fight to keep Chernobyl's reactor dome from failing.","topics":["architecture/infrastructure"],"duration_min":39},{"id":"spycast--weather-report-that-changed-history","show":"SpyCast","title":"The Weather Report that Changed History","hook":"The secret weather forecast that decided whether D-Day would happen at all.","topics":["espionage/cold-war-tech"],"duration_min":36},{"id":"spycast--cia-lost-nuclear-device-india","show":"SpyCast","title":"When the CIA Lost a Nuclear Device in India","hook":"The CIA lost a plutonium-powered spy device high on a Himalayan peak.","topics":["espionage/cold-war-tech"],"duration_min":41},{"id":"main-engine-cut-off--pam-melroy","show":"Main Engine Cut Off","title":"T+328: Pam Melroy, Former NASA Deputy Administrator and Space Shuttle Commander","hook":"A three-time shuttle commander on NASA's biggest decisions and the Isaacman-era policy shift.","topics":["space/rockets"],"duration_min":52},{"id":"main-engine-cut-off--ignition","show":"Main Engine Cut Off","title":"T+325: Ignition","hook":"NASA's Ignition roadmap cancels Gateway and reopens the path away from SLS.","topics":["space/rockets"],"duration_min":35},{"id":"main-engine-cut-off--quantum-space-bridenstine","show":"Main Engine Cut Off","title":"T+332: Quantum Space (with Jim Bridenstine, CEO)","hook":"Former NASA chief Jim Bridenstine on running a spacecraft company as Quantum Space's new CEO.","topics":["space/rockets"],"duration_min":37},{"id":"off-nominal--stock-tips","show":"Off-Nominal","title":"246 - Stock Tips","hook":"Rocket Lab's suborbital flight, SpaceX's AI-driven valuation, and the New Glenn aftermath, unpacked.","topics":["space/rockets"],"duration_min":60},{"id":"off-nominal--polar-bears-and-penguins","show":"Off-Nominal","title":"245 - Polar Bears and Penguins (with Jonathan Goff and Mike Loucks)","hook":"Two propulsion engineers correct the record on orbital depot placement and lunar trajectories.","topics":["space/rockets"],"duration_min":63},{"id":"planetary-radio--green-bank-radio-quiet-zone","show":"Planetary Radio: Space Exploration, Astronomy and Science","title":"Small Town Universe: Inside Green Bank's Radio Quiet Zone","hook":"Inside the radio-quiet town built around the world's largest steerable telescope.","topics":["space/rockets"],"duration_min":55},{"id":"advent-of-computing--emul-8ion","show":"Advent of Computing","title":"Is EMUL-8ion a Form of Flattery?","hook":"A 1977 language mixing APL, LISP, and SNOBOL captures computing's countercultural home-brew era.","topics":["computing/history"],"duration_min":61},{"id":"advent-of-computing--what-is-a-programming-language","show":"Advent of Computing","title":"What Is A Programming Language?","hook":"How a 1960s array language reshaped BASIC, LISP, and modern math notation.","topics":["computing/history"],"duration_min":70},{"id":"planet-money--summer-school-world-tour","show":"Planet Money","title":"Our mission: Find the world's best economic ideas (Summer School World Tour)","hook":"A world tour of economic ideas, from commodity speculation to inflation targeting.","topics":["economics/markets"],"duration_min":37},{"id":"planet-money--college-cheaper","show":"Planet Money","title":"Can the Trump administration make college cheaper?","hook":"Testing whether capping student loans could actually force tuition prices down.","topics":["economics/markets"],"duration_min":29},{"id":"planet-money--alien-monopsony","show":"Planet Money","title":"The real horror of 'Alien' and how it explains why we're not paid enough","hook":"What a fictional space megacorporation reveals about real-world wage suppression.","topics":["economics/markets"],"duration_min":33},{"id":"odd-lots--anthropic-jack-clark","show":"Odd Lots","title":"Anthropic's Co-Founder and Top Economist on Doing Research at the AI Frontier","hook":"Anthropic's co-founder and top economist on AI safety, economics, and self-improvement risk.","topics":["economics/markets"],"duration_min":66},{"id":"odd-lots--jeremy-grantham-bubble","show":"Odd Lots","title":"Jeremy Grantham on How to Tell If a Bubble Is About to Burst","hook":"A famed bubble-spotter compares today's AI mania to the dot-com crash.","topics":["economics/markets"],"duration_min":60},{"id":"odd-lots--grace-shao-chinese-ai","show":"Odd Lots","title":"Grace Shao on What the World Should Know About Chinese AI","hook":"An AI researcher on China's open-source push and its manufacturing edge.","topics":["economics/markets"],"duration_min":51},{"id":"hidden-brain--spiritual-brain-part-2","show":"Hidden Brain","title":"Waking Up Your Spiritual Brain: Part 2","hook":"A psychologist on how spiritual practice and even suffering can open real meaning.","topics":["psychology/decision-making"],"duration_min":93},{"id":"hidden-brain--stepping-out-of-the-shadows","show":"Hidden Brain","title":"Stepping Out of the Shadows","hook":"A psychologist on why our minds cling to losses and ignore wins.","topics":["psychology/decision-making"],"duration_min":89},{"id":"you-are-not-so-smart--misguided","show":"You Are Not So Smart","title":"343 - Misguided - Matthew Facciani","hook":"A social scientist separates misinformation from disinformation and outright propaganda.","topics":["psychology/decision-making"],"duration_min":69},{"id":"you-are-not-so-smart--conspiracy-theorist-changed-mind","show":"You Are Not So Smart","title":"342 - The Conspiracy Theorist Who Changed His Mind","hook":"How a 9/11 truther changed his mind after meeting the engineers and victims.","topics":["psychology/decision-making"],"duration_min":47},{"id":"you-are-not-so-smart--positive-rants","show":"You Are Not So Smart","title":"341 - Positive Rants - Heather Barnes","hook":"A comedian-turned-professor on venting productively with people who disagree with you.","topics":["psychology/decision-making"],"duration_min":45},{"id":"choiceology--depth-of-trust","show":"Choiceology with Katy Milkman","title":"A Depth of Trust","hook":"How the Chilean mine rescue reveals what makes teams trustworthy under pressure.","topics":["psychology/decision-making"],"duration_min":36},{"id":"f1-beyond-the-grid--mattia-binotto-audi","show":"F1 Beyond The Grid","title":"Mattia Binotto: 'Audi are serious' about F1 success","hook":"Audi's team boss on turning a Sauber-era backmarker into a title contender by 2030.","topics":["automotive/racing"],"duration_min":42},{"id":"f1-beyond-the-grid--laurent-mekies-red-bull","show":"F1 Beyond The Grid","title":"Laurent Mekies: relishing Red Bull challenge","hook":"Red Bull's boss on building an in-house power unit and clawing back a title.","topics":["automotive/racing"],"duration_min":48},{"id":"tuned-in-hpa--mazda-fd3s-rx7","show":"Tuned In","title":"165: Pioneering the Mazda FD3S RX-7","hook":"A rotary-engine specialist on turbocharging, cooling, and reliability lessons from factory racing.","topics":["automotive/racing"],"duration_min":125},{"id":"tuned-in-hpa--cad-gateway-to-making-dreams","show":"Tuned In","title":"164: CAD: The Gateway to Making Dreams a Reality","hook":"How CAD, FEA, and CNC turn suspension concepts into manufacturable race parts.","topics":["automotive/racing"],"duration_min":80},{"id":"tuned-in-hpa--zf-8hp-transmission","show":"Tuned In","title":"163: ZF 8HP: The Automatic Everyone Wants?","hook":"Why a stock automatic transmission took over drag racing and drifting builds.","topics":["automotive/racing"],"duration_min":85},{"id":"the-race-f1-podcast--red-bull-upgrade-cadillac-brakes","show":"The Race F1 Podcast","title":"Tech Show: Assessing Red Bull's recent upgrade and the reason for Cadillac's brake 'cooking'","hook":"A former F1 technical director diagnoses Red Bull's upgrade and Cadillac's brake failures.","topics":["automotive/racing"],"duration_min":53},{"id":"philosophize-this--trap-of-modern-cynicism","show":"Philosophize This!","title":"Episode #249 ... The Trap of Modern Cynicism - Peter Sloterdijk","hook":"Sloterdijk on cynicism as a defense mechanism baked into modern institutions.","topics":["philosophy/ideas"],"duration_min":34},{"id":"philosophize-this--what-philosophers-say-about-lying","show":"Philosophize This!","title":"Episode #248 ... What philosophers say about lying.","hook":"A survey of philosophy's oldest arguments for and against telling the truth.","topics":["philosophy/ideas"],"duration_min":37},{"id":"philosophize-this--failure-of-the-modern-university","show":"Philosophize This!","title":"Episode #247 ... The Failure of the Modern University - Alasdair MacIntyre","hook":"MacIntyre argues universities now train narrow experts instead of practical wisdom.","topics":["philosophy/ideas"],"duration_min":29},{"id":"partially-examined-life--cs-lewis-mere-christianity","show":"The Partially Examined Life Philosophy Podcast","title":"Ep. 395: C.S. Lewis Argues for Christianity (Part One)","hook":"C.S. Lewis's moral argument for God, and why it demands sustained commitment.","topics":["philosophy/ideas"],"duration_min":47},{"id":"partially-examined-life--hegel-faith-vs-enlightenment","show":"The Partially Examined Life Philosophy Podcast","title":"Ep. 394: Hegel on Faith vs. The Enlightenment (Part Two)","hook":"Hegel argues faith and Enlightenment reason were never really at odds.","topics":["philosophy/ideas"],"duration_min":54},{"id":"philosophy-bites--goldstein-on-mattering","show":"Philosophy Bites","title":"Rebecca Newberger Goldstein on Mattering","hook":"A philosopher on why creatures like us can't stop asking if we matter.","topics":["philosophy/ideas"],"duration_min":22},{"id":"the-war-on-cars--sidewalk-nation","show":"The War on Cars","title":"Sidewalk Nation","hook":"Sidewalks exist in legal limbo across the US -- a case for fixing that.","topics":["cities/urbanism"],"duration_min":66},{"id":"the-war-on-cars--rethinking-criminal-consequences-for-drivers-who-kill","show":"The War on Cars","title":"Rethinking Criminal Consequences for Drivers Who Kill","hook":"Why punishing individual reckless drivers alone masks deeper, systemic road-safety failures.","topics":["cities/urbanism"],"duration_min":62},{"id":"the-war-on-cars--changing-lanes","show":"The War on Cars","title":"Changing Lanes","hook":"Brooklyn residents fight to make a deadly boulevard safer, one lane at a time.","topics":["cities/urbanism"],"duration_min":59},{"id":"strong-towns-podcast--the-deadly-road-design-we-keep-defending","show":"The Strong Towns Podcast","title":"The Deadly Road Design We Keep Defending","hook":"Why pedestrian deaths keep climbing, and the street-design choices behind it.","topics":["cities/urbanism"],"duration_min":57},{"id":"strong-towns-podcast--what-s-the-housing-crisis-beneath-the-housing-crisis","show":"The Strong Towns Podcast","title":"What's the Housing Crisis Beneath the Housing Crisis?","hook":"Land economics explain more about the housing crisis than most people realize.","topics":["cities/urbanism"],"duration_min":69},{"id":"strong-towns-podcast--how-inner-city-highways-bankrupt-downtowns-and-how-we-rebuil","show":"The Strong Towns Podcast","title":"How Inner City Highways Bankrupt Downtowns And How We Rebuild","hook":"Data from 142 cities shows how inner-city highways bankrupt their own downtowns.","topics":["cities/urbanism"],"duration_min":59},{"id":"the-sharp-end-podcast--ep-126-mountain-rescue-in-the-bugaboos-zach-watson","show":"the Sharp End Podcast","title":"Ep 126 - Mountain Rescue in the Bugaboos - Zach Watson","hook":"A climber recounts a Bugaboos rescue and what real preparation looks like.","topics":["adventure/exploration"],"duration_min":66},{"id":"the-sharp-end-podcast--ep-125-the-way-out-a-true-story-of-survival-in-the-heart-of-","show":"the Sharp End Podcast","title":"Ep 125 - The Way Out - A True Story of Survival in the Heart of the Rockies - Devon O'Neil","hook":"A backcountry ski tragedy in the Rockies and the rescue that followed.","topics":["adventure/exploration"],"duration_min":49},{"id":"the-sharp-end-podcast--ep-124-climbing-liberty-ridge-lessons-learned-from-a-challen","show":"the Sharp End Podcast","title":"Ep 124 - Climbing Liberty Ridge - Lessons Learned from a Challenging Ascent - Andy & Eric","hook":"Two climbers on Rainier's Liberty Ridge share the calls that kept them alive.","topics":["adventure/exploration"],"duration_min":57},{"id":"the-enormocast--enormocast-326-julia-cassou-telling-true-stories","show":"The Enormocast: the climbing podcast","title":"Enormocast 326: Julia Cassou – Telling True Stories","hook":"A climbing journalist on what makes a true story worth telling.","topics":["adventure/exploration"],"duration_min":82},{"id":"the-enormocast--enormocast-323-cole-brauer-every-day-the-sea","show":"The Enormocast: the climbing podcast","title":"Enormocast 323: Cole Brauer – Every Day the Sea","hook":"A solo ocean racer on months alone at sea and what it teaches.","topics":["adventure/exploration"],"duration_min":106},{"id":"the-enormocast--enormocast-318-babsi-zangerl-10-years-later","show":"The Enormocast: the climbing podcast","title":"Enormocast 318: Babsi Zangerl – 10 Years Later","hook":"One of climbing's best free climbers looks back ten years into her career.","topics":["adventure/exploration"],"duration_min":105},{"id":"designer-notes--designer-notes-96-owen-mahoney","show":"Designer Notes","title":"Designer Notes 96: Owen Mahoney","hook":"A former Nexon CEO on the hard tradeoffs of free-to-play game design.","topics":["gaming/design"],"duration_min":89},{"id":"designer-notes--designer-notes-94-charles-cecil-part-2","show":"Designer Notes","title":"Designer Notes 94: Charles Cecil - Part 2","hook":"An adventure-game pioneer on digital distribution and decades of design lessons.","topics":["gaming/design"],"duration_min":214},{"id":"designer-notes--designer-notes-92-paul-kilduff-taylor","show":"Designer Notes","title":"Designer Notes 92: Paul Kilduff-Taylor","hook":"Frozen Synapse's creator on simultaneous-turn design and indie self-distribution.","topics":["gaming/design"],"duration_min":189},{"id":"game-design-round-table--revisiting-civ-7","show":"The Game Design Round Table","title":"Revisiting Civ 7","hook":"A big swing that missed: dissecting Civilization 7's rocky course correction.","topics":["gaming/design"],"duration_min":58},{"id":"game-design-round-table--season-rpg-exploring-the-success-behind-neon-odyssey-with-mi","show":"The Game Design Round Table","title":"Season: RPG - Exploring the Success Behind Neon Odyssey with Mikey Gilder","hook":"A $9M Kickstarter's designer on narrative freedom versus mechanical depth in RPGs.","topics":["gaming/design"],"duration_min":61},{"id":"game-design-round-table--listener-questions-ai-and-the-future-of-game-design","show":"The Game Design Round Table","title":"Listener Questions, AI and the Future of Game Design","hook":"What AI actually changes about game design, memory, and creative ethics.","topics":["gaming/design"],"duration_min":56},{"id":"huberman-lab--raising-a-dog-and-mastering-calm-assertive-energy-cesar-mill","show":"Huberman Lab","title":"Raising a Dog & Mastering Calm Assertive Energy | Cesar Millan","hook":"Cesar Millan on calm-assertive energy and what dog training reveals about behavior.","topics":["medicine/neuroscience"],"duration_min":158},{"id":"huberman-lab--movement-practice-to-strengthen-your-mind-body-connection-id","show":"Huberman Lab","title":"Movement Practice to Strengthen Your Mind-Body Connection | Ido Portal","hook":"A movement coach on training the mind-body connection most people ignore.","topics":["medicine/neuroscience"],"duration_min":180},{"id":"strict-scrutiny--scotus-just-barely-preserves-birthright-citizenship","show":"Strict Scrutiny","title":"SCOTUS Just Barely Preserves Birthright Citizenship","hook":"The Court's late-term rulings on birthright citizenship, sports, and campaign finance.","topics":["society/law"],"duration_min":59},{"id":"strict-scrutiny--scotus-kills-independent-agencies-expands-presidential-power","show":"Strict Scrutiny","title":"SCOTUS Kills Independent Agencies, Expands Presidential Power","hook":"Two rulings quietly hand the presidency sweeping new power over agencies.","topics":["society/law"],"duration_min":54},{"id":"strict-scrutiny--breaking-scotus-greenlights-trump-s-cruel-immigration-polici","show":"Strict Scrutiny","title":"BREAKING: SCOTUS Greenlights Trump's Cruel Immigration Policies","hook":"Justice Sotomayor's sharp warning follows two major immigration rulings from the Court.","topics":["society/law"],"duration_min":38},{"id":"amicus-dahlia-lithwick--bad-history-will-kill-america","show":"Amicus With Dahlia Lithwick | Law, justice, and the courts","title":"Bad History Will Kill America","hook":"Flawed historical reasoning drives the Court's final rulings on agencies and citizenship.","topics":["society/law"],"duration_min":58},{"id":"amicus-dahlia-lithwick--a-constitutional-travesty-narrowly-avoided","show":"Amicus With Dahlia Lithwick | Law, justice, and the courts","title":"A Constitutional Travesty Narrowly Avoided","hook":"Close 5-4 votes decide birthright citizenship, campaign finance, and student athletes.","topics":["society/law"],"duration_min":15},{"id":"amicus-dahlia-lithwick--the-roberts-court-shows-its-true-colors","show":"Amicus With Dahlia Lithwick | Law, justice, and the courts","title":"The Roberts Court Shows Its True Colors","hook":"Immigration rulings reveal the Roberts Court's approach to race-conscious law.","topics":["society/law"],"duration_min":69},{"id":"craft-beer-and-brewing-magazine-podcast--mike-stein-and-pete-jones-of-lost-lagers-look-back-at-americ","show":"Craft Beer & Brewing Magazine Podcast","title":"Mike Stein and Pete Jones of Lost Lagers Look Back at American Brewing Over the Past 250 Years","hook":"Two brewers look back at 250 years of American beer history.","topics":["food/fermentation"],"duration_min":75},{"id":"craft-beer-and-brewing-magazine-podcast--the-post-s-nick-tedeschi-brews-flavorful-low-abv-beers-for-g","show":"Craft Beer & Brewing Magazine Podcast","title":"The Post's Nick Tedeschi Brews Flavorful Low-ABV Beers for Great Times with Great Food","hook":"A brewer makes the case for flavorful, low-alcohol beer built for real food.","topics":["food/fermentation"],"duration_min":65},{"id":"myths-and-legends--maui","show":"Myths and Legends","title":"Maui: Whatever Happened to the Man Who Snared the Sun?","hook":"The Hawaiian trickster who snared the sun has vanished, and omens are stirring.","topics":["culture/mythology"],"duration_min":54},{"id":"myths-and-legends--czech-dragon","show":"Myths and Legends","title":"Czech folklore: House of the Dragon","hook":"A Czech tale of superhuman gifts, dragon battles, and increasingly dangerous folk cures.","topics":["culture/mythology"],"duration_min":66},{"id":"myths-and-legends--norse-old-man","show":"Myths and Legends","title":"Norse Mythology: The Old Man and the Stick","hook":"Heroes in Valhalla make chaos, and Skidi must restore order in Midgard.","topics":["culture/mythology"],"duration_min":55},{"id":"our-fake-history--midnight-ride","show":"Our Fake History","title":"Episode #254 - What Went Down on the Midnight Ride?","hook":"What Paul Revere actually did, and how Longfellow's poem rewrote it.","topics":["culture/mythology"],"duration_min":96},{"id":"our-fake-history--macbeth-curse","show":"Our Fake History","title":"Episode #250 - Is Macbeth Cursed?","hook":"The theatrical curse on Shakespeare's tragedy, and when the belief actually began.","topics":["culture/mythology"],"duration_min":73},{"id":"our-fake-history--snow-white","show":"Our Fake History","title":"Episode #248 - Was There a Real Snow White?","hook":"Did the Grimms' Snow White begin with a real German noblewoman?","topics":["culture/mythology"],"duration_min":83},{"id":"sticky-notes--honegger-3","show":"Sticky Notes: The Classical Music Podcast","title":"Arthur Honegger, Symphony No. 3, \"Liturgique\"","hook":"Honegger's postwar symphony, written as modern man's revolt against barbarism.","topics":["music/classical"],"duration_min":53},{"id":"sticky-notes--liszt-faust","show":"Sticky Notes: The Classical Music Podcast","title":"Liszt Faust Symphony","hook":"Liszt's 75-minute Faust symphony and his pioneering thematic-transformation technique.","topics":["music/classical"],"duration_min":64},{"id":"that-triathlon-show--kolie-moore","show":"That Triathlon Show","title":"Kolie Moore - Overrated and Underrated Cycling Factors","hook":"Zone 2, creatine, and race specificity, ranked overrated to underrated for cyclists.","topics":["sports/endurance"],"duration_min":100},{"id":"that-triathlon-show--polarized-pyramidal","show":"That Triathlon Show","title":"Polarized vs. Pyramidal Training - Arturo Casado, PhD","hook":"The research on polarized versus pyramidal training, and when each one wins.","topics":["sports/endurance"],"duration_min":88},{"id":"shipwrecks-and-sea-dogs--lake-erie","show":"Shipwrecks and Sea Dogs","title":"Don't Give Up The Ship: The Battle of Lake Erie","hook":"Commodore Perry's 1813 victory on Lake Erie, battle flag and all.","topics":["transport/maritime"],"duration_min":42},{"id":"shipwrecks-and-sea-dogs--herald-free-enterprise","show":"Shipwrecks and Sea Dogs","title":"90 Seconds to Disaster: The Herald of Free Enterprise","hook":"Open bow doors capsized a ferry in 90 seconds, killing 193.","topics":["transport/maritime"],"duration_min":38},{"id":"shipwrecks-and-sea-dogs--wreck-of-mentor","show":"Shipwrecks and Sea Dogs","title":"The Wreck of the Mentor w/Eric Jay Dolin","hook":"An 1832 whaleship wreck in Palau, captivity, and a dramatic rescue.","topics":["transport/maritime"],"duration_min":36},{"id":"maritime-history-podcast--trireme-101","show":"The Maritime History Podcast","title":"Ep. 030 - Trireme 101","hook":"How to build, crew, and ram a Greek trireme with 170 oarsmen.","topics":["transport/maritime"],"duration_min":106},{"id":"maritime-history-podcast--salamis","show":"The Maritime History Podcast","title":"Ep. 038 - The Naval Battle at Salamis","hook":"Themistocles outmaneuvers the Persian fleet in the narrows at Salamis.","topics":["transport/maritime"],"duration_min":123},{"id":"the-roundhouse--civil-war-railroads","show":"The Roundhouse","title":"166: American Civil War Railroads","hook":"How railroads shaped Civil War logistics, with a rail-history society.","topics":["transport/trains"],"duration_min":58},{"id":"the-allusionist--hues","show":"The Allusionist","title":"225. Hues","hook":"Lexicographers spent decades failing to pin down how to define color names.","topics":["linguistics/language"],"duration_min":41},{"id":"the-allusionist--flyting","show":"The Allusionist","title":"203. Flyting","hook":"In 15th-century Scottish courts, esteemed poets hurled elaborate insults at each other.","topics":["linguistics/language"],"duration_min":52},{"id":"lex-fridman-podcast--terence-tao-math","show":"Lex Fridman Podcast","title":"#472 – Terence Tao: Hardest Problems in Mathematics, Physics & the Future of AI","hook":"Fields medalist Terence Tao on the hardest open problems and how AI could crack them.","topics":["math"],"duration_min":204},{"id":"happiness-lab--no-regrets-bad-advice","show":"The Happiness Lab with Dr. Laurie Santos","title":"Why “No Regrets” Is Bad Advice","hook":"Laurie Santos on why regret, used well, guides better decisions than living regret-free.","topics":["health/mental","psychology"],"duration_min":31},{"id":"happiness-lab--negative-emotions-signals","show":"The Happiness Lab with Dr. Laurie Santos","title":"What Your Negative Emotions Are Trying to Tell You","hook":"Sadness, anger and anxiety aren't problems to fix but signals worth listening to.","topics":["health/mental","psychology"],"duration_min":46},{"id":"happiness-lab--art-of-doing-nothing","show":"The Happiness Lab with Dr. Laurie Santos","title":"The Art of Doing Nothing","hook":"The science of time famine, and why rest feels impossible when always busy.","topics":["health/mental","psychology"],"duration_min":35},{"id":"ten-percent-happier--attachment-style-amir-levine","show":"10% Happier with Dan Harris","title":"What Attachment Style Are You? How To Know, Why It Matters, and How To Change It If You Need To | Amir Levine","hook":"Psychiatrist Amir Levine on knowing your attachment style and shifting toward secure connection.","topics":["health/mental","psychology"],"duration_min":65},{"id":"ten-percent-happier--regulate-nervous-system-bruce-perry","show":"10% Happier with Dan Harris","title":"How To Regulate Your Nervous System: Anxiety, Relationships, and the Baggage You Didn't Ask For | Dr. Bruce Perry","hook":"Neuroscientist Bruce Perry on how trauma rewires the brain and connection helps regulate it.","topics":["health/mental","psychology"],"duration_min":77},{"id":"ten-percent-happier--muscle-emotions-gabrielle-lyon","show":"10% Happier with Dan Harris","title":"Muscle Regulates Your Emotions: The Science of Protein, Strength, and Aging Well | Dr. Gabrielle Lyon","hook":"Physician Gabrielle Lyon on how protein and strength training change your mental state.","topics":["health/mental","health/fitness"],"duration_min":57},{"id":"mel-robbins-podcast--science-of-dreaming","show":"The Mel Robbins Podcast","title":"#1 Neuroscientist: How to Unlock the Power of Your Mind Using The Science of Dreaming","hook":"A neuroscientist on what your dreams mean and how sleep sharpens the mind.","topics":["education/self-improvement","medicine/neuroscience"],"duration_min":71},{"id":"mel-robbins-podcast--gottman-relationship-research","show":"The Mel Robbins Podcast","title":"The #1 Relationship Researchers in the World: 50 Years of Marriage & Love Advice in One Conversation","hook":"The Gottmans distill fifty years of marriage research into one practical conversation.","topics":["education/self-improvement","psychology"],"duration_min":88},{"id":"mel-robbins-podcast--master-any-conversation","show":"The Mel Robbins Podcast","title":"How to Master Any Conversation, Communicate With Confidence, and Deal With Difficult People","hook":"Practical ways to communicate with confidence and handle difficult people in any room.","topics":["education/self-improvement"],"duration_min":69},{"id":"happier-gretchen-rubin--fight-perfectionism","show":"Happier with Gretchen Rubin","title":"Ep. 591: How to Fight Perfectionism—Plus a Simple Happiness Hack That Really Matters","hook":"Why perfectionism is driven by anxiety, not high standards, and how to loosen it.","topics":["education/self-improvement","health/mental"],"duration_min":40},{"id":"happier-gretchen-rubin--strategies-for-managing-worry","show":"Happier with Gretchen Rubin","title":"Ep. 590: Very Special Episode! 20 Practical Strategies for Managing Worry","hook":"Twenty practical strategies for managing worry, from scheduled worry-time to spotting false alarms.","topics":["education/self-improvement","health/mental"],"duration_min":37},{"id":"good-inside-dr-becky--neuroscience-of-fatherhood","show":"Good Inside with Dr. Becky","title":"Great Dads Are Made, Not Born: The Neuroscience of Fatherhood","hook":"New research shows fathers' brains reorganize around a baby, just as mothers' do.","topics":["kids-family/parenting","medicine/neuroscience"],"duration_min":32},{"id":"good-inside-dr-becky--stop-trying-to-make-kids-creative","show":"Good Inside with Dr. Becky","title":"Stop Trying to Make Your Kids Creative","hook":"Clinical psychologist Becky Kennedy on why creativity kits won't make your kid creative.","topics":["kids-family/parenting","psychology"],"duration_min":34},{"id":"good-inside-dr-becky--why-kids-behavior-feels-big","show":"Good Inside with Dr. Becky","title":"Why Your Kid’s Behavior Feels So Big","hook":"Dr. Lindsay Gibson on why your child's big reactions feel so overwhelming.","topics":["kids-family/parenting","psychology"],"duration_min":28},{"id":"ask-lisa-parenting--why-is-my-teen-bombing-tests","show":"Ask Lisa: The Psychology of Parenting","title":"272: Why Is My Teen Bombing Tests?","hook":"Clinical psychologist Lisa Damour on why a diligent teen still struggles with tests.","topics":["kids-family/parenting","psychology"],"duration_min":35},{"id":"ask-lisa-parenting--embracing-adhd-holderness","show":"Ask Lisa: The Psychology of Parenting","title":"277: ENCORE: Embracing ADHD with Penn and Kim Holderness","hook":"Lisa Damour and the Holdernesses on seeing a child's ADHD diagnosis differently.","topics":["kids-family/parenting","psychology"],"duration_min":43},{"id":"ask-lisa-parenting--confidence-self-esteem-self-compassion","show":"Ask Lisa: The Psychology of Parenting","title":"273: Best of Ask Lisa: Confidence, Self-Esteem & Self-Compassion","hook":"Lisa Damour on building genuine confidence, self-esteem and self-compassion in kids and yourself.","topics":["kids-family/parenting","psychology"],"duration_min":43},{"id":"how-did-this-get-made--airborne","show":"How Did This Get Made?","title":"Airborne LIVE! w/ Scott Aukerman, Kumail Nanjiani, & Danielle Schneider (Classic)","hook":"An all-star crew tries to explain 1993's rollerblading-surfing-hockey mess, Airborne, live.","topics":["comedy/casual-hangs","tv-film/reviews"],"duration_min":73},{"id":"how-did-this-get-made--vertical-limit","show":"How Did This Get Made?","title":"Vertical Limit w/ Laci Mosley","hook":"Laci Mosley joins to unpack the mountain thriller where climbers keep exploding.","topics":["comedy/casual-hangs","tv-film/reviews"],"duration_min":74},{"id":"how-did-this-get-made--tough-guys-dont-dance","show":"How Did This Get Made?","title":"Tough Guys Don't Dance (Classic)","hook":"Paul, June, and Jason wrestle Norman Mailer's baffling 1987 crime mystery.","topics":["comedy/casual-hangs","tv-film/reviews"],"duration_min":70},{"id":"criminal--the-caller","show":"Criminal","title":"The Caller","hook":"In 2008, an FBI bulletin argued a 911 caller reporting a homicide could be the killer.","topics":["true-crime","society/law"],"duration_min":43},{"id":"criminal--rhinelander-v-rhinelander","show":"Criminal","title":"Rhinelander v. Rhinelander","hook":"A 1924 New York annulment trial turned on whether Alice Rhinelander had concealed her race.","topics":["true-crime","history","society/law"],"duration_min":41},{"id":"criminal--the-poison-squad","show":"Criminal","title":"The Poison Squad","hook":"In 1902, twelve volunteers ate food laced with formaldehyde and borax for government science.","topics":["true-crime","history","society/law"],"duration_min":43},{"id":"serial--the-last-12-weeks-ep1","show":"Serial","title":"The Last 12 Weeks - Ep. 1","hook":"David Wood has sat on Texas death row since 1992; his lawyers have months left.","topics":["true-crime","society/law"],"duration_min":41},{"id":"serial--the-idiot-ch1","show":"Serial","title":"The Idiot - Chapter 1","hook":"M. Gessen suspects a boastful relative who turned up in Cape Cod committed a kidnapping.","topics":["true-crime","society/law"],"duration_min":22},{"id":"astonishing-legends--ripperston-farm","show":"Astonishing Legends","title":"The Uninvited: The Ripperston Farm Invasion","hook":"In 1977, a remote Welsh dairy farm became Britain's strangest and most enduring UFO case.","topics":["paranormal","history"],"duration_min":143},{"id":"astonishing-legends--ghost-bomber-monongahela","show":"Astonishing Legends","title":"The Ghost Bomber of the Monongahela","hook":"In 1956, a B-25 bomber crashed into a Pittsburgh river and was never recovered.","topics":["paranormal","history"],"duration_min":143},{"id":"astonishing-legends--gloria-ramirez","show":"Astonishing Legends","title":"The Strange Death of Gloria Ramirez","hook":"In 1994, a dying woman's body gave off strange fumes that sickened a California ER.","topics":["paranormal","history","medicine"],"duration_min":124},{"id":"lore--308-without-a-trace","show":"Lore","title":"Lore 308: Without a Trace","hook":"One real American trail has long carried dark stories of travelers who got lost.","topics":["paranormal","history"],"duration_min":29},{"id":"lore--309-party-favors","show":"Lore","title":"Lore 309: Party Favors","hook":"A handful of celebratory gatherings in history turned frightening instead of festive.","topics":["paranormal","history"],"duration_min":32},{"id":"lore--legends-82-weight-of-fear","show":"Lore","title":"Legends 82: The Weight of Fear","hook":"Calling a bad experience a nightmare traces back to a genuinely terrifying old belief.","topics":["paranormal","history","culture/mythology"],"duration_min":25},{"id":"casefile--amerithrax","show":"Casefile True Crime","title":"Case 344: Amerithrax","hook":"After 9/11, anthrax-laced letters killed five and triggered the FBI's largest bioterrorism investigation.","topics":["true-crime","history"],"duration_min":120},{"id":"this-american-life--mistakes-were-made","show":"This American Life","title":"Mistakes Were Made","hook":"A 1960s TV repairman tries to cheat death with cryonics, then must own his mistakes.","topics":["science/storytelling","society","personal-journals"],"duration_min":61},{"id":"this-american-life--blackout","show":"This American Life","title":"Blackout","hook":"Under Iran’s wartime internet blackout, people smuggle out voice memos because they want to be heard.","topics":["society","personal-journals"],"duration_min":63},{"id":"this-american-life--call-your-parents","show":"This American Life","title":"Call Your Parents","hook":"Ira returns to the recorded interviews with his parents that changed their relationship for good.","topics":["personal-journals","science/storytelling"],"duration_min":59},{"id":"snap-judgment--deliverance","show":"Snap Judgment","title":"Deliverance","hook":"Raised by preachers, Sammy loves bumblebees, the Bible, and boys, and Deliverance Day is coming.","topics":["science/storytelling","personal-journals"],"duration_min":50},{"id":"snap-judgment--something-sacred","show":"Snap Judgment","title":"Something Sacred","hook":"A Coast Guardsman’s night watch and hula sisters at Merrie Monarch, where the gods intervene.","topics":["science/storytelling","personal-journals"],"duration_min":49},{"id":"snap-judgment--silence-speaks","show":"Snap Judgment","title":"Silence Speaks","hook":"When words were dangerous, Grigory found a way to speak up through mime and silence.","topics":["science/storytelling","personal-journals"],"duration_min":48},{"id":"heavyweight--julia","show":"Heavyweight","title":"2026 Update: Julia","hook":"Bullied so badly she changed schools, Julia still wonders what those girls wanted.","topics":["personal-journals","relationships"],"duration_min":36},{"id":"heavyweight--skye","show":"Heavyweight","title":"2026 Update: Skye","hook":"Decades after friends scrawled on her garage door, Skye sets off to ask them why.","topics":["personal-journals","relationships"],"duration_min":50},{"id":"death-sex-money--parent-child-anxiety","show":"Death, Sex & Money","title":"The Parent-Child Anxiety Trap","hook":"Anna Sale and a Yale expert on parenting a child with an anxiety disorder.","topics":["personal-journals","health/mental","relationships"],"duration_min":37},{"id":"death-sex-money--rick-steves-travel","show":"Death, Sex & Money","title":"Rick Steves Says Travel is the Antidote to Fear","hook":"Rick Steves on visiting Iran and why travel is the antidote to fear.","topics":["personal-journals","society","travel"],"duration_min":49},{"id":"where-should-we-begin--mating-in-captivity-20","show":"Where Should We Begin? with Esther Perel","title":"20 Years Later, Esther Revisits Mating in Captivity","hook":"Esther Perel revisits twenty years of Mating in Captivity: desire, disruption, staying alive to each other.","topics":["relationships","psychology","health/sexuality"],"duration_min":44},{"id":"where-should-we-begin--is-this-the-person","show":"Where Should We Begin? with Esther Perel","title":"Is This the Person I'm Meant to Be With?","hook":"A decade-long couple who became roommates ask Esther whether they still belong together.","topics":["relationships","psychology"],"duration_min":56},{"id":"where-should-we-begin--still-in-the-middle","show":"Where Should We Begin? with Esther Perel","title":"My Parents Got Divorced, So Why Am I Still in the Middle?","hook":"A woman stuck mediating her divorced parents asks what stories were never hers to carry.","topics":["relationships","psychology"],"duration_min":58},{"id":"we-can-do-hard-things--surviving-criticism","show":"We Can Do Hard Things","title":"(BEST OF) The Secret to Surviving Criticism","hook":"Glennon shares her “Sort Your Mail” strategy for handling criticism without going quiet.","topics":["relationships","health/mental","education/self-improvement"],"duration_min":59},{"id":"welcome-to-night-vale--290-a-solution","show":"Welcome to Night Vale","title":"290 - A Solution","hook":"Night Vale's radio host reports on a community-wide situation, weather included.","topics":["fiction","fiction/drama"],"duration_min":34},{"id":"welcome-to-night-vale--287-sound-behind-the-sky","show":"Welcome to Night Vale","title":"287 - Hey, Does Anyone Hear That Sound Behind the Sky?","hook":"Night Vale's radio host wonders about a strange sound behind the sky.","topics":["fiction","fiction/drama"],"duration_min":27},{"id":"the-magnus-archives--mag-81-a-guest-for-mr-spider","show":"The Magnus Archives","title":"MAG 81 - A Guest for Mr. Spider","hook":"An archivist reads a childhood statement about a book that should stay shut.","topics":["fiction","fiction/drama"],"duration_min":25},{"id":"the-magnus-archives--magnus-protocol-1-first-shift","show":"The Magnus Archives","title":"The Magnus Protocol 1 – First Shift","hook":"A first shift at a strange institute logging cases that shouldn't exist.","topics":["fiction","fiction/drama"],"duration_min":42},{"id":"old-gods-of-appalachia--episode-0-prologue","show":"Old Gods of Appalachia","title":"Episode 0: Prologue","hook":"Welcome to an Appalachia where no one discusses what sleeps beneath the mountains.","topics":["fiction","fiction/drama"],"duration_min":10},{"id":"old-gods-of-appalachia--episode-1-old-number-seven","show":"Old Gods of Appalachia","title":"Episode 1: Old Number Seven: Barlo, Kentucky 1917: Part One","hook":"Kentucky's worst mining disaster arrives, and young Sarah Avery runs.","topics":["fiction","fiction/drama"],"duration_min":16},{"id":"99-percent-invisible--billy-possum","show":"99% Invisible","title":"100 Objects #8: Billy Possum","hook":"After the teddy bear's success, President Taft got a stuffed possum. It flopped.","topics":["architecture/infrastructure"],"duration_min":36},{"id":"how-did-this-get-made--last-looks-vertical-limit","show":"How Did This Get Made?","title":"Last Looks: Vertical Limit","hook":"Paul answers your Vertical Limit corrections, from K2 cleanup to afterlife facial hair.","topics":["comedy/casual-hangs","tv-film/reviews"],"duration_min":40},{"id":"cbc-ideas--brutalist-architecture","show":"CBC Ideas","title":"How Brutalist architecture goes beyond aesthetics","hook":"Brutalism is now a hipster darling, but concrete carries housing, climate, and class baggage.","topics":["architecture"],"duration_min":54},{"id":"spycast--china-cyber-espionage","show":"SpyCast","title":"Inside China's Cyber Espionage Business","hook":"Britain's first ethical hacker on China's state-sponsored cyber espionage business.","topics":["espionage/cold-war-tech"],"duration_min":40},{"id":"how-did-this-get-made--perfect-live-seth-morris","show":"How Did This Get Made?","title":"Perfect LIVE! w/ Seth Morris (Classic)","hook":"Travolta's 1985 aerobics romance Perfect gets the live treatment with Seth Morris at Largo.","topics":["comedy/casual-hangs","tv-film/reviews"],"duration_min":74},{"id":"how-did-this-get-made--thrashin","show":"How Did This Get Made?","title":"Thrashin'","hook":"1986's Thrashin': rival skate gangs, a joust scene, and a young Josh Brolin.","topics":["comedy/casual-hangs","tv-film/reviews"],"duration_min":69},{"id":"spycast--dgse-france-foreign-intelligence","show":"SpyCast","title":"The Triumphs and Failures of France's Foreign Intel Service","hook":"France's DGSE learned espionage the hard way, through a run of high-profile blunders.","topics":["espionage/cold-war-tech"],"duration_min":38},{"id":"flight-safety-detectives--young-aviation-enthusiast-examines-air-traffic","show":"Flight Safety Detectives","title":"Young Aviation Enthusiast Examines Air Traffic Issues - Episode 338","hook":"A 16-year-old pilot-in-training on his coastal cross-country flight and today's air traffic problems.","topics":["aviation/accidents"],"duration_min":37}];
 
-function tokenizeQuery(q){ return q.toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>1); }
+// Small everyday->taxonomy vocabulary bridge. The resolver otherwise only
+// matches literal taxonomy label/id words, which fails on ordinary phrasing
+// (e.g. "fixing old cars" has no word in common with the "Automotive" label
+// at all — found when that exact phrase, one of onboarding's own example
+// chips, silently failed to resolve and left the user stuck).
+const QUERY_ALIASES = {
+  car:'automotive', cars:'automotive', vehicle:'automotive', vehicles:'automotive',
+  bread:'food', baking:'food', cooking:'food',
+  chess:'puzzles', puzzle:'puzzles',
+  volcano:'earth', volcanoes:'earth', earthquake:'earth', weather:'earth',
+  fixing:'craft', repair:'craft', diy:'craft', building:'craft',
+  ai:'computing', software:'computing', coding:'computing', programming:'computing',
+  crime:'true-crime', murder:'true-crime',
+  space:'space', rockets:'space', astronomy:'space',
+  dinosaurs:'paleontology', fossils:'paleontology'
+};
+function tokenizeQuery(q){
+  return q.toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>1).map(w=>QUERY_ALIASES[w]||w);
+}
 
 function resolveTopicQuery(query){
   const qTokens = tokenizeQuery(query);
@@ -482,6 +508,7 @@ function bumpOrCreate(id, delta, why, meta){
   return n;
 }
 
+
 function runTopicSearch(query){
   query = (query||'').trim();
   if(!query) return;
@@ -514,27 +541,34 @@ const TAX = [
   {id:'news.politics', path:'news',        name:'Politics',               w:-.62, conf:.9, at:'Wed'}
 ];
 
-const ONBOARD = [
-  {q:'What did you last fall down a rabbit hole on?', hint:'Type it how you would say it.',
-   opts:['Thermal imaging','Violin acoustics','Fab economics','Ancient siege engines'], gives:['eng.precision','sci.materials']},
-  {q:'When you bail on an episode, what usually did it?', hint:'This tunes the quality signal, not the topic.',
-   opts:['Padding and banter','A guest who cannot explain','Too slow to start','I finish most things'], gives:[]},
-  {q:'What do you put on when you do not want to think?', hint:'The comfort slot needs a target.',
-   opts:['Two friends talking','Comedy','A story','Nothing — silence'], gives:['com.hangs']},
-  {q:'Anything you never want to hear about?', hint:'Hard blocks. You can change these later.',
-   opts:['Politics','True crime','Celebrity interviews','Sports'], gives:['news.politics'], negative:true},
-  {q:'How much should I say before pressing play?', hint:'Intro verbosity.',
-   opts:['One line','A sentence of context','Skip it entirely'], gives:[]}
+// Deliberately diverse across taxonomy branches (issue: the old chip set was
+// all founder-shaped technical topics — see docs/ux/README.md "Onboarding
+// interview redesign" for the critique this replaced).
+const ONB_EXAMPLES = ['Volcanoes','True crime cases','Ancient Rome','How bread rises','Chess openings','Fixing old cars'];
+
+
+const COMFORT_OPTIONS = [
+  {label:'Two friends talking', node:'comedy/casual-hangs'},
+  {label:'Comedy', node:'comedy'},
+  {label:'A story', node:'fiction'},
+  {label:'No preference — choose for me', node:null}
+];
+const BLOCK_OPTIONS = [
+  {label:'Politics', node:'news/politics'},
+  {label:'True crime', node:'true-crime'},
+  {label:'Celebrity interviews', node:'culture/pop-culture'},
+  {label:'Sports', node:'sports'}
 ];
 
 /* ============================================================================
    STATE
    ============================================================================ */
 const S = {
-  route:'signin', tab:'today', onb:0, onbPicks:{},
+  route:'signin', tab:'today',
+  onbStep:1, onbTopic:'', onbNode:null, onbComfort:null, onbBlocks:[], blockConfirm:null, buildNotify:false,
   tax:JSON.parse(JSON.stringify(TAX)),
   queue:null, qi:0, pos:0, playing:false, pickedCard:null,
-  rate:1.25, demo:90, offline:false, dl:'ready', dlPct:100,
+  rate:1.25, rateByShow:{rd:1}, demo:90, offline:false, dl:'ready', dlPct:100,
   sessionState:'ready', events:[], toast:null, overlay:null, sheet:null,
   fb:{}, saved:[], subs:['shw_ir','shw_pe','shw_lb'], blocked:[],
   lastPickArchetype:null, askedRating:false, ratings:0,
@@ -543,6 +577,11 @@ const S = {
 };
 const show = k => SHOWS[k] || SHOWS.ir;
 const cur = () => S.queue ? S.queue[S.qi] : null;
+// Feedback (More/Less/Save) was a single global {more,down,saved} object, so
+// Save could show "on" for an episode you never saved — whatever the last
+// episode's feedback state was just carried over visually. Keyed by
+// episode_ref so each episode's buttons reflect only that episode.
+function curFb(episodeRef){ return S.fb[episodeRef] || (S.fb[episodeRef] = {more:false, down:false, saved:false}); }
 const fmt = s => { s=Math.max(0,Math.round(s)); const m=Math.floor(s/60); return m+':'+String(s%60).padStart(2,'0'); };
 const mins = s => Math.round(s/60)+' min';
 
@@ -551,7 +590,7 @@ function ev(type, payload={}){
   S.events.unshift({user_id:'usr_joey', ts:new Date().toISOString(), type, payload});
   paintLog();
 }
-function toast(msg, kind){ S.toast={msg,kind}; paintToast(); clearTimeout(toast._t); toast._t=setTimeout(()=>{S.toast=null;paintToast();},2600); }
+function toast(msg, kind){ S.toast={msg,kind}; paintToast(); clearTimeout(toast._t); toast._t=setTimeout(()=>{S.toast=null;paintToast();},4200); }
 
 /* ---------- taxonomy mutation ---------- */
 function bump(id, delta, why){
@@ -600,7 +639,11 @@ function handleBroken(){
   const it=cur();
   ev('error', {kind:'enclosure_unreachable', episode_ref:it.episode_ref, http:404});
   it.errored=true; S.playing=false; render();
-  setTimeout(()=>{ if(!cur()||!cur().errored) return; toast('Skipped — that file would not load.','err'); S.playing=true; advance('error'); },3400);
+  // Used to auto-advance after 3.4s regardless of what the user did in the
+  // meantime — if they'd already tapped "Back to the menu" (which doesn't
+  // touch S.queue/S.qi), this timer still fired later and silently skipped
+  // the queue out from under them on a screen they weren't even looking at.
+  // The two buttons on the error screen are now the only way to proceed.
 }
 function pushHistory(it){
   const c=it.card; S.history=S.history||[];
@@ -610,10 +653,11 @@ function endSession(){
   S.playing=false; ev('session_end',{session_id:SESSION.session_id, items_played:S.qi+1});
   S.route='sessionend'; render();
 }
+function effectiveRate(){ const it=cur(); if(!it) return S.rate; return S.rateByShow[it.card.show] ?? S.rate; }
 setInterval(()=>{
   if(!S.playing || S.route!=='player') return;
   const it=cur(); if(!it || it.errored) return;
-  S.pos += .25 * S.rate * (S.demo/1);
+  S.pos += .25 * effectiveRate() * (S.demo/1);
   const end = (it.start_offset||0) + it.expected_duration;
   if(S.pos >= end){ advance('finished'); return; }
   paintProgress();
@@ -630,9 +674,10 @@ V.signin = () => S.newUser ? V.signinNew() : V.signinReturning();
 V.signinNew = () => `
 <div style="display:flex;flex-direction:column;height:100%;padding-top:44px">
   <div style="flex:1;overflow:auto">
-    <p class="kick" style="color:var(--stretch)">Foray · first time here</p>
-    <h1 class="h1" style="font-size:32px;margin-top:14px">A short trip<br>somewhere you<br>would not have<br>gone.</h1>
-    <p class="lede">Four hand-picked episodes a day. One of them is deliberately outside what you already like — that's not a bug, it's the point.</p>
+    <p class="kick" style="color:var(--stretch)">Foray · a daily podcast picker</p>
+    <h1 class="h1" style="font-size:26px;margin-top:14px">Four episodes, hand-picked for you every day.</h1>
+    <p class="lede" style="font-style:italic;color:var(--dim)">"A short trip somewhere you would not have gone."</p>
+    <p class="lede">One pick is deliberately outside what you already like — that's not a bug, it's the point. Two short questions get you started.</p>
     <div style="margin-top:22px;display:grid;gap:14px">
       <div style="display:flex;gap:11px">
         <span class="art sm" style="background:var(--surface2);color:var(--stretch);display:grid;place-items:center;flex:none">1</span>
@@ -665,13 +710,13 @@ V.signinReturning = () => {
     <p class="kick" style="color:var(--stretch)">Foray</p>
     <h1 class="h1" style="font-size:32px;margin-top:14px">Welcome back.</h1>
     <p class="lede">${cont ? `Pick up "${cont.card.title}" where you left off, or start something new below.` : "Start something new below — today's menu is ready."}</p>
-    <div class="card" style="margin-top:20px">
+    <button class="card" data-act="go" data-r="library" style="margin-top:20px;width:100%;text-align:left;cursor:pointer">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div><p class="title" style="font-size:14px;margin:0">Your listening history</p>
           <span class="show">${finCount} finished · ${contCount} in progress</span></div>
-        <button class="mono" data-act="go" data-r="library" style="font-size:11px;color:var(--stretch)">Library →</button>
+        <span class="mono" style="font-size:12px;color:var(--stretch)">Library →</span>
       </div>
-    </div>
+    </button>
   </div>
   <div style="display:grid;gap:9px;padding-bottom:8px">
     ${cont ? `<button class="btn" data-act="pick" data-id="${cont.card_id}">${ic('play')} Resume "${cont.card.title}"</button>` : ''}
@@ -680,71 +725,170 @@ V.signinReturning = () => {
 </div>`;
 };
 
-V.onboard = () => {
-  const step = ONBOARD[S.onb], n = S.onb+1;
-  const picks = S.onbPicks[S.onb]||[];
+function nodeLabel(id){ const n=REAL_TAXONOMY.nodes.find(x=>x.id===id); return n?n.label:id; }
+
+// The raw weight (e.g. "+0.82") is real and worth keeping visible — it's
+// what the product actually is (a continuous weight vector, not fixed
+// categories), and collapsing it to three buttons like "Less/Neutral/More"
+// would be a real loss of fidelity, not just a legibility fix. What was
+// missing was a plain-language read on that number for anyone who doesn't
+// want to interpret a decimal — so both are shown together.
+function weightLabel(w){
+  if(w<=-.6) return 'Avoid';
+  if(w<-.2) return 'Less interested';
+  if(w<.2) return 'Neutral';
+  if(w<.6) return 'Interested';
+  return 'Strong interest';
+}
+
+V.onboard = () => (V['onboardStep'+S.onbStep] || V.onboardStep1)();
+
+// Step 1: one real question (what are you curious about), answered in your
+// own words, with a live preview of what Foray does with it — then one
+// Foray-specific question (the exploration bridge) that only appears once
+// step 1 has something to react to. Two things, one at a time, each with an
+// immediate visible effect — not five identical-looking question screens.
+// Recomputes S.onbNode from S.onbTopic and returns the preview+bridge
+// markup. Called both on full render and from the #onbTopic input listener
+// (which patches #onbPreviewWrap directly, WITHOUT a full render() — typing
+// must not steal focus/cursor position on every keystroke, same constraint
+// the topic-search box above already solves this way).
+function onbPreviewHTML(){
+  const typed = S.onbTopic.trim();
+  S.onbNode = typed ? resolveTopicQuery(typed) : null;
+  if(!typed) return `<p class="note" style="margin-top:16px">Once you've typed something, I'll show what I'm picking up on.</p>`;
+  // No taxonomy match — must never be a dead end. Say so plainly and let
+  // them move on anyway; there's nothing to bridge from, so skip that
+  // question rather than block on it (found by testing onboarding's own
+  // "Fixing old cars" example chip, which silently failed to resolve and
+  // left Next permanently disabled with no explanation).
+  if(!S.onbNode){ return `<p class="note" style="margin-top:16px;color:var(--stretch)">I couldn't quite place that one — no problem. Tap Next to continue, or try different words.</p>`; }
+  // No bridge question here on purpose: asking a brand-new user to declare
+  // an exploration DIRECTION they don't have an opinion on yet was asking
+  // them to configure a system policy (Stretch), not state a preference —
+  // and it didn't even do what it implied, since the actual Day 1 Stretch
+  // card comes from the session builder, not from this answer. One honest,
+  // low-confidence acknowledgment is enough; the real bridge gets learned
+  // from what people actually do, same as listening window and per-show
+  // speed already are.
   return `
+    <div class="card" style="margin-top:16px;border-left:2px solid var(--stretch)">
+      <p class="note" style="margin:0">I'm picking up: <strong style="color:var(--bone)">${S.onbNode.label}</strong>. This is only a starting point — it'll sharpen as you listen.</p>
+    </div>`;
+}
+function onbCanProceed(){ return !!S.onbTopic.trim(); }
+function refreshOnbPreview(){
+  document.getElementById('onbPreviewWrap').innerHTML = onbPreviewHTML();
+  const btn = document.getElementById('onbNext1Btn');
+  if(btn) btn.disabled = !onbCanProceed();
+  if(btn) btn.style.opacity = btn.disabled ? .4 : 1;
+}
+
+V.onboardStep1 = () => `
   <div style="display:flex;flex-direction:column;height:100%">
-    <div class="hdr"><span class="kick">Interview · ${n} of ${ONBOARD.length}</span>
-      ${S.onb>0?'<button class="mono" data-act="onbBack" style="font-size:11px;color:var(--dim)">back</button>':''}</div>
-    <div class="bar" style="margin-bottom:26px"><i style="width:${n/ONBOARD.length*100}%"></i></div>
-    <h2 class="h1">${step.q}</h2>
-    <p class="lede">${step.hint}</p>
-    <div class="chips" style="margin-top:22px">
-      ${step.opts.map((o,i)=>`<button class="chip" data-act="onbPick" data-i="${i}" aria-pressed="${picks.includes(i)}">${o}</button>`).join('')}
+    <div class="hdr"><span class="kick">Getting started · 1 of 4</span></div>
+    <div class="bar" style="margin-bottom:26px"><i style="width:25%"></i></div>
+    <h2 class="h1">What have you been curious about lately?</h2>
+    <p class="lede">One thing is enough. Type it your way, or tap an example.</p>
+    <div class="chips" style="margin-top:18px">
+      ${ONB_EXAMPLES.map(o=>`<button class="chip" data-act="onbExample" data-v="${o}">${o}</button>`).join('')}
     </div>
-    <div style="margin-top:18px"><input class="btn ghost" style="text-align:left;font-weight:400;color:var(--dim)" value="or type your own…" readonly></div>
-    <div style="margin-top:auto;display:grid;gap:8px">
-      <button class="btn" data-act="onbNext">${n===ONBOARD.length?'Build my first menu':'Next'}</button>
-      <p class="note" style="text-align:center">Answers seed your taxonomy. Everything is editable later.</p>
+    <input id="onbTopic" style="display:block;width:100%;margin-top:16px;padding:14px 16px;font-size:15px;color:var(--bone);background:var(--surface2);box-shadow:inset 0 0 0 1px var(--line);border:none;border-radius:12px;font-family:inherit" placeholder="Type here…" value="${S.onbTopic}">
+    <div id="onbPreviewWrap">${onbPreviewHTML()}</div>
+    <div style="margin-top:auto;display:grid;gap:8px;padding-top:18px">
+      <button id="onbNext1Btn" class="btn" data-act="onbNext1" ${onbCanProceed()?'':'disabled'} style="opacity:${onbCanProceed()?1:.4}">Next</button>
+      <p class="note" style="text-align:center">This gives Foray a starting hint. Your first menu stays broad.</p>
     </div>
   </div>`;
-};
 
-V.onbdone = () => `
+// Screens 2-4: one question per screen. This replaced a single dense screen
+// with all three questions plus a numbered-badge treatment — Joey tried it
+// and said it still wasn't right. A number next to a question doesn't fix
+// too-much-at-once; it just labels it. This is the actual fix: the
+// single-select comfort screen auto-advances ~350ms after you tap, so it's
+// genuinely one fast tap, not a "read + decide + click Next" gate.
+// Intro length used to be a fourth onboarding screen; cut after a joint
+// review (with Codex) concluded it's a low-stakes setting with a fine
+// default that doesn't need an upfront decision — it now lives in Settings
+// only (S.verbosity, defaults to index 1 there).
+function onbHeader(step){
+  return `<div class="hdr"><span class="kick">Getting started · ${step} of 4</span>
+    <button class="mono" data-act="onbBackStep" style="font-size:11px;color:var(--dim)">back</button></div>
+  <div class="bar" style="margin-bottom:26px"><i style="width:${step/4*100}%"></i></div>`;
+}
+
+V.onboardStep2 = () => `
 <div style="display:flex;flex-direction:column;height:100%">
-  <div class="hdr"><span class="kick">What I heard</span></div>
-  <h2 class="h1">Here is your starting shape.</h2>
-  <p class="lede">Weights, not categories. They move every time you finish or bail on something.</p>
-  <div style="margin-top:18px">
-    ${S.tax.filter(t=>Math.abs(t.w)>.3).slice(0,6).map(t=>`
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)">
-        <div><div style="font-size:13.5px;font-weight:500">${t.name}</div><div class="taxpath">${t.path}</div></div>
-        <div class="mono" style="font-size:11px;color:${t.w<0?'var(--err)':'var(--dim)'}">${t.w>0?'+':''}${t.w.toFixed(2)}</div>
-      </div>`).join('')}
-  </div>
-  <div style="margin-top:auto;display:grid;gap:8px">
-    <button class="btn" data-act="finishOnb">Open today's menu</button>
-    <p class="note" style="text-align:center">First week runs a higher exploration rate and shorter picks.</p>
+  ${onbHeader(2)}
+  <h2 class="h1">What does "easy listening" mean to you?</h2>
+  <p class="lede">Pick one — this is the comfort-pick slot in your daily menu. Starting it right matters, since you'll see it every day.</p>
+  <div class="chips" style="margin-top:18px">${COMFORT_OPTIONS.map(c=>`<button class="chip" data-act="onbComfort" data-v="${c.label}" aria-pressed="${S.onbComfort===c.label}">${c.label}</button>`).join('')}</div>
+  <div style="margin-top:auto;display:grid;gap:8px;padding-top:18px">
+    <button class="btn ghost" data-act="onbComfortSkip">Not sure — choose for me</button>
   </div>
 </div>`;
 
+V.onboardStep3 = () => `
+<div style="display:flex;flex-direction:column;height:100%">
+  ${onbHeader(3)}
+  <h2 class="h1">Anything you never want to hear about?</h2>
+  <p class="lede">Optional — skip if nothing comes to mind. These stop being suggested until you unblock them in Library — not a weight, but not permanent either.</p>
+  <div class="chips" style="margin-top:18px">${BLOCK_OPTIONS.map(b=>`<button class="chip" data-act="onbBlock" data-v="${b.label}" aria-pressed="${S.onbBlocks.includes(b.label)}">${b.label}</button>`).join('')}</div>
+  <div style="margin-top:auto;display:grid;gap:8px;padding-top:18px">
+    <button class="btn" data-act="onbNextStep">${S.onbBlocks.length ? 'Next' : 'Skip — nothing to block'}</button>
+  </div>
+</div>`;
+
+// The recap used to be a raw taxonomy-weight table (+0.30, -0.80, "pending")
+// — implementation state, not something a brand-new user with zero context
+// could act on. This is also the one moment every onboarding answer
+// actually commits (see finishOnb), so it reads it back in plain language
+// instead of numbers.
+V.onboardStep4 = () => {
+  const parts = [];
+  parts.push(S.onbNode ? `start with <strong style="color:var(--bone)">${S.onbNode.label}</strong>` : `start broad, as a generalist`);
+  if(S.onbComfort) parts.push(`make your comfort pick <strong style="color:var(--bone)">${S.onbComfort.toLowerCase()}</strong>`);
+  if(S.onbBlocks.length) parts.push(`keep <strong style="color:var(--bone)">${S.onbBlocks.join(', ')}</strong> out of your menu`);
+  const recap = parts.length>1
+    ? `We'll ${parts.slice(0,-1).join(', ')}, and ${parts[parts.length-1]}.`
+    : `We'll ${parts[0]}.`;
+  return `
+<div style="display:flex;flex-direction:column;height:100%">
+  ${onbHeader(4)}
+  <h2 class="h1">Ready when you are</h2>
+  <p class="lede" style="margin-top:10px">${recap} You can change any of this anytime in Interests, Library, or Settings.</p>
+  <div style="margin-top:auto;display:grid;gap:8px;padding-bottom:4px">
+    <button class="btn" data-act="finishOnb">Start listening</button>
+  </div>
+</div>`;
+};
+
 V.today = () => {
-  if(S.sessionState==='building') return stateCard('Building your menu','The curator is scoring candidates and writing the intros. This normally finishes before you wake up.', 'bell', [['Notify me when it is ready','noop']]);
+  if(S.sessionState==='building') return stateCard('Building your menu','The curator is scoring candidates and writing the intros. This normally finishes before you wake up.', 'bell', [[S.buildNotify?'Notified — I\'ll let you know ✓':'Notify me when it is ready','notifyBuild']]);
   if(S.sessionState==='expired') return stateCard('This menu is from this morning','It expired at 9pm. Nothing here is fresh enough to bother you with.','alert',[['Build a new one','rebuild']]);
   if(S.sessionState==='none') return stateCard('Nothing scheduled','No menu is built for right now. You can ask for one on demand.','plus',[['Build a menu','rebuild']]);
 
   const dl = S.dl!=='ready' ? `<div class="banner warn">${ic('down')}<span>${S.dl==='queued'?'Queued for download':'Downloading — first pick is ready in 40s'}</span></div>` : '';
   const off = S.offline ? `<div class="banner ok">${ic('plane')}<span>Airplane mode. Everything below is on the phone already.</span></div>` : '';
-  const real = SESSION.real ? `<div class="banner warn">${ic('alert')}<span>Real backend session (${SESSION.builder}). No TTS choreography — the backend doesn't build intro/transition/outro yet, so picks play straight into the episode.</span></div>` : '';
+  const real = SESSION.real ? `<div class="banner warn">${ic('alert')}<span>This session plays straight through — intros and transitions between episodes aren't built yet.</span></div>` : '';
   const kick = SESSION.real ? `built ${new Date(SESSION.built_at).toLocaleString()}` : 'Tuesday · built 5:41am';
   return `
   <div class="hdr">
-    <div><p class="kick">${kick}</p><h2 class="h1" style="margin-top:5px">Today</h2></div>
-    <button class="art sm" data-act="go" data-r="settings" style="background:var(--surface2);color:var(--dim);font-size:11px">J</button>
+    <div><p class="kick">${kick}</p><h2 class="h1" style="margin-top:5px">Today's picks</h2></div>
+    <button class="art sm" data-act="go" data-r="settings" aria-label="Settings" title="Settings" style="background:var(--surface2);color:var(--dim);font-size:11px;width:44px;height:44px">J</button>
   </div>
+  ${real}${off}${dl}
+  <p class="lede" style="margin:0 0 14px">Four picks, chosen for you. One is deliberately outside what you already like.</p>
+  ${SESSION.menu.map(m=>card(m)).join('')}
+  <p class="note" style="text-align:center;padding:6px 0 18px">${SESSION.real ? 'Real session-builder output. Alternates and categories exist in the data but aren’t wired into this screen yet.' : 'No feed, no more to load.'}</p>
   <div class="searchbox">
-    <p class="kick" style="color:var(--stretch)">What do you want to learn?</p>
+    <p class="kick" style="color:var(--stretch)">Or ask for something specific</p>
     <div class="row2">
       <input id="topicq" type="text" placeholder="e.g. Greek mythology" value="${S.topicQueryDraft||''}">
-      <button class="btn go" data-act="topicsearch">${ic('play',1.5)}</button>
+      <button class="btn go" data-act="topicsearch" aria-label="Search" title="Search">${ic('play',1.5)}</button>
     </div>
   </div>
-  ${onDemandSection()}
-  ${real}${off}${dl}
-  <p class="kick" style="margin:${S.onDemand?'20px':'0'} 0 10px;color:var(--dim)">Today's menu</p>
-  ${SESSION.menu.map(m=>card(m)).join('')}
-  <p class="note" style="text-align:center;padding:6px 0 14px">${SESSION.real ? 'Real session-builder output. Alternates and categories exist in the data but aren’t wired into this screen yet.' : 'Four picks, one of them deliberately off your path.<br>No feed, no more to load.'}</p>`;
+  ${onDemandSection()}`;
 };
 function onDemandSection(){
   const od = S.onDemand; if(!od) return '';
@@ -781,7 +925,7 @@ function onDemandSection(){
           <p class="title" style="font-size:13px;margin:0 0 2px">${r.ep.title}</p>
           <span class="show">${r.ep.show} · ${r.ep.duration_min} min${r.literalHit?'':' · closest match'}</span>
         </div>
-        <button class="art sm" data-act="playondemand" data-i="${i}" style="background:var(--surface2);color:var(--bone);display:grid;place-items:center;flex:none">${ic('play',1.4)}</button>
+        <button class="art sm" data-act="playondemand" data-i="${i}" aria-label="Play ${r.ep.title}" title="Play" style="background:var(--surface2);color:var(--bone);display:grid;place-items:center;flex:none;width:44px;height:44px">${ic('play',1.4)}</button>
       </div>`).join('')}
     </div>
     <p class="note" style="margin:10px 0 0">Added ${od.node.label} to your interests.</p>
@@ -847,17 +991,17 @@ V.player = () => {
     <div class="scrub" id="scrub"><span class="t"></span><span class="f" style="width:${pct}%"></span><span class="k" style="left:${pct}%"></span></div>
     <div class="times"><span id="tcur">${fmt(S.pos-start)}</span><span id="trem">−${fmt(dur-(S.pos-start))}</span></div>
     <div class="transport">
-      <button class="tbtn" data-act="seek" data-d="-15">${ic('back15')}</button>
-      <button class="tbtn main" data-act="toggle">${ic(S.playing?'pause':'play')}</button>
-      <button class="tbtn" data-act="seek" data-d="30">${ic('fwd30')}</button>
+      <button class="tbtn" data-act="seek" data-d="-15" aria-label="Back 15 seconds" title="Back 15 seconds">${ic('back15')}</button>
+      <button class="tbtn main" data-act="toggle" aria-label="${S.playing?'Pause':'Play'}" title="${S.playing?'Pause':'Play'}">${ic(S.playing?'pause':'play')}</button>
+      <button class="tbtn" data-act="seek" data-d="30" aria-label="Forward 30 seconds" title="Forward 30 seconds">${ic('fwd30')}</button>
     </div>
     <div class="fb">
-      <button class="${S.fb.more?'on':''}" data-act="fb" data-k="more">${ic('plus')}MORE LIKE THIS</button>
-      <button class="${S.fb.down?'on':''}" data-act="fb" data-k="down">${ic('minus')}LESS</button>
-      <button class="${S.fb.saved?'on':''}" data-act="fb" data-k="save">${ic('down')}SAVE</button>
-      <button data-act="sheet" data-s="show">${ic('block')}SHOW</button>
+      <button class="${curFb(it.episode_ref).more?'on':''}" data-act="fb" data-k="more">${ic('plus')}MORE LIKE THIS</button>
+      <button class="${curFb(it.episode_ref).down?'on':''}" data-act="fb" data-k="down">${ic('minus')}LESS</button>
+      <button class="${curFb(it.episode_ref).saved?'on':''}" data-act="fb" data-k="save">${ic('bookmark')}SAVE</button>
+      <button data-act="sheet" data-s="show">${ic('info')}SHOW DETAILS</button>
     </div>
-    <button class="ptt" data-act="ptt">${ic('mic')} Hold to talk</button>
+    <button class="ptt" id="pttHold">${ic('mic')} Hold to talk</button>
     <div style="margin-top:auto;padding:14px 0 6px;border-top:1px solid var(--line);display:flex;gap:9px;align-items:flex-start">
       <span style="color:var(--stretch);flex:none;width:15px">${ic('seam',1.4)}</span>
       <p class="note" style="margin:0">${nextIt ? (nextIt.type==='outro_tts' ? 'Last item in this run. Nothing queues after it.' : `Next: ${show(S.queue[S.qi+2]?.card.show||nextIt.card.show).name}, after a short handoff.`) : 'Last item.'}</p>
@@ -876,7 +1020,7 @@ function playerBridge(it, sh){
   const nx = S.queue[S.qi+1], nsh = nx?show(nx.card.show):sh;
   const prev = S.queue[S.qi-1], psh = prev?show(prev.card.show):sh;
   const isOutro = it.type==='outro_tts', isIntro = it.type==='intro_tts' && S.qi===0;
-  const kicker = isOutro ? 'End of run' : isIntro ? 'Intro' : 'Handoff '+S.qi;
+  const kicker = isOutro ? 'End of run' : isIntro ? 'Intro' : 'Between episodes';
   return `
   <div class="pwrap">
     <div class="hdr"><span class="kick" style="color:var(--stretch)">${kicker}</span>
@@ -889,10 +1033,10 @@ function playerBridge(it, sh){
       </div>
       <p class="bq">“${it.script||''}”</p>
       <div class="pulse"><i style="animation-duration:${(it.expected_duration/S.demo*4).toFixed(1)}s"></i></div>
-      <p class="note">Spoken by Foray · ${it.expected_duration}s · levels matched to −16 LUFS</p>
+      <p class="note">Foray is talking, not an episode — back to normal playback in ${it.expected_duration}s.</p>
     </div>
     <div style="display:grid;gap:8px;padding-bottom:6px">
-      <button class="btn ghost" data-act="skipItem">Skip the handoff</button>
+      <button class="btn ghost" data-act="skipItem">Skip ahead</button>
       <p class="note" style="text-align:center">${isOutro?'The run stops here. Nothing autoplays after it.':'Playing straight into '+nsh.name+'.'}</p>
     </div>
   </div>`;
@@ -900,12 +1044,11 @@ function playerBridge(it, sh){
 function playerError(it, sh){
   return `
   <div class="pwrap">
-    <div class="hdr"><span class="kick" style="color:var(--err)">Item ${S.qi+1}</span></div>
+    <div class="hdr"><span class="kick" style="color:var(--err)">Playback problem</span></div>
     <div class="bridge">
       <div style="width:52px;height:52px;border-radius:50%;background:rgba(193,88,75,.18);display:grid;place-items:center;margin:0 auto;color:var(--err)">${ic('alert')}</div>
       <p class="bq" style="font-size:17px">This episode would not load.</p>
-      <p class="note">The publisher's file returned 404. Foray never re-hosts audio, so there is no copy to fall back to.</p>
-      <p class="mono" style="font-size:10px;color:var(--dimmer)">${it.episode_ref} · logged to /events</p>
+      <p class="note">The publisher removed or moved the file. Foray never re-hosts audio, so there's no backup copy to play instead.</p>
     </div>
     <div style="display:grid;gap:8px;padding-bottom:6px">
       <button class="btn" data-act="skipItem">Skip to the next item</button>
@@ -916,6 +1059,7 @@ function playerError(it, sh){
 
 V.sessionend = () => {
   const rate = !S.askedRating;
+  const pickedTitle = SESSION.menu.find(m=>m.card_id===S.pickedCard)?.card?.title;
   return `
   <div style="display:flex;flex-direction:column;height:100%">
     <div class="hdr"><span class="kick">Run finished</span></div>
@@ -923,8 +1067,8 @@ V.sessionend = () => {
     <p class="lede">Nothing queues after this. Come back tomorrow, or build one on demand.</p>
     ${rate?`
     <div class="card on" style="margin-top:20px">
-      <p class="kick" style="margin-bottom:10px">How was that pick?</p>
-      <p class="note" style="margin-bottom:12px">Asked until the ranker has ~30 signals from you. Then it stops.</p>
+      <p class="kick" style="margin-bottom:10px">${pickedTitle ? `How was "${pickedTitle}"?` : 'How was this whole run?'}</p>
+      <p class="note" style="margin-bottom:12px">Only asked for your first few weeks, to get today's picks right sooner.</p>
       <div style="display:flex;gap:7px">
         <button class="btn sm ghost" style="flex:1" data-act="rate" data-v="good">Good call</button>
         <button class="btn sm ghost" style="flex:1" data-act="rate" data-v="ok">Fine</button>
@@ -932,7 +1076,7 @@ V.sessionend = () => {
       </div>
     </div>`:''}
     <div style="margin-top:18px">
-      <p class="kick" style="margin-bottom:10px">What this taught the ranker</p>
+      <p class="kick" style="margin-bottom:10px">What this changes for tomorrow</p>
       ${S.tax.filter(t=>t.recent).slice(0,4).map(t=>`
         <div class="ev"><span class="d" style="background:${t.w>=0?'var(--ok)':'var(--err)'}"></span>
         <div><b>${t.name}</b> ${t.w>=0?'up':'down'} — ${t.recent}<div class="taxpath" style="margin-top:2px">${t.at}</div></div></div>`).join('')
@@ -953,10 +1097,15 @@ V.queue = () => {
     <span class="show">${mins(total)}</span></div>
   ${S.queue.map((it,i)=>{
     const sh=show(it.card.show), tts=it.type.endsWith('_tts');
-    if(tts) return `<div style="display:flex;gap:11px;padding:11px 0;align-items:flex-start">
+    if(tts){
+      const label = it.type==='intro_tts' ? 'Foray, introducing this pick'
+        : it.type==='outro_tts' ? 'Foray, wrapping up' : 'Foray, between episodes';
+      return `<div style="display:flex;gap:11px;padding:11px 0;align-items:flex-start">
       <span style="color:var(--stretch);width:16px;flex:none;margin-top:1px">${ic('seam',1.4)}</span>
-      <div style="flex:1"><p style="margin:0;font-size:12.5px;line-height:1.4;color:${i===S.qi?'var(--bone)':'var(--dim)'}">${it.script||''}</p>
-      <span class="taxpath">${it.type} · ${it.expected_duration}s · ${it.asset_url?'pre-generated':'lazy'}</span></div></div>`;
+      <div style="flex:1"><p style="margin:0;font-size:13px;color:${i===S.qi?'var(--bone)':'var(--dim)'}">${label}</p>
+      <p style="margin:2px 0 0;font-size:12.5px;line-height:1.4;color:${i===S.qi?'var(--bone)':'var(--dim)'}">${it.script||''}</p>
+      <span class="taxpath">${it.expected_duration}s</span></div></div>`;
+    }
     return `<div class="card ${i===S.qi?'on':''}" style="padding:12px">
       <div class="row">
         <div class="art sm" style="background:${sh.c}">${sh.art}</div>
@@ -967,15 +1116,19 @@ V.queue = () => {
         <span class="show">${i<S.qi?'played':i===S.qi?'now':''}</span>
       </div></div>`;
   }).join('')}
-  <button class="btn ghost" style="margin-top:6px" data-act="skipItem">Skip to next item</button>
+  <button class="btn ghost" style="margin-top:6px" data-act="skipItem">${cur()&&cur().type.endsWith('_tts')?'Skip ahead':'Skip this episode'}</button>
   <p class="note" style="text-align:center;padding:14px 0">The run ends after the outro. Nothing autoplays past it.</p>`;
 };
 
 V.library = () => {
   const tab = S.libTab||'continuing';
+  // Only one card_id in the fixture (c_cont) is actually resumable — a
+  // second hardcoded "continuing" row used to sit here with the same
+  // data-id, so its Resume button silently opened the FIRST item instead of
+  // the one it was labeled as. Rather than fake a second in-progress item
+  // with no real queue behind it, only show what's actually resumable.
   const conts = [
-    {t:'The inefficiency paradox', s:'lb', pct:39, left:'28 min'},
-    {t:'Why fabs cost what they cost', s:'ir', pct:64, left:'14 min'}
+    {t:'The inefficiency paradox', s:'lb', pct:39, left:'28 min', id:'c_cont'}
   ];
   const fin = (S.history||[]).concat([
     {title:'Building for scale', show:'ir', when:'Mon'},
@@ -992,7 +1145,7 @@ V.library = () => {
       <div class="art sm" style="background:${show(c.s).c}">${show(c.s).art}</div>
       <div style="flex:1;min-width:0"><p class="title" style="font-size:13.5px">${c.t}</p><span class="show">${show(c.s).name} · ${c.left} left</span></div>
     </div><div class="bar" style="margin-top:11px"><i style="width:${c.pct}%"></i></div>
-    <button class="btn ghost sm wide" style="margin-top:11px" data-act="pick" data-id="c_cont">Resume</button></div>`).join('')
+    <button class="btn ghost sm wide" style="margin-top:11px" data-act="pick" data-id="${c.id}">Resume</button></div>`).join('')
   : tab==='finished'? fin.map(f=>`
     <div style="display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line);align-items:center">
       <div class="art sm" style="background:${show(f.show).c}">${show(f.show).art}</div>
@@ -1002,34 +1155,40 @@ V.library = () => {
     <div style="display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line);align-items:center">
       <div class="art sm" style="background:${show(f.show).c}">${show(f.show).art}</div>
       <div style="flex:1"><p class="title" style="font-size:13px;margin:0">${f.title}</p><span class="show">saved ${f.when}</span></div></div>`).join('')
-    : empty('Nothing saved','Hit Save while something is playing and it lands here. Saving marks the topic good, the timing wrong.'))
+    : empty('Nothing saved','Tap Save while something is playing and it lands here, so you can come back to it later.'))
   : S.subs.map(id=>{const sh=Object.values(SHOWS).find(x=>x.id===id);return `
     <div style="display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line);align-items:center">
       <div class="art sm" style="background:${sh.c}">${sh.art}</div>
       <div style="flex:1"><p class="title" style="font-size:13px;margin:0">${sh.name}</p><span class="show">following</span></div>
-      <button class="mono" data-act="unsub" data-id="${id}" style="font-size:10px;color:var(--dim)">unfollow</button></div>`;}).join('')
-     + (S.blocked.length?`<p class="kick" style="margin:18px 0 8px">Blocked</p>`+S.blocked.map(b=>`<div class="ev"><span class="d" style="background:var(--err)"></span><div>${b} — never suggested again</div></div>`).join(''):'')}
+      <button class="mono" data-act="unsub" data-id="${id}" style="font-size:13px;color:var(--dim);padding:8px 4px">Unfollow</button></div>`;}).join('')
+     + (S.blocked.length?`<p class="kick" style="margin:18px 0 4px">Blocked</p><p class="note" style="margin:0 0 8px">Excluded from suggestions until you unblock them — a hard rule, not a weight, but never permanent.</p>`+S.blocked.map(b=>`<div class="ev" style="justify-content:space-between"><span class="d" style="background:var(--err)"></span><div style="flex:1">${b} — not suggested</div><button class="mono" data-act="unblock" data-n="${b}" style="font-size:12px;color:var(--dim);padding:6px 4px">Unblock</button></div>`).join(''):'')}
   `;
 };
 function empty(t,b){ return `<div style="text-align:center;padding:48px 20px;color:var(--dim)">
   <p class="h2" style="margin-bottom:8px">${t}</p><p class="note">${b}</p></div>`; }
 
 V.interests = () => `
-  <div class="hdr"><div><p class="kick">Observed, not declared</p><h2 class="h1" style="margin-top:5px">What I know</h2></div></div>
+  <div class="hdr"><div><p class="kick">Learned from what you play</p><h2 class="h1" style="margin-top:5px">What I know</h2></div></div>
   <p class="lede" style="margin-bottom:6px">Drag any weight to overrule me. Everything here came from something you did.</p>
   <div style="margin-top:12px">
   ${S.tax.map(t=>`
     <div class="tax" ${t.flash?'style="background:rgba(95,168,160,.08);border-radius:8px"':''}>
       <div class="taxtop">
         <div><div class="taxname">${t.name}</div><div class="taxpath">${t.path} · last signal ${t.at}</div></div>
-        <div class="mono" style="font-size:11px;color:${t.w<0?'var(--err)':t.flash?'var(--stretch)':'var(--dim)'}">${t.w>0?'+':''}${t.w.toFixed(2)}</div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:500;color:${t.w<0?'var(--err)':t.flash?'var(--stretch)':'var(--bone)'}">${weightLabel(t.w)}</div>
+          <div class="mono" style="font-size:11px;color:var(--dimmer)">${t.w>0?'+':''}${t.w.toFixed(2)}</div>
+        </div>
       </div>
-      <div class="taxbar" data-tax="${t.id}">
+      <div class="taxbar" data-tax="${t.id}" tabindex="0" role="slider" aria-label="${t.name} interest" aria-valuemin="-1" aria-valuemax="1" aria-valuenow="${t.w}" aria-valuetext="${weightLabel(t.w)}, ${t.w.toFixed(2)}">
         <span class="t"></span><span class="z"></span>
         <span class="f ${t.w<0?'neg':''}" style="left:${t.w<0?(50+t.w*50):50}%;width:${Math.abs(t.w)*50}%"></span>
         <span class="k" style="left:${50+t.w*50}%"></span>
       </div>
-      ${t.recent?`<p class="note" style="margin-top:6px;color:var(--stretch)">${t.recent}</p>`:''}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <p class="note" style="margin:0;color:var(--stretch)">${t.recent?(t.flash?'Saved — '+t.recent:t.recent):''}</p>
+        ${t.w!==0?`<button class="mono" data-act="resetWeight" data-id="${t.id}" style="font-size:11px;color:var(--dim);padding:4px 6px">Reset</button>`:''}
+      </div>
     </div>`).join('')}
   </div>
   <p class="kick" style="margin:22px 0 8px">Recent signals</p>
@@ -1062,10 +1221,19 @@ V.settings = () => `
   <p class="kick" style="margin:20px 0 10px">Playback</p>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <p class="title" style="font-size:14px;margin:0">Speed</p>
+      <p class="title" style="font-size:14px;margin:0">Default speed</p>
       <div class="chips">${[1,1.25,1.5,1.75].map(r=>`<button class="chip" data-act="set" data-k="rate" data-v="${r}" aria-pressed="${S.rate===r}">${r}×</button>`).join('')}</div>
     </div>
-    <p class="note" style="margin-top:10px">Remembered per show. Ruins &amp; Dust plays at 1.0× because you keep turning it down.</p>
+    <p class="note" style="margin-top:10px">Applies to any show without its own override below.</p>
+    ${Object.keys(S.rateByShow).length ? `
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+      <p class="note" style="margin-bottom:8px">Learned per show, the same way the listening window is — not something you set directly.</p>
+      ${Object.entries(S.rateByShow).map(([showId,r])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
+          <span style="font-size:13px">${show(showId).name} — ${r}×</span>
+          <button class="mono" data-act="clearRateOverride" data-id="${showId}" style="font-size:12px;color:var(--dim);padding:6px">Reset</button>
+        </div>`).join('')}
+    </div>` : ''}
   </div>
   <p class="kick" style="margin:20px 0 10px">Downloads</p>
   <div class="card">
@@ -1073,11 +1241,14 @@ V.settings = () => `
     <div class="bar" style="margin-top:10px"><i style="width:40%"></i></div>
     <p class="note" style="margin-top:10px">Oldest finished episodes are evicted first.</p>
   </div>
-  <p class="kick" style="margin:20px 0 10px">Cost &amp; telemetry</p>
-  <div class="card">
-    ${[['LLM spend, this week','$1.82'],['TTS characters','41,200'],['Tier-2 transcripts','3 of 20 budget'],['Daily cap','$1.50 — not hit']].map(r=>`
-      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line)">
-        <span style="font-size:13px;color:var(--dim)">${r[0]}</span><span class="mono" style="font-size:11px">${r[1]}</span></div>`).join('')}
+  <div style="margin-top:28px;padding-top:16px;border-top:1px dashed var(--line2)">
+    <p class="kick" style="margin-bottom:6px">Advanced (diagnostics)</p>
+    <p class="note" style="margin-bottom:10px">Informational only — nothing here is a setting you change.</p>
+    <div class="card" style="opacity:.75">
+      ${[['AI processing, this week','$1.82'],['Voice narration generated','41,200 characters'],['Detailed analysis used','3 of 20 this month'],['Daily spending cap','$1.50 — not reached']].map(r=>`
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line)">
+          <span style="font-size:13px;color:var(--dim)">${r[0]}</span><span class="mono" style="font-size:11px">${r[1]}</span></div>`).join('')}
+    </div>
   </div>
   <div style="height:20px"></div>`;
 
@@ -1088,9 +1259,10 @@ function ovPTT(){
     <div class="mic">${ic('mic',1.8)}</div>
     <div class="wavebars">${Array.from({length:13},(_,i)=>`<i style="animation-delay:${i*.06}s"></i>`).join('')}</div>
     <p style="font-size:19px;font-weight:600;margin:0;min-height:52px">${t||'Listening…'}</p>
-    <p class="note">Audio ducked to −18 dB · on-device recognition</p>
+    <p class="note">Episode volume is lowered while you talk · processed on this device</p>
     <div class="chips" style="justify-content:center">
-      ${['More like this','Less politics','Something different','Save this','Never this show again'].map(c=>`<button class="chip" data-act="say" data-c="${c}">${c}</button>`).join('')}
+      ${['More like this','Less politics','Something different','Save this'].map(c=>`<button class="chip" data-act="say" data-c="${c}">${c}</button>`).join('')}
+      <button class="chip" style="color:var(--err);box-shadow:inset 0 0 0 1px var(--err)" data-act="say" data-c="Never this show again">Never this show again</button>
     </div>
     <button class="btn ghost" style="width:auto;padding:11px 22px" data-act="closeOv">Release</button>
   </div>`;
@@ -1101,7 +1273,7 @@ function ovLock(){
   const nx = S.queue[S.qi+1];
   const sh = show(isTTS && nx ? nx.card.show : it.card.show);
   const t1 = isTTS ? (nx?`Up next: ${nx.card.title}`:'Foray') : it.card.title;
-  const t2 = isTTS ? 'Foray — handoff' : show(it.card.show).name;
+  const t2 = isTTS ? 'Foray is talking' : show(it.card.show).name;
   const pct = Math.min(100,(S.pos-(it.start_offset||0))/it.expected_duration*100);
   return `<div class="ov lock" style="padding:26px">
     <div style="text-align:center;padding-top:16px"><p class="mono" style="font-size:44px;font-weight:400;margin:0;letter-spacing:-.02em">${Math.floor(S.clock/60)}:${String(S.clock%60).padStart(2,'0')}</p>
@@ -1114,12 +1286,26 @@ function ovLock(){
       <div class="bar" style="margin-top:16px"><i style="width:${pct}%"></i></div>
       <div class="times"><span>${fmt(S.pos-(it.start_offset||0))}</span><span>−${fmt(it.expected_duration-(S.pos-(it.start_offset||0)))}</span></div>
       <div class="transport" style="margin-top:10px">
-        <button class="tbtn" data-act="seek" data-d="-15">${ic('back15')}</button>
-        <button class="tbtn main" data-act="toggle">${ic(S.playing?'pause':'play')}</button>
-        <button class="tbtn" data-act="seek" data-d="30">${ic('fwd30')}</button>
+        <button class="tbtn" data-act="seek" data-d="-15" aria-label="Back 15 seconds" title="Back 15 seconds">${ic('back15')}</button>
+        <button class="tbtn main" data-act="toggle" aria-label="${S.playing?'Pause':'Play'}" title="${S.playing?'Pause':'Play'}">${ic(S.playing?'pause':'play')}</button>
+        <button class="tbtn" data-act="seek" data-d="30" aria-label="Forward 30 seconds" title="Forward 30 seconds">${ic('fwd30')}</button>
       </div>
-      <p class="note" style="text-align:center;margin-top:18px">${isTTS?'During a handoff the lock screen names what is coming, not the bridge itself.':'Bluetooth next-track maps to the next item, not the next 30 seconds.'}</p>
-      <button class="btn ghost" style="margin-top:14px" data-act="closeOv">Unlock</button>
+      <button class="btn ghost" style="margin-top:18px" data-act="closeOv">Unlock</button>
+    </div>
+  </div>`;
+}
+// The "Less" feedback button set S.sheet='less' but the sheet container
+// only ever rendered the 'show' sheet — tapping Less silently did nothing
+// visible beyond the toast, despite the toast promising a follow-up
+// ("Say 'less X' to name what you mean"). This is that follow-up.
+function lessSheet(){
+  return `<div class="sheet"><div class="grab"></div>
+    <p class="title" style="margin-bottom:4px">What was it?</p>
+    <p class="note" style="margin-bottom:16px">Optional — helps more than a plain thumbs-down.</p>
+    <div style="display:grid;gap:8px">
+      ${['Padding and banter','A guest who could not explain','Too slow to start','Not my thing right now'].map(r=>
+        `<button class="btn ghost" data-act="lessReason" data-r="${r}">${r}</button>`).join('')}
+      <button class="btn" data-act="closeSheet">Skip</button>
     </div>
   </div>`;
 }
@@ -1133,17 +1319,20 @@ function shSheet(){
     <div style="display:grid;gap:8px">
       <button class="btn ghost" data-act="sub" data-id="${sh.id}">${S.subs.includes(sh.id)?'Unfollow':'Follow'}</button>
       <button class="btn ghost" data-act="openEp">Open the full episode elsewhere</button>
-      <button class="btn ghost" style="color:var(--err)" data-act="block" data-n="${sh.name}">Never suggest this show again</button>
+      ${S.blockConfirm===sh.name
+        ? `<button class="btn" style="background:var(--err);color:var(--bone)" data-act="block" data-n="${sh.name}">Tap again to confirm</button>
+           <button class="mono" data-act="cancelBlock" style="font-size:12px;color:var(--dim);text-align:center">Never mind</button>`
+        : `<button class="btn ghost" style="color:var(--err)" data-act="confirmBlock" data-n="${sh.name}">Never suggest this show again</button>`}
       <button class="btn" data-act="closeSheet">Done</button>
     </div>
-    <p class="note" style="margin-top:12px">Blocking is a hard rule, not a weight. It is the only irreversible taste control.</p>
+    <p class="note" style="margin-top:12px">Blocking is a hard rule, not a weight — it stops showing up until you unblock it in Library.</p>
   </div>`;
 }
 
 /* ============================================================================
    RENDER
    ============================================================================ */
-const TABS=[['today','Today','home'],['queue','Run','lib'],['library','Library','lib'],['interests','You','tune']];
+const TABS=[['today','Today','home'],['queue','Queue','lib'],['library','Library','lib'],['interests','Interests','tune']];
 function render(){
   const r = S.route;
   document.getElementById('view').innerHTML = (V[r]||V.today)();
@@ -1154,7 +1343,7 @@ function render(){
   document.getElementById('tabs').style.display = showTabs?'flex':'none';
   document.getElementById('rtstat').innerHTML = (S.offline?ic('plane'):ic('wifi')) + (S.dl!=='ready'?' ⇣':'');
   document.getElementById('overlay').innerHTML = S.overlay==='ptt'?ovPTT():S.overlay==='lock'?ovLock():'';
-  document.getElementById('sheet').innerHTML = S.sheet==='show'?shSheet():'';
+  document.getElementById('sheet').innerHTML = S.sheet==='show'?shSheet():S.sheet==='less'?lessSheet():'';
   paintToast(); paintLog(); paintDev();
   if(r==='today') SESSION.menu.forEach(m=>{ if(!S.seen?.[m.card_id]){ (S.seen=S.seen||{})[m.card_id]=1; ev('card_shown',{card_id:m.card_id,archetype:m.archetype}); }});
 }
@@ -1216,26 +1405,80 @@ document.addEventListener('click', e=>{
 // cursor position on every character.
 document.addEventListener('input', e=>{
   if(e.target.id==='topicq') S.topicQueryDraft = e.target.value;
+  if(e.target.id==='onbTopic'){ S.onbTopic = e.target.value; refreshOnbPreview(); }
 });
 document.addEventListener('keydown', e=>{
   if(e.target.id==='topicq' && e.key==='Enter') act('topicsearch', e.target);
+  const tx = e.target.closest?.('[data-tax]');
+  if(tx){
+    const node = S.tax.find(t=>t.id===tx.dataset.tax); if(!node) return;
+    const step = {ArrowLeft:-.05, ArrowRight:.05, ArrowDown:-.05, ArrowUp:.05, Home:-1-node.w, End:1-node.w}[e.key];
+    if(step===undefined) return;
+    e.preventDefault();
+    node.w = Math.max(-1, Math.min(1, +(node.w+step).toFixed(2)));
+    node.at='just now'; node.recent='you dragged this yourself'; node.flash=true;
+    setTimeout(()=>{ node.flash=false; },1800);
+    ev('interest_override',{node:node.id, weight:node.w});
+    render();
+    document.querySelector(`[data-tax="${node.id}"]`)?.focus();
+  }
 });
 function act(a, el){
   switch(a){
     case 'go': S.route=el.dataset.r; if(S.route!=='player') S.sheet=null; render(); break;
     case 'noop': break;
+    case 'notifyBuild': S.buildNotify=true; ev('notify_when_ready',{}); toast('You\'ll get a notification when today\'s menu is ready.'); render(); break;
     case 'rebuild': S.sessionState='ready'; ev('session_build_requested',{on_demand:true}); toast('Menu rebuilt.'); render(); break;
-    case 'onbPick': {
-      const st=ONBOARD[S.onb], i=+el.dataset.i, cur=S.onbPicks[S.onb]||[];
-      S.onbPicks[S.onb] = cur.includes(i)? cur.filter(x=>x!==i) : cur.concat(i);
+    case 'onbExample': S.onbTopic=el.dataset.v; render(); break;
+    case 'onbNext1': {
+      // Topic weight is staged, not applied here — applying on every Next
+      // tap meant going back and retyping the topic stacked the weight
+      // again (bumpOrCreate is additive). All onboarding answers now commit
+      // exactly once, in finishOnb.
+      if(!onbCanProceed()) break;
+      ev('onboarding_answer',{step:1, topic:S.onbTopic, node:S.onbNode?S.onbNode.id:null});
+      S.onbStep=2; render(); break; }
+    case 'onbBackStep': S.onbStep=Math.max(1,S.onbStep-1); render(); break;
+    case 'onbNextStep': S.onbStep=Math.min(4,S.onbStep+1); render(); break;
+    // onbComfort/onbBlock only update the SELECTION (pure UI state)
+    // — no weights or blocks are applied here. Applying weights
+    // incrementally on every tap meant changing your mind (re-picking
+    // comfort, or tapping a block chip to deselect it) never undid the
+    // earlier bump: multiple comfort weights could stack while only one
+    // looked selected, and a "deselected" block silently stayed in
+    // S.blocked. Deferring the actual mutation to finishOnb means what's
+    // visibly selected always matches what gets applied.
+    case 'onbComfort': {
+      S.onbComfort = (S.onbComfort===el.dataset.v) ? null : el.dataset.v; render();
+      // Single-select, so a tap is a complete answer — auto-advance instead
+      // of making the user also find and tap a separate Next button. The
+      // brief delay lets the selected state actually be visible first.
+      if(S.onbComfort) setTimeout(()=>{ if(S.onbStep===2){ S.onbStep=3; render(); } }, 350);
+      break; }
+    case 'onbComfortSkip': S.onbComfort=null; S.onbStep=3; render(); break;
+    case 'onbBlock': {
+      const label=el.dataset.v;
+      S.onbBlocks = S.onbBlocks.includes(label) ? S.onbBlocks.filter(x=>x!==label) : S.onbBlocks.concat(label);
       render(); break; }
-    case 'onbBack': S.onb--; render(); break;
-    case 'onbNext': {
-      const st=ONBOARD[S.onb]; (st.gives||[]).forEach(g=>bump(g, st.negative?-.35:.3,'onboarding interview'));
-      ev('onboarding_answer',{step:S.onb, picks:(S.onbPicks[S.onb]||[]).length});
-      if(S.onb===ONBOARD.length-1){ S.route='onbdone'; } else S.onb++;
-      render(); break; }
-    case 'finishOnb': S.route='today'; S.newUser=false; ev('onboarding_complete',{nodes:S.tax.length}); render(); break;
+    case 'finishOnb': {
+      if(S.onbNode){
+        bumpOrCreate(S.onbNode.id, .5, `from onboarding: "${S.onbTopic}"`, S.onbNode);
+      }
+      if(S.onbComfort){
+        const c=COMFORT_OPTIONS.find(x=>x.label===S.onbComfort);
+        if(c && c.node){ bumpOrCreate(c.node, .3, `from onboarding: comfort pick "${c.label}"`, REAL_TAXONOMY.nodes.find(n=>n.id===c.node)); }
+      }
+      for(const label of S.onbBlocks){
+        const b=BLOCK_OPTIONS.find(x=>x.label===label);
+        if(b && b.node){ bumpOrCreate(b.node, -.8, `from onboarding: hard block "${label}"`, REAL_TAXONOMY.nodes.find(n=>n.id===b.node)); }
+        if(!S.blocked.includes(label)) S.blocked=S.blocked.concat(label);
+      }
+      S.route='today'; S.newUser=false; ev('onboarding_complete',{nodes:S.tax.length,blocks:S.onbBlocks.length}); render(); break; }
+    case 'unblock': {
+      const n=el.dataset.n; S.blocked=S.blocked.filter(x=>x!==n);
+      const b=BLOCK_OPTIONS.find(x=>x.label===n);
+      if(b && b.node){ bumpOrCreate(b.node, .8, `unblocked "${n}"`, REAL_TAXONOMY.nodes.find(nd=>nd.id===b.node)); }
+      ev('blocklist_remove',{item:n}); toast('Unblocked — this can show up again.'); render(); break; }
     case 'skipOnb': S.route='today'; S.newUser=false; ev('onboarding_skipped',{}); toast('Starting with a generalist menu — tune it anytime in Interests.'); render(); break;
     case 'pick': pick(el.dataset.id); break;
     case 'topicsearch': {
@@ -1260,27 +1503,33 @@ function act(a, el){
       ev('seek',{delta_sec:+el.dataset.d, at_sec:Math.round(S.pos)}); paintProgress(); break; }
     case 'skipItem': ev('skip_item',{from:S.qi}); advance('skipped'); break;
     case 'fb': {
-      const k=el.dataset.k, it=cur();
-      if(k==='more'){ S.fb.more=!S.fb.more; if(S.fb.more){ ev('thumbs',{value:1, episode_ref:it.episode_ref});
-        bump('eng.precision',.08,'more like this'); bump('sci.materials',.05,'more like this'); toast('Noted. Weights moved — see You.'); } }
-      if(k==='down'){ S.fb.down=!S.fb.down; if(S.fb.down){ ev('thumbs',{value:-1, episode_ref:it.episode_ref});
-        S.sheet='less'; bump('eng.precision',-.04,'thumbs down'); toast('Logged. Say “less X” to name what you mean.'); } }
-      if(k==='save'){ S.fb.saved=!S.fb.saved; if(S.fb.saved){ ev('saved',{episode_ref:it.episode_ref});
-        S.saved.unshift({title:it.card.title, show:it.card.show, when:'today'}); toast('Saved. Topic good, timing wrong — noted that way.'); } }
+      const k=el.dataset.k, it=cur(); if(!it) break;
+      const fb = curFb(it.episode_ref);
+      if(k==='more'){ fb.more=!fb.more; if(fb.more){ ev('thumbs',{value:1, episode_ref:it.episode_ref});
+        bump('eng.precision',.08,'more like this'); bump('sci.materials',.05,'more like this'); toast('Noted — see Interests for what changed.'); } }
+      if(k==='down'){ fb.down=!fb.down; if(fb.down){ ev('thumbs',{value:-1, episode_ref:it.episode_ref});
+        S.sheet='less'; bump('eng.precision',-.04,'thumbs down'); } else { S.sheet=null; } }
+      if(k==='save'){ fb.saved=!fb.saved; if(fb.saved){ ev('saved',{episode_ref:it.episode_ref});
+        S.saved.unshift({title:it.card.title, show:it.card.show, when:'today'}); toast('Saved — find it in Library.'); } }
       render(); break; }
-    case 'ptt': S.overlay='ptt'; S.pttText=''; ev('voice_ptt_open',{}); render(); break;
+    case 'lessReason': {
+      const it=cur(); if(!it) break;
+      ev('thumbs_reason',{episode_ref:it.episode_ref, reason:el.dataset.r});
+      toast('Got it — noted why.'); S.sheet=null; render(); break; }
     case 'say': {
       const c=el.dataset.c; S.pttText=c;
       render();
       setTimeout(()=>{ handleVoice(c); }, 700); break; }
     case 'closeOv': S.overlay=null; render(); break;
     case 'sheet': S.sheet=el.dataset.s; render(); break;
-    case 'closeSheet': S.sheet=null; render(); break;
+    case 'closeSheet': S.sheet=null; S.blockConfirm=null; render(); break;
     case 'sub': { const id=el.dataset.id; S.subs = S.subs.includes(id)? S.subs.filter(x=>x!==id): S.subs.concat(id);
       ev('subscription',{show_id:id, following:S.subs.includes(id)}); render(); break; }
     case 'unsub': S.subs=S.subs.filter(x=>x!==el.dataset.id); ev('subscription',{show_id:el.dataset.id,following:false}); render(); break;
-    case 'block': { const n=el.dataset.n; S.blocked.push(n); S.sheet=null;
-      ev('blocklist_add',{show:n}); toast('Blocked. That is a hard rule, not a weight.'); render(); break; }
+    case 'confirmBlock': S.blockConfirm=el.dataset.n; render(); break;
+    case 'cancelBlock': S.blockConfirm=null; render(); break;
+    case 'block': { const n=el.dataset.n; S.blocked.push(n); S.sheet=null; S.blockConfirm=null;
+      ev('blocklist_add',{show:n}); toast('Blocked — won\'t be suggested until you unblock it in Library.'); render(); break; }
     case 'openEp': toast('Hands off to the publisher — Foray never re-hosts audio.'); break;
     case 'rate': S.askedRating=true; S.ratings++; ev('pick_rating',{value:el.dataset.v, archetype:S.lastPickArchetype});
       if(el.dataset.v==='bad') bump(archToTax(S.lastPickArchetype),-.06,'rated the pick a miss');
@@ -1288,6 +1537,11 @@ function act(a, el){
       render(); break;
     case 'libTab': S.libTab=el.dataset.k; render(); break;
     case 'set': { const k=el.dataset.k, v=el.dataset.v; S[k]= k==='rate'? +v : +v; ev('setting_changed',{key:k,value:v}); render(); break; }
+    case 'clearRateOverride': { const id=el.dataset.id; delete S.rateByShow[id]; ev('rate_override_cleared',{show_id:id}); toast(`${show(id).name} now uses your default speed.`); render(); break; }
+    case 'resetWeight': { const node=S.tax.find(t=>t.id===el.dataset.id); if(!node) break;
+      node.w=0; node.at='just now'; node.recent='you reset this'; node.flash=true;
+      setTimeout(()=>{ node.flash=false; },1800);
+      ev('interest_override',{node:node.id, weight:0, reset:true}); render(); break; }
     case 'wrongwindow': ev('window_correction',{}); toast('Noted. It will re-derive from the next ten sessions.'); break;
   }
 }
@@ -1295,11 +1549,14 @@ function handleVoice(c){
   const local = ['More like this','Something different','Save this','Skip'];
   const tier = local.includes(c)?1:2;
   ev('voice_command', {utterance:c, tier, resolved: c.toLowerCase().replace(/ /g,'_')});
-  if(c==='More like this'){ bump('eng.precision',.08,'said “more like this”'); toast('Earcon: rising. Weights moved.'); }
-  if(c==='Less politics'){ bump('news.politics',-.2,'said “less politics”'); toast('Earcon: falling. Politics pushed down.'); }
-  if(c==='Something different'){ toast('Session-only. Your durable taste is untouched.'); ev('mood_shift',{scope:'session_only'}); }
+  if(c==='More like this'){ bump('eng.precision',.08,'said “more like this”'); toast('Noted — leaning into this more.'); }
+  if(c==='Less politics'){ bump('news.politics',-.2,'said “less politics”'); toast('Noted — politics pushed down.'); }
+  if(c==='Something different'){ toast('Just for right now — your regular taste profile is unchanged.'); ev('mood_shift',{scope:'session_only'}); }
   if(c==='Save this'){ const it=cur(); if(it){ S.saved.unshift({title:it.card.title,show:it.card.show,when:'today'}); toast('Saved.'); } else toast('Nothing playing to save.'); }
-  if(c==='Never this show again'){ const it=cur(); if(it){ S.blocked.push(show(it.card.show).name); toast('Hard block applied.'); } else toast('Nothing playing.'); }
+  // Was a one-tap irreversible block with no confirmation, same issue as the
+  // show sheet's block button — route it through that same confirm step
+  // instead of applying immediately.
+  if(c==='Never this show again'){ const it=cur(); if(it){ S.sheet='show'; S.blockConfirm=show(it.card.show).name; } else toast('Nothing playing.'); }
   S.overlay=null; render();
 }
 function dev(a, el){
@@ -1326,14 +1583,60 @@ function dev(a, el){
   }
 }
 
+/* ---------- press-and-hold: the mic button really is hold-to-talk now.
+   It used to be a plain click target (open on click, close on a separate
+   "Release" button) despite the label — press-and-hold on pointerdown/up,
+   release on lift/cancel/leaving the button while pressed. ---------- */
+document.addEventListener('pointerdown', e=>{
+  const ptt=e.target.closest('#pttHold'); if(!ptt) return;
+  S.overlay='ptt'; S.pttText=''; ev('voice_ptt_open',{}); render();
+  const release=()=>{ if(S.overlay==='ptt'){ S.overlay=null; render(); }
+    document.removeEventListener('pointerup',release); document.removeEventListener('pointercancel',release); };
+  document.addEventListener('pointerup',release);
+  document.addEventListener('pointercancel',release);
+});
+
 /* ---------- drag: scrubber + taxonomy ---------- */
+// Horizontal drag controls (scrubber, interest sliders) embedded in a
+// vertically-scrolling page. touch-action:pan-y alone isn't enough — it lets
+// the browser scroll natively, but pointermove events still fire during that
+// scroll, and the old code updated the slider on every single pointermove
+// with zero regard for direction, so a vertical scroll gesture that started
+// on top of a slider ALSO dragged it sideways at the same time. This adds
+// real gesture disambiguation: on pointerdown, wait for the first
+// significant movement before deciding anything. If it's more vertical than
+// horizontal, treat it as a scroll and never touch the slider at all. Only
+// commit to dragging once horizontal movement clearly dominates.
+function dragControl(startEl, onMove, onCommit){
+  return (e0)=>{
+    const startX=e0.clientX, startY=e0.clientY;
+    let decided=null; // null = undecided, true = dragging, false = scrolling (abandoned)
+    const THRESH = 6;
+    const pointerId = e0.pointerId;
+    function tempMove(ev){
+      if(decided===false) return;
+      const dx=ev.clientX-startX, dy=ev.clientY-startY;
+      if(decided===null){
+        if(Math.abs(dx)<THRESH && Math.abs(dy)<THRESH) return; // not enough movement yet either way
+        if(Math.abs(dy) > Math.abs(dx)){ decided=false; startEl.onpointermove=null; return; } // scroll — bail, don't move the slider
+        decided=true; startEl.setPointerCapture(pointerId);
+      }
+      onMove(ev);
+    }
+    startEl.onpointermove = tempMove;
+    startEl.onpointerup = ()=>{
+      startEl.onpointermove=null;
+      if(decided===true) onCommit();
+    };
+  };
+}
 document.addEventListener('pointerdown', e=>{
   const sc=e.target.closest('#scrub'), tx=e.target.closest('[data-tax]');
-  if(sc){ const it=cur(); const move=ev2=>{ const r=sc.getBoundingClientRect();
+  if(sc){ const it=cur();
+    const move=ev2=>{ const r=sc.getBoundingClientRect();
       const p=Math.max(0,Math.min(1,(ev2.clientX-r.left)/r.width));
       S.pos=(it.start_offset||0)+p*it.expected_duration; paintProgress(); };
-    move(e); sc.setPointerCapture(e.pointerId); sc.onpointermove=move;
-    sc.onpointerup=()=>{ sc.onpointermove=null; ev('scrub',{to_sec:Math.round(S.pos)}); }; }
+    dragControl(sc, move, ()=>ev('scrub',{to_sec:Math.round(S.pos)}))(e); }
   if(tx){ const node=S.tax.find(t=>t.id===tx.dataset.tax); if(!node) return;
     const f=tx.querySelector('.f'), k=tx.querySelector('.k'), val=tx.parentElement.querySelector('.taxtop .mono');
     const move=ev2=>{ const r=tx.getBoundingClientRect();
@@ -1344,9 +1647,8 @@ document.addEventListener('pointerdown', e=>{
       f.style.left=(node.w<0?(50+node.w*50):50)+'%';
       f.style.width=(Math.abs(node.w)*50)+'%';
       if(val){ val.textContent=(node.w>0?'+':'')+node.w.toFixed(2); val.style.color=node.w<0?'var(--err)':'var(--stretch)'; } };
-    move(e); tx.setPointerCapture(e.pointerId); tx.onpointermove=move;
-    tx.onpointerup=()=>{ tx.onpointermove=null; node.at='just now'; node.recent='you dragged this yourself';
-      ev('interest_override',{node:node.id, weight:node.w}); render(); }; }
+    dragControl(tx, move, ()=>{ node.at='just now'; node.recent='you dragged this yourself';
+      ev('interest_override',{node:node.id, weight:node.w}); render(); })(e); }
 });
 
 document.getElementById('devtoggle').addEventListener('click', e=>{
