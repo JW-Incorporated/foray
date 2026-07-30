@@ -20,6 +20,7 @@
 */
 
 import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, existsSync, statSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative, sep } from "node:path";
 
@@ -124,6 +125,39 @@ if (missingData.length) {
 }
 if (missing.length) {
   console.warn("WARN not found (skipped): " + missing.map((m) => m.rel).join(", "));
+}
+
+/* Stamp the service-worker cache name with a content hash.
+
+   sw.js is cache-first for the app shell and only invalidates when the CACHE
+   constant changes — which was a manual edit nobody remembers. Consequence,
+   observed live on 2026-07-29: app.js changes deployed fine, the network served
+   the new file, and every existing client kept executing the old one from
+   `foray-v3`. In-app playback was invisible to anyone who had loaded the site
+   before, and no amount of redeploying would have fixed it.
+
+   Hashing the shell means every real change busts the cache automatically and
+   an unchanged deploy does not, so cache-first speed is kept. sw.js already
+   calls skipWaiting() + clients.claim(), so the new worker takes over on the
+   next load rather than waiting for every tab to close. */
+{
+  const swPath = join(OUT, "sw.js");
+  const hashed = ["index.html", "app.js", "search-engine.js", "styles.css", ...playerSources()];
+  const h = createHash("sha256");
+  for (const rel of hashed) {
+    const f = join(OUT, rel);
+    if (existsSync(f)) h.update(readFileSync(f));
+  }
+  const build = h.digest("hex").slice(0, 12);
+  const sw = readFileSync(swPath, "utf8");
+  const stamped = sw.replace(/const CACHE = "[^"]*";/, `const CACHE = "foray-${build}";`);
+  if (stamped === sw) {
+    console.error("FATAL: could not stamp the sw.js cache name — the CACHE constant did not match. " +
+      "Without this, shell changes never reach existing clients.");
+    process.exit(1);
+  }
+  writeFileSync(swPath, stamped);
+  console.log(`sw cache: foray-${build}`);
 }
 
 if (mb > MAX_MB) {
