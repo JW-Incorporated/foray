@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-07-29T11:45:15.106Z",
+  "built_at": "2026-07-30T11:45:40.052Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -9714,6 +9714,248 @@
       "weather-forecasting",
       "interview",
       "tropical-cyclones"
+    ],
+    "stuff-you-should-know--how-russia-shapes-what-the-world": [
+      "russia",
+      "propaganda",
+      "disinformation",
+      "misinformation",
+      "internet",
+      "media-criticism",
+      "politics"
+    ],
+    "the-rest-is-history--692-elizabeth-i-vs-the-catholics": [
+      "england",
+      "france",
+      "religion",
+      "espionage",
+      "massacre",
+      "history",
+      "european-history"
+    ],
+    "conan-obrien-needs-a-friend--summer-s-pouses-episode-1": [
+      "conan-obrien",
+      "comedy",
+      "banter",
+      "talk-show",
+      "summer",
+      "casual",
+      "podcasting"
+    ],
+    "the-ancients--alexander-the-great-s-mad-scientist": [
+      "alexander-the-great",
+      "ancient-history",
+      "military-history",
+      "siege-warfare",
+      "ancient-greece",
+      "engineering",
+      "warfare"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-2623": [
+      "economics",
+      "philosophy",
+      "capitalism",
+      "markets",
+      "19th-century",
+      "history"
+    ],
+    "this-week-in-startups--banning-chinese-robots-isn-t-regulatory": [
+      "startups",
+      "robotics",
+      "china",
+      "regulation",
+      "policy",
+      "venture-capital",
+      "tech-industry"
+    ],
+    "twenty-minute-vc--20vc-jensen-s-open-weights-letter": [
+      "venture-capital",
+      "ai",
+      "nvidia",
+      "google",
+      "startups",
+      "fundraising",
+      "tech-industry"
+    ],
+    "around-the-house-eric-g--is-that-upgrade-really-worth-it": [
+      "home-improvement",
+      "diy",
+      "home",
+      "home-repair",
+      "practical",
+      "tips",
+      "consumer-products"
+    ],
+    "fly-on-the-wall--natasha-lyonne-on-twitter-haters-fred": [
+      "fred-armisen",
+      "celebrities",
+      "interview",
+      "comedy",
+      "tv",
+      "film",
+      "pop-culture"
+    ],
+    "the-bbq-central-show--embedded-correspondents-july-2026": [
+      "bbq",
+      "barbecue",
+      "grilling",
+      "pitmasters",
+      "cooking",
+      "food",
+      "competition"
+    ],
+    "flight-safety-detectives--737-crash-details-emerging-mental-health": [
+      "aviation",
+      "aviation-safety",
+      "plane-crash",
+      "crash-investigation",
+      "safety",
+      "pilot",
+      "investigation"
+    ],
+    "ologies-with-alie-ward--bonus-episode-menopause-advice-for-you": [
+      "menopause",
+      "hrt",
+      "perimenopause",
+      "womens-health",
+      "health",
+      "advice",
+      "science-communication"
+    ],
+    "planetary-radio--terp-raptor-a-student-built-mission": [
+      "space",
+      "astronomy",
+      "nasa",
+      "spacecraft",
+      "planetary-science",
+      "engineering",
+      "students"
+    ],
+    "software-engineering-daily--docker-and-sandboxing-ai-agents": [
+      "software",
+      "ai-agents",
+      "cybersecurity",
+      "coding",
+      "containers",
+      "virtualization",
+      "engineering"
+    ],
+    "odd-lots--how-the-iranian-economy-actually-works": [
+      "iran",
+      "iranian-revolution",
+      "economics",
+      "politics",
+      "geopolitics",
+      "markets",
+      "history"
+    ],
+    "planetgeo-geology-podcast--how-to-find-copper-dr-tim": [
+      "geology",
+      "mining",
+      "materials",
+      "earth-science",
+      "careers",
+      "interview",
+      "science"
+    ],
+    "tuned-in-hpa--167-from-turbo-hondas-to-holley": [
+      "automotive",
+      "honda",
+      "tuning",
+      "turbocharging",
+      "cars",
+      "mechanical-engineering",
+      "careers"
+    ],
+    "how-i-built-this--advice-line-with-chris-riccobono-of": [
+      "business",
+      "founders",
+      "entrepreneurship",
+      "advice",
+      "brands",
+      "marketing",
+      "startups"
+    ],
+    "masters-of-scale--how-to-beef-up-your-business": [
+      "business",
+      "founders",
+      "entrepreneurship",
+      "startups",
+      "food",
+      "marketing",
+      "retail"
+    ],
+    "we-have-ways-of-making-you-talk--operation-barbarossa-one-man-s-war": [
+      "world-war-2",
+      "nazi-germany",
+      "propaganda",
+      "eastern-front",
+      "operation-barbarossa",
+      "soviet-union",
+      "military-history"
+    ],
+    "the-enormocast--enormocast-327-karly-rager-8211-days": [
+      "climbing",
+      "interview",
+      "entrepreneurship",
+      "coaching",
+      "adventure",
+      "sports",
+      "careers"
+    ],
+    "huberman-lab--essentials-how-to-become-resilient-forge": [
+      "resilience",
+      "mindset",
+      "leadership",
+      "psychology",
+      "self-improvement",
+      "navy",
+      "motivation"
+    ],
+    "that-triathlon-show--is-optimised-workout-design-pointless-and": [
+      "triathlon",
+      "endurance",
+      "training",
+      "cycling",
+      "running",
+      "sports-science",
+      "fitness"
+    ],
+    "practical-ai--reconstructing-how-openai-agents-attacked-hugging": [
+      "ai-agents",
+      "cybersecurity",
+      "openai",
+      "ai-safety",
+      "ai",
+      "engineering",
+      "research"
+    ],
+    "mel-robbins-podcast--mit-longevity-expert-do-these-3": [
+      "longevity",
+      "aging",
+      "mit",
+      "health",
+      "self-improvement",
+      "healthspan",
+      "wellbeing"
+    ],
+    "las-culturistas--mixtape-w-slayyyter": [
+      "pop-culture",
+      "interview",
+      "comedy",
+      "music",
+      "celebrities",
+      "pop-music",
+      "nostalgia"
+    ],
+    "morbid--listener-tales-112-vacation": [
+      "true-crime",
+      "horror",
+      "comedy",
+      "storytelling",
+      "personal-stories",
+      "true-stories",
+      "podcasting"
     ]
   }
 }

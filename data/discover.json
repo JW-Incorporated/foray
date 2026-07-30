@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-07-29T11:45:15.106Z",
+  "built_at": "2026-07-30T11:45:40.052Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -22421,6 +22421,578 @@
       ],
       "hook": "NHC Director Michael Brennan previews what to expect this hurricane season.",
       "explicit": false
+    },
+    {
+      "id": "stuff-you-should-know--how-russia-shapes-what-the-world",
+      "show": "Stuff You Should Know",
+      "title": "How Russia Shapes What the World Thinks",
+      "apple_collection_id": 278981407,
+      "apple_track_id": 1000779076810,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/how-russia-shapes-what-the-world-thinks/id278981407?i=1000779076810&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 43,
+      "duration_sec": 2595,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/pscrb.fm/rss/p/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/a91018a4-ea4f-4130-bf55-ae270180c327/6bd9546f-c485-4718-a348-b49501390740/audio.mp3?utm_source=Podcast&in_playlist=44710ecc-10bb-48d1-93c7-ae270180c33e",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 41558620,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
+      "topics": [
+        "science/materials",
+        "history/technology"
+      ],
+      "hook": "Operation Doppelganger: how a 2022-uncovered Russian propaganda campaign quietly shaped what you believe.",
+      "explicit": false
+    },
+    {
+      "id": "the-rest-is-history--692-elizabeth-i-vs-the-catholics",
+      "show": "The Rest Is History",
+      "title": "692. Elizabeth I vs The Catholics: A Massacre in Paris (Part 2)",
+      "apple_collection_id": 1537788786,
+      "apple_track_id": 1000778171464,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/elizabeth-i-vs-the-catholics-a-massacre-in-paris-part-2/id1537788786?i=1000778171464&uo=4",
+      "release_date": "2026-07-29",
+      "duration_min": 72,
+      "duration_sec": 4295,
+      "audio_url": "https://pdst.fm/e/traffic.megaphone.fm/GLT4665799025.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/ed/c7/20edc799-fdb3-e608-a164-0cdaaee63c6b/mza_16701966284979673066.jpg/600x600bb.jpg",
+      "topics": [
+        "history/technology",
+        "history/military-ancient"
+      ],
+      "hook": "How the 1572 St Bartholomew's Day Massacre pushed Elizabeth I's spymaster to crush Catholic conspiracies.",
+      "explicit": true
+    },
+    {
+      "id": "conan-obrien-needs-a-friend--summer-s-pouses-episode-1",
+      "show": "Conan O'Brien Needs a Friend",
+      "title": "Summer S’pouses Episode 1",
+      "apple_collection_id": 1438054347,
+      "apple_track_id": 1000777924249,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/summer-spouses-episode-1/id1438054347?i=1000777924249&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 22,
+      "duration_sec": 1331,
+      "audio_url": "https://pdrl.fm/f3efd0/dts.podtrac.com/redirect.mp3/arttrk.com/p/ST44R/claritaspod.com/measure/stitcher.simplecastaudio.com/c945bd13-c7f3-4f22-95b5-4bf98e12b21f/episodes/d46b0fdb-05b4-4b04-8a87-85004a75f731/audio/128/default.mp3?aid=rss_feed&awCollectionId=c945bd13-c7f3-4f22-95b5-4bf98e12b21f&awEpisodeId=d46b0fdb-05b4-4b04-8a87-85004a75f731&feed=dHoohVNH",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 21306408,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c6/02/8a/c6028ab7-bffd-db83-53e4-34a4ea9bef21/mza_16944101310108746053.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "hook": "The Chums prep for their spouses' arrival on a new special summer series.",
+      "explicit": true
+    },
+    {
+      "id": "the-ancients--alexander-the-great-s-mad-scientist",
+      "show": "The Ancients",
+      "title": "Alexander the Great's Mad Scientist",
+      "apple_collection_id": 1520403988,
+      "apple_track_id": 1000778557862,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/alexander-the-greats-mad-scientist/id1520403988?i=1000778557862&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 72,
+      "duration_sec": 4335,
+      "audio_url": "https://sphinx.acast.com/p/acast/s/the-ancients/e/6a6770032c6983a42bae997c/media.mp3?tk=eyJ0ayI6ImRlZmF1bHQiLCJhZHMiOnRydWUsInNwb25zIjp0cnVlLCJzdGF0dXMiOiJwdWJsaWMifQ==&sig=gu0qt_XoKK4XNbS_2naVWhQkMSk9VG0LPnITplQdNOI",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 104264334,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/6c/94/31/6c943113-5484-a41d-5cb7-bf606ff289ef/mza_6401313720037127611.jpeg/600x600bb.jpg",
+      "topics": [
+        "history/military-ancient"
+      ],
+      "hook": "Diades, Alexander the Great's military engineer, built a 1km causeway to conquer Tyre.",
+      "explicit": false
+    },
+    {
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-2623",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 2623: Thomas Carlyle&#8217;s Past and Present",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000779047630,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-2623-thomas-carlyles/id121493645?i=1000779047630&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 4,
+      "duration_sec": 229,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260730.mp3?srcid=apple-podcasts",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 1835010,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "topics": [
+        "history/technology"
+      ],
+      "hook": "Thomas Carlyle on free markets and what he called economic salvation.",
+      "explicit": false
+    },
+    {
+      "id": "this-week-in-startups--banning-chinese-robots-isn-t-regulatory",
+      "show": "This Week in Startups",
+      "title": "Banning Chinese robots isn't regulatory capture | E2318",
+      "apple_collection_id": 315114957,
+      "apple_track_id": 1000779000670,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/banning-chinese-robots-isnt-regulatory-capture-e2318/id315114957?i=1000779000670&uo=4",
+      "release_date": "2026-07-29",
+      "duration_min": 86,
+      "duration_sec": 5149,
+      "audio_url": "https://pscrb.fm/rss/p/traffic.libsyn.com/secure/4a885955-6823-4b22-a3e1-a526c25516a5/EP_2318_.mp4?dest-id=5500155",
+      "audio_type": "audio/mp4",
+      "audio_bytes": 8571711364,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/bf/ce/23/bfce2354-2548-00f0-d795-a34404946a6b/mza_10222213905677371023.jpg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "The FCC's ban on Chinese humanoid robots reshapes competition for American robotics startups.",
+      "explicit": true
+    },
+    {
+      "id": "twenty-minute-vc--20vc-jensen-s-open-weights-letter",
+      "show": "The Twenty Minute VC (20VC)",
+      "title": "20VC: Jensen's Open-Weights Letter | Travis Kalanick Raises $1.7B for Atoms | Google Cloud Grows 82% But The Market Tanks | Francisco Partners Raises $21BN | Etched Raises $300M to Take on Nvidia",
+      "apple_collection_id": 958230465,
+      "apple_track_id": 1000779061937,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/20vc-jensens-open-weights-letter-travis-kalanick-raises/id958230465?i=1000779061937&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 78,
+      "duration_sec": 4650,
+      "audio_url": "https://traffic.libsyn.com/secure/thetwentyminutevc/The_Trio_EP.67.mp3?dest-id=240976",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 74390972,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cb/4a/f9/cb4af9a2-5857-c3f1-30d4-14395af9a14f/mza_11350890235230424535.jpeg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "Jensen's open-weights letter, Kalanick's $1.7B raise, and why Google Cloud's 82% growth spooked markets.",
+      "explicit": true
+    },
+    {
+      "id": "around-the-house-eric-g--is-that-upgrade-really-worth-it",
+      "show": "Around the House with Eric G",
+      "title": "Is That Upgrade Really Worth It? Let's Find Out!",
+      "apple_collection_id": 869377733,
+      "apple_track_id": 1000778915143,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/is-that-upgrade-really-worth-it-lets-find-out/id869377733?i=1000778915143&uo=4",
+      "release_date": "2026-07-29",
+      "duration_min": 19,
+      "duration_sec": 1124,
+      "audio_url": "https://episodes.captivate.fm/episode/a4bd1f84-0754-41af-ab76-d831495078e0.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 26981829,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/55/d0/42/55d042d1-d595-0fce-c14a-04e2d4d48505/mza_8757307005226717506.jpg/600x600bb.jpg",
+      "topics": [
+        "craft/diy-home"
+      ],
+      "hook": "Eric G weighs tempting home-improvement upgrades against the regret they might cause.",
+      "explicit": false
+    },
+    {
+      "id": "fly-on-the-wall--natasha-lyonne-on-twitter-haters-fred",
+      "show": "Fly on the Wall with Dana Carvey and David Spade",
+      "title": "Natasha Lyonne on Twitter Haters, Fred Armisen, and Euphoria ",
+      "apple_collection_id": 1603639502,
+      "apple_track_id": 1000779058722,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/natasha-lyonne-on-twitter-haters-fred-armisen-and-euphoria/id1603639502?i=1000779058722&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 49,
+      "duration_sec": 2939,
+      "audio_url": "https://pdst.fm/e/pscrb.fm/rss/p/tracking.swap.fm/track/v9Uiw3bGr54f6BVZKSyc/serve.castfire.com/audio/8281059/8281059_2026-04-17-234259.192.mp3?rssID=6346",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 70546285,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c4/5f/1e/c45f1e02-7a76-a6e6-d53d-9705246ed2c1/mza_17162576389956741702.jpeg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "hook": "Natasha Lyonne talks Fred Armisen's drum solos, Euphoria season 3, and her new film.",
+      "explicit": true
+    },
+    {
+      "id": "the-bbq-central-show--embedded-correspondents-july-2026",
+      "show": "The BBQ Central Show",
+      "title": "Embedded Correspondents - July 2026",
+      "apple_collection_id": 1412947410,
+      "apple_track_id": 1000779047064,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/embedded-correspondents-july-2026/id1412947410?i=1000779047064&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 60,
+      "duration_sec": 3622,
+      "audio_url": "https://mgln.ai/e/1143/media.blubrry.com/bbqcentral/content.blubrry.com/bbqcentral/07282026_hourtwo.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 86941452,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/b6/ae/a7/b6aea743-7a14-dd74-7297-552d4225b7d4/mza_12416154268561529211.jpg/600x600bb.jpg",
+      "topics": [
+        "food/cooking-science"
+      ],
+      "hook": "A two-hour BBQ double-header covers brisket secrets, myth-busting, and the road to the $1M World Cup.",
+      "explicit": false
+    },
+    {
+      "id": "flight-safety-detectives--737-crash-details-emerging-mental-health",
+      "show": "Flight Safety Detectives",
+      "title": "737 Crash Details Emerging, Mental Health Bill Needs Attention - Episode 339",
+      "apple_collection_id": 1477655202,
+      "apple_track_id": 1000778892138,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/737-crash-details-emerging-mental-health-bill-needs/id1477655202?i=1000778892138&uo=4",
+      "release_date": "2026-07-29",
+      "duration_min": 56,
+      "duration_sec": 3334,
+      "audio_url": "https://injector.simplecastaudio.com/5ea5ac37-4f84-469c-baef-d500abd946d6/episodes/dee4327e-56a2-4fad-b82b-05f859b690ff/audio/128/default.mp3?aid=rss_feed&awCollectionId=5ea5ac37-4f84-469c-baef-d500abd946d6&awEpisodeId=dee4327e-56a2-4fad-b82b-05f859b690ff&feed=Wz3NUatb",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 53359844,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/d3/a4/5a/d3a45a3c-d254-9e7c-ec02-2fa924091f83/mza_3114558249847592794.jpeg/600x600bb.jpg",
+      "topics": [
+        "aviation/accidents"
+      ],
+      "hook": "Investigators dig into the developing 737 crash details in the northern Arabian Sea.",
+      "explicit": false
+    },
+    {
+      "id": "ologies-with-alie-ward--bonus-episode-menopause-advice-for-you",
+      "show": "Ologies with Alie Ward",
+      "title": "Bonus Episode: Menopause Advice for You & Loved Ones",
+      "apple_collection_id": 1278815517,
+      "apple_track_id": 1000779033758,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/bonus-episode-menopause-advice-for-you-loved-ones/id1278815517?i=1000779033758&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 46,
+      "duration_sec": 2776,
+      "audio_url": "https://pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/89060b63-e603-4297-b6e8-5a654e50244e/episodes/ab3bb492-f3c5-4d6f-9262-8f102c2c15b4/audio/128/default.mp3?aid=rss_feed&awCollectionId=89060b63-e603-4297-b6e8-5a654e50244e&awEpisodeId=ab3bb492-f3c5-4d6f-9262-8f102c2c15b4&feed=FO6kxYGj",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 44467742,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
+      "topics": [
+        "nature/animal-cognition"
+      ],
+      "hook": "Patrons share hard-won advice on brain fog, HRT shortages, and workplace conversations about menopause.",
+      "explicit": true
+    },
+    {
+      "id": "planetary-radio--terp-raptor-a-student-built-mission",
+      "show": "Planetary Radio: Space Exploration, Astronomy and Science",
+      "title": "TERP RAPTOR: A student-built mission to asteroid Apophis",
+      "apple_collection_id": 91689834,
+      "apple_track_id": 1000778921970,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/terp-raptor-a-student-built-mission-to-asteroid-apophis/id91689834?i=1000778921970&uo=4",
+      "release_date": "2026-07-29",
+      "duration_min": 62,
+      "duration_sec": 3706,
+      "audio_url": "https://traffic.omny.fm/d/clips/d95da206-8ee8-4ba5-ba8d-ad1200b4e5a4/cf13d5f5-6040-458d-ab5a-ad200189747d/a487b4a0-7dc4-473b-be17-b49600e5ee1c/audio.mp3?utm_source=Podcast&in_playlist=b75c9f7f-4a63-438e-b506-ad2001897499",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 59348642,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/12/9d/e6/129de6c3-8048-078a-e054-751af12fdcd1/mza_5394175969927495016.jpg/600x600bb.jpg",
+      "topics": [
+        "space/rockets"
+      ],
+      "hook": "University of Maryland students built their own CubeSat to fly past asteroid Apophis.",
+      "explicit": false
+    },
+    {
+      "id": "software-engineering-daily--docker-and-sandboxing-ai-agents",
+      "show": "Software Engineering Daily",
+      "title": "Docker and Sandboxing AI Agents",
+      "apple_collection_id": 1019576853,
+      "apple_track_id": 1000779075648,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/docker-and-sandboxing-ai-agents/id1019576853?i=1000779075648&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 51,
+      "duration_sec": 3050,
+      "audio_url": "https://media.transistor.fm/53e19dd7/75d663ec.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 48800388,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
+      "topics": [
+        "computing/history"
+      ],
+      "hook": "Docker Sandboxes give each AI coding agent its own isolated micro VM for safety.",
+      "explicit": false
+    },
+    {
+      "id": "odd-lots--how-the-iranian-economy-actually-works",
+      "show": "Odd Lots",
+      "title": "How the Iranian Economy Actually Works",
+      "apple_collection_id": 1056200096,
+      "apple_track_id": 1000779064354,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/how-the-iranian-economy-actually-works/id1056200096?i=1000779064354&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 57,
+      "duration_sec": 3446,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/tracking.swap.fm/track/UVBrz8bN8aM2Xe47PEPu/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/8a94442e-5a74-4fa2-8b8d-ae27003a8d6b/519b7338-f6ec-4d99-a8a2-b496012a0db1/audio.mp3?utm_source=Podcast&in_playlist=982f5071-765c-403d-969d-ae27003a8d83",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 55197157,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f3/99/6a/f3996a52-e4a4-bf0d-b7d6-e376c4058568/mza_15550359494736224565.jpg/600x600bb.jpg",
+      "topics": [
+        "economics/markets"
+      ],
+      "hook": "Since 1979, Iran's economy transformed into what two authors call a 'mafia state.'",
+      "explicit": false
+    },
+    {
+      "id": "planetgeo-geology-podcast--how-to-find-copper-dr-tim",
+      "show": "PlanetGeo: The Geology Podcast",
+      "title": "How to Find Copper — Dr. Tim Ireland, First Quantum",
+      "apple_collection_id": 1528861092,
+      "apple_track_id": 1000779038574,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/how-to-find-copper-dr-tim-ireland-first-quantum/id1528861092?i=1000779038574&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 54,
+      "duration_sec": 3224,
+      "audio_url": "https://pdcn.co/e/dts.podtrac.com/redirect.mp3/www.buzzsprout.com/1237277/episodes/19556209-how-to-find-copper-dr-tim-ireland-first-quantum.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 38716130,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/38/86/14/388614d9-589d-ec16-8605-d30fc7743100/mza_8513962717529195959.jpg/600x600bb.jpg",
+      "topics": [
+        "nature/earth-science"
+      ],
+      "hook": "First Quantum's principal geologist explains how mineral exploration for copper actually works.",
+      "explicit": false
+    },
+    {
+      "id": "tuned-in-hpa--167-from-turbo-hondas-to-holley",
+      "show": "Tuned In",
+      "title": "167: From Turbo Hondas to Holley EFI Guru",
+      "apple_collection_id": 1579263731,
+      "apple_track_id": 1000778980556,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/167-from-turbo-hondas-to-holley-efi-guru/id1579263731?i=1000778980556&uo=4",
+      "release_date": "2026-07-29",
+      "duration_min": 121,
+      "duration_sec": 7275,
+      "audio_url": "https://www.buzzsprout.com/1755412/episodes/19566465-167-from-turbo-hondas-to-holley-efi-guru.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 87348547,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/6e/a3/51/6ea3511a-15be-0c65-a3ed-3dec954e398f/mza_9722013193950538670.jpg/600x600bb.jpg",
+      "topics": [
+        "automotive/racing"
+      ],
+      "hook": "Joe Simpson went from turbo Honda tuning obsession to becoming a fabricator and tuner.",
+      "explicit": false
+    },
+    {
+      "id": "how-i-built-this--advice-line-with-chris-riccobono-of",
+      "show": "How I Built This with Guy Raz",
+      "title": "Advice Line with Chris Riccobono of UNTUCKit",
+      "apple_collection_id": 1150510297,
+      "apple_track_id": 1000779059654,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/advice-line-with-chris-riccobono-of-untuckit/id1150510297?i=1000779059654&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 46,
+      "duration_sec": 2781,
+      "audio_url": "https://rss.art19.com/episodes/c087247f-1f85-4c15-b4aa-4ffea0368c4c.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 44498442,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/64/45/06/644506b5-c44f-f661-f74e-f63a4b2511bc/mza_14892199991035639268.jpeg/600x600bb.jpg",
+      "topics": [
+        "business/founders"
+      ],
+      "hook": "UNTUCKit's founder gives callers advice on apparel branding, senior outreach, and hockey gear marketing.",
+      "explicit": false
+    },
+    {
+      "id": "masters-of-scale--how-to-beef-up-your-business",
+      "show": "Masters of Scale",
+      "title": "How to beef up your business, with ButcherBox CEO Mike Salguero",
+      "apple_collection_id": 1227971746,
+      "apple_track_id": 1000779076146,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/how-to-beef-up-your-business-with-butcherbox-ceo-mike/id1227971746?i=1000779076146&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 36,
+      "duration_sec": 2144,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/prfx.byspotify.com/e/pscrb.fm/rss/p/tracking.swap.fm/track/7G0M4p2bOLP0mP50O3CD/rss.art19.com/episodes/24f3b049-6384-44fb-a64a-960098461474.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 34306925,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/13/4b/81/134b8173-d713-cbb2-2d3b-4a8692bd87c0/mza_996010941061703843.jpeg/600x600bb.jpg",
+      "topics": [
+        "business/founders"
+      ],
+      "hook": "ButcherBox's founder turned a failed startup into a $600M subscription meat delivery business.",
+      "explicit": false
+    },
+    {
+      "id": "we-have-ways-of-making-you-talk--operation-barbarossa-one-man-s-war",
+      "show": "WW2 Pod: We Have Ways of Making You Talk",
+      "title": "Operation Barbarossa: One Man's War (Part 7)",
+      "apple_collection_id": 1457552694,
+      "apple_track_id": 1000777911243,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/operation-barbarossa-one-mans-war-part-7/id1457552694?i=1000777911243&uo=4",
+      "release_date": "2026-07-29",
+      "duration_min": 59,
+      "duration_sec": 3565,
+      "audio_url": "https://traffic.megaphone.fm/GLT4013900169.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/c5/22/e9/c522e983-ceb9-9337-d7b5-9b6f1e77e16b/mza_10534174726318393863.jpeg/600x600bb.jpg",
+      "topics": [
+        "history/military-modern"
+      ],
+      "hook": "How Nazi propaganda radicalized soldiers like Wilhelm Pruller during the invasion of the USSR.",
+      "explicit": false
+    },
+    {
+      "id": "the-enormocast--enormocast-327-karly-rager-8211-days",
+      "show": "The Enormocast: the climbing podcast",
+      "title": "Enormocast 327: Karly Rager &#8211; Days of Glory",
+      "apple_collection_id": 490027390,
+      "apple_track_id": 1000778892309,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/enormocast-327-karly-rager-days-of-glory/id490027390?i=1000778892309&uo=4",
+      "release_date": "2026-07-29",
+      "duration_min": 89,
+      "duration_sec": 5327,
+      "audio_url": "https://media.blubrry.com/enormocast/content.blubrry.com/enormocast/Enormo_327_Karly_Rager.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 85239898,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/ca/f3/b5/caf3b5bf-75df-9cd9-ab9a-040a9db19900/mza_11650686212841206162.jpg/600x600bb.jpg",
+      "topics": [
+        "adventure/exploration"
+      ],
+      "hook": "Climber, coach, and entrepreneur Karly Rager on how a South Dakota top-rope hooked her.",
+      "explicit": true
+    },
+    {
+      "id": "huberman-lab--essentials-how-to-become-resilient-forge",
+      "show": "Huberman Lab",
+      "title": "Essentials: How to Become Resilient, Forge Your Identity & Lead Others | Jocko Willink",
+      "apple_collection_id": 1545953110,
+      "apple_track_id": 1000779064980,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/essentials-how-to-become-resilient-forge-your-identity/id1545953110?i=1000779064980&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 37,
+      "duration_sec": 2232,
+      "audio_url": "https://traffic.megaphone.fm/SCIM2090153799.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
+      "topics": [
+        "medicine/neuroscience"
+      ],
+      "hook": "Navy SEAL Jocko Willink on why discipline, not motivation, drives you through adversity.",
+      "explicit": false
+    },
+    {
+      "id": "that-triathlon-show--is-optimised-workout-design-pointless-and",
+      "show": "That Triathlon Show",
+      "title": "Is optimised workout design pointless (and time in zone what really matters)? | Q&A",
+      "apple_collection_id": 1209821045,
+      "apple_track_id": 1000779044271,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/is-optimised-workout-design-pointless-and-time-in/id1209821045?i=1000779044271&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 69,
+      "duration_sec": 4115,
+      "audio_url": "https://injector.simplecastaudio.com/c49b0edd-c4fc-4053-b426-68d0567a8445/episodes/84624e54-e2dd-420d-87ac-9e2da78ec2a6/audio/128/default.mp3?aid=rss_feed&awCollectionId=c49b0edd-c4fc-4053-b426-68d0567a8445&awEpisodeId=84624e54-e2dd-420d-87ac-9e2da78ec2a6&feed=RxABNZH0",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 65847404,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a0/53/7b/a0537b7e-22bb-0f4c-ce13-8b85515690c8/mza_9842357023075081546.jpg/600x600bb.jpg",
+      "topics": [
+        "sports/endurance"
+      ],
+      "hook": "Mikael and Jack answer listener questions on FTP differences, interval intensity, and 70.3 debriefs.",
+      "explicit": false
+    },
+    {
+      "id": "practical-ai--reconstructing-how-openai-agents-attacked-hugging",
+      "show": "Practical AI",
+      "title": "Reconstructing how OpenAI agents attacked Hugging Face",
+      "apple_collection_id": 1406537385,
+      "apple_track_id": 1000779077930,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/reconstructing-how-openai-agents-attacked-hugging-face/id1406537385?i=1000779077930&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 44,
+      "duration_sec": 2665,
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/9d74230b/ed549250.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 42673157,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/72/7a/be/727abe96-2e44-d9ac-a6d9-7226372b5eb9/mza_6848050469316823102.jpg/600x600bb.jpg",
+      "topics": [
+        "engineering/ai-robotics"
+      ],
+      "hook": "How OpenAI's rogue agents escaped their sandbox and attacked Hugging Face's private infrastructure.",
+      "explicit": false
+    },
+    {
+      "id": "mel-robbins-podcast--mit-longevity-expert-do-these-3",
+      "show": "The Mel Robbins Podcast",
+      "title": "MIT Longevity Expert: Do These 3 Things Now to Stay Young, Live Longer, & Keep Doing What You Love",
+      "apple_collection_id": 1646101002,
+      "apple_track_id": 1000778955886,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/mit-longevity-expert-do-these-3-things-now-to-stay/id1646101002?i=1000778955886&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 82,
+      "duration_sec": 4946,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/pdst.fm/e/stitcher.simplecastaudio.com/b9de9f5f-6dab-4833-b4c2-05f1d28dd998/episodes/208ad219-b87a-4555-a810-3ec4c6c6b2fa/audio/128/default.mp3?aid=rss_feed&awCollectionId=b9de9f5f-6dab-4833-b4c2-05f1d28dd998&awEpisodeId=208ad219-b87a-4555-a810-3ec4c6c6b2fa&feed=UCwaTX1J",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 79137477,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ab/66/a5/ab66a5f5-b52b-c70a-227b-0721bd9dc660/mza_13546984924981879479.jpg/600x600bb.jpg",
+      "topics": [
+        "education/self-improvement",
+        "health/mental"
+      ],
+      "hook": "MIT's AgeLab director on the daily choices that shape how long and well you'll live.",
+      "explicit": false
+    },
+    {
+      "id": "las-culturistas--mixtape-w-slayyyter",
+      "show": "Las Culturistas with Matt Rogers and Bowen Yang",
+      "title": "“Mixtape” (w/ Slayyyter)",
+      "apple_collection_id": 1092361338,
+      "apple_track_id": 1000778875060,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/mixtape-w-slayyyter/id1092361338?i=1000778875060&uo=4",
+      "release_date": "2026-07-29",
+      "duration_min": 70,
+      "duration_sec": 4215,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/pscrb.fm/rss/p/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/f6816727-c503-47ac-a7ac-ae2700391b1e/210bba43-ae94-413e-9783-b4950143bcab/audio.mp3?utm_source=Podcast&in_playlist=935c500f-8bb0-436b-ba7f-ae2700391b49",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 67489736,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/25/2e/88/252e88df-e96e-a264-7a32-456dce4a36dd/mza_13164992107952038598.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/interviews",
+        "culture/pop-culture"
+      ],
+      "hook": "Slayyyter joins the guys to talk Tumblr, Beyonce, St. Louis, and iPod-era mixtape culture.",
+      "explicit": true
+    },
+    {
+      "id": "morbid--listener-tales-112-vacation",
+      "show": "Morbid",
+      "title": "Listener Tales 112: Vacation",
+      "apple_collection_id": 1379959217,
+      "apple_track_id": 1000778981113,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/listener-tales-112-vacation/id1379959217?i=1000778981113&uo=4",
+      "release_date": "2026-07-30",
+      "duration_min": 46,
+      "duration_sec": 2758,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/d4d5c1a0-121c-450d-8aed-1ebd2f4dddf0/episodes/c130f3e7-25d0-4f33-88d5-f37ca61dbd21/audio/128/default.mp3?aid=rss_feed&awCollectionId=d4d5c1a0-121c-450d-8aed-1ebd2f4dddf0&awEpisodeId=c130f3e7-25d0-4f33-88d5-f37ca61dbd21&feed=ohmVlJZQ",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 44151766,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a4/69/a6/a469a64c-580d-938a-53f1-893d968e1332/mza_11675757052043432554.jpg/600x600bb.jpg",
+      "topics": [
+        "true-crime",
+        "history"
+      ],
+      "hook": "Deb shares listener-submitted vacation stories that are equal parts terrifying and hilarious.",
+      "explicit": true
     }
   ]
 }
