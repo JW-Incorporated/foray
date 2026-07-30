@@ -508,13 +508,6 @@ function bumpOrCreate(id, delta, why, meta){
   return n;
 }
 
-// The fixture seeds S.tax with a full pre-populated demo taxonomy (so the
-// rest of the app has something to show when you skip straight to a route
-// via the harness). That means "show what changed" can't just mean "show
-// nonzero weights" — a brand-new user's onboarding summary needs to show
-// only what THIS session's answers actually touched, or it reports interests
-// the user never expressed.
-function touch(id){ if(!S.onbTouched.includes(id)) S.onbTouched.push(id); }
 
 function runTopicSearch(query){
   query = (query||'').trim();
@@ -553,28 +546,12 @@ const TAX = [
 // interview redesign" for the critique this replaced).
 const ONB_EXAMPLES = ['Volcanoes','True crime cases','Ancient Rome','How bread rises','Chess openings','Fixing old cars'];
 
-// A small hand-picked adjacency table: for each top-level taxonomy branch, a
-// few genuinely different branches worth offering as the exploration bridge
-// (this is a prototype stand-in for real semantic bridging — see the plan's
-// "Stretch" mechanic). Falls back to a neutral default set.
-const BRIDGE_MAP = {
-  engineering:['craft','science','space'], science:['engineering','nature','medicine'],
-  history:['culture','society','philosophy'], craft:['engineering','music','food'],
-  business:['economics','psychology','engineering'], comedy:['culture','music','tv-film'],
-  'true-crime':['psychology','society','history'], health:['psychology','food','sports'],
-  culture:['history','music','philosophy'], music:['culture','craft','comedy'],
-  psychology:['health','philosophy','society'], space:['science','engineering','philosophy'],
-  computing:['engineering','math','gaming'], economics:['business','society','history'],
-  nature:['science','adventure','food'], philosophy:['history','culture','psychology'],
-  sports:['health','psychology','adventure'], food:['craft','culture','health']
-};
-const BRIDGE_DEFAULT = ['history','science','culture'];
 
 const COMFORT_OPTIONS = [
   {label:'Two friends talking', node:'comedy/casual-hangs'},
   {label:'Comedy', node:'comedy'},
   {label:'A story', node:'fiction'},
-  {label:'Silence works too', node:null}
+  {label:'No preference — choose for me', node:null}
 ];
 const BLOCK_OPTIONS = [
   {label:'Politics', node:'news/politics'},
@@ -582,14 +559,13 @@ const BLOCK_OPTIONS = [
   {label:'Celebrity interviews', node:'culture/pop-culture'},
   {label:'Sports', node:'sports'}
 ];
-const INTRO_OPTIONS = ['One line','A sentence of context','Skip it entirely'];
 
 /* ============================================================================
    STATE
    ============================================================================ */
 const S = {
   route:'signin', tab:'today',
-  onbStep:1, onbTopic:'', onbNode:null, onbBridge:null, onbComfort:null, onbBlocks:[], onbIntro:1, onbTouched:[], blockConfirm:null, buildNotify:false,
+  onbStep:1, onbTopic:'', onbNode:null, onbComfort:null, onbBlocks:[], blockConfirm:null, buildNotify:false,
   tax:JSON.parse(JSON.stringify(TAX)),
   queue:null, qi:0, pos:0, playing:false, pickedCard:null,
   rate:1.25, rateByShow:{rd:1}, demo:90, offline:false, dl:'ready', dlPct:100,
@@ -786,27 +762,21 @@ function onbPreviewHTML(){
   // question rather than block on it (found by testing onboarding's own
   // "Fixing old cars" example chip, which silently failed to resolve and
   // left Next permanently disabled with no explanation).
-  if(!S.onbNode){ S.onbBridge=null; return `<p class="note" style="margin-top:16px;color:var(--stretch)">I couldn't quite place that one — no problem. Tap Next to continue, or try different words.</p>`; }
-  const bridgeOpts = BRIDGE_MAP[branchOf(S.onbNode.id)] || BRIDGE_DEFAULT;
-  if(!bridgeOpts.includes(S.onbBridge)) S.onbBridge=null;
+  if(!S.onbNode){ return `<p class="note" style="margin-top:16px;color:var(--stretch)">I couldn't quite place that one — no problem. Tap Next to continue, or try different words.</p>`; }
+  // No bridge question here on purpose: asking a brand-new user to declare
+  // an exploration DIRECTION they don't have an opinion on yet was asking
+  // them to configure a system policy (Stretch), not state a preference —
+  // and it didn't even do what it implied, since the actual Day 1 Stretch
+  // card comes from the session builder, not from this answer. One honest,
+  // low-confidence acknowledgment is enough; the real bridge gets learned
+  // from what people actually do, same as listening window and per-show
+  // speed already are.
   return `
     <div class="card" style="margin-top:16px;border-left:2px solid var(--stretch)">
-      <p class="note" style="margin:0">Because of that, I'll lean toward:</p>
-      <div class="chips" style="margin-top:9px">
-        <span class="chip" style="pointer-events:none;background:var(--surface3)">${S.onbNode.label}</span>
-      </div>
-    </div>
-    <p class="kick" style="margin-top:26px;color:var(--stretch)">One more thing — choose one to continue</p>
-    <h2 class="h1" style="margin-top:6px;font-size:20px">If I ever wander off-topic, which direction still makes sense to you?</h2>
-    <p class="lede">This is the one deliberately-different pick you'll see most days.</p>
-    <div class="chips" style="margin-top:14px">
-      ${bridgeOpts.map(b=>`<button class="chip" data-act="onbBridge" data-v="${b}" aria-pressed="${S.onbBridge===b}">${nodeLabel(b)}</button>`).join('')}
+      <p class="note" style="margin:0">I'm picking up: <strong style="color:var(--bone)">${S.onbNode.label}</strong>. This is only a starting point — it'll sharpen as you listen.</p>
     </div>`;
 }
-// Must have typed something; if that resolved to a topic, also needs a
-// bridge pick. If it didn't resolve, there's nothing to pick a bridge FROM —
-// don't block on a question that can't be answered.
-function onbCanProceed(){ return !!S.onbTopic.trim() && (!S.onbNode || !!S.onbBridge); }
+function onbCanProceed(){ return !!S.onbTopic.trim(); }
 function refreshOnbPreview(){
   document.getElementById('onbPreviewWrap').innerHTML = onbPreviewHTML();
   const btn = document.getElementById('onbNext1Btn');
@@ -816,8 +786,8 @@ function refreshOnbPreview(){
 
 V.onboardStep1 = () => `
   <div style="display:flex;flex-direction:column;height:100%">
-    <div class="hdr"><span class="kick">Getting started · 1 of 2</span></div>
-    <div class="bar" style="margin-bottom:26px"><i style="width:50%"></i></div>
+    <div class="hdr"><span class="kick">Getting started · 1 of 4</span></div>
+    <div class="bar" style="margin-bottom:26px"><i style="width:25%"></i></div>
     <h2 class="h1">What have you been curious about lately?</h2>
     <p class="lede">One thing is enough. Type it your way, or tap an example.</p>
     <div class="chips" style="margin-top:18px">
@@ -827,87 +797,71 @@ V.onboardStep1 = () => `
     <div id="onbPreviewWrap">${onbPreviewHTML()}</div>
     <div style="margin-top:auto;display:grid;gap:8px;padding-top:18px">
       <button id="onbNext1Btn" class="btn" data-act="onbNext1" ${onbCanProceed()?'':'disabled'} style="opacity:${onbCanProceed()?1:.4}">Next</button>
-      <p class="note" style="text-align:center">This tunes today's picks. You can change anything later.</p>
+      <p class="note" style="text-align:center">This gives Foray a starting hint. Your first menu stays broad.</p>
     </div>
   </div>`;
 
-// Step 2: the remaining settings, bundled onto one screen instead of three
-// separate gates, plus the starting-shape summary folded in here instead of
-// being a third screen — this is the last thing before Today.
-// Screens 2-5: one question per screen. This replaced a single dense screen
+// Screens 2-4: one question per screen. This replaced a single dense screen
 // with all three questions plus a numbered-badge treatment — Joey tried it
 // and said it still wasn't right. A number next to a question doesn't fix
-// too-much-at-once; it just labels it. This is the actual fix: single-select
-// questions (comfort, intro length) auto-advance ~350ms after you tap, so
-// each screen is genuinely one fast tap, not a new "read + decide + click
-// Next" gate — that's what makes more screens not reopen the "seven gates"
-// problem the original 5-screen onboarding had.
+// too-much-at-once; it just labels it. This is the actual fix: the
+// single-select comfort screen auto-advances ~350ms after you tap, so it's
+// genuinely one fast tap, not a "read + decide + click Next" gate.
+// Intro length used to be a fourth onboarding screen; cut after a joint
+// review (with Codex) concluded it's a low-stakes setting with a fine
+// default that doesn't need an upfront decision — it now lives in Settings
+// only (S.verbosity, defaults to index 1 there).
 function onbHeader(step){
-  return `<div class="hdr"><span class="kick">Getting started · ${step} of 5</span>
+  return `<div class="hdr"><span class="kick">Getting started · ${step} of 4</span>
     <button class="mono" data-act="onbBackStep" style="font-size:11px;color:var(--dim)">back</button></div>
-  <div class="bar" style="margin-bottom:26px"><i style="width:${step/5*100}%"></i></div>`;
+  <div class="bar" style="margin-bottom:26px"><i style="width:${step/4*100}%"></i></div>`;
 }
 
 V.onboardStep2 = () => `
 <div style="display:flex;flex-direction:column;height:100%">
   ${onbHeader(2)}
   <h2 class="h1">What does "easy listening" mean to you?</h2>
-  <p class="lede">Pick one — this is the comfort-pick slot in your daily menu.</p>
+  <p class="lede">Pick one — this is the comfort-pick slot in your daily menu. Starting it right matters, since you'll see it every day.</p>
   <div class="chips" style="margin-top:18px">${COMFORT_OPTIONS.map(c=>`<button class="chip" data-act="onbComfort" data-v="${c.label}" aria-pressed="${S.onbComfort===c.label}">${c.label}</button>`).join('')}</div>
+  <div style="margin-top:auto;display:grid;gap:8px;padding-top:18px">
+    <button class="btn ghost" data-act="onbComfortSkip">Not sure — choose for me</button>
+  </div>
 </div>`;
 
 V.onboardStep3 = () => `
 <div style="display:flex;flex-direction:column;height:100%">
   ${onbHeader(3)}
   <h2 class="h1">Anything you never want to hear about?</h2>
-  <p class="lede">Optional — skip if nothing comes to mind. These become hard blocks; Foray will never suggest them.</p>
+  <p class="lede">Optional — skip if nothing comes to mind. These stop being suggested until you unblock them in Library — not a weight, but not permanent either.</p>
   <div class="chips" style="margin-top:18px">${BLOCK_OPTIONS.map(b=>`<button class="chip" data-act="onbBlock" data-v="${b.label}" aria-pressed="${S.onbBlocks.includes(b.label)}">${b.label}</button>`).join('')}</div>
   <div style="margin-top:auto;display:grid;gap:8px;padding-top:18px">
     <button class="btn" data-act="onbNextStep">${S.onbBlocks.length ? 'Next' : 'Skip — nothing to block'}</button>
   </div>
 </div>`;
 
-V.onboardStep4 = () => `
+// The recap used to be a raw taxonomy-weight table (+0.30, -0.80, "pending")
+// — implementation state, not something a brand-new user with zero context
+// could act on. This is also the one moment every onboarding answer
+// actually commits (see finishOnb), so it reads it back in plain language
+// instead of numbers.
+V.onboardStep4 = () => {
+  const parts = [];
+  parts.push(S.onbNode ? `start with <strong style="color:var(--bone)">${S.onbNode.label}</strong>` : `start broad, as a generalist`);
+  if(S.onbComfort) parts.push(`make your comfort pick <strong style="color:var(--bone)">${S.onbComfort.toLowerCase()}</strong>`);
+  if(S.onbBlocks.length) parts.push(`keep <strong style="color:var(--bone)">${S.onbBlocks.join(', ')}</strong> out of your menu`);
+  const recap = parts.length>1
+    ? `We'll ${parts.slice(0,-1).join(', ')}, and ${parts[parts.length-1]}.`
+    : `We'll ${parts[0]}.`;
+  return `
 <div style="display:flex;flex-direction:column;height:100%">
   ${onbHeader(4)}
-  <h2 class="h1">How much should I say before playing something?</h2>
-  <p class="lede">Already set to a reasonable default — tap to change it, or just continue.</p>
-  <div class="chips" style="margin-top:18px">${INTRO_OPTIONS.map((o,i)=>`<button class="chip" data-act="onbIntro" data-v="${i}" aria-pressed="${S.onbIntro===i}">${o}</button>`).join('')}</div>
-  <div style="margin-top:auto;display:grid;gap:8px;padding-top:18px">
-    <button class="btn ghost" data-act="onbNextStep">Continue</button>
-  </div>
-</div>`;
-
-V.onboardStep5 = () => `
-<div style="display:flex;flex-direction:column;height:100%;overflow:auto">
-  ${onbHeader(5)}
-  <p class="kick">Your starting shape</p>
-  <p class="note" style="margin:0 0 10px">Weights, not categories — these move every time you finish or bail on something.</p>
-  ${(() => {
-    const applied = S.tax.filter(t=>S.onbTouched.includes(t.id))
-      .map(t=>({name:t.name, w:t.w, pending:false}));
-    const pending = [];
-    if(S.onbComfort){
-      const c=COMFORT_OPTIONS.find(x=>x.label===S.onbComfort);
-      if(c && c.node) pending.push({name:nodeLabel(c.node), w:.3, pending:true});
-    }
-    for(const label of S.onbBlocks){
-      const b=BLOCK_OPTIONS.find(x=>x.label===label);
-      if(b && b.node) pending.push({name:nodeLabel(b.node), w:-.8, pending:true});
-    }
-    const rows = applied.concat(pending);
-    if(!rows.length) return '<p class="note">Nothing yet — go back and tell me what you\'re curious about.</p>';
-    return rows.map(t=>`
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)">
-      <div style="font-size:13.5px;font-weight:500">${t.name}${t.pending?' <span class="note" style="font-size:11px">(pending)</span>':''}</div>
-      <div class="mono" style="font-size:11px;color:${t.w<0?'var(--err)':'var(--dim)'}">${t.w>0?'+':''}${t.w.toFixed(2)}</div>
-    </div>`).join('');
-  })()}
-  <div style="margin-top:22px;display:grid;gap:8px;padding-bottom:4px">
+  <h2 class="h1">Ready when you are</h2>
+  <p class="lede" style="margin-top:10px">${recap} You can change any of this anytime in Interests, Library, or Settings.</p>
+  <div style="margin-top:auto;display:grid;gap:8px;padding-bottom:4px">
     <button class="btn" data-act="finishOnb">Start listening</button>
-    <p class="note" style="text-align:center">Everything above is editable later in Settings and Interests.</p>
   </div>
 </div>`;
+};
 
 V.today = () => {
   if(S.sessionState==='building') return stateCard('Building your menu','The curator is scoring candidates and writing the intros. This normally finishes before you wake up.', 'bell', [[S.buildNotify?'Notified — I\'ll let you know ✓':'Notify me when it is ready','notifyBuild']]);
@@ -1207,7 +1161,7 @@ V.library = () => {
       <div class="art sm" style="background:${sh.c}">${sh.art}</div>
       <div style="flex:1"><p class="title" style="font-size:13px;margin:0">${sh.name}</p><span class="show">following</span></div>
       <button class="mono" data-act="unsub" data-id="${id}" style="font-size:13px;color:var(--dim);padding:8px 4px">Unfollow</button></div>`;}).join('')
-     + (S.blocked.length?`<p class="kick" style="margin:18px 0 4px">Blocked</p><p class="note" style="margin:0 0 8px">Permanent, by design — there's no undo here, unlike everything else in Interests.</p>`+S.blocked.map(b=>`<div class="ev"><span class="d" style="background:var(--err)"></span><div>${b} — never suggested again</div></div>`).join(''):'')}
+     + (S.blocked.length?`<p class="kick" style="margin:18px 0 4px">Blocked</p><p class="note" style="margin:0 0 8px">Excluded from suggestions until you unblock them — a hard rule, not a weight, but never permanent.</p>`+S.blocked.map(b=>`<div class="ev" style="justify-content:space-between"><span class="d" style="background:var(--err)"></span><div style="flex:1">${b} — not suggested</div><button class="mono" data-act="unblock" data-n="${b}" style="font-size:12px;color:var(--dim);padding:6px 4px">Unblock</button></div>`).join(''):'')}
   `;
 };
 function empty(t,b){ return `<div style="text-align:center;padding:48px 20px;color:var(--dim)">
@@ -1366,12 +1320,12 @@ function shSheet(){
       <button class="btn ghost" data-act="sub" data-id="${sh.id}">${S.subs.includes(sh.id)?'Unfollow':'Follow'}</button>
       <button class="btn ghost" data-act="openEp">Open the full episode elsewhere</button>
       ${S.blockConfirm===sh.name
-        ? `<button class="btn" style="background:var(--err);color:var(--bone)" data-act="block" data-n="${sh.name}">Tap again to confirm — cannot be undone</button>
+        ? `<button class="btn" style="background:var(--err);color:var(--bone)" data-act="block" data-n="${sh.name}">Tap again to confirm</button>
            <button class="mono" data-act="cancelBlock" style="font-size:12px;color:var(--dim);text-align:center">Never mind</button>`
         : `<button class="btn ghost" style="color:var(--err)" data-act="confirmBlock" data-n="${sh.name}">Never suggest this show again</button>`}
       <button class="btn" data-act="closeSheet">Done</button>
     </div>
-    <p class="note" style="margin-top:12px">Blocking is a hard rule, not a weight. It is the only irreversible taste control.</p>
+    <p class="note" style="margin-top:12px">Blocking is a hard rule, not a weight — it stops showing up until you unblock it in Library.</p>
   </div>`;
 }
 
@@ -1476,21 +1430,17 @@ function act(a, el){
     case 'notifyBuild': S.buildNotify=true; ev('notify_when_ready',{}); toast('You\'ll get a notification when today\'s menu is ready.'); render(); break;
     case 'rebuild': S.sessionState='ready'; ev('session_build_requested',{on_demand:true}); toast('Menu rebuilt.'); render(); break;
     case 'onbExample': S.onbTopic=el.dataset.v; render(); break;
-    case 'onbBridge': S.onbBridge=el.dataset.v; render(); break;
     case 'onbNext1': {
+      // Topic weight is staged, not applied here — applying on every Next
+      // tap meant going back and retyping the topic stacked the weight
+      // again (bumpOrCreate is additive). All onboarding answers now commit
+      // exactly once, in finishOnb.
       if(!onbCanProceed()) break;
-      if(S.onbNode){
-        bumpOrCreate(S.onbNode.id, .5, `from onboarding: "${S.onbTopic}"`, S.onbNode); touch(S.onbNode.id);
-      }
-      if(S.onbBridge){
-        const bridgeNode = REAL_TAXONOMY.nodes.find(n=>n.id===S.onbBridge);
-        bumpOrCreate(S.onbBridge, .2, 'from onboarding: exploration bridge', bridgeNode); touch(S.onbBridge);
-      }
-      ev('onboarding_answer',{step:1, topic:S.onbTopic, node:S.onbNode?S.onbNode.id:null, bridge:S.onbBridge});
+      ev('onboarding_answer',{step:1, topic:S.onbTopic, node:S.onbNode?S.onbNode.id:null});
       S.onbStep=2; render(); break; }
     case 'onbBackStep': S.onbStep=Math.max(1,S.onbStep-1); render(); break;
-    case 'onbNextStep': S.onbStep=Math.min(5,S.onbStep+1); render(); break;
-    // onbComfort/onbBlock/onbIntro only update the SELECTION (pure UI state)
+    case 'onbNextStep': S.onbStep=Math.min(4,S.onbStep+1); render(); break;
+    // onbComfort/onbBlock only update the SELECTION (pure UI state)
     // — no weights or blocks are applied here. Applying weights
     // incrementally on every tap meant changing your mind (re-picking
     // comfort, or tapping a block chip to deselect it) never undid the
@@ -1505,25 +1455,30 @@ function act(a, el){
       // brief delay lets the selected state actually be visible first.
       if(S.onbComfort) setTimeout(()=>{ if(S.onbStep===2){ S.onbStep=3; render(); } }, 350);
       break; }
+    case 'onbComfortSkip': S.onbComfort=null; S.onbStep=3; render(); break;
     case 'onbBlock': {
       const label=el.dataset.v;
       S.onbBlocks = S.onbBlocks.includes(label) ? S.onbBlocks.filter(x=>x!==label) : S.onbBlocks.concat(label);
       render(); break; }
-    case 'onbIntro': {
-      S.onbIntro=+el.dataset.v; S.verbosity=S.onbIntro; render();
-      setTimeout(()=>{ if(S.onbStep===4){ S.onbStep=5; render(); } }, 350);
-      break; }
     case 'finishOnb': {
+      if(S.onbNode){
+        bumpOrCreate(S.onbNode.id, .5, `from onboarding: "${S.onbTopic}"`, S.onbNode);
+      }
       if(S.onbComfort){
         const c=COMFORT_OPTIONS.find(x=>x.label===S.onbComfort);
-        if(c && c.node){ bumpOrCreate(c.node, .3, `from onboarding: comfort pick "${c.label}"`, REAL_TAXONOMY.nodes.find(n=>n.id===c.node)); touch(c.node); }
+        if(c && c.node){ bumpOrCreate(c.node, .3, `from onboarding: comfort pick "${c.label}"`, REAL_TAXONOMY.nodes.find(n=>n.id===c.node)); }
       }
       for(const label of S.onbBlocks){
         const b=BLOCK_OPTIONS.find(x=>x.label===label);
-        if(b && b.node){ bumpOrCreate(b.node, -.8, `from onboarding: hard block "${label}"`, REAL_TAXONOMY.nodes.find(n=>n.id===b.node)); touch(b.node); }
+        if(b && b.node){ bumpOrCreate(b.node, -.8, `from onboarding: hard block "${label}"`, REAL_TAXONOMY.nodes.find(n=>n.id===b.node)); }
         if(!S.blocked.includes(label)) S.blocked=S.blocked.concat(label);
       }
       S.route='today'; S.newUser=false; ev('onboarding_complete',{nodes:S.tax.length,blocks:S.onbBlocks.length}); render(); break; }
+    case 'unblock': {
+      const n=el.dataset.n; S.blocked=S.blocked.filter(x=>x!==n);
+      const b=BLOCK_OPTIONS.find(x=>x.label===n);
+      if(b && b.node){ bumpOrCreate(b.node, .8, `unblocked "${n}"`, REAL_TAXONOMY.nodes.find(nd=>nd.id===b.node)); }
+      ev('blocklist_remove',{item:n}); toast('Unblocked — this can show up again.'); render(); break; }
     case 'skipOnb': S.route='today'; S.newUser=false; ev('onboarding_skipped',{}); toast('Starting with a generalist menu — tune it anytime in Interests.'); render(); break;
     case 'pick': pick(el.dataset.id); break;
     case 'topicsearch': {
@@ -1574,7 +1529,7 @@ function act(a, el){
     case 'confirmBlock': S.blockConfirm=el.dataset.n; render(); break;
     case 'cancelBlock': S.blockConfirm=null; render(); break;
     case 'block': { const n=el.dataset.n; S.blocked.push(n); S.sheet=null; S.blockConfirm=null;
-      ev('blocklist_add',{show:n}); toast('Blocked. That is a hard rule, not a weight.'); render(); break; }
+      ev('blocklist_add',{show:n}); toast('Blocked — won\'t be suggested until you unblock it in Library.'); render(); break; }
     case 'openEp': toast('Hands off to the publisher — Foray never re-hosts audio.'); break;
     case 'rate': S.askedRating=true; S.ratings++; ev('pick_rating',{value:el.dataset.v, archetype:S.lastPickArchetype});
       if(el.dataset.v==='bad') bump(archToTax(S.lastPickArchetype),-.06,'rated the pick a miss');
