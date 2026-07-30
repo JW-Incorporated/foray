@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-30T00:15:23.668Z",
+  "built_at": "2026-07-30T08:11:35.816Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-30-a295cb87",
+    "last_batch_id": "fresh-2026-07-30-a61aacd2",
     "last_batch_tier": 1
   },
   "entries": {
@@ -900,10 +900,40 @@
     },
     "77407482": {
       "topics": [
-        "music"
+        "music",
+        "computing",
+        "news/tech",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Irish & Celtic Music Podcast focuses on Music, Culture, Computing, Tech News.",
+      "display_title": "Irish & Celtic Music Podcast",
+      "blurb": "If you love Celtic music, then welcome to Irish & Celtic Music Podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "78149892": {
       "topics": [
@@ -13420,11 +13450,40 @@
     },
     "592596408": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "health/fitness",
+        "computing",
+        "news/tech",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Muscle Science for Women focuses on Fitness, Nutrition, Computing, Tech News.",
+      "display_title": "Muscle Science for Women",
+      "blurb": "Hosted by health coach and author Ashleigh VanHouten and nutritionist and strength and conditioning specialist Rachel Gregory - co-creators of the Muscle Science for Women training program - this podc",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "592746186": {
       "topics": [
@@ -13467,10 +13526,39 @@
     "593054580": {
       "topics": [
         "news/tech",
-        "computing"
+        "computing",
+        "gaming",
+        "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Windows Weekly (Video) focuses on Tech News, Computing, Gaming, Football.",
+      "display_title": "Windows Weekly (Video)",
+      "blurb": "Windows Weekly is about more than Windows",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "593303704": {
       "topics": [
@@ -13489,10 +13577,43 @@
     },
     "593354706": {
       "topics": [
-        "gaming"
+        "gaming",
+        "space",
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Bonfireside Chat: A Dark Souls and Elden Ring Podcast focuses on Computing, Tech News, Gaming, Space.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "593355728": {
       "topics": [
@@ -13632,10 +13753,39 @@
     "597224844": {
       "topics": [
         "education/language-learning",
+        "computing",
+        "news/tech",
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News in Slow Italian (Intermediate) focuses on Computing, Tech News, Language Learning, Language.",
+      "display_title": "News in Slow Italian (Intermediate)",
+      "blurb": "Learn Italian Online with our Interactive Italian Podcast for All Levels",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "597316507": {
       "topics": [
@@ -13714,17 +13864,59 @@
     "600128442": {
       "topics": [
         "education/language-learning",
+        "business/marketing",
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "RealLife English: Learn and Speak Confident, Natural English focuses on Language Learning, Language, Marketing.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 34w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "600353928": {
       "topics": [
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vidjagame Apocalypse focuses on Gaming.",
+      "display_title": "Vidjagame Apocalypse",
+      "blurb": "Videogame-industry veterans Mikel Reparaz and Anne Lewis rally their colleagues for weekly discussions about games, the industry, and the circus of egos and information that surrounds it all",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "602003021": {
       "topics": [
@@ -13835,10 +14027,43 @@
     },
     "607969824": {
       "topics": [
-        "gaming"
+        "gaming",
+        "computing",
+        "news",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Lave Radio: an Elite Dangerous podcast focuses on Computing, Tech News, Gaming, News & Current Affairs.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 36w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "608035917": {
       "topics": [
@@ -13887,10 +14112,40 @@
     },
     "611239356": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "comedy",
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pathway to Victory focuses on Computing, Tech News, Christianity, Comedy.",
+      "display_title": "Pathway to Victory",
+      "blurb": "On each daily broadcast, Dr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "613437137": {
       "topics": [
@@ -14070,10 +14325,40 @@
     },
     "623520420": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "computing",
+        "health/nutrition",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Power Athlete Radio focuses on Fitness, Nutrition, Computing, Tech News.",
+      "display_title": "Power Athlete Radio",
+      "blurb": "Welcome to Power Athlete Radio",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "624066041": {
       "topics": [
@@ -14151,11 +14436,40 @@
     },
     "626471856": {
       "topics": [
-        "news/tech",
-        "computing"
+        "gaming",
+        "health/fitness",
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Grumpy Old Geeks focuses on Fitness, Computing, Tech News, Gaming.",
+      "display_title": "Grumpy Old Geeks",
+      "blurb": "We dissect the tech news train wrecks of the week, calling out what went wrong and who’s to blame",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "627538970": {
       "topics": [
@@ -14243,10 +14557,43 @@
     },
     "634857768": {
       "topics": [
-        "sports/wrestling"
+        "sports/wrestling",
+        "religion/christianity",
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "What's Wrong with Wrestling? WWE Review Show focuses on Computing, Tech News, Wrestling, Christianity.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "635045292": {
       "topics": [
@@ -14369,10 +14716,40 @@
     },
     "643216602": {
       "topics": [
-        "business/marketing"
+        "gaming",
+        "space",
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "App Marketing by App Masters focuses on Computing, Tech News, Gaming, Space.",
+      "display_title": "App Marketing by App Masters",
+      "blurb": "Discover app marketing growth hacks from the top app publishers",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "643885946": {
       "topics": [
@@ -14553,10 +14930,40 @@
     },
     "658233306": {
       "topics": [
-        "comedy/casual-hangs"
+        "computing",
+        "aviation",
+        "music/theory-production",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two In The Think Tank focuses on Theory Production, Computing, Tech News, Aviation.",
+      "display_title": "Two In The Think Tank",
+      "blurb": "Listen as Andy and Al come up with five sketch ideas, without fail",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "659155419": {
       "topics": [
@@ -14820,10 +15227,40 @@
     },
     "674170392": {
       "topics": [
-        "religion/buddhism"
+        "education/language-learning",
+        "computing",
+        "news/tech",
+        "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True North Insight: dharma talks and meditation instruction focuses on Computing, Tech News, Language Learning, Language.",
+      "display_title": "True North Insight: dharma talks and meditation instruction",
+      "blurb": "True North Insight (TNI) is a charitable organization offering a full schedule of Buddhist insight (vipassana) meditation retreats and courses in English and French",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "674727044": {
       "topics": [
@@ -14909,11 +15346,40 @@
     },
     "680884572": {
       "topics": [
+        "computing",
         "health/mental",
-        "psychology"
+        "relationships",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Save The Marriage Podcast focuses on Computing, Tech News, Mental Health, Relationships.",
+      "display_title": "The Save The Marriage Podcast",
+      "blurb": "Learn how to save your marriage and improve your relationship",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "680904259": {
       "topics": [
@@ -14925,10 +15391,40 @@
     },
     "682478916": {
       "topics": [
-        "news/politics"
+        "health/fitness",
+        "computing",
+        "aviation",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "War on the Rocks focuses on Fitness, Computing, Tech News, Aviation.",
+      "display_title": "War on the Rocks",
+      "blurb": "Discussions over drinks with security, defense, and foreign policy insiders and experts",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "682755715": {
       "topics": [
@@ -14940,10 +15436,39 @@
     "683231712": {
       "topics": [
         "space",
+        "aviation",
+        "space/rockets",
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Star Diary focuses on Aviation, Space, Rockets, Science.",
+      "display_title": "Star Diary",
+      "blurb": "The astronomy podcast from the makers of BBC Sky at Night Magazine",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "685427740": {
       "topics": [
@@ -14977,11 +15502,40 @@
     },
     "687519246": {
       "topics": [
-        "sports",
-        "news"
+        "health/fitness",
+        "computing",
+        "music",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Packernet Podcast: Daily Green Bay Packers Podcast focuses on Music, Fitness, Computing, Tech News.",
+      "display_title": "Packernet Podcast: Daily Green Bay Packers Podcast",
+      "blurb": "Wake up each day as host Ryan Schlipp dives deep into the latest Green Bay Packers news and insights on the Packernet Podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "687598126": {
       "topics": [
@@ -15039,10 +15593,40 @@
     },
     "689871918": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "computing",
+        "news",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dr Taylor Marshall Podcast focuses on Computing, Tech News, Christianity, News & Current Affairs.",
+      "display_title": "Dr Taylor Marshall Podcast",
+      "blurb": "This podcast is a mirror of the Dr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "690389135": {
       "topics": [
@@ -15062,11 +15646,40 @@
     },
     "690828594": {
       "topics": [
+        "gaming",
+        "computing",
         "sports/endurance",
-        "health/fitness"
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Pullbuoy Podcast focuses on Computing, Tech News, Gaming, Endurance.",
+      "display_title": "The Pullbuoy Podcast",
+      "blurb": "The podcast is brought to you by Pullbuoy, Britain's premier independent swimming website",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "693140131": {
       "topics": [
@@ -15130,10 +15743,40 @@
     },
     "698727774": {
       "topics": [
-        "aviation"
+        "computing",
+        "aviation",
+        "news/tech",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Flite Test: Aviation - RC Planes - Multirotors focuses on Computing, Tech News, Aviation, Ai Robotics.",
+      "display_title": "Flite Test: Aviation - RC Planes - Multirotors",
+      "blurb": "Flite Test is an entertainment company that is all about flight",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "698819234": {
       "topics": [
@@ -15444,10 +16087,35 @@
     },
     "720839352": {
       "topics": [
-        "sports/football"
+        "computing",
+        "business/marketing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The REF 1400 Podcast focuses on Computing, Tech News, Marketing.",
+      "display_title": "The REF 1400 Podcast",
+      "blurb": "We offer the best Sooner coverage in Oklahoma! Listen live at www",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "721006934": {
       "topics": [
@@ -15486,18 +16154,80 @@
     },
     "722310366": {
       "topics": [
+        "computing",
+        "business/marketing",
         "health/nutrition",
-        "food"
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Doctor Is In Podcast focuses on Nutrition, Computing, Tech News, Marketing.",
+      "display_title": "The Doctor Is In Podcast",
+      "blurb": "Renowned authors and experts Dr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "724294998": {
       "topics": [
-        "culture/books"
+        "computing",
+        "health/mental",
+        "relationships",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Pride and Prejudice by Jane Austen focuses on Computing, Tech News, Mental Health, Relationships.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "724955683": {
       "topics": [
@@ -15531,10 +16261,40 @@
     },
     "730593648": {
       "topics": [
-        "math"
+        "health/fitness",
+        "computing",
+        "news",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Modellansatz focuses on Fitness, Computing, Tech News, News & Current Affairs.",
+      "display_title": "Modellansatz",
+      "blurb": "Bei genauem Hinsehen finden wir die Naturwissenschaft und besonders Mathematik überall in unserem Leben, vom Wasserhahn über die automatischen Temporegelungen an Autobahnen, in der Medizintechnik bis ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "732618322": {
       "topics": [
@@ -15576,17 +16336,77 @@
     },
     "733196976": {
       "topics": [
-        "religion/buddhism"
+        "religion/christianity",
+        "space",
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Houston Zen Center Dharma Talks focuses on Computing, Tech News, Christianity, Space.",
+      "display_title": "Houston Zen Center Dharma Talks",
+      "blurb": "Recorded Dharma Talks at the Zen Center",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "733300242": {
       "topics": [
-        "culture/fashion"
+        "computing",
+        "business/marketing",
+        "health/nutrition",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Beauty Brains focuses on Nutrition, Computing, Tech News, Marketing.",
+      "display_title": "The Beauty Brains",
+      "blurb": "Real scientists answer your beauty questions",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "733644928": {
       "topics": [
@@ -15597,10 +16417,40 @@
     },
     "734373360": {
       "topics": [
-        "culture/books"
+        "education/language-learning",
+        "computing",
+        "music",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "London Review Bookshop Podcast focuses on Music, Computing, Tech News, Language Learning.",
+      "display_title": "London Review Bookshop Podcast",
+      "blurb": "Listen to the latest literary events recorded at the London Review Bookshop, covering fiction, poetry, politics, music and much more",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "738433869": {
       "topics": [
@@ -15791,11 +16641,30 @@
     },
     "780628152": {
       "topics": [
-        "music",
-        "history"
+        "business/marketing",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Compleatly Beatles focuses on Music, Marketing.",
+      "display_title": "Compleatly Beatles",
+      "blurb": "Compleatly Beatles takes a fun, irreverent look at all the Beatles albums &#8211; one album and every song per show",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "781123911": {
       "topics": [
@@ -16124,10 +16993,25 @@
     },
     "816329544": {
       "topics": [
-        "tv-film/after-shows"
+        "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "RHAP: We Know Scripted TV focuses on Gaming.",
+      "display_title": "RHAP: We Know Scripted TV",
+      "blurb": "Welcome to RHAP: We Know Scripted TV, the one-stop shop for all your podcasts about scripted television shows such as House of the Dragon and more",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "817315462": {
       "topics": [
@@ -16223,10 +17107,40 @@
     },
     "820373598": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "health/fitness",
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Thomistic Institute focuses on Fitness, Computing, Tech News, Christianity.",
+      "display_title": "The Thomistic Institute",
+      "blurb": "The Thomistic Institute exists to promote Catholic truth in our contemporary world by strengthening the intellectual formation of Christians at universities, in the Church, and in the wider public squ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "820889267": {
       "topics": [
@@ -16336,10 +17250,43 @@
     },
     "827972274": {
       "topics": [
-        "travel"
+        "computing",
+        "sports/endurance",
+        "health/nutrition",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Join Us in France Travel Podcast focuses on Nutrition, Computing, Tech News, Endurance.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 37w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "828301027": {
       "topics": [
@@ -16387,10 +17334,40 @@
     },
     "832885584": {
       "topics": [
-        "business/careers"
+        "gaming",
+        "computing",
+        "news",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real Estate Rockstars Podcast focuses on Computing, Tech News, Gaming, News & Current Affairs.",
+      "display_title": "Real Estate Rockstars Podcast",
+      "blurb": "Make more sales and earn higher commissions by learning directly from real estate's top performers! Counting more than six-million downloads from over 100 countries, Real Estate Rockstars is the indus",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "833641766": {
       "topics": [
@@ -16525,10 +17502,40 @@
     },
     "842419860": {
       "topics": [
-        "sports/fantasy"
+        "gaming",
+        "computing",
+        "news",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AFL Fantasy with The Traders focuses on Computing, Tech News, Gaming, News & Current Affairs.",
+      "display_title": "AFL Fantasy with The Traders",
+      "blurb": "AFL",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "842818711": {
       "topics": [
@@ -16592,10 +17599,40 @@
     },
     "849145968": {
       "topics": [
-        "religion/hinduism"
+        "health/fitness",
+        "business/marketing",
+        "health/nutrition",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Thinking about It focuses on Music, Fitness, Nutrition, Marketing.",
+      "display_title": "Thinking about It",
+      "blurb": "Do you ever stop and think about why you do what you do everyday? Australian psychologist turned Hindu Monk, Swamini Supriyananda, provides insightful answers to your contemporary questions and challe",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "849326609": {
       "topics": [
@@ -16660,10 +17697,25 @@
     },
     "853118658": {
       "topics": [
-        "comedy/interviews"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "What's Up Fool? Podcast focuses on Comedy.",
+      "display_title": "What's Up Fool? Podcast",
+      "blurb": "Comedian Felipe Esparza talks with random people he finds interesting",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "853941025": {
       "topics": [
@@ -16793,17 +17845,72 @@
     },
     "866633946": {
       "topics": [
-        "religion/judaism"
+        "computing",
+        "news",
+        "music/theory-production",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kabbalah for Everyone focuses on Theory Production, Computing, Tech News, News & Current Affairs.",
+      "display_title": "Kabbalah for Everyone",
+      "blurb": "You have probably heard about Kabbalah either as a Hollywood phenomenon or something that is beyond the world that we live in",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "867199020": {
       "topics": [
-        "culture/art"
+        "gaming",
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amazing Spider-Talk: A Spider-Man Podcast focuses on Computing, Tech News, Gaming.",
+      "display_title": "Amazing Spider-Talk: A Spider-Man Podcast",
+      "blurb": "Two fans and collectors (Dan Gvozden and Mark Ginocchio) discuss and celebrate the past, present, and future of Spider-Man comic books, films, video games, and toys",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "867430953": {
       "topics": [
@@ -16881,10 +17988,35 @@
     },
     "868837326": {
       "topics": [
-        "sports/fantasy"
+        "sports/football",
+        "business/marketing",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Draft Sharks - Fantasy Football Podcast focuses on Football, News & Current Affairs, Marketing.",
+      "display_title": "Draft Sharks - Fantasy Football Podcast",
+      "blurb": "The award-winning podcast from DraftSharks",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "869022718": {
       "topics": [
@@ -17040,10 +18172,40 @@
     },
     "879249120": {
       "topics": [
-        "religion/hinduism"
+        "religion/buddhism",
+        "computing",
+        "news/tech",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bhagavad Gita Chapter 01 focuses on Computing, Tech News, Buddhism, Psychology.",
+      "display_title": "Bhagavad Gita Chapter 01",
+      "blurb": "Bhagavad Gita is a dialogue between Lord Krishna, the teacher and Arjuna, the student",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "879249123": {
       "topics": [
@@ -17096,10 +18258,40 @@
     },
     "879271782": {
       "topics": [
-        "religion/hinduism"
+        "religion/buddhism",
+        "computing",
+        "news/tech",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Taittiriya Upanishad focuses on Computing, Tech News, Buddhism, Psychology.",
+      "display_title": "Taittiriya Upanishad",
+      "blurb": "This Upanishad contains 3 chapters",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "879271791": {
       "topics": [
@@ -17230,18 +18422,80 @@
     },
     "886538772": {
       "topics": [
+        "health/fitness",
+        "computing",
         "health/nutrition",
-        "food"
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Wellness Mama Podcast focuses on Fitness, Nutrition, Computing, Tech News.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "886656768": {
       "topics": [
-        "news/politics"
+        "space",
+        "computing",
+        "news",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Politics Bar focuses on Computing, Tech News, News & Current Affairs, Space.",
+      "display_title": "The Politics Bar",
+      "blurb": "In communities across the U",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "887535488": {
       "topics": [
@@ -17253,10 +18507,43 @@
     },
     "887608146": {
       "topics": [
-        "tv-film/reviews"
+        "space",
+        "computing",
+        "business/marketing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Seinfeld: The Post Show Recap | A Podcast About Nothing focuses on Computing, Tech News, Space, Marketing.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "888135469": {
       "topics": [
@@ -17490,11 +18777,40 @@
     },
     "900763980": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "computing",
+        "news",
+        "health/nutrition",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Shopify Masters focuses on Nutrition, Computing, Tech News, News & Current Affairs.",
+      "display_title": "Shopify Masters",
+      "blurb": "Ready to build your business, but not sure where to start? Shopify Masters gives you the real stories and strategies behind successful entrepreneurship",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "901453417": {
       "topics": [
@@ -17514,10 +18830,35 @@
     },
     "902525064": {
       "topics": [
-        "sports/baseball"
+        "gaming",
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A's Podcast focuses on Computing, Tech News, Gaming.",
+      "display_title": "A's Podcast",
+      "blurb": "From A's Cast Live to the A's Clubhouse Show, take MLB's top podcast with you on the go! With in-depth shows hosted by Chris Townsend",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "902526021": {
       "topics": [
@@ -17536,11 +18877,40 @@
     },
     "902749218": {
       "topics": [
-        "economics/markets",
-        "business"
+        "computing",
+        "news",
+        "business/marketing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Retire Sooner with Wes Moss focuses on Computing, Tech News, News & Current Affairs, Marketing.",
+      "display_title": "Retire Sooner with Wes Moss",
+      "blurb": "Wes Moss is on a mission: help at least 1 million Americans of any age retire sooner and find joy along the way",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "902813725": {
       "topics": [
@@ -17552,10 +18922,40 @@
     },
     "903505596": {
       "topics": [
-        "automotive"
+        "space",
+        "computing",
+        "news",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Auto Detailing Podcast focuses on Computing, Tech News, News & Current Affairs, Space.",
+      "display_title": "The Auto Detailing Podcast",
+      "blurb": "The Auto Detailing Podcast is a show dedicated to all things auto detailing",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "903615429": {
       "topics": [
@@ -17574,10 +18974,43 @@
     },
     "903691746": {
       "topics": [
-        "aviation"
+        "health/fitness",
+        "computing",
+        "aviation",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Rotary Wing Show – Helicopter News, Safety, Training & Pilot Stories focuses on Fitness, Computing, Tech News, Aviation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "903871206": {
       "topics": [
@@ -17667,24 +19100,114 @@
     },
     "906576942": {
       "topics": [
-        "medicine"
+        "space",
+        "comedy",
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Girlfriend Doctor w/ Dr. Anna Cabeca focuses on Computing, Tech News, Space, Comedy.",
+      "display_title": "The Girlfriend Doctor w/ Dr. Anna Cabeca",
+      "blurb": "Dr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "906583152": {
       "topics": [
-        "culture/design"
+        "health/fitness",
+        "computing",
+        "music/theory-production",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "JewelryMonk Podcast focuses on Theory Production, Fitness, Nutrition, Computing.",
+      "display_title": "JewelryMonk Podcast",
+      "blurb": "The JewelryMonk Podcast is dedicated to training jewelry makers in the basic and advanced techniques of jewelry making",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "906717198": {
       "topics": [
-        "sports/baseball"
+        "gaming",
+        "space",
+        "news",
+        "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MLB Pipeline focuses on Gaming, News & Current Affairs, Space, Marketing.",
+      "display_title": "MLB Pipeline",
+      "blurb": "Find out about the stars of tomorrow, from the guys who know today",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-a61aacd2",
+      "classified_at": "2026-07-30T08:11:35.816Z"
     },
     "907175322": {
       "topics": [
