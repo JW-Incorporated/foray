@@ -15633,6 +15633,28 @@
       "batch_id": "fresh-2026-07-29-084a61e4",
       "classified_at": "2026-07-29T08:50:54.184Z"
     },
+    "1273619588": {
+      "topics": [
+        "news/daily"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "The NewsWorthy",
+      "blurb": "The day's news made fast, fair and fun – in 15 minutes. Erica Mandy is like a trusted friend who always 'gets' both side",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
     "1274217512": {
       "topics": [
         "education"
@@ -17208,6 +17230,28 @@
       "batch_id": "fresh-2026-07-29-b935f5c8",
       "classified_at": "2026-07-29T16:59:48.602Z"
     },
+    "1317578834": {
+      "topics": [
+        "education/courses"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "The Canine Paradigm",
+      "blurb": "Podcasting for the canine community",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
     "1318465262": {
       "topics": [
         "tv-film/interviews",
@@ -17833,6 +17877,1056 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-29-b935f5c8",
       "classified_at": "2026-07-29T16:59:48.602Z"
+    },
+    "1334257580": {
+      "topics": [
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Kubrick’s Universe: The Stanley Kubrick Podcast",
+      "blurb": "The Stanley Kubrick Appreciation Society presents “Kubrick’s Universe : The Stanley Kubrick Podcast”. Guests include Mal",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1334328470": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "OCCUPY! An Unfinished Uprising",
+      "blurb": "OCCUPY! AN UNFINISHED UPRISING is a six-part narrative series from Future Hindsight exploring how a group of activists c",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1334407316": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "The Chronicles of a Gooner - Arsenal Podcast",
+      "blurb": "Join Broadcaster and Arsenal fan Harry Symeou for news, debates, match previews, reviews & insight into the Premier Leag",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1335120302": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "EggPod Express",
+      "blurb": "EggPod Express takes a jaunty stroll through 1960s music magazines with a pot pourri of delicious guests. Hosted by Chri",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1335846794": {
+      "topics": [
+        "business/marketing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Thriving Stylist Podcast",
+      "blurb": "The beauty industry has changed dramatically in the last 10 years. The days of hoping your good reputation and referrals",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1336795988": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Movie Dumpster",
+      "blurb": "Joe and Sean rummage through cinema’s garbage for the good, bad, and god-awful! Tune in for insightful and comedic deep",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1337100398": {
+      "topics": [
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "This is Love",
+      "blurb": "Love is more than you think. From the creators of Criminal. New episodes twice a month. Part of the Vox Media Podcast Ne",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1337245532": {
+      "topics": [
+        "business/marketing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Stay Paid Podcast",
+      "blurb": "ReminderMedia proudly presents the Stay Paid Podcast. We help agents & entrepreneurs master the latest business trends t",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1339770338": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "I Am In Eskew",
+      "blurb": "Trapped in the horror-filled and impossible city of Eskew, a man makes endless recordings of his day-to-day experiences,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1339775786": {
+      "topics": [
+        "education/courses"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1339976762": {
+      "topics": [
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Dr. Berg’s Healthy Keto and Intermittent Fasting Podcast",
+      "blurb": "Dr. Eric Berg D.C. — not a medical doctor. Educational content only; not medical advice. Consult your physician for diag",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1340679758": {
+      "topics": [
+        "business/non-profit",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Nonprofit Jenni Show",
+      "blurb": "The Nonprofit Jenni Show is the podcast for nonprofit professionals, board members, and community leaders. Every week, J",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1341682574": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "The Counter Ruck",
+      "blurb": "A rugby podcast from The Irish Times, presented by Nathan Johns with regular panelists John O'Sullivan, Gordon D'Arcy an",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1341785066": {
+      "topics": [
+        "education/courses"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Teaching Hard History",
+      "blurb": "From Learning for Justice and host Hasan Kwame Jeffries, Ph.D., Teaching Hard History brings us the crucial history we s",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1342674932": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8",
+        "display_title: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1342922798": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "NEStalgia",
+      "blurb": "NEStalgia is a chronological exploration of EVERY NES game released in North America. Join us and play along on our jour",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1343499710": {
+      "topics": [
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Marvel's Wolverine: The Lost Trail",
+      "blurb": "Following the events of Marvel’s “Wolverine: The Long Night,” Logan (Richard Armitage) returns to New Orleans in search",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1344626438": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Stanning BTS",
+      "blurb": "Two ARMY best friends Kayla & Bethany discuss anything & everything having to do with the global pop sensation BTS. One",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1345690082": {
+      "topics": [
+        "adventure/exploration",
+        "nature"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "The Southern Outdoorsmen Hunting Podcast",
+      "blurb": "The Southern Outdoorsmen is a weekly deer hunting podcast for serious DIY whitetail hunters, hosted by Andrew Maxwell an",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1346234726": {
+      "topics": [
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Mike Drop",
+      "blurb": "Mike Drop, hosted by former Navy SEAL and bestselling author Mike Ritland, is a no-holds-barred platform that dives deep",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1346543786": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Dj LOFT's Podcast",
+      "blurb": "THE MOST DANGEROUS DJ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1347286418": {
+      "topics": [
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Sari Swears",
+      "blurb": "Sari de la Motte is the host of \"Sari Swears\" and has been dubbed the \"Attorney Whisperer\" because of her unique ability",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1347293924": {
+      "topics": [
+        "fiction/comedy",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Pounded In The Butt By My Own Podcast",
+      "blurb": "A collaboration between world famous author Chuck Tingle and Night Vale Presents, Pounded In The Butt By My Own Podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1347649088": {
+      "topics": [
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 16w > 8",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1347718040": {
+      "topics": [
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Brilliant Perspectives",
+      "blurb": "Graham Cooke, international speaker and author of 20+ books, has been a much needed guide beyond religious norms into a",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1348062794": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Sardonicast",
+      "blurb": "We’re Sardonicast! A podcast featuring the ”talents” of Alex (I Hate Everything), Adam (Your Movie Sucks) & Jake (Man Ca",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1348831124": {
+      "topics": [
+        "religion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Transformation Church",
+      "blurb": "Here at Transformation Church we believe in Representing God to the lost and found for Transformation in Christ. We are",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1349300090": {
+      "topics": [
+        "health/nutrition",
+        "food"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Dieting from the Inside Out",
+      "blurb": "Outer work without inner work doesn't work. The show is called Dieting from the Inside Out for a reason. Because you don",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1349914886": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1352231546": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1352860550": {
+      "topics": [
+        "education/self-improvement",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "The Positive Mindset Podcast",
+      "blurb": "The Positive Mindset Podcast is an uplifting audio experience. With meditation-style storytelling, this podcast will hel",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1353032168": {
+      "topics": [
+        "education/language-learning",
+        "linguistics/language"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.75
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Nihongo con Teppei",
+      "blurb": "Teppei&#39;s Japanese Podcast.Learn Japanese with me.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1353881288": {
+      "topics": [
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "The Florist's Table",
+      "blurb": "Pull up a chair. The Florist's Table is where the floral community gathers for real conversations about design, business",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1353891134": {
+      "topics": [
+        "news",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "The Aerospace Executive Podcast",
+      "blurb": "How Top Aerospace Executives Set the Vision, Grow Their Business & Develop Talent",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1355408258": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Everything to Guppy",
+      "blurb": "William Hughes (The A.V. Club) and Gary Butterfield (Watch Out for Fireballs!) get together to talk through every single",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1357202594": {
+      "topics": [
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 14w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1357522412": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "The Progressive Rugby League Podcast",
+      "blurb": "Progressive Rugby League is the thinking fans alternative. What is this thing called Rugby League? Where does it fit in",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1357882784": {
+      "topics": [
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Score: The Podcast",
+      "blurb": "From the creators of the #1 documentary SCORE comes this award-winning podcast inviting you into the world of today's mo",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1358713082": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Spanish for Beginners",
+      "blurb": "Our Get Up To Speed (G.U.T.S.) course is a fun and innovative course designed to help you solidify the basics, with dial",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1359035306": {
+      "topics": [
+        "kids-family/education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Noodle Loaf - Music Education Podcast for Kids",
+      "blurb": "Noodle Loaf is an interactive music education podcast for kids that has received the Common Sense Media Selection seal f",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1359249098": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Relatable with Allie Beth Stuckey",
+      "blurb": "Upbeat and in-depth, Relatable with Allie Beth Stuckey breaks down the latest in culture, news, theology & politics from",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1362265400": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Timcast News",
+      "blurb": "On Tim Pool Daily News, Tim Pool breaks down the day's biggest news stories with quick, straightforward updates. Expect",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1364764784": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "Bad On Paper",
+      "blurb": "Join Becca Freeman and Olivia Muenter every Wednesday for a dose of books and banter, along with interviews with women w",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1367234288": {
+      "topics": [
+        "fiction/comedy",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "This Sounds Serious",
+      "blurb": "In 1991, TV producer Kirk Todd was supposed to direct his first movie, Grand Casino, but the movie was never made. Kirk",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
+    },
+    "1367508002": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show classified using tier-0 prior and episode signal.",
+      "display_title": "First15 Devotional",
+      "blurb": "First15 is a daily devotional written to help you connect with God. Each day, the devotional features scripture, a devot",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-3f96b486",
+      "classified_at": "2026-07-30T00:54:15.888Z"
     },
     "1459232606": {
       "topics": [
@@ -19002,11 +20096,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-29T16:59:48.602Z",
+  "built_at": "2026-07-30T00:54:15.888Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-29-b935f5c8",
+    "last_batch_id": "fresh-2026-07-30-3f96b486",
     "last_batch_tier": 1
   }
 }
