@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-29T16:58:33.675Z",
+  "built_at": "2026-07-30T00:57:59.340Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-29-4bf50c59",
+    "last_batch_id": "fresh-2026-07-30-5fc98e2b",
     "last_batch_tier": 1
   },
   "entries": {
@@ -14188,14 +14188,44 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on automotive.",
+      "display_title": "Law Abiding Biker | Street Biker Motorcycle Podcast",
+      "blurb": "This podcast is all about the law abiding biker (LAB). We talk about the world of motorcycling, motorcycles, ride.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "622607909": {
       "topics": [
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on craft.",
+      "display_title": "The Lost Geek Podcast",
+      "blurb": "A podcast where I talk about knitting, spinning, getting lost in life and enjoying life in Indonesia.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "622736701": {
       "topics": [
@@ -14213,10 +14243,28 @@
     },
     "624066041": {
       "topics": [
-        "culture/performing-arts"
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content focuses on craft.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "624693800": {
       "topics": [
@@ -14413,10 +14461,25 @@
     },
     "635440007": {
       "topics": [
-        "automotive"
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on medicine/biology.",
+      "display_title": "Ron Ananian The Car Doctor",
+      "blurb": "With over 40 years of repairing cars and 27 on the radio helping you repair them, Ron Ananian, The Car Doctor, is an.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "636301328": {
       "topics": [
@@ -14458,8 +14521,23 @@
       "topics": [
         "sports/fantasy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on sports/fantasy.",
+      "display_title": "RotoGraphs Fantasy Baseball",
+      "blurb": "Fantasy baseball analysis and strategy",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "640246578": {
       "topics": [
@@ -14593,10 +14671,25 @@
     },
     "647946941": {
       "topics": [
-        "comedy/stand-up"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on comedy.",
+      "display_title": "Friday Night Greg",
+      "blurb": "A comedy podcast featuring New York Stand-up comic Greg Stone. Friday night energy on a Wednesday morning! Greg created.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "649211176": {
       "topics": [
@@ -14740,18 +14833,47 @@
     },
     "656868743": {
       "topics": [
-        "economics/markets",
-        "business"
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on medicine/biology.",
+      "display_title": "The Retirement and IRA Show",
+      "blurb": "What do you get when you combine two knowledgeable CFP® PROFESSIONALS (one also a well-informed COLLEGE FINANCE.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "657005891": {
       "topics": [
-        "gaming"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on comedy.",
+      "display_title": "Abject Suffering",
+      "blurb": "This is a podcast that's nominally about bad games. In reality, every Monday, Gary Butterfield and Kaye Ross choose a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "657476401": {
       "topics": [
@@ -14950,11 +15072,25 @@
     },
     "667450331": {
       "topics": [
-        "news",
-        "business"
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on economics/markets.",
+      "display_title": "Beurs | BNR",
+      "blurb": "Elke werkdag hoor je het belangrijkste en opvallendste beursnieuws. Van Tesla tot TomTom en van recessie tot.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "668174671": {
       "topics": [
@@ -14982,10 +15118,28 @@
     },
     "669499379": {
       "topics": [
-        "sports/tennis"
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content focuses on history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "669828195": {
       "topics": [
@@ -15029,8 +15183,23 @@
       "topics": [
         "sports/basketball"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on sports/basketball.",
+      "display_title": "Salt City Hoops Utah Jazz Podcast",
+      "blurb": "Salt City Hoops launched in 2009 to cover the Utah Jazz. On this podcast, Managing Editor Dan Clayton and other SCH.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "672857593": {
       "topics": [
@@ -15063,10 +15232,28 @@
     },
     "676876079": {
       "topics": [
-        "tv-film/after-shows"
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content focuses on craft.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "676930917": {
       "topics": [
@@ -15218,10 +15405,25 @@
     },
     "687141143": {
       "topics": [
-        "religion/spirituality"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on science.",
+      "display_title": "Joe & Charlie “Big Book Comes Alive”",
+      "blurb": "The greatest presentation of the Big Book ever. Now you can take it with you wherever you go...in the Car, Jogging,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "687238388": {
       "topics": [
@@ -15381,16 +15583,45 @@
       "topics": [
         "comedy/stand-up"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on comedy/stand-up.",
+      "display_title": "段子来了",
+      "blurb": "每天笑一笑，烦恼都忘掉，微信公众号：采采，微博@1053采采，喜马拉雅ID：采采。",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "694058201": {
       "topics": [
-        "news",
-        "business"
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on nature.",
+      "display_title": "L'angle éco de François Lenglet",
+      "blurb": "François Lenglet vous donne les clés pour déchiffrer l'économie. Actualité financière et économique, marché de l’emploi.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "694915280": {
       "topics": [
@@ -15508,10 +15739,25 @@
     },
     "703796765": {
       "topics": [
-        "culture/performing-arts"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on music.",
+      "display_title": "Bawdy Storytelling",
+      "blurb": "Bawdy Storytelling – dubbed 'The Moth for pervs' by the LA Weekly – is the nation's original sex and storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "703889772": {
       "topics": [
@@ -15523,11 +15769,25 @@
     },
     "704434205": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on food.",
+      "display_title": "Streetwise Hebrew",
+      "blurb": "A bite-size podcast showcasing modern Hebrew and its slang. Host Guy Sharett explains what we can learn about Israeli.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "704780925": {
       "topics": [
@@ -15539,10 +15799,25 @@
     },
     "705355841": {
       "topics": [
-        "gaming"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on sports.",
+      "display_title": "Completely Unnecessary Podcast",
+      "blurb": "Pat and Ian discuss the latest in video games, movies, retro game topics, and take Q and A from the audience! It's the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "705474769": {
       "topics": [
@@ -15680,10 +15955,25 @@
     },
     "716876891": {
       "topics": [
-        "sports/hockey"
+        "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on food.",
+      "display_title": "Oilers NOW with Bob Stauffer",
+      "blurb": "880 CHED and the Edmonton Oilers bring you Oilers NOW with Bob Stauffer daily. We cover the NHL Draft, free agency,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "716979718": {
       "topics": [
@@ -15976,18 +16266,47 @@
     },
     "767626637": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on food.",
+      "display_title": "Psychology In Seattle Podcast",
+      "blurb": "A psychology podcast that is both educational and entertaining.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "768142013": {
       "topics": [
-        "religion/judaism"
+        "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on food.",
+      "display_title": "The Promised Podcast",
+      "blurb": "An inside view of how Israel can warm your heart and make your blood boil. It's a show hosted by folks who live in and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "772127662": {
       "topics": [
@@ -16154,8 +16473,23 @@
       "topics": [
         "sports/rugby"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on sports/rugby.",
+      "display_title": "藤島大の楕円球にみる夢",
+      "blurb": "国内ラグビー、日本代表、世界のラグビーなどの情報を、トークと取材音声でわかりやすくお伝えします。すてきなゲストも登場。ほかでは聴けない、楕円球にまつわるヒューマン・ストーリーや試合の解説もあります。.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "793049157": {
       "topics": [
@@ -16237,10 +16571,25 @@
     },
     "797737031": {
       "topics": [
-        "philosophy"
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on history.",
+      "display_title": "Cemetery Confessions: A Goth Talk Podcast",
+      "blurb": "The world's number 1 Goth talk podcast! We discuss news related to the goth experience with a different guest each.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "797906942": {
       "topics": [
@@ -16290,11 +16639,25 @@
     },
     "812399885": {
       "topics": [
-        "economics/markets",
-        "business"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on music.",
+      "display_title": "Talking Real Money - Investing Talk",
+      "blurb": "Financial talk radio veteran, Don McDonald and former host of Serious Money on PBS, Tom Cock, join forces to talk about.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "812436884": {
       "topics": [
@@ -16342,10 +16705,28 @@
     },
     "817422023": {
       "topics": [
-        "sports/fantasy"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content focuses on music.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "817756935": {
       "topics": [
@@ -16421,11 +16802,25 @@
     },
     "823315247": {
       "topics": [
-        "fiction/comedy",
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on comedy.",
+      "display_title": "Kakos Industries",
+      "blurb": "A deeply entertaining, R-rated, darkly satirical, sex-positive comedy audio drama with elements of horror..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "823390462": {
       "topics": [
@@ -16438,8 +16833,23 @@
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on religion/islam.",
+      "display_title": "Muhammad Al-Luhaidan",
+      "blurb": "Muhammad Al-Luhaidan is based in Saudi Arabia, and enjoys an excellent reputation of being a renowned Qur’an reciter..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "823604747": {
       "topics": [
@@ -16594,10 +17004,25 @@
     },
     "832481615": {
       "topics": [
-        "business/careers"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on automotive.",
+      "display_title": "CFO THOUGHT LEADER",
+      "blurb": "CFO THOUGHT LEADER is a podcast featuring firsthand accounts of finance leaders who are driving change within their.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "832885584": {
       "topics": [
@@ -16723,11 +17148,25 @@
     },
     "840534227": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on food.",
+      "display_title": "Relationship Advice",
+      "blurb": "Relationship Advice helps listeners uncover the stuck spots in their relationships by taking expert advice from three.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "840803139": {
       "topics": [
@@ -16830,10 +17269,25 @@
     },
     "847236521": {
       "topics": [
-        "gaming"
+        "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on food.",
+      "display_title": "XoneBros: Positive Xbox and Game Pass Community",
+      "blurb": "Welcome to XoneBros, your ultimate podcast for everything Xbox and Game Pass! We deliver the latest Xbox news, engaging.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "847883565": {
       "topics": [
@@ -16974,11 +17428,25 @@
     },
     "857888327": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on science.",
+      "display_title": "Sigma Nutrition Radio",
+      "blurb": "Discussions about the science of nutrition, dietetics and health. The podcast that educates through nuanced.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "858124601": {
       "topics": [
@@ -17053,10 +17521,25 @@
     },
     "863338913": {
       "topics": [
-        "news/politics"
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on craft.",
+      "display_title": "Texas Standard",
+      "blurb": "Coverage of politics, lifestyle, environment, technology, innovation and money matters from a uniquely Texas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "863481502": {
       "topics": [
@@ -17172,11 +17655,25 @@
     },
     "868397885": {
       "topics": [
-        "news/tech",
-        "computing"
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on space.",
+      "display_title": "All TWiT.tv Shows (Video)",
+      "blurb": "Leo Laporte brings some of the most interesting personalities in technology together to talk about the most important.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "868740010": {
       "topics": [
@@ -17223,17 +17720,50 @@
     },
     "869336291": {
       "topics": [
-        "science/physics"
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on medicine/biology.",
+      "display_title": "Atomes et Rayonnement - Jean Dalibard",
+      "blurb": "Né en 1958, Jean Dalibard est un ancien élève de l'École normale supérieure (1977-1981). Il a soutenu sa thèse de.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "869377733": {
       "topics": [
-        "craft/diy-home"
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content focuses on craft.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "869539792": {
       "topics": [
@@ -17314,7 +17844,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on music.",
+      "display_title": "Bobby Owsinski's Inner Circle Podcast",
+      "blurb": "Interviews with music industry movers and shakers, tips, and news. Learn more at:.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "873667927": {
       "topics": [
@@ -17422,10 +17967,25 @@
     },
     "879268727": {
       "topics": [
-        "religion/hinduism"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on science.",
+      "display_title": "Introduction to Vedanta",
+      "blurb": "The final portion of the Vedas is called Vedanta. Veda is a body of knowledge and is the primary means for knowing the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "879270139": {
       "topics": [
@@ -17550,10 +18110,28 @@
     },
     "884362991": {
       "topics": [
-        "sports/football"
+        "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content focuses on food.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "884363122": {
       "topics": [
@@ -17689,10 +18267,25 @@
     },
     "892082003": {
       "topics": [
-        "medicine"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on business.",
+      "display_title": "Relentless Health Value",
+      "blurb": "Welcome to Relentless Health Value, the podcast for those working in the belly of the beast to fix our fundamentally.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "892107837": {
       "topics": [
@@ -17744,7 +18337,22 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on craft.",
+      "display_title": "Pomcast! A knitting podcast from Pom Pom Publishing",
+      "blurb": "Pomcast is Pom Pom's knitty and witty podcast, now twice monthly! Lydia and Sophie talk to all sorts of interesting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "894200695": {
       "topics": [
@@ -18033,10 +18641,25 @@
     },
     "905054765": {
       "topics": [
-        "health/fitness"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on science.",
+      "display_title": "The Jeff Nippard Podcast",
+      "blurb": "This podcast is dedicated to discussions and interviews with the fitness community's best science-based coaches,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "905596672": {
       "topics": [
@@ -18196,10 +18819,28 @@
     },
     "910990031": {
       "topics": [
-        "business/marketing"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content focuses on music.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "911042029": {
       "topics": [
@@ -18236,10 +18877,25 @@
     },
     "911802605": {
       "topics": [
-        "culture/art"
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on craft.",
+      "display_title": "Film Photography Podcast",
+      "blurb": "Topics will touch on all film photography formats, do-it-yourself techniques, digital technologies, motion picture film.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "911911845": {
       "topics": [
@@ -18464,18 +19120,47 @@
     },
     "920898575": {
       "topics": [
-        "economics/markets",
-        "business"
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on craft.",
+      "display_title": "Rental Income Podcast With Dan Lane",
+      "blurb": "Inspiring interviews with everyday people that are generating passive income by investing in rental properties. On each.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "921756215": {
       "topics": [
-        "religion/judaism"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on science.",
+      "display_title": "The Tikvah Podcast",
+      "blurb": "The Tikvah Fund is a philanthropic foundation and ideas institution committed to supporting the intellectual,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "921792544": {
       "topics": [
@@ -18494,17 +19179,47 @@
     },
     "922005191": {
       "topics": [
-        "sports/soccer"
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on history.",
+      "display_title": "True Faith NUFC Podcast",
+      "blurb": "Newcastle United football podcast. If you like the show then subscribe to extra content here:.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "922310447": {
       "topics": [
-        "culture/books"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focuses on automotive.",
+      "display_title": "The Worst Bestsellers",
+      "blurb": "We read stuff so you don&#039;t have to.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-30-5fc98e2b",
+      "classified_at": "2026-07-30T00:57:59.340Z"
     },
     "922323074": {
       "topics": [
