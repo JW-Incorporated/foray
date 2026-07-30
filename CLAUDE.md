@@ -82,6 +82,9 @@ outcomes**, not code line-by-line. Full role split: `docs/roles.md`.
 - `docs/brief/`: original product spec (read first). `docs/adr/`,
   `docs/DECISIONS.md`: decisions. `docs/agents/`: runner prompts + registry.
   `docs/roles.md`: who owns what. `docs/marketing/`, `docs/research/`.
+  `docs/ux/foray-m3-prototype.html`: current interactive UX reference for M3
+  (onboarding, today menu, player, transitions, library, settings, etc.) — see
+  `docs/ux/README.md`.
 
 ## Conventions
 

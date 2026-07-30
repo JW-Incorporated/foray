@@ -76,7 +76,8 @@ function parseArgs(argv) {
     episodesPerShow: Number(get("--episodes-per-show", "8")),
     maxFetchAttempts: Number(get("--max-fetch-attempts", "3")),
     outOverride: get("--out", null),
-    progressOverride: get("--progress", null)
+    progressOverride: get("--progress", null),
+    shard: get("--shard", null) // "i/N" for parallel sharded runs — take only shows where Number(id) % N === i
   };
 }
 
@@ -213,10 +214,16 @@ async function fetchTranscriptExcerpt(url) {
   }
 }
 
-function selectFreshCandidates(shows, classification, progress, now, batchSize, maxFetchAttempts) {
+function selectFreshCandidates(shows, classification, progress, now, batchSize, maxFetchAttempts, shard) {
+  let shardIndex = -1, shardCount = 0;
+  if (shard) {
+    const [i, n] = String(shard).split("/").map(Number);
+    if (Number.isInteger(i) && Number.isInteger(n) && n > 0 && i >= 0 && i < n) { shardIndex = i; shardCount = n; }
+  }
   const candidates = [];
   for (const show of shows) {
     const id = String(show.apple_collection_id);
+    if (shardCount && Number(id) % shardCount !== shardIndex) continue; // parallel sharded run — disjoint slice, no collision with sibling shards
     if (progress.in_flight[id]) continue;
     const entry = classification.entries[id];
     if (entry && entry.source && entry.source.startsWith(NEW_PIPELINE_SOURCE_PREFIX)) continue; // already reclassified
@@ -276,7 +283,7 @@ async function main() {
   if (args.mode === "escalate") {
     selection = selectEscalateCandidates(usShows, classification, progress, args.batchSize).map((c) => ({ show: c.show, priorResult: c.priorResult }));
   } else {
-    selection = selectFreshCandidates(usShows, classification, progress, now, args.batchSize, args.maxFetchAttempts).map((show) => ({ show, priorResult: null }));
+    selection = selectFreshCandidates(usShows, classification, progress, now, args.batchSize, args.maxFetchAttempts, args.shard).map((show) => ({ show, priorResult: null }));
   }
 
   if (selection.length === 0) {
