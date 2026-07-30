@@ -51,3 +51,21 @@ recommendation rather than silently picking.
   before it goes live).
 - Both founders have admin on the repo. Neither pushes `main` directly — the
   branch-protection ruleset applies to everyone, by design.
+
+## Merge authority (updated 2026-07-30)
+
+Joey can direct Claude Code to merge a PR to `main` once required checks
+(`backend`, `data-and-site`) are green, without waiting on a review from
+Wyatt — for PRs scoped to product/content/UX (the prototype, copy, data,
+curation). This was changed at Joey's request on the reasoning that if he
+can click "merge" himself, routing the same call through Claude shouldn't
+require more than his own approval.
+
+This does **not** extend to anything touching architecture, infra, secrets,
+CI/CD config, or release process — those stay Wyatt's final call per the
+"Decision authority" rules in `CLAUDE.md`, unchanged.
+
+**Flag for Wyatt:** this change was made unilaterally at Joey's instruction,
+not discussed with Wyatt first. Wyatt should review this section and the
+corresponding `CLAUDE.md` change and confirm he's fine with it — until then,
+treat it as provisional.
