@@ -5855,7 +5855,8 @@
     },
     "272824755": {
       "topics": [
-        "history"
+        "history",
+        "history/military-ancient"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
@@ -6721,7 +6722,8 @@
     },
     "293376147": {
       "topics": [
-        "sports/basketball"
+        "sports/basketball",
+        "sports"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
@@ -6865,7 +6867,8 @@
     },
     "296714733": {
       "topics": [
-        "sports/cricket"
+        "sports/cricket",
+        "sports"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
@@ -7993,7 +7996,8 @@
     },
     "337713843": {
       "topics": [
-        "comedy"
+        "comedy",
+        "comedy/casual-hangs"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
@@ -8024,7 +8028,8 @@
     },
     "338329527": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "religion"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
@@ -9199,7 +9204,8 @@
     },
     "385051731": {
       "topics": [
-        "gaming"
+        "comedy",
+        "comedy/casual-hangs"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
@@ -9988,7 +9994,7 @@
     },
     "415983183": {
       "topics": [
-        "history"
+        "science"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
@@ -10190,6 +10196,7 @@
     },
     "425179503": {
       "topics": [
+        "news/politics",
         "news"
       ],
       "confidence": "high",
@@ -11253,7 +11260,7 @@
     },
     "470623173": {
       "topics": [
-        "health"
+        "news"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
@@ -11331,7 +11338,8 @@
     },
     "472302597": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
@@ -11353,7 +11361,8 @@
     },
     "472939437": {
       "topics": [
-        "music"
+        "history",
+        "history/military-ancient"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
@@ -11618,7 +11627,8 @@
     },
     "480486345": {
       "topics": [
-        "comedy"
+        "comedy",
+        "comedy/casual-hangs"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
@@ -12200,7 +12210,9 @@
     },
     "508376907": {
       "topics": [
-        "science"
+        "science",
+        "science/physics",
+        "medicine/biology"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
@@ -12229,7 +12241,7 @@
     },
     "508647267": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
@@ -12737,7 +12749,8 @@
     },
     "529339725": {
       "topics": [
-        "comedy"
+        "comedy",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
@@ -13329,7 +13342,7 @@
     },
     "564093021": {
       "topics": [
-        "gaming"
+        "sports"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
@@ -13539,7 +13552,7 @@
     },
     "582272991": {
       "topics": [
-        "education/self-improvement"
+        "education"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
