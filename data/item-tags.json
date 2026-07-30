@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-07-28T11:43:24.107Z",
+  "built_at": "2026-07-29T11:45:15.106Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -9475,6 +9475,245 @@
       "career",
       "music-history",
       "interview"
+    ],
+    "lex-fridman-podcast--499-gary-gallagher-american-civil-war": [
+      "civil-war",
+      "slavery",
+      "american-history",
+      "history",
+      "abraham-lincoln",
+      "ulysses-s-grant",
+      "robert-e-lee",
+      "interview"
+    ],
+    "stuff-you-should-know--short-stuff-shark-arm-murders": [
+      "true-crime",
+      "australia",
+      "murder",
+      "forensics",
+      "mystery",
+      "stuff-you-should-know"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3393": [
+      "aviation",
+      "1920s",
+      "engineering-history",
+      "history-of-technology",
+      "invention",
+      "engines"
+    ],
+    "techsurge-deep-tech-podcast--the-moving-bottleneck-networking-power-memory": [
+      "ai",
+      "infrastructure",
+      "data-centers",
+      "semiconductors",
+      "networking",
+      "startups",
+      "interview"
+    ],
+    "good-hang-amy-poehler--anne-lamott": [
+      "amy-poehler",
+      "comedy",
+      "memoir",
+      "authors",
+      "interview",
+      "faith"
+    ],
+    "the-bbq-central-show--jess-pryles-is-not-here-to": [
+      "barbecue",
+      "bbq",
+      "grilling",
+      "food-science",
+      "competition",
+      "interview"
+    ],
+    "spycast--murder-in-mexico-city-the-assassination": [
+      "espionage",
+      "soviet-union",
+      "history",
+      "interview",
+      "assassination",
+      "mexico"
+    ],
+    "software-engineering-daily--the-startup-scene-in-southeast-asia": [
+      "startups",
+      "venture-capital",
+      "singapore",
+      "business",
+      "interview",
+      "southeast-asia",
+      "indonesia"
+    ],
+    "planet-money--how-to-beat-the-resource-curse": [
+      "norway",
+      "economics",
+      "oil",
+      "commodities",
+      "fish",
+      "markets"
+    ],
+    "freakonomics-radio--how-gary-gulman-turned-depression-into": [
+      "comedy",
+      "mental-health",
+      "depression",
+      "recovery",
+      "stand-up",
+      "interview"
+    ],
+    "f1-beyond-the-grid--ollie-bearman-high-hopes-with-haas": [
+      "formula-1",
+      "ferrari",
+      "racing",
+      "motorsport",
+      "drivers",
+      "interview"
+    ],
+    "the-race-f1-podcast--driver-rankings-which-surprise-name-did": [
+      "formula-1",
+      "grand-prix",
+      "racing",
+      "motorsport",
+      "drivers",
+      "rankings"
+    ],
+    "unexplainable--the-godzilla-el-ni-o": [
+      "climate",
+      "climate-science",
+      "weather",
+      "interview",
+      "meteorology",
+      "el-nino"
+    ],
+    "business-wars--gopro-the-billion-dollar-wipeout-think": [
+      "business-history",
+      "entrepreneurship",
+      "consumer-products",
+      "founders",
+      "cameras",
+      "narrative"
+    ],
+    "tiny-matters--bonus-bread-clip-taxonomy-and-power": [
+      "science",
+      "quirky",
+      "objects",
+      "power-lines",
+      "electricity",
+      "weather"
+    ],
+    "game-design-round-table--the-no-hit-wonder-strategy-survival": [
+      "game-design",
+      "indie-games",
+      "indie",
+      "video-games",
+      "entrepreneurship",
+      "interview"
+    ],
+    "craft-beer-and-brewing-magazine-podcast--495-fermenting-expressive-hoppy-beers-with": [
+      "beer",
+      "craft-beer",
+      "brewing",
+      "hops",
+      "fermentation",
+      "chemistry"
+    ],
+    "myths-and-legends--440-monkey-king-the-shakedown": [
+      "mythology",
+      "monkey-king",
+      "chinese-mythology",
+      "folklore",
+      "storytelling",
+      "journey-to-the-west"
+    ],
+    "physiology-endurance-running--lactate-gels-a-fad-or-the": [
+      "running",
+      "endurance",
+      "lactate",
+      "sports-nutrition",
+      "sports-science"
+    ],
+    "shipwrecks-and-sea-dogs--ships-log-the-andrea-doria-the": [
+      "shipwrecks",
+      "maritime",
+      "1950s",
+      "disaster",
+      "history",
+      "ships"
+    ],
+    "ten-percent-happier--you-re-gonna-be-alright-no": [
+      "meditation",
+      "buddhism",
+      "aging",
+      "mindfulness",
+      "interview",
+      "wellbeing"
+    ],
+    "happier-gretchen-rubin--ep-597-celebrate-dogust-plus-a": [
+      "gretchen-rubin",
+      "happiness",
+      "habits",
+      "self-improvement",
+      "dogs",
+      "self-help"
+    ],
+    "armchair-expert--eva-benefield-on-surviving-the-black": [
+      "armchair-expert",
+      "memoir",
+      "true-crime",
+      "murder",
+      "interview",
+      "personal-story"
+    ],
+    "call-her-daddy--nara-smith-stop-calling-me-a": [
+      "interview",
+      "motherhood",
+      "identity",
+      "anxiety",
+      "personal-story",
+      "social-media"
+    ],
+    "astonishing-legends--s2-ep28-milo": [
+      "paranormal",
+      "astonishing-legends",
+      "unexplained",
+      "storytelling",
+      "mystery"
+    ],
+    "dateline--talking-dateline-the-mushroom-mystery": [
+      "dateline",
+      "true-crime",
+      "murder",
+      "interview",
+      "forensics"
+    ],
+    "dateline--the-mushroom-mystery": [
+      "dateline",
+      "true-crime",
+      "murder",
+      "investigation",
+      "forensics",
+      "poisoning"
+    ],
+    "modern-love--is-polyamory-right-for-you": [
+      "modern-love",
+      "relationships",
+      "personal-journals",
+      "interview",
+      "family"
+    ],
+    "dissect--call-me-if-you-get-lost": [
+      "music-analysis",
+      "hip-hop",
+      "album",
+      "cole-cuchna",
+      "music"
+    ],
+    "weather-geeks--hurricane-season-preview-with-the-nhc": [
+      "hurricanes",
+      "weather",
+      "meteorology",
+      "weather-forecasting",
+      "interview",
+      "tropical-cyclones"
     ]
   }
 }
