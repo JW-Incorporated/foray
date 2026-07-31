@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-30T16:30:05.806Z",
+  "built_at": "2026-07-31T00:31:16.913Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-30-8d813a3e",
+    "last_batch_id": "fresh-2026-07-31-ec092e76",
     "last_batch_tier": 1
   },
   "entries": {
@@ -29291,11 +29291,25 @@
     },
     "1092995407": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "fiction/comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Darkly comedic paranormal audio anthology with Southwestern flavor.",
+      "display_title": "Uncanny County",
+      "blurb": "Monthly paranormal comedy audio plays with dark absurdist humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1093028505": {
       "topics": [
@@ -29457,10 +29471,25 @@
     },
     "1095931813": {
       "topics": [
-        "music"
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio mastering education for engineers and musicians.",
+      "display_title": "The Mastering Show",
+      "blurb": "Audio mastering education covering loudness, restoration, and technique.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1096830182": {
       "topics": [
@@ -29479,10 +29508,25 @@
     },
     "1096923241": {
       "topics": [
-        "sports/golf"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "PGA TOUR coverage with pro player interviews and betting analysis.",
+      "display_title": "Talk of the TOUR Golf Podcast",
+      "blurb": "PGA TOUR player interviews and professional golf analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1096925460": {
       "topics": [
@@ -29508,11 +29552,30 @@
     },
     "1097336593": {
       "topics": [
-        "news/tech",
-        "computing"
+        "computing",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Librarians discussing technology, publishing, and library work.",
+      "display_title": "The Library Pros",
+      "blurb": "Librarians discussing technology and professional library innovations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1097417804": {
       "topics": [
@@ -29638,11 +29701,25 @@
     },
     "1099195975": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Functional medicine nutrition guidance and food-as-medicine.",
+      "display_title": "Naturally Nourished",
+      "blurb": "Functional nutrition and food-based health optimization strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1099304101": {
       "topics": [
@@ -29671,7 +29748,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly sci-fi and horror short story anthology series.",
+      "display_title": "The Other Stories",
+      "blurb": "Weekly sci-fi, horror, and thriller short story anthology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1100417601": {
       "topics": [
@@ -29787,11 +29879,30 @@
     },
     "1102859089": {
       "topics": [
-        "news",
-        "business"
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Healthcare finance industry insights and policy discussion.",
+      "display_title": "HFMA Voices in Healthcare Finance",
+      "blurb": "Healthcare finance policy and industry insights from experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1103320303": {
       "topics": [
@@ -29951,7 +30062,22 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chicago-focused daily news and community stories.",
+      "display_title": "In the Loop with Sasha-Ann Simons",
+      "blurb": "Chicago daily news with local stories and expert analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1108209889": {
       "topics": [
@@ -30108,7 +30234,22 @@
         "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth political interviews with Washington power players.",
+      "display_title": "The Conversation with Dasha Burns",
+      "blurb": "Political interviews with DC insiders and policy leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1111739567": {
       "topics": [
@@ -30265,10 +30406,25 @@
     },
     "1114362643": {
       "topics": [
-        "news/commentary"
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political commentary and news analysis.",
+      "display_title": "Matt Christiansen Live",
+      "blurb": "Political news commentary on current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1114398275": {
       "topics": [
@@ -30492,11 +30648,25 @@
     },
     "1118867383": {
       "topics": [
-        "economics/markets",
-        "business"
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investment and financial advice for wealth building.",
+      "display_title": "Motley Fool Money",
+      "blurb": "Investment guidance and wealth-building strategies from analysts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1118969643": {
       "topics": [
@@ -30654,10 +30824,25 @@
     },
     "1122376417": {
       "topics": [
-        "culture/design"
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home improvement and interior design conversations.",
+      "display_title": "Young House Love Has A Podcast",
+      "blurb": "Home improvement and interior design with DIY strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1122785133": {
       "topics": [
@@ -30672,7 +30857,22 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jeep enthusiasts discussing builds and off-roading.",
+      "display_title": "The Jeepcast",
+      "blurb": "Jeep builds, modifications, and off-roading adventures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1123347203": {
       "topics": [
@@ -30785,10 +30985,25 @@
     },
     "1125752101": {
       "topics": [
-        "nature/pets"
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Community cat advocacy and welfare education.",
+      "display_title": "The Community Cats Podcast",
+      "blurb": "Community cat advocacy and trap-neuter-return programs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1126021323": {
       "topics": [
@@ -30850,7 +31065,22 @@
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional dance interviews and industry conversations.",
+      "display_title": "Conversations on Dance",
+      "blurb": "Professional dancers and choreographers discussing their craft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1128428812": {
       "topics": [
@@ -30900,10 +31130,25 @@
     },
     "1129588849": {
       "topics": [
-        "sports/basketball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Oklahoma City Thunder NBA analysis.",
+      "display_title": "Locked On Thunder",
+      "blurb": "Oklahoma City Thunder daily news and NBA analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1130124620": {
       "topics": [
@@ -30915,10 +31160,30 @@
     },
     "1130464057": {
       "topics": [
-        "aviation"
+        "aviation",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Commercial drone industry interviews and applications.",
+      "display_title": "Commercial Drones FM",
+      "blurb": "Commercial drone industry interviews and business applications.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1130488614": {
       "topics": [
@@ -30962,7 +31227,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Old Time music interviews with folk musicians.",
+      "display_title": "Get Up in the Cool",
+      "blurb": "Old Time music interviews with traditional musicians.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1131628553": {
       "topics": [
@@ -31094,10 +31374,25 @@
     },
     "1134941995": {
       "topics": [
-        "sports/basketball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Milwaukee Bucks NBA analysis.",
+      "display_title": "Locked On Bucks",
+      "blurb": "Milwaukee Bucks daily news and NBA analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1134941997": {
       "topics": [
@@ -31459,10 +31754,43 @@
     },
     "1140514879": {
       "topics": [
-        "sports/football"
+        "news/daily",
+        "sports",
+        "economics/markets",
+        "gaming"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6111111111111112
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.5833333333333334
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.5625
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Locked On Lions - Daily Podcast On The Detroit Lio",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1140522532": {
       "topics": [
@@ -31494,10 +31822,43 @@
     },
     "1141081555": {
       "topics": [
-        "sports/football"
+        "news/daily",
+        "sports",
+        "culture/performing-arts",
+        "gaming"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6111111111111112
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.6
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.5625
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Locked On Chiefs - Daily Podcast On The Kansas Cit",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1141442116": {
       "topics": [
@@ -31525,11 +31886,40 @@
     },
     "1141622977": {
       "topics": [
-        "news/tech",
-        "computing"
+        "news/daily",
+        "business",
+        "news/politics",
+        "economics/markets"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.6
+        },
+        {
+          "node": "business",
+          "confidence": 0.5833333333333334
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.5833333333333334
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.5833333333333334
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Kilowatt: A Podcast about Electric Vehicles",
+      "display_title": "Kilowatt: A Podcast about Electric Vehicles",
+      "blurb": "Kilowatt is a podcast about electric vehicles (EVs) that covers various topics related to EVs, inclu...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1141688163": {
       "topics": [
@@ -31570,11 +31960,30 @@
     },
     "1142370499": {
       "topics": [
-        "music",
-        "history"
+        "craft/diy-home",
+        "music"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.5833333333333334
+        },
+        {
+          "node": "music",
+          "confidence": 0.5714285714285714
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The CoffeeHouse Classical",
+      "display_title": "The CoffeeHouse Classical",
+      "blurb": "Caution: Contents may be historical, but they're still hot! We're serving the classics!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1142736861": {
       "topics": [
@@ -31628,10 +32037,40 @@
     },
     "1143987607": {
       "topics": [
-        "culture/design"
+        "business",
+        "craft/diy-home",
+        "computing",
+        "news/politics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.6666666666666666
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.6666666666666666
+        },
+        {
+          "node": "computing",
+          "confidence": 0.5833333333333334
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.5833333333333334
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sew Much More",
+      "display_title": "Sew Much More",
+      "blurb": "An interview style podcast with people in the Custom Home Furnishings industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1144116574": {
       "topics": [
@@ -32046,17 +32485,65 @@
     },
     "1151621299": {
       "topics": [
-        "sports/football"
+        "news/daily",
+        "sports",
+        "culture/performing-arts",
+        "nature/animal-cognition"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6111111111111112
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.6
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.5833333333333334
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Locked On Seahawks - Daily Podcast On The Seattle ",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1151621599": {
       "topics": [
-        "religion/spirituality"
+        "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.5833333333333334
+        }
+      ],
+      "needs_review": true,
+      "rationale": "ReWilding with Sabrina Lynn",
+      "display_title": "ReWilding with Sabrina Lynn",
+      "blurb": "Awaken the Wild, Unshakable You. Feeling stuck, searching for your soul path, or craving real transf...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1151634104": {
       "topics": [
@@ -32172,10 +32659,35 @@
     },
     "1153457233": {
       "topics": [
-        "sports/football"
+        "sports",
+        "food/cooking-science",
+        "news/politics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.6666666666666666
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.5833333333333334
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.5833333333333334
+        }
+      ],
+      "needs_review": true,
+      "rationale": "49ers Talk: A San Francisco 49ers Podcast",
+      "display_title": "49ers Talk: A San Francisco 49ers Podcast",
+      "blurb": "NBC Sports Bay Area 49ers insider Matt Maiocco and reporter Jennifer Lee Chan bring you comprehensiv...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1153465996": {
       "topics": [
@@ -32208,10 +32720,38 @@
     },
     "1153873309": {
       "topics": [
-        "sports/basketball"
+        "news/daily",
+        "sports",
+        "gaming"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6111111111111112
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.5625
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Locked On Warriors – Daily Podcast On The Golden S",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1154105909": {
       "topics": [
@@ -32239,10 +32779,30 @@
     },
     "1155061645": {
       "topics": [
-        "culture/books"
+        "news/politics",
+        "nature/animal-cognition"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.5833333333333334
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.5833333333333334
+        }
+      ],
+      "needs_review": true,
+      "rationale": "All About Agatha Christie",
+      "display_title": "All About Agatha Christie",
+      "blurb": "All About Agatha is a podcast all about, well, Agatha. Agatha Christie, of course: the Queen of Crim...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1155163742": {
       "topics": [
@@ -32268,10 +32828,35 @@
     },
     "1155629323": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "economics/markets",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.5833333333333334
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5555555555555556
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Reason Roundtable",
+      "display_title": "The Reason Roundtable",
+      "blurb": "Every Monday, the libertarian editors of the magazine of “Free Minds and Free Markets”—Matt Welch, N...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1155660740": {
       "topics": [
@@ -32370,11 +32955,30 @@
     },
     "1157223571": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "food/cooking-science",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.5833333333333334
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5555555555555556
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Finding You: with Dr. Brad Reedy",
+      "display_title": "Finding You: with Dr. Brad Reedy",
+      "blurb": "Introducing Inner Circle, our new premium Finding You podcast experience. Support the show and recei...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1157605551": {
       "topics": [
@@ -32409,10 +33013,40 @@
     },
     "1157719963": {
       "topics": [
-        "business/marketing"
+        "computing",
+        "news/politics",
+        "news/daily",
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.6666666666666666
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.6
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.5833333333333334
+        }
+      ],
+      "needs_review": true,
+      "rationale": "AdExchanger",
+      "display_title": "AdExchanger",
+      "blurb": "AdExchanger Talks is an advertising and marketing technology podcast from AdExchanger, the leading v...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1158031787": {
       "topics": [
@@ -32469,10 +33103,43 @@
     },
     "1159425037": {
       "topics": [
-        "sports/basketball"
+        "news/daily",
+        "culture/performing-arts",
+        "gaming",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.6
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.5625
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5555555555555556
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Locked On Nets - Daily Podcast On The Brooklyn Net",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1159426874": {
       "topics": [
@@ -32554,10 +33221,35 @@
     },
     "1162163701": {
       "topics": [
-        "sports/basketball"
+        "news/daily",
+        "sports",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6111111111111112
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.5833333333333334
+        }
+      ],
+      "needs_review": true,
+      "rationale": "By The Horns: A Chicago Bulls Show",
+      "display_title": "By The Horns: A Chicago Bulls Show",
+      "blurb": "Welcome to By The Horns, a podcast covering the Chicago Bulls. Hosted by Bulls Countdown Live host C...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1162163703": {
       "topics": [
@@ -32649,17 +33341,69 @@
     "1163226019": {
       "topics": [
         "music",
-        "history"
+        "fiction/comedy",
+        "news/politics",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.7142857142857143
+        },
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.5833333333333334
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.5833333333333334
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5555555555555556
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Under the Scales",
+      "display_title": "Under the Scales",
+      "blurb": "Under the Scales is a podcast by Tom Marshall, longtime songwriter for the band Phish. The podcast c...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1163263807": {
       "topics": [
-        "sports/rugby"
+        "culture/performing-arts",
+        "gaming"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.6
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.5625
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Attacking Scrum - Wales Rugby Podcast for Welsh Ru",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1163344992": {
       "topics": [
@@ -32686,11 +33430,25 @@
     },
     "1163599279": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "gaming"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.5625
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast Italiano | Learn Italian (Intermediate & A",
+      "display_title": "Podcast Italiano | Learn Italian (Intermediate & Advanced)",
+      "blurb": "🇬🇧 Learn Italian with a podcast for i ntermediate and advanced learners . Full transcripts at: https...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1163693349": {
       "topics": [
@@ -32726,10 +33484,30 @@
     },
     "1163966749": {
       "topics": [
-        "religion/judaism"
+        "gaming",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.5625
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5555555555555556
+        }
+      ],
+      "needs_review": true,
+      "rationale": "TORAH 101 - With Rabbi Yaakov Wolbe",
+      "display_title": "TORAH 101 - With Rabbi Yaakov Wolbe",
+      "blurb": "TORAH 101 is aptly described as &#8220;An Intellectual&#8217;s Introduction to Torah&#8221;. If you ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1163969355": {
       "topics": [
@@ -32815,10 +33593,30 @@
     },
     "1165660759": {
       "topics": [
-        "sports/hockey"
+        "nature/animal-cognition",
+        "gaming"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.5833333333333334
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.5625
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Crash The Pond: An Anaheim Ducks Podcast",
+      "display_title": "Crash The Pond: An Anaheim Ducks Podcast",
+      "blurb": "Crash The Pond is a podcast dedicated to providing quality objective analysis about the Anaheim Duck...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1166007425": {
       "topics": [
@@ -32853,10 +33651,25 @@
     },
     "1166647351": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.5833333333333334
+        }
+      ],
+      "needs_review": true,
+      "rationale": "RELATIVITY",
+      "display_title": "RELATIVITY",
+      "blurb": "RELATIVITY is a science-fiction serial about a man marooned in space and the woman on Earth who stru...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1166682012": {
       "topics": [
@@ -32890,10 +33703,35 @@
     },
     "1167078901": {
       "topics": [
-        "sports/hockey"
+        "news/daily",
+        "news/politics",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.5833333333333334
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5555555555555556
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Blackhawks Breakaway",
+      "display_title": "Blackhawks Breakaway",
+      "blurb": "Pat Boyle and Charlie Roumeliotis bring you the latest news, updates, and interviews from inside the...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1167318465": {
       "topics": [
@@ -32904,10 +33742,25 @@
     },
     "1167320659": {
       "topics": [
-        "sports/fantasy"
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.5555555555555556
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fantasy Football Prophet : Auction Draft Podcast",
+      "display_title": "Fantasy Football Prophet : Auction Draft Podcast",
+      "blurb": "The Fantasy Football Prophet podcast is your best source for Fantasy Football Auction Draft content....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1167552485": {
       "topics": [
@@ -32927,10 +33780,30 @@
     },
     "1168107709": {
       "topics": [
-        "nature"
+        "fiction/comedy",
+        "nature/animal-cognition"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.6666666666666666
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.5833333333333334
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Nature Guys",
+      "display_title": "Nature Guys",
+      "blurb": "Nature Guys connects you to the exciting natural world right in your own neighborhood. These nature ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1168126157": {
       "topics": [
@@ -50720,8 +51593,22 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Warhammer: Age of Sigmar tabletop gaming podcast with army reviews.",
+      "display_title": "Garagehammer",
+      "blurb": "Twice-monthly Warhammer gaming podcast covering news and strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ec092e76",
+      "classified_at": "2026-07-31T00:31:16.913Z"
     },
     "1436243608": {
       "topics": [
