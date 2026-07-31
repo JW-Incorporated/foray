@@ -1474,6 +1474,28 @@
       "batch_id": "fresh-2026-07-25-31acd1c8",
       "classified_at": "2026-07-25T13:54:10.190Z"
     },
+    "252250286": {
+      "topics": [
+        "business/marketing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Referral marketing and business networking strategy show.",
+      "display_title": "The Official BNI Podcast",
+      "blurb": "Referral marketing tips from Dr. Ivan Misner, Founder and Chief Visionary Officer of BNI",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
     "253191824": {
       "topics": [
         "culture/books"
@@ -23230,6 +23252,599 @@
       "batch_id": "fresh-2026-07-31-0d38d4fe",
       "classified_at": "2026-07-31T08:52:11.019Z"
     },
+    "1455133736": {
+      "topics": [
+        "science",
+        "medicine/biology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Public health and disease research interviews.",
+      "display_title": "Contagious Conversations",
+      "blurb": "Curious about the people who are making the world healthier and safer for us all, and what set them on that path? Get inspired as the CDC Foundation interviews experts",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1455574616": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual comedy show with improvised banter and humor.",
+      "display_title": "Free Beer and Hot Wings",
+      "blurb": "This is the Free Beer and Hot Wings free clip of the day. You have to be an Idiot to download the full show. Sign up to become an idiot",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1455589166": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily Detroit Tigers analysis and MLB coverage.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1455651992": {
+      "topics": [
+        "health/alternative"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sleep meditation and guided bedtime stories.",
+      "display_title": "Michelle's Sanctuary: Bedtime Stories & Sleep Meditations",
+      "blurb": "Imaginative bedtime stories and sleep meditations to help listeners relax and sleep naturally.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:52:07.195Z"
+    },
+    "1455668750": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Historical true crime cases analyzed with modern forensics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 15w > 8",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1455785618": {
+      "topics": [
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hawaii travel planning advice and vacation tips.",
+      "display_title": "Hawaii Travel Podcast by Hawaii’s Best",
+      "blurb": "Dreaming of a Hawaii vacation that’s unforgettable, authentic, and stress-free? Hawaii’s Best Travel is the top Hawaii travel podcast helping you plan your Hawaii vacation from start to finish with",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1455825458": {
+      "topics": [
+        "economics/markets",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "European business news, markets, and financial analysis.",
+      "display_title": "Squawk Box Europe Express",
+      "blurb": "CNBC's flagship show in Europe sets you up with everything you need to know for the European business day. Anchors Steve Sedgwick, Karen Tso and Julianna Tatelbaum engage in unscripted",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1455894620": {
+      "topics": [
+        "math"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations about mathematics using everyday objects.",
+      "display_title": "Mathematical Objects",
+      "blurb": "Katie Steckles and Peter Rowlett chat about some aspect of mathematics using a mathematical object as inspiration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1455955334": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Organic gardening tips and techniques.",
+      "display_title": "The Organic Gardening Podcast",
+      "blurb": "Inspiration to help you garden the organic way, with advice, tips and interviews from the UK's leading organic gardening organisation, Garden Organic. Hosted by Fiona Taylor and Chris Collins.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1456199456": {
+      "topics": [
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real estate investment strategy for financial freedom.",
+      "display_title": "One Rental At A Time",
+      "blurb": "Have you ever thought about real estate investing as a path to financial freedom? Have you kicked around the idea but felt you were too busy with work and family",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1456441262": {
+      "topics": [
+        "nature"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Firearms, suppressor reviews, hunting, and tactical technology.",
+      "display_title": "The Jay Situation",
+      "blurb": "Firearms, lifting, hunting, the NFA world, adventuring, technology, and all kinds of cool stuff! Check out pewscience.com for more!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1456467014": {
+      "topics": [
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investment analysis and market commentary.",
+      "display_title": "The Compound and Friends",
+      "blurb": "Join Downtown Josh Brown, Michael Batnick, and a rotation of their friends every Tuesday and Friday for expert insight and hot takes on the latest in business and investing. See",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1456800368": {
+      "topics": [
+        "religion",
+        "philosophy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories of religious deconstruction and secular grace.",
+      "display_title": "Graceful Atheist Podcast",
+      "blurb": "A secular humanist podcast about Secular Grace after deconstruction and deconversion. The podcast takes an honest look at stories of faith transition from a life-altering faith, to doubt and deconstru",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1457064404": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily Houston Astros analysis and MLB coverage.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1457334692": {
+      "topics": [
+        "culture",
+        "history"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic old-time radio western drama.",
+      "display_title": "Gunsmoke | Old Time Radio",
+      "blurb": "Discover every episode of Gunsmoke currently available! Audio Credit: \"Gunsmoke\" by The Old Time Radio Researchers Group Find more Old Time Radio (OTR) at OTRGOLD.COM. --------------------------------",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1457398334": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Basketball coaching interviews and film breakdowns.",
+      "display_title": "A Quick Timeout with Coach Tony Miller",
+      "blurb": "Helping basketball coaches become better teachers of the game through expert coaching interviews and film breakdowns. Each episode designed to fit into your busy schedule. Hosted by Coach Tony Miller.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1457620388": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily Philadelphia Phillies analysis and MLB coverage.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1457648702": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual comedy show with improvised banter and humor.",
+      "display_title": "Take Your Shoes Off w/ Rick Glassman",
+      "blurb": "Hi, I'm Rick Glassman, and I'm a goofy guy and a cute boy. As a kid, I had debilitating OCD. I still have a lot of “things.” The title of",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1458178964": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided prayers of the Holy Rosary and Divine Mercy.",
+      "display_title": "The Holy Rosary",
+      "blurb": "The Joyful, Glorious, Sorrowful, and Luminous mysteries of the Most Holy Rosary + the Divine Mercy Chaplet.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1458296882": {
+      "topics": [
+        "philosophy",
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Catholic theological discussions in academic debate format.",
+      "display_title": "Sed Contra: A Podcast of Catholic Theology",
+      "blurb": "A podcast featuring some of the founding members of The Sacra Doctrina Project discussing theological questions with other academic theologians and philosophers. The podcast takes place in a quaestion",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1458299186": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV show analysis and episode recaps.",
+      "display_title": "House Of The Dragon With Mary & Blake",
+      "blurb": "House Of The Dragon With Mary & Blake is dedicated to the hit TV show on HBO, House Of The Dragon In House Of The Dragon with Mary & Blake,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1458647174": {
+      "topics": [
+        "music",
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music history and artist interviews.",
+      "display_title": "Pamela Des Barres' Pajama Party!",
+      "blurb": "Pantheon is proud to present Pamela Des Barres' Pajama Party! Join Miss Pamela as she tells tales from her diary, has fun interviewing special guests, and shares her love of",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1458803180": {
+      "topics": [
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership and management skills training.",
+      "display_title": "Leadership Without Losing Your Soul",
+      "blurb": "Does your team's lack of productivity frustrate you? What if I told you it's possible to be a decent human being and STILL lead teams that achieve transformational, breakthrough results?",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1459175606": {
+      "topics": [
+        "tv-film/after-shows"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV episode analysis and fan discussion.",
+      "display_title": "Children of the Watch: House of the Dragon",
+      "blurb": "Children of the Watch: A Star Wars After Show is the number one podcast in the galaxy for all things Star Wars live action television, formerly The Mandalorian Watch. A",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1459204304": {
+      "topics": [
+        "business/non-profit"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonprofit leadership and fundraising.",
+      "display_title": "Real Talk for Real Fundraisers",
+      "blurb": "Welcome to Real Talk for Real Fundraisers, the podcast where fundraisers, nonprofit leaders, and industry experts come together to vent, laugh, and learn. Through candid storytelling and insightful in",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
     "1459232606": {
       "topics": [
         "news/politics",
@@ -23256,6 +23871,437 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
+    },
+    "1459803110": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Competitive game strategy and analysis.",
+      "display_title": "Midweek Metagame",
+      "blurb": "Gabriel ’yellowhat’ Nassif and Edgar ’EdgarMTG’ Magalhaes catch you up on the latest of competitive Magic and share what they’ve been up to.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1460157002": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music interviews and commentary.",
+      "display_title": "Million Dollaz Worth Of Game",
+      "blurb": "The Million Dollaz Worth of Game show, a weekly podcast with rapper/actor @GillieDaKing and social media influencer and disruptor @Wallo267 - The perfect blend of discussing music, real life issues,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1460168984": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and cinema analysis.",
+      "display_title": "Sneak Peek: A New Rockstars Podcast",
+      "blurb": "New Rockstars brings you the latest news and analysis of the Marvel Cinematic Universe. We're breaking down every trailer, film, and Disney+ series to find the missable details, hidden meanings,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1460305736": {
+      "topics": [
+        "religion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories of religious deconstruction and secular grace.",
+      "display_title": "The Harvard Religion Beat",
+      "blurb": "A podcast examining religion’s underestimated and often misunderstood role in society.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:00.419Z"
+    },
+    "1460520002": {
+      "topics": [
+        "science",
+        "nature"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science and natural world topics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1460697746": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical storytelling and analysis.",
+      "display_title": "ODYSSEY:  THE PODCAST",
+      "blurb": "Odyssey: The Podcast is a serialized telling in contemporary language, of Homer’s Odyssey. Over twenty-three hours, master storyteller Jeff Wright delivers a fast-paced, literate, and addictive perfor",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1460713022": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive enthusiasts and collecting.",
+      "display_title": "The Collector Car Podcast",
+      "blurb": "The Car Collector Podcast is the home for all Auto Enthusiasts. Join RM Sotheby's Consultant Greg Stanley as he applies over 25 years of insight and analytical experience to the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1461506762": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hockey team analysis and commentary.",
+      "display_title": "Morning Tide with Ted Ramey",
+      "blurb": "A podcast that will feature San Jose Sharks analysis, exclusive interviews and more by Ted Ramey - Bay Area native and life-long Sharks fan.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1461703526": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV show analysis and episode recaps.",
+      "display_title": "Cabot Cove Confidential",
+      "blurb": "A married couple recapping, conversing and goofing off while discussing episodes of 'Murder, She Wrote' every other week or so.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1461827102": {
+      "topics": [
+        "business/non-profit"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonprofit leadership and fundraising.",
+      "display_title": "Hadley Presents",
+      "blurb": "Listen in as we get the inside scoop from experts on a wide range of topics unique to vision loss. We will ask the questions that get to the heart",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1462192400": {
+      "topics": [
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship and business building.",
+      "display_title": "Creating Confidence with Heather Monahan",
+      "blurb": "Looking to take your life to the next level? Each week Heather sits down to share with you the techniques and strategies to create your confidence, pursue your dreams and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1462195742": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political commentary and analysis.",
+      "display_title": "The Al Franken Podcast",
+      "blurb": "A five-time Emmy winning SNL comedy writer/producer, joins a four-time #1 NYT bestselling author, a three-time highest-rated national progressive radio host, a two-time Grammy winning artist, and a fo",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1462226534": {
+      "topics": [
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical research and healthcare topics.",
+      "display_title": "The Endometriosis Podcast",
+      "blurb": "The Endometriosis Podcast is a monthly discussion of what's new in the world of endometriosis research, new discoveries, surgical techniques, and anything else of interest in the endometriosis world. ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1462340546": {
+      "topics": [
+        "business/non-profit"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonprofit leadership and fundraising.",
+      "display_title": "GSA on Aging",
+      "blurb": "The Gerontological Society of America (GSA) brings together educators, clinicians, administrators, researchers, and students who share their experiences, expertise, and innovations in aging. The GSA O",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1462683950": {
+      "topics": [
+        "psychology",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert discussions on child abuse intervention and trauma treatment.",
+      "display_title": "One in Ten",
+      "blurb": "Conversations with experts on child abuse prevention, intervention, and trauma treatment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:52:07.195Z"
+    },
+    "1462772852": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive enthusiasts and collecting.",
+      "display_title": "The Collecting Cars Podcast with Chris Harris",
+      "blurb": "The Collecting Cars Podcast is hosted by founder and motoring enthusiast Edward Lovett and Motoring’s Chris Harris, in conversation with a stellar cast of car loving guests. An often funny,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1462809170": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf coaching and technique analysis.",
+      "display_title": "Golf 360",
+      "blurb": "Golf 360 came about from a theory I wrote a decade ago called The Golf Paradigm. It is something I came up with after spending over 30 years in golf",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1462828112": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby team analysis and coverage.",
+      "display_title": "This Warriors Life",
+      "blurb": "An extension of the thiswarriorslife.com website, This Warriors Life's podcast features Will Evans, Brad Larking and Fonzie breaking down the NZ Warriors' progress in the NRL each week. Proudly suppor",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
+    },
+    "1462975076": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music interviews and commentary.",
+      "display_title": "Louis The Child - Playground Radio",
+      "blurb": "Playground Radio is a bi-weekly radio show hosted by Louis The Child showcasing their favorite music at the moment. Be sure to stay tuned for news and updates about upcoming",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-72c626ec",
+      "classified_at": "2026-07-31T16:51:45.395Z"
     },
     "1468939064": {
       "topics": [
@@ -24398,11 +25444,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-31T08:52:11.019Z",
+  "built_at": "2026-07-31T16:52:07.195Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-31-0d38d4fe",
+    "last_batch_id": "fresh-2026-07-31-72c626ec",
     "last_batch_tier": 1
   }
 }
