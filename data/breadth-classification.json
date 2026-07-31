@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-31T00:59:42.900Z",
+  "built_at": "2026-07-31T09:01:11.287Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-31-42982ded",
+    "last_batch_id": "fresh-2026-07-31-633c2134",
     "last_batch_tier": 1
   },
   "entries": {
@@ -34483,10 +34483,34 @@
     "1197082547": {
       "topics": [
         "economics/markets",
-        "business"
+        "business",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial guidance for healthcare professionals.",
+      "display_title": "White Coat Investor Podcast",
+      "blurb": "Host, Dr. James Dahle, is a practicing emergency physician and founder of the White Coat Investor Blog. Like the blog, the White Coat Investor Podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1197087242": {
       "topics": [
@@ -34506,10 +34530,25 @@
     },
     "1197721799": {
       "topics": [
-        "news/daily"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and economic topics.",
+      "display_title": "The Latest from KQED",
+      "blurb": "Trusted local news in real time. With updates all day long, The Latest brings you the Bay Area and California stories you need to know as they happen.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1197909615": {
       "topics": [
@@ -34564,7 +34603,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional golf commentary and tournament analysis.",
+      "display_title": "Sky Sports Golf Podcast",
+      "blurb": "Jamie Weir is joined by Sky Sports' top golf pundits each week to chat about the biggest news and talking points on and off the course. Plus, we'll ha",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1198732014": {
       "topics": [
@@ -34813,10 +34867,25 @@
     },
     "1202449205": {
       "topics": [
-        "health/alternative"
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news coverage.",
+      "display_title": "The Doctor Youn Show",
+      "blurb": "You don't need to go under the knife to look and feel younger! In The Doctor Youn Show, host and board-certified plastic surgeon Dr. Anthony Youn join",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1202557946": {
       "topics": [
@@ -34827,10 +34896,30 @@
     },
     "1202590391": {
       "topics": [
-        "news/commentary"
+        "business/startups",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Startups and entrepreneurship discussion.",
+      "display_title": "HATE TO BREAK IT TO YA with Jamie",
+      "blurb": "He’s mad as hell and he’s not going to take it anymore. HATE TO BREAK IT TO YA is a weekly podcast hosted by actor/comedian Jamie Kennedy. Jamie is on",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1202593158": {
       "topics": [
@@ -34867,7 +34956,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Basketball commentary and interviews.",
+      "display_title": "The NBA Front Office Podcast",
+      "blurb": "The NBA Front Office show is dedicated to bringing the high-level analysis of all of the latest news and rumors in the world of professional basketbal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1203289615": {
       "topics": [
@@ -34885,18 +34989,47 @@
     },
     "1203487709": {
       "topics": [
-        "tv-film/reviews"
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news coverage.",
+      "display_title": "Mac & Gu Movie Club",
+      "blurb": "Podcast bringing you friendship. Movies & TV entertain us - so we discuss them. Fantasy Drafts, Tiering, Movie Reviews, Top 10 Lists, The Question Mar",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1203497633": {
       "topics": [
-        "music",
-        "history"
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news coverage.",
+      "display_title": "Talk of Ages",
+      "blurb": "Fun with 80's + 90's Music with host Mike Tully. Enjoy bonus 'best of the rest' new release episodes (and much more) at Patreon.com/MikeTully",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1203577635": {
       "topics": [
@@ -34907,10 +35040,30 @@
     },
     "1203778895": {
       "topics": [
-        "culture/design"
+        "business/startups",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Startups and entrepreneurship discussion.",
+      "display_title": "The Honest Designers Show",
+      "blurb": "Are you a designer struggling to find your way in the modern world? Learn how to make a dent in the creative universe with Tom Ross, Ian Barnard, Dust.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1203808663": {
       "topics": [
@@ -35039,7 +35192,22 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Football commentary and analysis.",
+      "display_title": "Locked On NFL Scouting with the Draft Dudes",
+      "blurb": "Locked On NFL Scouting with the Draft Dudes podcast is your daily ticket to stay ahead of the game and the first to know the latest news, analysis, an.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1205679186": {
       "topics": [
@@ -35141,11 +35309,25 @@
     },
     "1207876943": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation and storytelling.",
+      "display_title": "Inside Psycho",
+      "blurb": "A  into the mysterious and peculiar happenings that occurred during the filming of the legendary film Psycho. Mark Ramsey Media and Wondery c",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1207947871": {
       "topics": [
@@ -35165,10 +35347,30 @@
     },
     "1208172851": {
       "topics": [
-        "music"
+        "craft/instrument-making",
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/instrument-making",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Instrument making and guitar building craftsmanship.",
+      "display_title": "Luthier on Luthier with Michael Bashkin",
+      "blurb": "Every month, luthier Michael Bashkin interviews some of his favorite fellow guitar builders, makers and creatives on the Luthier on Luthier podcast. A",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1208276423": {
       "topics": [
@@ -35374,10 +35576,25 @@
     },
     "1210544585": {
       "topics": [
-        "sports/fantasy"
+        "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baseball commentary and analysis.",
+      "display_title": "Benched with Bubba",
+      "blurb": "Benched with Bubba will be a weekly Fantasy Baseball, pop culture, humor show discussing the current topics all across the sports and entertainment la.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1210741497": {
       "topics": [
@@ -35454,10 +35671,30 @@
     },
     "1211760335": {
       "topics": [
-        "business/careers"
+        "business/startups",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Startups and entrepreneurship discussion.",
+      "display_title": "The Chad & Cheese Podcast",
+      "blurb": "Everything people and workforce—recruiting, marketing, technology, talent management, and workforce economics—delivered with biting sarcasm and unapol.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1211852349": {
       "topics": [
@@ -35636,17 +35873,67 @@
     },
     "1213062593": {
       "topics": [
-        "health/alternative"
+        "engineering/ai-robotics",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI, robotics, and machine learning topics.",
+      "display_title": "BetterHealthGuy Podcast",
+      "blurb": "BetterHealthGuy Podcast features conversations with leading experts exploring complex chronic illnesses, mold illness, chronic Lyme disease and other.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1213962617": {
       "topics": [
-        "comedy/interviews"
+        "engineering/ai-robotics",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI, robotics, and machine learning topics.",
+      "display_title": "El Bueno, la Mala y el Feo",
+      "blurb": "Bienvenido al podcast de comedia en español 'El Bueno, la Mala y el Feo', el show de humor latino más popular y querido en Estados Unidos. Conducido p",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1214052645": {
       "topics": [
@@ -35899,10 +36186,30 @@
     },
     "1218054701": {
       "topics": [
-        "news/politics"
+        "economics/markets",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investment and financial education.",
+      "display_title": "Rev Left Radio",
+      "blurb": "Discussing political philosophy, current events, activism, and the inevitable historical downfall of capitalism from a revolutionary leftist perspecti.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1218431966": {
       "topics": [
@@ -35920,10 +36227,30 @@
     },
     "1219490591": {
       "topics": [
-        "business/management"
+        "business/startups",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Startups and entrepreneurship discussion.",
+      "display_title": "2Bobs—with David C. Baker and Blair Enns",
+      "blurb": "Conversations on the art of creative entrepreneurship with David C. Baker and Blair Enns",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1219690077": {
       "topics": [
@@ -36070,10 +36397,25 @@
     },
     "1222440767": {
       "topics": [
-        "comedy/stand-up"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and economic topics.",
+      "display_title": "Russell Brand on Radio X Podcast",
+      "blurb": "The best of Russell's shows on Radio X Catch unaired content and all the best bits of Russell Brand's Radio X show on this podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1223764016": {
       "topics": [
@@ -36207,10 +36549,35 @@
     },
     "1224373139": {
       "topics": [
-        "music"
+        "engineering/ai-robotics",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI, robotics, and machine learning topics.",
+      "display_title": "The Oasis Podcast",
+      "blurb": "Oasis Podcast is the only ongoing podcast/ radio show dedicated to the most influential band of the 1990s, Oasis. We  into the history of the gro",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1224537445": {
       "topics": [
@@ -36315,7 +36682,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baseball commentary and analysis.",
+      "display_title": "PHNX Arizona Diamondbacks Podcast",
+      "blurb": "The PHNX Diamondbacks Podcast is your daily destination for all things Arizona Diamondbacks. Hosted by Derek Montilla, this show combines expert analy",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1227283335": {
       "topics": [
@@ -36463,7 +36845,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional golf commentary and tournament analysis.",
+      "display_title": "The ModGolf Podcast",
+      "blurb": "The ModGolf Podcast talks with golf's top influencers, entrepreneurs, innovators and disruptors about their vision and ventures that are re-imagining,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1230953658": {
       "topics": [
@@ -36589,10 +36986,25 @@
     },
     "1232121527": {
       "topics": [
-        "comedy/stand-up"
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news coverage.",
+      "display_title": "I SHAKE MY HEAD",
+      "blurb": "Get ready to laugh out loud with I Shake My Head, the weekly podcast where best friends Lisa Gibson and Samantha Sperling—partners in crime for over 2.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1232131110": {
       "topics": [
@@ -36720,11 +37132,25 @@
     },
     "1234433429": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news coverage.",
+      "display_title": "DEER HUNTER",
+      "blurb": "A community of both professional and relatively unprofessional outdoorsman. A platform created to Entertain,Educate,and Evolve the modern day Deer Hun",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1234462477": {
       "topics": [
@@ -36878,17 +37304,57 @@
     },
     "1237389947": {
       "topics": [
-        "business/careers"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and economic topics.",
+      "display_title": "Keeping It Real Podcast • Secrets Of Top",
+      "blurb": "Secrets of top 1% realtors and real estate agents!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1237480229": {
       "topics": [
-        "music"
+        "engineering/ai-robotics",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI, robotics, and machine learning topics.",
+      "display_title": "Watch Battles",
+      "blurb": "Take a seat at the Watch table and listen to some of the culture's most influential rap battles with our special guests!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1237636223": {
       "topics": [
@@ -36957,7 +37423,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby commentary and analysis.",
+      "display_title": "The Shark Tank | A Sale Sharks Podcast",
+      "blurb": "Join Alex, James, Jack and Tom for the Northern Powerhouse of rugby podcasting, with a detailed, irreverent and occassionally cynical look at all thin.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1239901676": {
       "topics": [
@@ -36969,10 +37450,35 @@
     },
     "1240313993": {
       "topics": [
-        "sports/wrestling"
+        "engineering/ai-robotics",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI, robotics, and machine learning topics.",
+      "display_title": "The Bader Show",
+      "blurb": "Mark Bader and friends interview the biggest names in the sport of wrestling. Hear from your favorite wrestlers and coaches about their experiences in",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1240392123": {
       "topics": [
@@ -37092,10 +37598,30 @@
     },
     "1242155321": {
       "topics": [
-        "kids-family/parenting"
+        "craft/photography",
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Photography and visual arts.",
+      "display_title": "Australian Birth Stories",
+      "blurb": "A Podcast of Mothers' stories of childbirth. Weekly interviews with mothers giving their first hand accounts of child birth in Australia. Designed to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1242394336": {
       "topics": [
@@ -37144,10 +37670,35 @@
     },
     "1243181579": {
       "topics": [
-        "health/alternative"
+        "engineering/ai-robotics",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI, robotics, and machine learning topics.",
+      "display_title": "The Plant Path: Herbalism, Medical Astrology & Spagyric",
+      "blurb": "The Plant Path is the official podcast from Sajah Popham and The School of Evolutionary Herbalism. Our goal is to provide insights, skills and tools f",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1243452578": {
       "topics": [
@@ -37182,17 +37733,47 @@
     },
     "1244256551": {
       "topics": [
-        "medicine"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and economic topics.",
+      "display_title": "JAMA Medical News",
+      "blurb": "Discussions of timely topics in clinical medicine, biomedical research, public health, health policy, and more, featured in the Medical News section o.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1244348213": {
       "topics": [
-        "true-crime"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and economic topics.",
+      "display_title": "A Date With Dateline",
+      "blurb": "Kimberly and Katie are professional true crime TV experts with no formal training but evidence lockers filled with snark and uninformed opinions. Kati",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1244644906": {
       "topics": [
@@ -37236,10 +37817,25 @@
     },
     "1245197159": {
       "topics": [
-        "sports/soccer"
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news coverage.",
+      "display_title": "Claret & Blue Podcast",
+      "blurb": "Welcome to Claret & Blue - a podcast about all things Aston Villa. Hosted by Dan Rolinson, Mat Kendrick & John Townley. On this podcast feed, we'll be",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1245307962": {
       "topics": [
@@ -37320,10 +37916,35 @@
     },
     "1246042223": {
       "topics": [
-        "culture/books"
+        "engineering/ai-robotics",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI, robotics, and machine learning topics.",
+      "display_title": "Reading Glasses",
+      "blurb": "Want to learn how to make the most of your reading life? Join Brea Grant and Mallory O’Meara every week as they discuss tips and tricks for reading be.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1246319802": {
       "topics": [
@@ -37350,10 +37971,30 @@
     },
     "1246838453": {
       "topics": [
-        "culture/fashion"
+        "business/startups",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Startups and entrepreneurship discussion.",
+      "display_title": "Fashion Your Seatbelt",
+      "blurb": "The Fashion Your Seatbelt podcast gives its listeners the rare opportunity to hear from some of the leading voices working in the fashion industry tod.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1246991088": {
       "topics": [
@@ -37390,10 +38031,35 @@
     },
     "1247425397": {
       "topics": [
-        "kids-family/education"
+        "engineering/ai-robotics",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI, robotics, and machine learning topics.",
+      "display_title": "Fun Kids Science Quest",
+      "blurb": "Exploring the coolest and most incredible stuff in science, from way back when dinosaurs roamed the Earth to a future where humans live in space! Fun.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1247526593": {
       "topics": [
@@ -37515,7 +38181,22 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Football commentary and analysis.",
+      "display_title": "GoVols247: A Tennessee Volunteers athletics podcast",
+      "blurb": "GoVols247 writers Ben McKee, Ryan Callahan and Patrick Brown discuss anything and everything related to University of Tennessee sports and much more.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1250155987": {
       "topics": [
@@ -37534,11 +38215,25 @@
     },
     "1250583707": {
       "topics": [
-        "sports",
-        "news"
+        "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Football commentary and analysis.",
+      "display_title": "X's and BrO's",
+      "blurb": "Matt Shepard is the host of the X's and Bro's Morning Show heard live across the state of Michigan every weekday morning. An award winning Detroit spo",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1250599915": {
       "topics": [
@@ -37639,10 +38334,35 @@
     },
     "1252855301": {
       "topics": [
-        "religion/buddhism"
+        "engineering/ai-robotics",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI, robotics, and machine learning topics.",
+      "display_title": "Thousand Harbours Zen",
+      "blurb": "Dharma talks by Koun Franz at Thousand Harbours Zen in Halifax, NS. If you find these talks beneficial, please consider joining Thousand Harbours Zen",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1252877095": {
       "topics": [
@@ -37869,10 +38589,30 @@
     },
     "1256002667": {
       "topics": [
-        "religion/spirituality"
+        "business/startups",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Startups and entrepreneurship discussion.",
+      "display_title": "The Pivot",
+      "blurb": "\"What happens when life stops working?\" Musician / Author Andrew Osenga talks with thinkers, artists, scientists and theologians about dealing with ch.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1256091892": {
       "topics": [
@@ -37884,10 +38624,25 @@
     },
     "1256660459": {
       "topics": [
-        "news/daily"
+        "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional golf commentary and tournament analysis.",
+      "display_title": "Down in Alabama with Ike Morgan",
+      "blurb": "Start your morning with the latest news and stories from Alabama. Then, hear the stories behind the stories as Ike Morgan is joined by voices from the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1256689090": {
       "topics": [
@@ -38118,11 +38873,35 @@
     },
     "1259689715": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "engineering/ai-robotics",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI, robotics, and machine learning topics.",
+      "display_title": "Less Stressed Life: Helping You Heal Yourself",
+      "blurb": "Welcome to the Less Stressed Life. If you’re here, I bet we have a few things in common. We’re both in pursuit of a Less Stressed Life. But we don’t",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1260073690": {
       "topics": [
@@ -38163,10 +38942,28 @@
     },
     "1260430031": {
       "topics": [
-        "culture/performing-arts"
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily news coverage.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1260471553": {
       "topics": [
@@ -38249,7 +39046,22 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation and storytelling.",
+      "display_title": "Moms and Mysteries: A True Crime Podcast",
+      "blurb": "Two Florida moms, hundreds of mysteries, and one obsession: 'How did this happen?' Mandy and Melissa bring you twice-a-week s into true crime.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1261694828": {
       "topics": [
@@ -38339,10 +39151,30 @@
     },
     "1262608127": {
       "topics": [
-        "business/careers"
+        "business/startups",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Startups and entrepreneurship discussion.",
+      "display_title": "The Digital Project Manager",
+      "blurb": "The Digital Project Manager is the home of digital project management inspiration, how-to guides, tips, tricks, tools, funnies, and jobs. We provide p",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1262689195": {
       "topics": [
@@ -38403,10 +39235,25 @@
     },
     "1264424015": {
       "topics": [
-        "true-crime"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and economic topics.",
+      "display_title": "Criminology",
+      "blurb": "Criminology is a true crime podcast that takes a  into some of the most famous cases in the annals of crime. Hosts Mike Ferguson and Mike Mor",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-633c2134",
+      "classified_at": "2026-07-31T09:01:11.287Z"
     },
     "1264427749": {
       "topics": [
