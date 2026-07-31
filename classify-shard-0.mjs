@@ -1,454 +1,308 @@
 import fs from 'fs';
 
-const batchFile = '/home/user/foray/data-local/classify-batch-fresh-2026-07-28-783dbae1.json';
-const taxonomyFile = '/home/user/foray/data/taxonomy.json';
-const batch = JSON.parse(fs.readFileSync(batchFile, 'utf8'));
-const taxonomy = JSON.parse(fs.readFileSync(taxonomyFile, 'utf8'));
+const batchPath = '/home/user/foray/data-local/classify-batch-fresh-2026-07-31-b56e0c11.json';
+const resultsPath = '/home/user/foray/data-local/classify-results-fresh-2026-07-31-b56e0c11.json';
 
-const validNodeIds = new Set(taxonomy.nodes.map(n => n.id));
+const batch = JSON.parse(fs.readFileSync(batchPath, 'utf8'));
 
 const results = {
   batch_id: batch.batch_id,
   results: {}
 };
 
-// Classification logic for each show
-const classify = (show) => {
-  const { apple_collection_id, title, description, episodes, tier0_prior } = show;
-
-  // Prepare signal: description + episode titles/descriptions
-  const episodeSignal = episodes
-    .map(e => `${e.title} ${e.description || ''}`.toLowerCase())
-    .join(' ');
-  const signal = `${description} ${episodeSignal}`.toLowerCase();
-
-  // Helper to check keywords
-  const has = (keywords) => keywords.some(k => signal.includes(k.toLowerCase()));
+function classifyShow(show) {
+  const id = String(show.apple_collection_id);
+  const title = show.title;
+  const desc = (show.description || '').toLowerCase();
+  const episodes = show.episodes || [];
+  const episodeTexts = episodes.map(e => `${e.title} ${e.description}`).join(' ').toLowerCase();
+  const fullText = `${title} ${desc} ${episodeTexts}`.toLowerCase();
 
   let topics = [];
-  let needs_review = false;
+  let needsReview = false;
   let rationale = '';
-  let display_title = title;
+  let displayTitle = title;
   let blurb = '';
 
-  // Classification rules per show
-  if (title.includes('Marathon Handbook')) {
-    topics = [
-      { node: 'sports/endurance', confidence: 0.95 },
-      { node: 'health/fitness', confidence: 0.85 }
-    ];
-    rationale = 'Running training, marathons, race prep and fitness guidance.';
-    blurb = 'Weekly running podcast with training tips, race coverage, and interviews with elite athletes.';
-  } else if (title === 'بودكاست آن') {
-    topics = [
-      { node: 'society', confidence: 0.85 },
-      { node: 'psychology', confidence: 0.7 }
-    ];
-    needs_review = true;
-    rationale = 'Arabic social commentary and psychological interviews with thinkers.';
-    blurb = 'Arab voices discussing society, identity, family and cultural change.';
-  } else if (title === 'Kinsey Schofield Unfiltered') {
-    topics = [
-      { node: 'culture/pop-culture', confidence: 0.9 },
-      { node: 'news/commentary', confidence: 0.75 }
-    ];
-    rationale = 'Royal family drama and celebrity gossip with daily pop culture commentary.';
-    blurb = 'Daily royal and celebrity news with analysis and expert guests.';
-  } else if (title === 'Deep Dive: Space Mysteries Unveiled') {
-    topics = [
-      { node: 'space', confidence: 0.95 },
-      { node: 'science/physics', confidence: 0.9 }
-    ];
-    rationale = 'Cosmology, black holes, quantum physics and frontier astronomy exploration.';
-    blurb = 'Explores cosmic mysteries: black holes, quantum enigmas, and the search for life beyond Earth.';
-  } else if (title === 'DOUBLE COVERAGE PODCAST') {
-    // Mixed sports content with UFC/MMA and boxing
-    topics = [
-      { node: 'sports', confidence: 0.75 }
-    ];
-    needs_review = true;
-    rationale = 'Multi-sport coverage spanning football, UFC, MMA and boxing with athlete interviews.';
-    blurb = 'Sports podcast covering combat sports, boxing, and other athletic pursuits.';
-  } else if (title === 'پادکست اتاق تراپی | The Therapy Room') {
-    topics = [
-      { node: 'health/mental', confidence: 0.9 },
-      { node: 'psychology', confidence: 0.85 }
-    ];
-    rationale = 'Clinical psychology, therapeutic techniques, relationship dynamics with licensed therapists.';
-    blurb = 'Psychology podcast with clinical therapists discussing real relationships and mental health.';
-  } else if (title === 'Midnight Shadows') {
-    // Description says horror/mysteries, but episodes are grammar lessons - mismatch
-    topics = [
-      { node: 'education', confidence: 0.65 }
-    ];
-    needs_review = true;
-    rationale = 'Feed description claims horror stories, but episodes teach English grammar and language.';
-    blurb = 'Misleading title; actually teaches English language, grammar and reading skills.';
-  } else if (title === 'The Zooquarium Podcast') {
-    topics = [
-      { node: 'nature/animal-cognition', confidence: 0.85 },
-      { node: 'kids-family/education', confidence: 0.8 }
-    ];
-    rationale = 'Animal biology, ecosystems, and wildlife education from scientist and artist educators.';
-    blurb = 'Animal science and ecosystems explained for families, merging education with creative storytelling.';
-  } else if (title === 'Curse of: America\'s Next Top Model') {
-    topics = [
-      { node: 'tv-film', confidence: 0.8 },
-      { node: 'society', confidence: 0.75 }
-    ];
-    rationale = 'Reality TV investigation: hidden costs of ANTM, contestant interviews, cultural critique.';
-    blurb = 'Documentary-style investigation into ANTM legacy, contestant experiences, and reality TV ethics.';
-  } else if (title === 'Tides of Lore') {
-    topics = [
-      { node: 'gaming/design', confidence: 0.85 },
-      { node: 'fiction', confidence: 0.7 }
-    ];
-    rationale = 'World of Warcraft lore analysis: novels, game narratives, character storylines.';
-    blurb = 'Deep-dive into World of Warcraft lore, story arcs, and game narratives.';
-  } else if (title === 'Dark Frights Horror News With Jimmy Star') {
-    topics = [
-      { node: 'tv-film/reviews', confidence: 0.9 },
-      { node: 'culture', confidence: 0.6 }
-    ];
-    rationale = 'Horror film and TV news, indie horror reviews, director interviews and genre coverage.';
-    blurb = 'Horror news and film reviews with indie horror coverage and industry guests.';
-  } else if (title === 'School of Practice') {
-    topics = [
-      { node: 'education/how-to', confidence: 0.9 }
-    ];
-    rationale = 'K-12 teaching strategies, classroom community building, grading and differentiation methods.';
-    blurb = 'Research-backed teaching strategies in 15-minute episodes for classroom improvement.';
-  } else if (title === 'Jane Austen Stories') {
-    topics = [
-      { node: 'fiction/drama', confidence: 0.95 },
-      { node: 'culture/books', confidence: 0.75 }
-    ];
-    rationale = 'Narrated Jane Austen novels, specifically Pride and Prejudice, regency drama fiction.';
-    blurb = 'Jane Austen classics narrated by Julie Andrews: Pride and Prejudice full-cast production.';
-  } else if (title === 'A Podcast About Leadership') {
-    topics = [
-      { node: 'business/management', confidence: 0.95 }
-    ];
-    rationale = 'Leadership development, executive challenges, neuroscience and organizational culture.';
-    blurb = 'Leadership insights from business leaders, psychologists, and neuroscience experts.';
-  } else if (title === 'Home Grown with Martha and Jamie') {
-    topics = [
-      { node: 'craft/diy-home', confidence: 0.9 },
-      { node: 'food', confidence: 0.5 }
-    ];
-    rationale = 'Urban gardening, vegetable growing, sustainability, seasonal cultivation techniques.';
-    blurb = 'Gardening podcast for growers: practical tips from seed to harvest, seasonal advice.';
-  } else if (title === 'Dark Romance Porn Stories') {
-    topics = [
-      { node: 'health/sexuality', confidence: 0.95 },
-      { node: 'relationships', confidence: 0.6 }
-    ];
-    rationale = 'Erotic audio stories, dark romance fantasy scenarios, adult fiction content.';
-    blurb = 'Erotic audio fiction stories exploring intimate fantasies and dark romance themes.';
-  } else if (title === 'SIS: Sisters in Survivorship') {
-    topics = [
-      { node: 'health/mental', confidence: 0.8 },
-      { node: 'society', confidence: 0.75 }
-    ];
-    rationale = 'Black women\'s breast cancer survivorship, advocacy, medical guidance and support.';
-    blurb = 'Podcast amplifying Black women navigating breast cancer: survivor stories and medical insight.';
-  } else if (title.includes('Lets Rap About it')) {
-    topics = [
-      { node: 'music', confidence: 0.85 },
-      { node: 'culture/pop-culture', confidence: 0.7 }
-    ];
-    rationale = 'Hip-hop culture, music trends, viral topics, NYC hip-hop insider perspectives.';
-    blurb = 'Hip-hop podcast with unfiltered culture commentary and trending topic reactions.';
-  } else if (title === 'Hungry Dogs with James Patterson') {
-    topics = [
-      { node: 'personal-journals', confidence: 0.85 },
-      { node: 'culture', confidence: 0.7 }
-    ];
-    rationale = 'Author James Patterson interviews notable figures: authors, musicians, politicians.';
-    blurb = 'Bestselling author James Patterson interviews notable creators and leaders.';
-  } else if (title === 'Mostly Thriving Podcast with Amanda + TJ') {
-    topics = [
-      { node: 'personal-journals', confidence: 0.85 },
-      { node: 'relationships', confidence: 0.8 }
-    ];
-    rationale = 'Married couple discuss parenting, mental health, business, marriage and life balance.';
-    blurb = 'Married hosts share raw conversations about parenting, business, marriage and mental health.';
-  } else if (title === 'The Gospel Proclaimed') {
-    topics = [
-      { node: 'religion/christianity', confidence: 0.95 }
-    ];
-    rationale = 'Biblical preaching and theology: Genesis commentary and Christian scriptural interpretation.';
-    blurb = 'Christian preaching podcast: theological study of Scripture and gospel messages.';
-  } else if (title === 'Boring History For Sleep | Gentle Storytelling And Ambient Sounds (Official)') {
-    topics = [
-      { node: 'history', confidence: 0.8 },
-      { node: 'tv-film/history', confidence: 0.7 }
-    ];
-    rationale = 'Historical storytelling with ambient sounds for sleep: ancient civilizations, war history.';
-    blurb = 'Calming history stories with ambient sounds: ancient civilizations to modern times.';
-  } else if (title === 'TWRS-Leadership Straight, No Chaser') {
-    topics = [
-      { node: 'business/management', confidence: 0.8 }
-    ];
-    rationale = 'Leadership advice and workplace culture guidance with direct, no-nonsense approach.';
-    blurb = 'Practical leadership and workplace culture guidance without corporate jargon.';
-  } else if (title === 'Tier1 Podcast') {
-    topics = [];
-    needs_review = true;
-    rationale = 'Insufficient data to classify.';
-    blurb = 'Unknown podcast content; insufficient episode data available.';
-  } else if (title === 'Today in Geography') {
-    topics = [
-      { node: 'education', confidence: 0.8 },
-      { node: 'society/government', confidence: 0.5 }
-    ];
-    rationale = 'Geography education, world places, cultures and locations learning.';
-    blurb = 'Daily geography lessons and world cultures education.';
-  } else if (title === 'The Sailing Podcast') {
-    topics = [
-      { node: 'sports', confidence: 0.75 },
-      { node: 'adventure', confidence: 0.7 }
-    ];
-    rationale = 'Sailing sport, nautical navigation, maritime adventure and sailing techniques.';
-    blurb = 'Sailing techniques, maritime adventure and navigation for water sports enthusiasts.';
-  } else if (title === 'Vegas Law') {
-    topics = [
-      { node: 'society/law', confidence: 0.85 }
-    ];
-    rationale = 'Legal topics, law commentary, Nevada legal system and attorney perspectives.';
-    blurb = 'Legal insights and law commentary from attorney hosts.';
-  } else if (title === 'Twenty Something with Olivia Burnett') {
-    topics = [
-      { node: 'personal-journals', confidence: 0.8 },
-      { node: 'relationships', confidence: 0.75 }
-    ];
-    rationale = 'Life in your twenties: relationships, careers, personal growth and young adult experiences.';
-    blurb = 'Personal stories and advice for navigating your twenties: love, work, life.';
-  } else if (title === 'Talkin\' Schmitt') {
-    topics = [];
-    needs_review = true;
-    rationale = 'Insufficient episode data to classify.';
-    blurb = 'Podcast with limited available content information.';
-  } else if (title === 'Bearing Scars') {
-    topics = [
-      { node: 'society', confidence: 0.7 }
-    ];
-    needs_review = true;
-    rationale = 'Show title and content unclear from available data.';
-    blurb = 'Show with limited description and episode information.';
-  } else if (title === '⚡️MENOPUNKS PODCAST ⚡️') {
-    topics = [
-      { node: 'health', confidence: 0.85 },
-      { node: 'culture/pop-culture', confidence: 0.6 }
-    ];
-    rationale = 'Menopause health, women\'s wellness, humor and cultural commentary on aging.';
-    blurb = 'Podcast discussing menopause, women\'s health, and cultural perspectives on aging.';
-  } else if (title === 'Save the Therapist') {
-    topics = [
-      { node: 'health/mental', confidence: 0.85 },
-      { node: 'society', confidence: 0.6 }
-    ];
-    rationale = 'Mental health, therapy practices, therapist wellness and psychological support.';
-    blurb = 'Mental health podcast addressing therapy, wellbeing, and therapist perspectives.';
-  } else if (title === 'The Rest Is Science') {
-    topics = [
-      { node: 'science', confidence: 0.9 }
-    ];
-    rationale = 'General science podcast covering research, discoveries and scientific topics.';
-    blurb = 'Science podcast exploring research, discoveries and scientific inquiry.';
-  } else if (title === 'Okay, But... Birds') {
-    topics = [
-      { node: 'nature/animal-cognition', confidence: 0.9 },
-      { node: 'education', confidence: 0.6 }
-    ];
-    rationale = 'Bird biology, ornithology, wildlife observation and avian science.';
-    blurb = 'Bird science and ornithology: species behavior, ecology and wildlife watching.';
-  } else if (title === 'Selling Sanity') {
-    topics = [
-      { node: 'business/marketing', confidence: 0.8 },
-      { node: 'health/mental', confidence: 0.6 }
-    ];
-    rationale = 'Marketing and wellness intersection, business psychology and consumer behavior.';
-    blurb = 'Podcast exploring marketing, business strategy and mental health intersections.';
-  } else if (title === 'Rachel Maddow Presents: Burn Order') {
-    topics = [
-      { node: 'news/politics', confidence: 0.85 },
-      { node: 'true-crime', confidence: 0.7 }
-    ];
-    rationale = 'Political investigation and current affairs with Rachel Maddow.';
-    blurb = 'Political investigation and news analysis from Rachel Maddow.';
-  } else if (title === 'Game Over with Max Kellerman and Rich Paul') {
-    topics = [
-      { node: 'sports', confidence: 0.85 }
-    ];
-    rationale = 'Sports commentary, basketball insights and sports industry discussion.';
-    blurb = 'Sports podcast with expert commentary on basketball and sports industry.';
-  } else if (title === 'Bigger Than Belief') {
-    topics = [
-      { node: 'religion', confidence: 0.8 }
-    ];
-    rationale = 'Religion, spirituality and faith-based discussion.';
-    blurb = 'Religious and spiritual perspectives and faith discussions.';
-  } else if (title === 'Old Bull/ Young Bull: The Charlie\'s Fly Box Podcast') {
-    topics = [
-      { node: 'hobbies', confidence: 0.85 },
-      { node: 'sports', confidence: 0.6 }
-    ];
-    rationale = 'Fly fishing hobby, technique, rivers and outdoor recreation discussion.';
-    blurb = 'Fly fishing podcast: techniques, rivers, and fishing adventures.';
-  } else if (title === 'Open Exam Prep') {
-    topics = [
-      { node: 'education', confidence: 0.9 }
-    ];
-    rationale = 'Educational exam preparation guidance and study strategies.';
-    blurb = 'Exam preparation guidance and study strategies for standardized tests.';
-  } else if (title === 'Decisions That Built a Business') {
-    topics = [
-      { node: 'business/founders', confidence: 0.85 }
-    ];
-    rationale = 'Founder interviews and business decision-making history from entrepreneurs.';
-    blurb = 'Founder interviews exploring key business decisions and entrepreneurial journeys.';
-  } else if (title === 'Very Vehicular') {
-    topics = [
-      { node: 'automotive', confidence: 0.85 },
-      { node: 'hobbies', confidence: 0.6 }
-    ];
-    rationale = 'Automotive culture, car discussion and vehicle enthusiast content.';
-    blurb = 'Automotive podcast exploring cars, vehicles and driving culture.';
-  } else if (title === 'Let\'s Talk Blood Cancer, The Patients\' Podcast') {
-    topics = [
-      { node: 'health', confidence: 0.9 },
-      { node: 'society', confidence: 0.6 }
-    ];
-    rationale = 'Blood cancer patient experiences, medical information and survivor stories.';
-    blurb = 'Patient stories and medical information about blood cancer and survivorship.';
-  } else if (title === 'Media Monitor') {
-    topics = [
-      { node: 'news', confidence: 0.75 }
-    ];
-    rationale = 'Media criticism and monitoring of news and journalism trends.';
-    blurb = 'Critical analysis of media, news coverage and journalism.';
-  } else if (title === 'Slightly Above Average Podcast') {
-    topics = [
-      { node: 'culture/pop-culture', confidence: 0.7 }
-    ];
-    needs_review = true;
-    rationale = 'Podcast content unclear from available data.';
-    blurb = 'Podcast with limited content information available.';
-  } else if (title === 'Plaintext with Rich') {
-    topics = [
-      { node: 'computing', confidence: 0.8 },
-      { node: 'news/tech', confidence: 0.75 }
-    ];
-    rationale = 'Technology and computing topics, tech industry commentary.';
-    blurb = 'Technology and computing podcast exploring tech industry and innovation.';
-  } else if (title === 'The BIG T') {
-    topics = [];
-    needs_review = true;
-    rationale = 'Show content and focus unclear from available data.';
-    blurb = 'Podcast with insufficient information for classification.';
-  } else if (title === 'Butch Queen After Dark') {
-    topics = [
-      { node: 'culture/pop-culture', confidence: 0.8 },
-      { node: 'lgbtq', confidence: 0.75 }
-    ];
-    needs_review = true;
-    rationale = 'LGBTQ+ culture and entertainment podcast; genre context needed.';
-    blurb = 'LGBTQ+ culture and entertainment podcast with community focus.';
-  } else if (title === 'Insurance Exam Prep') {
-    topics = [
-      { node: 'education', confidence: 0.85 },
-      { node: 'business', confidence: 0.6 }
-    ];
-    rationale = 'Insurance licensing and exam preparation educational content.';
-    blurb = 'Exam preparation for insurance licensing and professional certifications.';
-  } else if (title === 'Unearthing Optimism') {
-    topics = [
-      { node: 'society', confidence: 0.75 },
-      { node: 'philosophy/ideas', confidence: 0.7 }
-    ];
-    rationale = 'Philosophy of optimism, positive perspectives and cultural hope.';
-    blurb = 'Podcast exploring optimism, hope, and positive perspectives on society.';
-  } else if (title === 'They Call Her Mother Podcast: Faith, Family and Legacy') {
-    topics = [
-      { node: 'personal-journals', confidence: 0.8 },
-      { node: 'religion', confidence: 0.7 }
-    ];
-    rationale = 'Women\'s experiences, family, faith and personal narratives.';
-    blurb = 'Stories of mothers, family, faith and personal legacy.';
-  } else if (title === 'The Forward Party Podcast') {
-    topics = [
-      { node: 'news/politics', confidence: 0.85 }
-    ];
-    rationale = 'Political movement discussion and commentary from The Forward Party.';
-    blurb = 'Political podcast from The Forward Party exploring policy and governance.';
-  } else if (title === 'MCAT King Personalized MCAT Prep and Medical School Coaching') {
-    topics = [
-      { node: 'education', confidence: 0.9 },
-      { node: 'health', confidence: 0.5 }
-    ];
-    rationale = 'Medical school preparation, MCAT exam strategies and pre-med coaching.';
-    blurb = 'MCAT preparation and medical school coaching for pre-med students.';
-  } else if (title === 'THE BURNOUT ROOM') {
-    topics = [
-      { node: 'health/mental', confidence: 0.85 },
-      { node: 'business/management', confidence: 0.6 }
-    ];
-    rationale = 'Burnout prevention, mental health at work and workplace wellbeing.';
-    blurb = 'Mental health podcast addressing workplace burnout and wellbeing.';
-  } else if (title === 'The Interface') {
-    topics = [
-      { node: 'news/tech', confidence: 0.8 },
-      { node: 'computing', confidence: 0.75 }
-    ];
-    rationale = 'Technology news and computing topics with cultural commentary.';
-    blurb = 'Technology and computing news with cultural perspectives.';
+  // Classify based on title and content
+  if (title.includes('Blazers') || fullText.includes('portland trail blazers')) {
+    topics.push({ node: 'sports/basketball', confidence: 0.95 });
+    rationale = 'Daily podcast analyzing Portland Trail Blazers roster, trades, and NBA news.';
+    blurb = 'Expert local coverage of the Portland Trail Blazers and NBA.';
+  } else if (title.includes('Rockets') && title.includes('Houston')) {
+    topics.push({ node: 'sports/basketball', confidence: 0.95 });
+    rationale = 'Daily analysis of Houston Rockets players, strategy, and NBA developments.';
+    blurb = 'Daily Rockets analysis with local expertise and NBA coverage.';
+  } else if (title === 'Everyday Tech') {
+    topics.push({ node: 'news/tech', confidence: 0.9 });
+    topics.push({ node: 'education/how-to', confidence: 0.6 });
+    rationale = 'Consumer technology news, troubleshooting, and product reviews.';
+    blurb = 'Weekly guide to consumer tech news, products, and solutions.';
+  } else if (title.includes('Celtics')) {
+    topics.push({ node: 'sports/basketball', confidence: 0.95 });
+    rationale = 'Daily Boston Celtics game analysis and NBA basketball coverage.';
+    blurb = 'NBC Sports coverage of Celtics games and NBA analysis.';
+  } else if (title === 'Liberty Lockdown') {
+    topics.push({ node: 'news/commentary', confidence: 0.7 });
+    topics.push({ node: 'news/politics', confidence: 0.6 });
+    rationale = 'Political news and libertarian commentary on current events.';
+    blurb = 'Political analysis and current affairs commentary.';
+    needsReview = true;
+  } else if (title.includes('Raiders')) {
+    topics.push({ node: 'sports/football', confidence: 0.95 });
+    rationale = 'Daily Las Vegas Raiders NFL game analysis and roster coverage.';
+    blurb = 'Daily NFL coverage of Las Vegas Raiders games and strategy.';
+  } else if (title.includes('Buckeye') || title.includes('Ohio State')) {
+    topics.push({ node: 'sports/football', confidence: 0.95 });
+    rationale = 'Ohio State Buckeyes college football analysis and game coverage.';
+    blurb = 'College football coverage of Ohio State Buckeyes.';
+  } else if (title.includes('Panpsycast') || fullText.includes('philosophy')) {
+    topics.push({ node: 'philosophy', confidence: 0.85 });
+    topics.push({ node: 'philosophy/ideas', confidence: 0.8 });
+    rationale = 'Philosophy discussions exploring diverse ideas and thinkers.';
+    blurb = 'Philosophical discussions on ideas and human thought.';
+  } else if (title.includes('Your Parenting')) {
+    topics.push({ node: 'kids-family/parenting', confidence: 0.85 });
+    topics.push({ node: 'education/self-improvement', confidence: 0.75 });
+    rationale = 'Research-based parenting advice and child development strategies.';
+    blurb = 'Research-backed parenting guidance for child development.';
+  } else if (title.includes('American Banker')) {
+    topics.push({ node: 'news/tech', confidence: 0.7 });
+    topics.push({ node: 'economics/markets', confidence: 0.65 });
+    rationale = 'Banking industry news and financial technology developments.';
+    blurb = 'Banking sector and fintech industry news.';
+  } else if (title === 'Behind the Mic') {
+    topics.push({ node: 'comedy/interviews', confidence: 0.8 });
+    topics.push({ node: 'culture/performing-arts', confidence: 0.7 });
+    rationale = 'Interviews with performers, comedians, and entertainment professionals.';
+    blurb = 'Behind-the-scenes interviews with comedians and performers.';
+  } else if (title.includes('Beltway')) {
+    topics.push({ node: 'sports/football', confidence: 0.9 });
+    rationale = 'Washington football team coverage and NFL analysis.';
+    blurb = 'Football coverage and Washington NFL team analysis.';
+  } else if (title === 'Danger Dan\'s Talk Shop') {
+    topics.push({ node: 'comedy/casual-hangs', confidence: 0.8 });
+    rationale = 'Casual conversations, comedy banter, and entertainment.';
+    blurb = 'Comedy conversations with celebrity guests.';
+  } else if (title.includes('X-Cast') || title.includes('X-Files')) {
+    topics.push({ node: 'tv-film/reviews', confidence: 0.85 });
+    topics.push({ node: 'fiction/sci-fi', confidence: 0.8 });
+    rationale = 'Episode-by-episode analysis and discussion of X-Files.';
+    blurb = 'X-Files episode analysis and series discussion.';
+  } else if (title.includes('Pacers')) {
+    topics.push({ node: 'sports/basketball', confidence: 0.95 });
+    rationale = 'Daily Indiana Pacers NBA game analysis and roster news.';
+    blurb = 'Daily coverage of Indiana Pacers NBA games.';
+  } else if (title.includes('Jazz')) {
+    topics.push({ node: 'music', confidence: 0.9 });
+    topics.push({ node: 'culture', confidence: 0.65 });
+    rationale = 'Jazz music performances and radio series.';
+    blurb = 'Jazz music programming and live performances.';
+  } else if (title.includes('Habit')) {
+    topics.push({ node: 'health/mental', confidence: 0.85 });
+    topics.push({ node: 'education/self-improvement', confidence: 0.75 });
+    rationale = 'Mental health strategies and behavioral habit formation.';
+    blurb = 'Habit-building and mental health wellness advice.';
+  } else if (title.includes('Suns') && title.includes('Phoenix')) {
+    topics.push({ node: 'sports/basketball', confidence: 0.95 });
+    rationale = 'Daily Phoenix Suns NBA game analysis and basketball coverage.';
+    blurb = 'Daily coverage of Phoenix Suns NBA games.';
+  } else if (title.includes('What If World')) {
+    topics.push({ node: 'kids-family/stories', confidence: 0.95 });
+    rationale = 'Imaginative storytelling and creative scenarios for children.';
+    blurb = 'Creative storytelling and imaginative adventures for kids.';
+  } else if (title.includes('Live Inspired')) {
+    topics.push({ node: 'education/self-improvement', confidence: 0.9 });
+    topics.push({ node: 'psychology', confidence: 0.7 });
+    rationale = 'Motivation and personal development through inspiring stories.';
+    blurb = 'Inspirational interviews and personal development.';
+  } else if (title.includes('Playbook')) {
+    topics.push({ node: 'business/management', confidence: 0.8 });
+    topics.push({ node: 'sports', confidence: 0.65 });
+    rationale = 'Leadership strategies from sports applied to business.';
+    blurb = 'Leadership lessons from sports professionals.';
+  } else if (title.includes('Home Service')) {
+    topics.push({ node: 'business/startups', confidence: 0.85 });
+    rationale = 'Business growth strategies for home service entrepreneurs.';
+    blurb = 'Business strategies for home service entrepreneurs.';
+  } else if (title.includes('Triathlon')) {
+    topics.push({ node: 'sports/endurance', confidence: 0.95 });
+    topics.push({ node: 'health/fitness', confidence: 0.75 });
+    rationale = 'Triathlon training, racing, and endurance sport advice.';
+    blurb = 'Triathlon training tips and endurance sports.';
+  } else if (fullText.includes('dj') || fullText.includes('电音') || fullText.includes('瑾')) {
+    topics.push({ node: 'music', confidence: 0.85 });
+    rationale = 'Electronic dance music and DJ programming.';
+    blurb = 'Electronic dance music and DJ mixes.';
+  } else if (title === 'Griefcast') {
+    topics.push({ node: 'health/mental', confidence: 0.95 });
+    rationale = 'Conversations about grief, loss, and bereavement support.';
+    blurb = 'Discussions about grief, loss, and emotional support.';
+  } else if (title.includes('Wild Ideas')) {
+    topics.push({ node: 'adventure/exploration', confidence: 0.9 });
+    topics.push({ node: 'travel', confidence: 0.85 });
+    rationale = 'Adventure travel stories and exploration of wild places.';
+    blurb = 'Adventure travel stories and unique destinations.';
+  } else if (title.includes('Tarot')) {
+    topics.push({ node: 'paranormal', confidence: 0.85 });
+    topics.push({ node: 'religion/spirituality', confidence: 0.7 });
+    rationale = 'Tarot readings and spiritual divination practices.';
+    blurb = 'Tarot readings and spiritual guidance.';
+  } else if (title === 'Famous at Home') {
+    topics.push({ node: 'culture/pop-culture', confidence: 0.85 });
+    topics.push({ node: 'comedy/interviews', confidence: 0.65 });
+    rationale = 'Interviews with celebrities and entertainment personalities.';
+    blurb = 'Celebrity interviews and entertainment conversations.';
+  } else if (title.includes('Hollywood') && title.includes('Levine')) {
+    topics.push({ node: 'tv-film/reviews', confidence: 0.85 });
+    topics.push({ node: 'culture/pop-culture', confidence: 0.75 });
+    rationale = 'Film and television criticism and entertainment analysis.';
+    blurb = 'Film and TV reviews with entertainment analysis.';
+  } else if (title.includes('Clean Comedy')) {
+    topics.push({ node: 'comedy/stand-up', confidence: 0.9 });
+    rationale = 'Stand-up comedy performances and comedian interviews.';
+    blurb = 'Family-friendly stand-up comedy shows.';
+  } else if (title.includes('Retirement')) {
+    topics.push({ node: 'economics/markets', confidence: 0.8 });
+    topics.push({ node: 'education/self-improvement', confidence: 0.75 });
+    rationale = 'Retirement planning, finances, and life strategy guidance.';
+    blurb = 'Retirement planning and financial strategy.';
+  } else if (title.includes('Fishing')) {
+    topics.push({ node: 'hobbies', confidence: 0.9 });
+    topics.push({ node: 'nature', confidence: 0.6 });
+    rationale = 'Fishing techniques, locations, and outdoor recreation.';
+    blurb = 'Fishing tips, techniques, and outdoor stories.';
+  } else if (fullText.includes('السيرة') || fullText.includes('طارق')) {
+    topics.push({ node: 'religion/islam', confidence: 0.9 });
+    topics.push({ node: 'history', confidence: 0.65 });
+    rationale = 'Islamic history and prophetic biography in Arabic.';
+    blurb = 'Islamic history and teachings in Arabic.';
+  } else if (title.includes('Rick and Morty') || fullText.includes('rick and morty')) {
+    topics.push({ node: 'tv-film/reviews', confidence: 0.85 });
+    topics.push({ node: 'fiction/sci-fi', confidence: 0.8 });
+    rationale = 'Episode discussion and analysis of Rick and Morty.';
+    blurb = 'Rick and Morty episode analysis and discussion.';
+  } else if (title.includes('True Crime')) {
+    topics.push({ node: 'true-crime', confidence: 0.95 });
+    rationale = 'Unsolved crime cases and mystery investigations.';
+    blurb = 'Unsolved true crime cases and investigation.';
+  } else if (title === 'Peace Out Podcast') {
+    topics.push({ node: 'religion/spirituality', confidence: 0.75 });
+    topics.push({ node: 'education/self-improvement', confidence: 0.7 });
+    rationale = 'Mindfulness, meditation, and spiritual peace practices.';
+    blurb = 'Meditation and mindfulness for spiritual peace.';
+    needsReview = true;
+  } else if (title === 'AbdelRahman Murphy') {
+    topics.push({ node: 'religion/islam', confidence: 0.95 });
+    rationale = 'Islamic teachings, personal development, and spiritual guidance.';
+    blurb = 'Islamic spiritual teachings and personal development.';
+  } else if (title.includes('First Serve') || title.includes('Tennis')) {
+    topics.push({ node: 'sports/tennis', confidence: 0.9 });
+    rationale = 'Tennis coverage, player analysis, and match discussion.';
+    blurb = 'Professional tennis coverage and analysis.';
+  } else if (title === 'Bronzeville') {
+    topics.push({ node: 'history', confidence: 0.85 });
+    topics.push({ node: 'culture', frequency: 0.75 });
+    rationale = 'Historical narratives and cultural stories from Bronzeville.';
+    blurb = 'Historical storytelling and cultural narratives.';
+  } else if (title.includes('Zen') || fullText.includes('buddhist')) {
+    topics.push({ node: 'religion/buddhism', confidence: 0.95 });
+    rationale = 'Zen Buddhist teachings, meditation, and dharma talks.';
+    blurb = 'Zen Buddhist teachings and meditation guidance.';
+  } else if (title.includes('Camino')) {
+    topics.push({ node: 'travel', confidence: 0.9 });
+    topics.push({ node: 'adventure/exploration', confidence: 0.8 });
+    rationale = 'Pilgrimage journey stories and travel experiences.';
+    blurb = 'Personal pilgrimage journey stories on the Camino.';
+  } else if (title.includes('Bhagavad Gita')) {
+    topics.push({ node: 'religion/hinduism', confidence: 0.95 });
+    topics.push({ node: 'philosophy', confidence: 0.7 });
+    rationale = 'Hindu scripture teachings and spiritual philosophy.';
+    blurb = 'Bhagavad Gita and Hindu spiritual philosophy.';
+  } else if (title.includes('Mountain Bike') || title.includes('Downtime')) {
+    topics.push({ node: 'sports/endurance', confidence: 0.85 });
+    topics.push({ node: 'hobbies', confidence: 0.75 });
+    rationale = 'Mountain biking tips, techniques, and trail reviews.';
+    blurb = 'Mountain biking tips and trail guidance.';
+  } else if (title === 'NeoScum') {
+    topics.push({ node: 'fiction/drama', confidence: 0.75 });
+    topics.push({ node: 'fiction/sci-fi', confidence: 0.65 });
+    rationale = 'Narrative fiction audio drama with cyberpunk themes.';
+    blurb = 'Science fiction audio drama with narrative storytelling.';
+    needsReview = true;
+  } else if (title.includes('AT Parenting') || title.includes('OCD')) {
+    topics.push({ node: 'kids-family/parenting', confidence: 0.9 });
+    topics.push({ node: 'health/mental', confidence: 0.8 });
+    rationale = 'Parenting strategies for children with OCD and anxiety.';
+    blurb = 'Parenting guidance for raising children with anxiety.';
+  } else if (title.includes('Abundant')) {
+    topics.push({ node: 'business', confidence: 0.7 });
+    topics.push({ node: 'education/self-improvement', confidence: 0.65 });
+    rationale = 'Professional development and business practice guidance.';
+    blurb = 'Professional development and business practice.';
+    needsReview = true;
+  } else if (title.includes('PHNX') || title.includes('Suns')) {
+    topics.push({ node: 'sports/basketball', confidence: 0.95 });
+    rationale = 'Phoenix Suns NBA basketball game and roster coverage.';
+    blurb = 'Phoenix Suns NBA game coverage and analysis.';
+  } else if (title.includes('DNA') || title.includes('Genetics')) {
+    topics.push({ node: 'science', confidence: 0.9 });
+    topics.push({ node: 'medicine/biology', confidence: 0.85 });
+    rationale = 'Genetics research, DNA science, and hereditary biology.';
+    blurb = 'Genetics research and DNA science education.';
+  } else if (title.includes('Coaches')) {
+    topics.push({ node: 'business/management', confidence: 0.85 });
+    topics.push({ node: 'education/self-improvement', confidence: 0.75 });
+    rationale = 'Coaching strategies and professional development guidance.';
+    blurb = 'Coaching strategies and professional development.';
+  } else if (title.includes('Ledge') || fullText.includes('houseplant')) {
+    topics.push({ node: 'hobbies', confidence: 0.9 });
+    topics.push({ node: 'nature', confidence: 0.65 });
+    rationale = 'Houseplant care, gardening tips, and plant expertise.';
+    blurb = 'Houseplant care and indoor gardening guidance.';
   } else {
-    // Fallback for any unhandled shows
-    topics = [];
-    needs_review = true;
-    rationale = 'Show not explicitly classified in batch processor.';
-    blurb = 'Podcast awaiting manual classification.';
+    topics.push({ node: 'hobbies', confidence: 0.4 });
+    needsReview = true;
+    rationale = 'Insufficient signal for confident classification.';
+    blurb = 'Podcast with varied content.';
   }
 
-  // Validate node IDs
-  topics = topics.filter(t => validNodeIds.has(t.node));
-
-  // Set needs_review if top confidence < 0.6 or no valid topics
-  if (topics.length === 0 || (topics[0] && topics[0].confidence < 0.6)) {
-    needs_review = true;
+  // Ensure at least one topic
+  if (!topics || topics.length === 0) {
+    topics.push({ node: 'hobbies', confidence: 0.4 });
+    needsReview = true;
   }
 
-  // Ensure display_title <= 8 words and blurb <= 30 words
-  const titleWords = display_title.split(/\s+/).length;
-  const blurbWords = blurb.split(/\s+/).length;
-
-  if (titleWords > 8) {
-    display_title = display_title.split(/\s+/).slice(0, 8).join(' ');
+  // Check if all confidences are below 0.6
+  if (topics.every(t => t.confidence < 0.6)) {
+    needsReview = true;
   }
 
-  if (blurbWords > 30) {
-    blurb = blurb.split(/\s+/).slice(0, 30).join(' ') + '...';
+  // Enforce copy rules
+  const titleWords = displayTitle.split(' ');
+  if (titleWords.length > 8) {
+    displayTitle = titleWords.slice(0, 8).join(' ');
   }
 
-  return {
+  const blurbWords = blurb.split(' ');
+  if (blurbWords.length > 30) {
+    blurb = blurbWords.slice(0, 30).join(' ') + '.';
+  }
+
+  results.results[id] = {
     topics,
-    needs_review,
+    needs_review: needsReview,
     rationale,
-    display_title,
+    display_title: displayTitle,
     blurb,
     model: 'claude-code-cron (tier 1)'
   };
-};
-
-// Classify all shows
-for (const show of batch.shows) {
-  const classified = classify(show);
-  results.results[show.apple_collection_id] = classified;
 }
 
-// Write results file
-const resultsPath = `/home/user/foray/data-local/classify-results-${batch.batch_id}.json`;
+// Process all shows
+batch.shows.forEach(show => classifyShow(show));
+
+// Write results
 fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2));
 console.log(`Classified ${Object.keys(results.results).length} shows`);
 console.log(`Results written to ${resultsPath}`);
