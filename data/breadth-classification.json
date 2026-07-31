@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-31T00:31:16.913Z",
+  "built_at": "2026-07-31T08:30:13.400Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-31-ec092e76",
+    "last_batch_id": "fresh-2026-07-31-ce5c93ca",
     "last_batch_tier": 1
   },
   "entries": {
@@ -29723,10 +29723,30 @@
     },
     "1099304101": {
       "topics": [
-        "comedy/interviews"
+        "comedy/casual-hangs",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy interview show featuring discussions on culture, politics, faith with prominent guests.",
+      "display_title": "The Fallen State TV",
+      "blurb": "Weekly web series with Jesse Lee Peterson interviewing guests on faith, culture, politics, and human nature.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1099510856": {
       "topics": [
@@ -31994,10 +32014,25 @@
     },
     "1143167911": {
       "topics": [
-        "religion/buddhism"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Teachings from Tibetan Buddhist masters about meditation, compassion, and enlightenment.",
+      "display_title": "Lama Yeshe Wisdom Archive",
+      "blurb": "Dharma teachings from Lama Thubten Yeshe and Lama Zopa Rinpoche on Buddhist practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1143172060": {
       "topics": [
@@ -32030,10 +32065,25 @@
     },
     "1143976129": {
       "topics": [
-        "religion/spirituality"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astrological forecasts, horoscopes, and discussions of planetary cycles.",
+      "display_title": "Embodied Astrology",
+      "blurb": "Astrology forecasts, horoscopes, and community conversations about cosmic influence.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1143987607": {
       "topics": [
@@ -33938,7 +33988,22 @@
         "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Disney Cruise Line travel tips, history, and cruise experience reviews.",
+      "display_title": "DCL Podcast",
+      "blurb": "Disney Cruise Line coverage with travel tips, news, and guest cruise experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1170348452": {
       "topics": [
@@ -33953,7 +34018,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily NBA and Washington Wizards news, analysis, and insider coverage.",
+      "display_title": "Locked On Wizards",
+      "blurb": "Daily Washington Wizards and NBA news with expert local analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1170821745": {
       "topics": [
@@ -34088,7 +34168,25 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Track-by-track album reviews of classic rock and new wave records from 70s-80s.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1173814185": {
       "topics": [
@@ -34165,10 +34263,25 @@
     },
     "1176366805": {
       "topics": [
-        "gaming"
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly gaming news show covering major industry developments and game analysis.",
+      "display_title": "Game Mess Decides",
+      "blurb": "Weekly gaming news from Jeff Grubb and Mike Minotti on industry happenings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1176779065": {
       "topics": [
@@ -34287,7 +34400,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with military and civilian aircrew about flying experiences and aircraft.",
+      "display_title": "Aircrew Interview",
+      "blurb": "Interviews with military and civilian pilots on flying experiences and aircraft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1180172272": {
       "topics": [
@@ -34363,10 +34491,25 @@
     },
     "1181589175": {
       "topics": [
-        "comedy/interviews"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Candid conversations with comedians about their experiences with clinical depression.",
+      "display_title": "The Hilarious World of Depression",
+      "blurb": "Conversations with comedians about depression and finding humor in mental health struggles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1181698161": {
       "topics": [
@@ -34377,11 +34520,25 @@
     },
     "1181810899": {
       "topics": [
-        "news/tech",
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Microsoft technology coverage including Office, Azure, Windows, and emerging tech.",
+      "display_title": "Microsoft Mechanics Podcast",
+      "blurb": "Technology coverage of Microsoft products including Azure, Windows, and cloud services.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1182016534": {
       "topics": [
@@ -34593,10 +34750,25 @@
     },
     "1186889023": {
       "topics": [
-        "business/marketing"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Online business strategy and marketing advice for entrepreneurs and course creators.",
+      "display_title": "Strategy Hour",
+      "blurb": "Business growth strategies for online entrepreneurs and digital product creators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1186940086": {
       "topics": [
@@ -34772,10 +34944,30 @@
     },
     "1191265255": {
       "topics": [
-        "food"
+        "business",
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coffee shop leadership, management, and business optimization for café owners.",
+      "display_title": "Keys To The Shop",
+      "blurb": "Coffee shop business advice on leadership, operations, and café growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1191274361": {
       "topics": [
@@ -35109,17 +35301,47 @@
     },
     "1195206601": {
       "topics": [
-        "news/politics"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political analysis and investigative reporting on US government and policy.",
+      "display_title": "The Intercept Briefing",
+      "blurb": "Political analysis and investigative journalism on urgent government and policy issues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1195370479": {
       "topics": [
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scottish rugby news, match analysis, and discussion from the Scottish Rugby Blog.",
+      "display_title": "The Scottish Rugby Podcast",
+      "blurb": "Scottish rugby analysis covering match reviews and league news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1195379864": {
       "topics": [
@@ -35230,7 +35452,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Doctor Who audio dramas spanning decades and multiple doctors.",
+      "display_title": "The Doctor Who Audio Dramas",
+      "blurb": "Audio dramas of Doctor Who adventures spanning 40+ years and multiple doctors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1196574285": {
       "topics": [
@@ -35445,7 +35682,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Washington Wizards and DC-area basketball coverage including NBA analysis.",
+      "display_title": "Off The Bench",
+      "blurb": "D.C. basketball coverage including Wizards, Mystics, and local teams.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1200915759": {
       "topics": [
@@ -35486,10 +35738,25 @@
     },
     "1201248091": {
       "topics": [
-        "religion/hinduism"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Recitation and discussion of the Bhagavad Gita Hindu scripture.",
+      "display_title": "Bhagavad Gita English",
+      "blurb": "Audio recitations and commentary on the Bhagavad Gita Hindu sacred text.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1201250066": {
       "topics": [
@@ -35560,18 +35827,47 @@
     },
     "1201340557": {
       "topics": [
-        "news",
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real estate industry trends and interviews with brokerage leaders and top agents.",
+      "display_title": "RealTrending",
+      "blurb": "Real estate industry trends and interviews with brokerage leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1201353493": {
       "topics": [
         "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Art marketing advice for artists and photographers on selling and promoting work.",
+      "display_title": "The Art Marketing Podcast",
+      "blurb": "Marketing strategies and business advice for artists and photographers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1201483158": {
       "topics": [
@@ -35676,14 +35972,44 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Calming bedtime stories and meditations designed specifically for children.",
+      "display_title": "Be Calm on Ahway Island",
+      "blurb": "Original bedtime stories and meditations created for children's relaxation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1203393721": {
       "topics": [
-        "comedy/interviews"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form celebrity interviews exploring creative process and humor.",
+      "display_title": "Good One",
+      "blurb": "Long-form interviews with comedians and creative people on craft and humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1203487709": {
       "topics": [
@@ -35805,10 +36131,25 @@
     },
     "1205030005": {
       "topics": [
-        "true-crime"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime stories examined by Harvey Guillén including heists and murders.",
+      "display_title": "Killer Stories with Harvey Guillén",
+      "blurb": "True crime stories from heists to murders examined by Harvey Guillén.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1205144996": {
       "topics": [
@@ -36064,10 +36405,25 @@
     },
     "1209196729": {
       "topics": [
-        "food"
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Food and drink science, history, and culture including recipes and culinary trends.",
+      "display_title": "Savor",
+      "blurb": "Food science, history, and culture exploring why we like what we like.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1209219220": {
       "topics": [
@@ -36106,14 +36462,47 @@
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of the British radio drama The Archers.",
+      "display_title": "Ambridge on the Couch",
+      "blurb": "Analysis of the British radio drama The Archers and its storylines.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1209574213": {
       "topics": [
-        "gaming"
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep dives into Legend of Zelda games and related gaming titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1209601557": {
       "topics": [
@@ -36166,7 +36555,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Liverpool FC news, match analysis, and transfer coverage.",
+      "display_title": "The Redmen TV",
+      "blurb": "Liverpool FC coverage including match previews, news, and transfer analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1210481852": {
       "topics": [
@@ -36414,7 +36818,22 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting strategies for neurodivergent children with ADHD and autism.",
+      "display_title": "Beautifully Complex",
+      "blurb": "Parenting strategies for neurodivergent children including ADHD and autism.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1212715122": {
       "topics": [
@@ -36461,11 +36880,25 @@
     },
     "1214113189": {
       "topics": [
-        "sports",
-        "news"
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "League of Legends esports news, meta analysis, and LCS coverage.",
+      "display_title": "The Dive",
+      "blurb": "League of Legends esports news, meta shifts, and LCS analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1214369445": {
       "topics": [
@@ -36583,11 +37016,25 @@
     },
     "1215524035": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film history and actor careers with biweekly themed episodes.",
+      "display_title": "The Mixed Reviews",
+      "blurb": "Film history and actor career retrospectives with guest discussions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1215571407": {
       "topics": [
@@ -36686,7 +37133,22 @@
         "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Disney travel tips and insider knowledge from veteran Disney travel agents.",
+      "display_title": "Disney Travel Secrets",
+      "blurb": "Disney park and resort tips from veteran travel agents.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1217923682": {
       "topics": [
@@ -36719,10 +37181,25 @@
     },
     "1218556999": {
       "topics": [
-        "gaming"
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "D&D actual play campaign from Acquisitions Incorporated The C Team.",
+      "display_title": "AI: The \"C\" Team",
+      "blurb": "Dungeons & Dragons actual play campaign from Acquisitions Incorporated.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1219490591": {
       "topics": [
@@ -36853,10 +37330,25 @@
     },
     "1221256195": {
       "topics": [
-        "business/marketing"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marketing strategies and brand positioning with no-nonsense approach.",
+      "display_title": "Everyone Hates Marketers",
+      "blurb": "Marketing and brand strategy with actionable insights on positioning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1221406139": {
       "topics": [
@@ -37007,11 +37499,25 @@
     },
     "1224537445": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneur interviews on building and scaling successful businesses.",
+      "display_title": "21st Century Entrepreneurship",
+      "blurb": "Entrepreneur interviews on starting and scaling successful businesses.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1224640782": {
       "topics": [
@@ -37416,11 +37922,25 @@
     },
     "1233320155": {
       "topics": [
-        "music",
-        "history"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soul and rare groove vinyl records from 1960s and 1970s.",
+      "display_title": "On Target",
+      "blurb": "Deep groove soul and rare vinyl from 1960s-1970s with Mod Marty.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1233359606": {
       "topics": [
@@ -37510,10 +38030,25 @@
     },
     "1234462477": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Standup comedians discuss bombing and failure in comedy performance.",
+      "display_title": "The Art of Bombing",
+      "blurb": "Comedians discuss bombing, failure, and learning from bad performances.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1234704778": {
       "topics": [
@@ -37901,10 +38436,25 @@
     },
     "1240842781": {
       "topics": [
-        "music"
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music production, mixing, and mastering techniques from professionals.",
+      "display_title": "Master Your Mix Podcast",
+      "blurb": "Music production and mixing techniques from professional engineers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1241054855": {
       "topics": [
@@ -38061,10 +38611,25 @@
     },
     "1242989875": {
       "topics": [
-        "sports/hockey"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hockey coaching insights and leadership lessons from elite coaches.",
+      "display_title": "Glass and Out",
+      "blurb": "Hockey coaching insights and leadership lessons from top coaches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1243077660": {
       "topics": [
@@ -38075,10 +38640,25 @@
     },
     "1243132267": {
       "topics": [
-        "news/daily"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and commentary on Southern California with comedy.",
+      "display_title": "Tim Conway Jr. on Demand",
+      "blurb": "Daily talk radio with humor on Southern California news and events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1243181579": {
       "topics": [
@@ -38303,10 +38883,25 @@
     },
     "1245809419": {
       "topics": [
-        "sports/wrestling"
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestling history and legendary matches retrospectives.",
+      "display_title": "Prime Time with Sean Mooney",
+      "blurb": "Professional wrestling history and legendary match retrospectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1245995247": {
       "topics": [
@@ -38448,7 +39043,22 @@
         "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness interviews covering nutrition, fitness, and mental health.",
+      "display_title": "The mindbodygreen Podcast",
+      "blurb": "Health and wellness interviews on nutrition, fitness, and mental health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1246838453": {
       "topics": [
@@ -38601,7 +39211,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music collector magazine podcast with interviews and vinyl collecting.",
+      "display_title": "Goldmine",
+      "blurb": "Music collecting podcast with interviews about vinyl and music history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1248086475": {
       "topics": [
@@ -38655,10 +39280,25 @@
     },
     "1250155987": {
       "topics": [
-        "food"
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cocktail techniques, tools, and ingredient discussions for bartenders.",
+      "display_title": "The Modern Bar Cart Podcast",
+      "blurb": "Cocktail techniques and bartending advice for home and professional bartenders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1250180134": {
       "topics": [
@@ -38678,10 +39318,25 @@
     },
     "1250599915": {
       "topics": [
-        "true-crime"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime, mysteries, hauntings, and macabre stories.",
+      "display_title": "RedHanded",
+      "blurb": "True crime, mysteries, and macabre stories including serial crimes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1251078708": {
       "topics": [
@@ -38718,7 +39373,22 @@
         "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comic book team-ups analysis from Marvel and DC comics.",
+      "display_title": "FW Team-Up",
+      "blurb": "Analysis of comic book team-ups from Marvel and DC.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1251546502": {
       "topics": [
@@ -39089,7 +39759,22 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Strength training and fitness advice for health and longevity.",
+      "display_title": "Beast over Burden",
+      "blurb": "Strength training and fitness for health and lifelong capability.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1255052408": {
       "topics": [
@@ -39593,11 +40278,25 @@
     },
     "1259425519": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "National Film Registry selections with analysis of culturally significant films.",
+      "display_title": "You're Missing Out",
+      "blurb": "National Film Registry films examined for cultural and historical significance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-ce5c93ca",
+      "classified_at": "2026-07-31T08:30:13.400Z"
     },
     "1259438987": {
       "topics": [
