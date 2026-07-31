@@ -21344,6 +21344,33 @@
       "batch_id": "fresh-2026-07-31-0874f584",
       "classified_at": "2026-07-31T00:51:33.093Z"
     },
+    "1437795866": {
+      "topics": [
+        "tv-film/history",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hollywood film history through director and actor interviews.",
+      "display_title": "It Happened In Hollywood",
+      "blurb": "Behind-the-scenes stories from iconic Hollywood moments told by those who made them.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
     "1437997652": {
       "topics": [
         "philosophy"
@@ -21471,6 +21498,28 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-31-0874f584",
       "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1439204048": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic mystery and detective fiction analysis.",
+      "display_title": "Shedunnit",
+      "blurb": "Unraveling the mysteries behind classic detective stories from Agatha Christie to modern thrillers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
     },
     "1439485214": {
       "topics": [
@@ -21658,6 +21707,28 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-31-0874f584",
       "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1441238966": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Conspiracy and alternative narratives; diverse unvetted guest perspectives.",
+      "display_title": "Danny Jones Podcast",
+      "blurb": "Interviews exploring unconventional topics and alternative historical narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
     },
     "1441260104": {
       "topics": [
@@ -22209,6 +22280,955 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-31-0874f584",
       "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1448447486": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "三好坏男孩",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1448576480": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "Scottish Watches",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1448655584": {
+      "topics": [
+        "culture/fashion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion and beauty industry insights.",
+      "display_title": "The Life of A Makeup Artist",
+      "blurb": "Behind-the-scenes perspectives from fashion and beauty professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1448713988": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish and spiritual teachings.",
+      "display_title": "The Chassidic Story Project with Barak Hullman -",
+      "blurb": "Stories and teachings from Jewish tradition and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1448885852": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy conversations and humor.",
+      "display_title": "You Betcha Radio",
+      "blurb": "Casual conversations filled with comedy and storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1449000632": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Music discussions and artist interviews.",
+      "display_title": "Album | آلبوم",
+      "blurb": "Exploring music, musicians, and the creative process.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1449293528": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "The CUInsight Experience",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1449441668": {
+      "topics": [
+        "tv-film/history",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and television history.",
+      "display_title": "Film School",
+      "blurb": "Exploring cinema and TV history through interviews and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1449687140": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "Catexplorer Podcast",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1449704438": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "A World Without",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1449785792": {
+      "topics": [
+        "tv-film/history",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and television history.",
+      "display_title": "Pod Yourself A Gun - A Rewatch Podcast",
+      "blurb": "Exploring cinema and TV history through interviews and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1450011728": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "The Daily Grace Podcast",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1450100258": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Health and fitness related content.",
+      "display_title": "The Fantasy Six Pack Hour",
+      "blurb": "Conversations about health, fitness, and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1450116380": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "Rant Café Anime Podcast",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1450121744": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy conversations and humor.",
+      "display_title": "Rodeo Time with Dale Brisby",
+      "blurb": "Casual conversations filled with comedy and storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1450296428": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "The Merman Podcast",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1450422122": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish and spiritual teachings.",
+      "display_title": "Transitions Daily Alcoholics Anonymous Recovery Readings Podcast",
+      "blurb": "Stories and teachings from Jewish tradition and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1450435574": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "Middlebrow - A Contemporary Art Podcast",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1450820162": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "Molly of Denali",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1450860560": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "Compete Like a Champion",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1451016278": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "TalkinGolf",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1451560910": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "Two Strike Noise - A Baseball History Podcast",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1451618648": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "Manager Tools - One on Ones",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1452049352": {
+      "topics": [
+        "science",
+        "engineering"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science and technology exploration.",
+      "display_title": "Among the Stars and Bones",
+      "blurb": "Scientific and technological topics explained conversationally.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1452065072": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "Newt's World",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1452117002": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "Narcissist Apocalypse: Patterns of Abuse",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1452118772": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "Quilt & Tell",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1453224776": {
+      "topics": [
+        "culture/fashion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion and beauty industry insights.",
+      "display_title": "What We Wore",
+      "blurb": "Behind-the-scenes perspectives from fashion and beauty professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1453335854": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "The A Show on RNC RADIO",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1453406762": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "The Exploring Series",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1453473062": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "The Workshop is in the Mind",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1453762712": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News and current events coverage.",
+      "display_title": "ServiceNow Podcasts",
+      "blurb": "Discussing news, events, and cultural developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1453800632": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "Public Relations Review Podcast",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1453878632": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Health and fitness related content.",
+      "display_title": "Love and Abuse",
+      "blurb": "Conversations about health, fitness, and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1454045768": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish and spiritual teachings.",
+      "display_title": "Becoming Something with Jonathan Pokluda",
+      "blurb": "Stories and teachings from Jewish tradition and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1454173526": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Health and fitness related content.",
+      "display_title": "The Cannabis Connoisseur",
+      "blurb": "Conversations about health, fitness, and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1454582540": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "The CharacterStrong Podcast",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1454748884": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy conversations and humor.",
+      "display_title": "Mission Rejected",
+      "blurb": "Casual conversations filled with comedy and storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1454850590": {
+      "topics": [
+        "science",
+        "engineering"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science and technology exploration.",
+      "display_title": "Crazy Town",
+      "blurb": "Scientific and technological topics explained conversationally.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1454957630": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Miscellaneous content; needs categorization review.",
+      "display_title": "The Money Sessions",
+      "blurb": "Podcast exploring cultural and social topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1454980022": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Health and fitness related content.",
+      "display_title": "Feminist Wellness",
+      "blurb": "Conversations about health, fitness, and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
+    },
+    "1455127076": {
+      "topics": [
+        "science",
+        "engineering"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science and technology exploration.",
+      "display_title": "The Deca Tapes",
+      "blurb": "Scientific and technological topics explained conversationally.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0d38d4fe",
+      "classified_at": "2026-07-31T08:52:11.019Z"
     },
     "1459232606": {
       "topics": [
@@ -23378,11 +24398,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-31T00:51:33.093Z",
+  "built_at": "2026-07-31T08:52:11.019Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-31-0874f584",
+    "last_batch_id": "fresh-2026-07-31-0d38d4fe",
     "last_batch_tier": 1
   }
 }
