@@ -7347,6 +7347,28 @@
       "batch_id": "fresh-2026-07-27-503b0eab",
       "classified_at": "2026-07-27T00:50:27.931Z"
     },
+    "944954636": {
+      "topics": [
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dedicated podcast focused on street and documentary photography, interviewing photographers and covering the craft.",
+      "display_title": "Street Photography Magazine Podcast",
+      "blurb": "Interviews and discussions with street and documentary photographers exploring creative process, technique, and the evolution of photographic practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
     "948976028": {
       "topics": [
         "kids-family/stories"
@@ -21196,6 +21218,998 @@
       "batch_id": "fresh-2026-07-30-c63a5258",
       "classified_at": "2026-07-30T16:53:11.111Z"
     },
+    "1436680640": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hockey-focused podcast covering Seattle Kraken news, interviews with players and coaches, and broader NHL discussion.",
+      "display_title": "Sound Of Hockey - Seattle Kraken Hockey Podcast",
+      "blurb": "Daily hockey discussion with news, interviews, and analysis centered on the Seattle Kraken and Pacific Northwest hockey.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1436865572": {
+      "topics": [
+        "sports",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily sports radio show with focus on college football and sports news from the Southeast region.",
+      "display_title": "The Chuck Oliver Show",
+      "blurb": "Daily sports talk covering college football, ACC/Big Ten updates, and broader sports news with guest interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1436894966": {
+      "topics": [
+        "kids-family/parenting"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Expert-led parenting advice podcast addressing child development, behavior management, and early childhood education.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1436903810": {
+      "topics": [
+        "nature",
+        "adventure/exploration"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Whitetail deer hunting podcast featuring tactics, gear advice, expert guests, and habitat management from trail camera company.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1437315032": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investigative journalism series on sex trade in America, exploring diverse perspectives and human stories within the industry.",
+      "display_title": "Sold In America",
+      "blurb": "Investigative eight-episode series examining the US sex trade through reported interviews and personal narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1437997652": {
+      "topics": [
+        "philosophy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interview-driven podcast focusing on fringe philosophy, obscure theory, underappreciated thinkers, and esoteric traditions.",
+      "display_title": "Hermitix",
+      "blurb": "One-on-one interviews exploring fringe philosophy, occult traditions, and historically marginalized intellectual movements.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1438772276": {
+      "topics": [
+        "health/mental",
+        "health/nutrition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Women's midlife health podcast focused on perimenopause, menopause, hormone replacement therapy, and metabolic changes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1438778444": {
+      "topics": [
+        "society",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investigative journalism podcast examining healthcare costs and medical system challenges through reported stories and expert analysis.",
+      "display_title": "An Arm and a Leg",
+      "blurb": "Investigative reporting on why healthcare costs so much in America, offering tools and insights for navigating the system.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1438789088": {
+      "topics": [
+        "economics/markets",
+        "news/tech"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily bitcoin and economic news podcast covering regulation, markets, monetary policy, and technology developments.",
+      "display_title": "Bitcoin And | Bitcoin & Economic News",
+      "blurb": "Daily bitcoin and economic news with concise updates on regulation, markets, and monetary policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1438915688": {
+      "topics": [
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Theme park news and rumors podcast covering new rides, closures, and developments at Disney World and Universal Orlando.",
+      "display_title": "ParkStop Podcast",
+      "blurb": "Theme park news, rumors, and construction updates for Disney World and Universal resorts with attraction reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1439485214": {
+      "topics": [
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investment podcast focused on precious metals, mining stocks, and commodities with interviews from industry experts.",
+      "display_title": "Palisades Gold Radio",
+      "blurb": "Investment-focused discussions on precious metals, mining companies, and commodity markets with industry experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1439735906": {
+      "topics": [
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Climate change investigation podcast exposing corporate corruption and political delay tactics hindering climate solutions.",
+      "display_title": "Drilled",
+      "blurb": "Award-winning investigative journalism exposing corporate and political obstruction to climate action and solutions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1439751014": {
+      "topics": [
+        "music",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast exploring the historical evolution of drums and drumming through expert interviews and gear deep-dives.",
+      "display_title": "Drum History",
+      "blurb": "The rich history of drums and drum technique, featuring expert interviews on gear, evolution, and influential drummers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1439764868": {
+      "topics": [
+        "food"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sourdough-focused podcast featuring interviews with bakers, authors, millers, and others in the sourdough community.",
+      "display_title": "The Sourdough Podcast",
+      "blurb": "Inspiring conversations with sourdough bakers, millers, and innovators exploring the craft and community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1440526574": {
+      "topics": [
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Storytelling and narrative podcast covering personal, professional, and brand storytelling strategies with expert interviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1440593516": {
+      "topics": [
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal podcast dedicated to real-life ghost stories, famous cases, and listener submissions with horror film reviews.",
+      "display_title": "Real Life Ghost Stories",
+      "blurb": "Weekly paranormal stories and investigations of famous cases, plus listener-submitted supernatural experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1440611090": {
+      "topics": [
+        "religion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast providing support and discussion for people questioning faith or recovering from religious trauma.",
+      "display_title": "Recovering From Religion",
+      "blurb": "Support and discussions for those questioning faith, leaving religion, or recovering from religious harm.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1440854210": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Theological and psychological exploration of cults, examining their teachings, strategies, and consequences from Christian perspective.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1441260104": {
+      "topics": [
+        "sports",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports news and commentary podcast where every guest is a friend, discussing current events and sports stories.",
+      "display_title": "Sports With Friends",
+      "blurb": "Casual sports news and commentary with interviews featuring athletes, analysts, and sports personalities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1441592240": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily Iowa Hawkeyes football and basketball podcast covering team news, analysis, and Big Ten updates.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1441595858": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Narrative investigation podcast exploring missing persons cases, examining evidence and uncovering new details.",
+      "display_title": "Cold",
+      "blurb": "Investigative narrative series on missing persons cases, examining evidence and seeking answers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1441824608": {
+      "topics": [
+        "society",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast exploring astonishing family secrets and personal revelations that reshape understanding of identity and truth.",
+      "display_title": "Family Secrets",
+      "blurb": "Personal stories of family secrets and revelations that transform understanding and heal family relationships.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1441998476": {
+      "topics": [
+        "music",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Album-focused podcast examining iconic albums and their cultural legacy through expert analysis and artist discussion.",
+      "display_title": "The Opus",
+      "blurb": "Deep exploration of iconic albums and their ongoing cultural legacy, examining how masterpieces shape lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1443417194": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music analysis podcast breaking down individual songs to understand what makes them work musically.",
+      "display_title": "Strong Songs",
+      "blurb": "Musical analysis breaking down individual songs, exploring composition, structure, and what makes them effective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1445592926": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast from Association for Jewish Studies exploring Jewish topics from contemporary to ancient history.",
+      "display_title": "Adventures in Jewish Studies Podcast",
+      "blurb": "Scholarly yet accessible exploration of Jewish history, culture, and contemporary issues from expert researchers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1446252794": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "NBA basketball news and analysis podcast covering player movement, team strategy, and championship competition.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1446321788": {
+      "topics": [
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French-language educational podcast providing quick explanations of contemporary concepts, news, and lifestyle topics.",
+      "display_title": "Maintenant, vous savez",
+      "blurb": "French-language podcast offering concise explanations of current events, concepts, and lifestyle topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1446440828": {
+      "topics": [
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Interior design podcast featuring interviews with renowned designers discussing projects, philosophy, and creative process.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1446537332": {
+      "topics": [
+        "health/nutrition",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Evidence-based nutrition and fitness podcast by dietitians and bodybuilders covering macronutrients and training strategy.",
+      "display_title": "The Bodybuilding Dietitians",
+      "blurb": "Science-based nutrition and fitness guidance from qualified dietitians covering muscle building, fat loss, and performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1447078646": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and sports podcast about tennis featuring news, player interviews, gossip, and humorous analysis.",
+      "display_title": "Pod Laver Arena",
+      "blurb": "Tennis news, gossip, and humor hosted by comedians with interviews and commentary on professional tennis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1447198778": {
+      "topics": [
+        "history",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedic podcast exploring infamous divorces and relationship failures blending biography, pop culture, and history.",
+      "display_title": "Trashy Divorces",
+      "blurb": "Comedic take on infamous relationships and divorces from history, pop culture, and politics with wit and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1447215152": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English-language soccer podcast covering Portuguese National Team news, analysis, and tournament coverage.",
+      "display_title": "The Seleção Podcast",
+      "blurb": "English-language coverage of Portuguese national football team with expert analysis and live event coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1447684472": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political news and analysis podcast from Never Trump perspective providing daily insightful commentary on current politics.",
+      "display_title": "The Bulwark Podcast",
+      "blurb": "Political news analysis and commentary defending liberal democracy with interviews and reality-based perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1447772090": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional fan-made audio drama reimagining of Power Rangers series inspired by Boom Studios comics.",
+      "display_title": "Power Rangers: The Audio Drama",
+      "blurb": "Professional audio drama reimagining of Power Rangers inspired by modern comic takes on the franchise.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1447912574": {
+      "topics": [
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal growth and lifestyle podcast featuring honest conversations about relationships, wellness, and self-improvement.",
+      "display_title": "See You Sunday",
+      "blurb": "Personal growth conversations on lifestyle, wellness, and relationships with honest, relatable discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1448151398": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast exploring disappearance and murder cases with detailed investigation and analysis.",
+      "display_title": "Going West: True Crime",
+      "blurb": "Weekly true crime investigations of disappearance and murder cases with detailed forensic analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1448181884": {
+      "topics": [
+        "sports/golf"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf instruction and coaching podcast featuring pro golfers, instructors, and behind-the-scenes tour insights.",
+      "display_title": "TOUR COACH with Tony Ruggiero",
+      "blurb": "Golf instruction and coaching with professional players and top teachers discussing technique and strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1448181902": {
+      "topics": [
+        "psychology",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Human behavior analysis podcast teaching pattern recognition and prediction of behavior across contexts.",
+      "display_title": "The Human Behavior Podcast",
+      "blurb": "Human behavior analysis teaching pattern recognition and decision-making across interpersonal situations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1448228102": {
+      "topics": [
+        "tv-film"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Film and TV reviews and rankings podcast covering major franchises including Marvel, DC, Star Wars, and directors.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1448261954": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast covering serial killers, conspiracies, and cults with casual, conversational tone.",
+      "display_title": "Necronomipod",
+      "blurb": "True crime stories about serial killers, conspiracies, and cults with casual, irreverent commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
+    "1448330690": {
+      "topics": [
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Audio engineering and music production podcast exploring best practices, interviews with producers, and creative business.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-07-31-0874f584",
+      "classified_at": "2026-07-31T00:51:33.093Z"
+    },
     "1459232606": {
       "topics": [
         "news/politics",
@@ -22364,11 +23378,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-07-30T16:53:11.111Z",
+  "built_at": "2026-07-31T00:51:33.093Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-30-c63a5258",
+    "last_batch_id": "fresh-2026-07-31-0874f584",
     "last_batch_tier": 1
   }
 }
