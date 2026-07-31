@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-07-29T11:45:15.106Z",
+  "built_at": "2026-07-31T11:44:32.001Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -9714,6 +9714,215 @@
       "weather-forecasting",
       "interview",
       "tropical-cyclones"
+    ],
+    "catalyst-shayle-kann--the-commercial-battery-comeback": [
+      "energy",
+      "battery-storage",
+      "clean-energy",
+      "industry",
+      "infrastructure",
+      "business",
+      "interview"
+    ],
+    "cbc-ideas--we-believe-in-artificial-intelligence-the": [
+      "ai",
+      "artificial-intelligence",
+      "alan-turing",
+      "history-of-science",
+      "philosophy",
+      "psychology"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1609": [
+      "history-of-science",
+      "physics",
+      "benjamin-franklin",
+      "18th-century",
+      "engineering",
+      "science"
+    ],
+    "gardenfork-radio--the-right-to-repair-growing-pumpkins": [
+      "diy",
+      "home-improvement",
+      "gardening",
+      "right-to-repair",
+      "consumer-rights"
+    ],
+    "just-fly-performance-podcast--526-20-ideas-that-changed-my": [
+      "coaching",
+      "sports-science",
+      "biomechanics",
+      "strength-training",
+      "athletic-performance",
+      "motor-learning"
+    ],
+    "99-percent-invisible--100-objects-11-brannock-device": [
+      "design",
+      "history",
+      "history-of-science",
+      "1920s",
+      "world-war-ii",
+      "everyday-objects"
+    ],
+    "the-worlds-best-construction-podcast--the-12-5bn-airport-that-will": [
+      "construction",
+      "architecture",
+      "infrastructure",
+      "aviation",
+      "airports",
+      "ethiopia"
+    ],
+    "off-nominal--250-tile-enthusiast": [
+      "space",
+      "spacex",
+      "rockets",
+      "spaceflight",
+      "starship",
+      "engineering"
+    ],
+    "odd-lots--why-private-credit-got-entangled-with": [
+      "finance",
+      "markets",
+      "private-credit",
+      "insurance",
+      "business",
+      "economics"
+    ],
+    "the-race-f1-podcast--scripted-for-tv-f1-s-driver": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "sports",
+      "interview"
+    ],
+    "philosophy-bites--peter-singer-on-ending-innocent-lives": [
+      "philosophy",
+      "ethics",
+      "utilitarianism",
+      "interview",
+      "peter-singer"
+    ],
+    "camera-shake-photography-podcast--25-years-of-photoshop-the-skills": [
+      "photography",
+      "design",
+      "ai",
+      "creative-tools",
+      "interview"
+    ],
+    "the-cinematography-podcast--matt-ball-on-shooting-in-remote": [
+      "cinematography",
+      "filmmaking",
+      "photography",
+      "italy",
+      "travel",
+      "interview"
+    ],
+    "history-of-wwii-podcast--episode-642-the-cactus-air-force": [
+      "history",
+      "world-war-ii",
+      "military-history",
+      "japan",
+      "pacific-theater"
+    ],
+    "craft-beer-and-brewing-magazine-podcast--496-tonya-cornett-and-ian-larkin": [
+      "beer",
+      "brewing",
+      "craft-beer",
+      "collaboration",
+      "business",
+      "interview"
+    ],
+    "fast-talk--434-finding-the-ingredients-for-exceptional": [
+      "coaching",
+      "endurance",
+      "sports-science",
+      "athletic-performance",
+      "running"
+    ],
+    "ten-percent-happier--when-you-don-t-know-what": [
+      "mental-health",
+      "self-improvement",
+      "psychology",
+      "interview",
+      "celebrity"
+    ],
+    "zoe-science-nutrition--how-to-reduce-your-heart-disease": [
+      "nutrition",
+      "health",
+      "food",
+      "cancer",
+      "science",
+      "interview"
+    ],
+    "armchair-expert--armchair-anonymous-home-intruder": [
+      "comedy",
+      "interview",
+      "true-crime",
+      "storytelling",
+      "pop-culture"
+    ],
+    "how-did-this-get-made--fall": [
+      "comedy",
+      "movies",
+      "pop-culture",
+      "banter",
+      "thriller"
+    ],
+    "handsome--pretty-little-episode-102": [
+      "comedy",
+      "interview",
+      "pop-culture",
+      "banter",
+      "storytelling"
+    ],
+    "criminal--the-premonitions-bureau": [
+      "true-crime",
+      "paranormal",
+      "history",
+      "storytelling",
+      "mystery"
+    ],
+    "morbid--july-bonus-episode-digging-into-exhumed": [
+      "true-crime",
+      "folklore",
+      "history",
+      "paranormal",
+      "interview"
+    ],
+    "dateline--bryan-kohberger-changes-his-mind-son": [
+      "true-crime",
+      "crime",
+      "courtroom",
+      "trial",
+      "murder"
+    ],
+    "snap-judgment--the-black-wind-all-systems-down": [
+      "storytelling",
+      "weather",
+      "tornadoes",
+      "first-person",
+      "nature"
+    ],
+    "the-moth--rollerskates-and-legacy-the-moth-podcast": [
+      "storytelling",
+      "incarceration",
+      "prison",
+      "family",
+      "violence",
+      "first-person"
+    ],
+    "wow-in-the-world--two-whats-and-a-wow-people": [
+      "kids",
+      "marine-biology",
+      "ocean",
+      "animals",
+      "game-show"
+    ],
+    "the-magnus-archives--the-magnus-protocol-52-oversight": [
+      "fiction",
+      "horror",
+      "audio-drama",
+      "psychological-horror",
+      "supernatural"
     ]
   }
 }
