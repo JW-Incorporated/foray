@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-07-31T11:44:32.001Z",
+  "built_at": "2026-08-01T11:43:44.766Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -9923,6 +9923,94 @@
       "audio-drama",
       "psychological-horror",
       "supernatural"
+    ],
+    "being-an-engineer--s7e32-steven-szymeczek-from-taking-things": [
+      "engineering",
+      "manufacturing",
+      "entrepreneurship",
+      "aerospace",
+      "career",
+      "mechanical-engineering",
+      "product-design"
+    ],
+    "fall-of-civilizations--21-majapahit-empire-of-the-islands": [
+      "ancient-history",
+      "indonesia",
+      "empires",
+      "military-history",
+      "history-of-technology"
+    ],
+    "hardcore-history--show-74-mania-for-subjugation-iv": [
+      "ancient-history",
+      "alexander-the-great",
+      "achaemenid-empire",
+      "military-history",
+      "greco-persian-wars"
+    ],
+    "this-week-in-startups--why-ai-has-no-taste-and": [
+      "ai",
+      "startups",
+      "venture-capital",
+      "product-design",
+      "entrepreneurship"
+    ],
+    "luthier-on-luthier--116-paco-chorobo": [
+      "guitar-making",
+      "classical-guitar",
+      "craftsmanship",
+      "career",
+      "engineering"
+    ],
+    "fretboard-journal-guitar-podcast--podcast-558-glen-hansard-remembered": [
+      "guitar",
+      "interview",
+      "music-history",
+      "americana",
+      "guitar-history"
+    ],
+    "planet-money--what-makes-a-toy-go-viral": [
+      "economics",
+      "manufacturing",
+      "entrepreneurship",
+      "toy-industry",
+      "viral-trends"
+    ],
+    "freakonomics-radio--683-in-the-new-space-race": [
+      "space-policy",
+      "space-industry",
+      "economics",
+      "nasa",
+      "aerospace"
+    ],
+    "partially-examined-life--pel-presents-nem-257-josh-joplin": [
+      "music",
+      "americana",
+      "interview",
+      "album",
+      "music-history"
+    ],
+    "radiolab--the-shoe-thrower": [
+      "journalism",
+      "iraq",
+      "protest-art",
+      "american-history",
+      "investigative-journalism"
+    ],
+    "amicus-dahlia-lithwick--by-the-people-two-steps-forward": [
+      "law",
+      "marriage-law",
+      "lgbtq",
+      "activism",
+      "supreme-court",
+      "civil-rights"
+    ],
+    "unexplained--season-09-episode-29-the-howling": [
+      "paranormal",
+      "folklore",
+      "cryptid",
+      "legend",
+      "mythology",
+      "storytelling"
     ]
   }
 }
