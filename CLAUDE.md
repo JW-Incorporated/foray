@@ -23,6 +23,12 @@ outcomes**, not code line-by-line. Full role split: `docs/roles.md`.
 
 1. **Merge/push to `main` or deploy.** `main` is protected (ruleset
    `protect-main`: PR + green `backend`/`data-and-site` checks, zero bypass).
+   Exception (added 2026-07-30, see `docs/roles.md` § Merge authority):
+   for PRs scoped to product/content/UX, Joey may direct Claude to merge
+   once required checks are green, without waiting on Wyatt. This does not
+   extend to anything touching architecture, infra, secrets, or CI/CD —
+   those still require Wyatt's approval. This exception is provisional
+   pending Wyatt's sign-off.
    Work on a branch; propose via PR. Never push `main`, never force-push.
 2. **Touch secrets, credentials, or production infra** (incl. deleting data).
    This repo's cloud automation is deliberately keyless — keep it that way.
