@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-07-31T11:44:32.001Z",
+  "built_at": "2026-08-01T11:43:44.766Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -23017,6 +23017,260 @@
         "fiction/drama"
       ],
       "hook": "Fiction horror: being hunted, confinement, and grief collide in this Magnus Protocol episode.",
+      "explicit": false
+    },
+    {
+      "id": "being-an-engineer--s7e32-steven-szymeczek-from-taking-things",
+      "show": "Being an Engineer",
+      "title": "S7E32 Steven Szymeczek | From Taking Things Apart to Teaching Engineers How to Build",
+      "apple_collection_id": 1508222292,
+      "apple_track_id": 1000779257035,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/s7e32-steven-szymeczek-from-taking-things-apart-to/id1508222292?i=1000779257035&uo=4",
+      "release_date": "2026-07-31",
+      "duration_min": 47,
+      "duration_sec": 2814,
+      "audio_url": "https://www.buzzsprout.com/995575/episodes/19569204-s7e32-steven-szymeczek-from-taking-things-apart-to-teaching-engineers-how-to-build.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 33804157,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
+      "topics": [
+        "engineering/precision-mfg",
+        "craft/diy-home"
+      ],
+      "hook": "Steven Szymeczek traces his path from childhood tinkering to aircraft parts to his own product studio.",
+      "explicit": false
+    },
+    {
+      "id": "fall-of-civilizations--21-majapahit-empire-of-the-islands",
+      "show": "Fall of Civilizations Podcast",
+      "title": "21. Majapahit - Empire of the Islands",
+      "apple_collection_id": 1449884495,
+      "apple_track_id": 1000779302867,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/21-majapahit-empire-of-the-islands/id1449884495?i=1000779302867&uo=4",
+      "release_date": "2026-07-31",
+      "duration_min": 271,
+      "duration_sec": 16270,
+      "audio_url": "https://traffic.megaphone.fm/APO5468803676.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 263131689,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/0a/06/85/0a0685c1-86d4-6f5d-27e4-75e1771d0bae/mza_3060333100547218575.jpg/600x600bb.jpg",
+      "topics": [
+        "history/military-ancient",
+        "history/technology"
+      ],
+      "hook": "How a medieval Javanese empire rose among volcanoes and sent voyages with few historical precedents.",
+      "explicit": false
+    },
+    {
+      "id": "hardcore-history--show-74-mania-for-subjugation-iv",
+      "show": "Dan Carlin's Hardcore History",
+      "title": "Show 74 - Mania for Subjugation IV",
+      "apple_collection_id": 173001861,
+      "apple_track_id": 1000779313976,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/mania-for-subjugation-iv/id173001861?i=1000779313976&uo=4",
+      "release_date": "2026-07-31",
+      "duration_min": 241,
+      "duration_sec": 14480,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/traffic.libsyn.com/dancarlinhh/dchha74_Mania_for_Subjugation_IV.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 179177054,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/49/b7/eb/49b7eb32-8f08-6fac-aadb-2f002131fe5f/mza_15196161972010256532.jpg/600x600bb.jpg",
+      "topics": [
+        "history/military-ancient"
+      ],
+      "hook": "Alexander meets Persia's Great King at the Battle of Issus, a hinge point in ancient history.",
+      "explicit": false
+    },
+    {
+      "id": "this-week-in-startups--why-ai-has-no-taste-and",
+      "show": "This Week in Startups",
+      "title": "Why AI has no taste and how to fix it (w/ Thais Castello Branco) | E2319",
+      "apple_collection_id": 315114957,
+      "apple_track_id": 1000779344951,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/why-ai-has-no-taste-and-how-to-fix-it-w-thais/id315114957?i=1000779344951&uo=4",
+      "release_date": "2026-07-31",
+      "duration_min": 75,
+      "duration_sec": 4509,
+      "audio_url": "https://pscrb.fm/rss/p/traffic.libsyn.com/secure/4a885955-6823-4b22-a3e1-a526c25516a5/MAIN_1.mp3?dest-id=5500155",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 110284354,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/bf/ce/23/bfce2354-2548-00f0-d795-a34404946a6b/mza_10222213905677371023.jpg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "Taste Labs founder Thais Castello Branco on why frontier AI models still produce generic-looking output.",
+      "explicit": false
+    },
+    {
+      "id": "luthier-on-luthier--116-paco-chorobo",
+      "show": "Luthier on Luthier with Michael Bashkin",
+      "title": "116: Paco Chorobo",
+      "apple_collection_id": 1208172851,
+      "apple_track_id": 1000779327444,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/116-paco-chorobo/id1208172851?i=1000779327444&uo=4",
+      "release_date": "2026-07-31",
+      "duration_min": 54,
+      "duration_sec": 3237,
+      "audio_url": "https://traffic.libsyn.com/secure/luthieronluthier/LOL116.mp3?dest-id=480616",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 51908400,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/61/85/33/618533ae-ee68-8a43-0da7-c01d2652c700/mza_6282196726920991032.jpg/600x600bb.jpg",
+      "topics": [
+        "craft/instrument-making"
+      ],
+      "hook": "Spanish luthier Paco Chorobo on leaving telecom engineering to build classical and flamenco guitars by hand.",
+      "explicit": false
+    },
+    {
+      "id": "fretboard-journal-guitar-podcast--podcast-558-glen-hansard-remembered",
+      "show": "The Fretboard Journal Guitar Podcast",
+      "title": "Podcast 558: Glen Hansard Remembered",
+      "apple_collection_id": 394447340,
+      "apple_track_id": 1000779357207,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/podcast-558-glen-hansard-remembered/id394447340?i=1000779357207&uo=4",
+      "release_date": "2026-07-31",
+      "duration_min": 50,
+      "duration_sec": 3005,
+      "audio_url": "https://pscrb.fm/rss/p/traffic.libsyn.com/secure/fretboardjournal/glenn-rx-no-dn.mp3?dest-id=338739",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 48315894,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/a2/43/83/a2438301-5237-b57b-0397-513a28d9f36a/mza_8050638846459341682.jpeg/600x600bb.jpg",
+      "topics": [
+        "craft/instrument-making"
+      ],
+      "hook": "A previously unreleased 2009 conversation with Glen Hansard on his worn Takamine, busking, and meeting heroes.",
+      "explicit": true
+    },
+    {
+      "id": "planet-money--what-makes-a-toy-go-viral",
+      "show": "Planet Money",
+      "title": "What makes a toy go viral",
+      "apple_collection_id": 290783428,
+      "apple_track_id": 1000779158683,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/what-makes-a-toy-go-viral/id290783428?i=1000779158683&uo=4",
+      "release_date": "2026-07-31",
+      "duration_min": 26,
+      "duration_sec": 1535,
+      "audio_url": "https://tracking.swap.fm/track/XvDEoI11TR00olTUO8US/prfx.byspotify.com/e/play.podtrac.com/npr-510289/npr.simplecastaudio.com/43b5acee-463e-4612-95ad-d2596d9dd337/episodes/b6460919-2391-4ec2-9e6e-b645a97d1655/audio/128/default.mp3?awCollectionId=43b5acee-463e-4612-95ad-d2596d9dd337&awEpisodeId=b6460919-2391-4ec2-9e6e-b645a97d1655&feed=hvWWWzRv&t=podcast&e=nx-s1-5913719&p=510289&d=1535&size=24568563",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 24568563,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/85/df/53/85df5334-0fae-28a9-2bc4-b97b81061d0e/mza_10839245066228881011.jpg/600x600bb.jpg",
+      "topics": [
+        "economics/markets"
+      ],
+      "hook": "The creator of a viral squishy toy on how it spread and how factories kept up.",
+      "explicit": false
+    },
+    {
+      "id": "freakonomics-radio--683-in-the-new-space-race",
+      "show": "Freakonomics Radio",
+      "title": "683. In the New Space Race, Who Makes the Rules?",
+      "apple_collection_id": 354668519,
+      "apple_track_id": 1000779178357,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/683-in-the-new-space-race-who-makes-the-rules/id354668519?i=1000779178357&uo=4",
+      "release_date": "2026-07-31",
+      "duration_min": 56,
+      "duration_sec": 3387,
+      "audio_url": "https://mgln.ai/e/2/pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/2be48404-a43c-4fa8-a32c-760a3216272e/episodes/0c4b8e6d-9c83-462f-879d-344ca000e34d/audio/128/default.mp3?aid=rss_feed&awCollectionId=2be48404-a43c-4fa8-a32c-760a3216272e&awEpisodeId=0c4b8e6d-9c83-462f-879d-344ca000e34d&feed=Y8lFbOT4",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 54197435,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
+      "topics": [
+        "economics/markets"
+      ],
+      "hook": "Private firms are rewriting the rules of the space age once set by governments alone.",
+      "explicit": false
+    },
+    {
+      "id": "partially-examined-life--pel-presents-nem-257-josh-joplin",
+      "show": "The Partially Examined Life Philosophy Podcast",
+      "title": "PEL Presents NEM#257: Josh Joplin Doesn't Look Back… Until Now",
+      "apple_collection_id": 318345767,
+      "apple_track_id": 1000779314062,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/pel-presents-nem-257-josh-joplin-doesnt-look-back-until-now/id318345767?i=1000779314062&uo=4",
+      "release_date": "2026-07-31",
+      "duration_min": 76,
+      "duration_sec": 4558,
+      "audio_url": "https://prfx.byspotify.com/e/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/mgln.ai/e/802/claritaspod.com/measure/traffic.libsyn.com/secure/partiallyexaminedlife/NEM_ep_257_6-25-26.mp3?dest-id=16399",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 109535634,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/32/eb/a9/32eba9ac-dfb0-618b-e874-6696c69ea59d/mza_257738567509116492.jpeg/600x600bb.jpg",
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "hook": "Songwriter Josh Joplin revisits his catalog from '90s rock albums through a silver-anniversary reissue.",
+      "explicit": false
+    },
+    {
+      "id": "radiolab--the-shoe-thrower",
+      "show": "Radiolab",
+      "title": "The Shoe Thrower",
+      "apple_collection_id": 152249110,
+      "apple_track_id": 1000779306092,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-shoe-thrower/id152249110?i=1000779306092&uo=4",
+      "release_date": "2026-07-31",
+      "duration_min": 77,
+      "duration_sec": 4649,
+      "audio_url": "https://pscrb.fm/rss/p/mgln.ai/e/14/prfx.byspotify.com/e/dts.podtrac.com/pts/redirect.mp3/waaa.wnyc.org/758af4c0-a2c3-47ec-a2d8-05f41bfbde51/episodes/4e8d47c7-d565-49ea-9ec2-dae68c3b9656/audio/128/default.mp3?aid=rss_feed&awCollectionId=758af4c0-a2c3-47ec-a2d8-05f41bfbde51&awEpisodeId=4e8d47c7-d565-49ea-9ec2-dae68c3b9656&feed=EmVW7VGp",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 74386038,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/2b/b2/4d/2bb24d28-f3bb-916f-6bf3-9e125ba5219b/mza_4476298389845914795.jpg/600x600bb.jpg",
+      "topics": [
+        "science/storytelling"
+      ],
+      "hook": "The journalist behind the shoe thrown at George W. Bush in Baghdad, and what drove him.",
+      "explicit": false
+    },
+    {
+      "id": "amicus-dahlia-lithwick--by-the-people-two-steps-forward",
+      "show": "Amicus With Dahlia Lithwick | Law, justice, and the courts",
+      "title": "By The People | Two Steps Forward, One Step Back",
+      "apple_collection_id": 928790786,
+      "apple_track_id": 1000779330129,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/by-the-people-two-steps-forward-one-step-back/id928790786?i=1000779330129&uo=4",
+      "release_date": "2026-08-01",
+      "duration_min": 46,
+      "duration_sec": 2755,
+      "audio_url": "https://sphinx.acast.com/p/open/s/695ea2381c1db1c5bdf7c59b/e/6a6d0c4961ae402f614aaf60/media.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 38577112,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e8/52/9b/e8529b7b-21fe-9692-48fd-7696d23a8807/mza_17089514366859568033.jpeg/600x600bb.jpg",
+      "topics": [
+        "society/law"
+      ],
+      "hook": "Before Obergefell, marriage-equality organizer Marc Solomon canvassed door-to-door and lost at the local level for years.",
+      "explicit": false
+    },
+    {
+      "id": "unexplained--season-09-episode-29-the-howling",
+      "show": "Unexplained",
+      "title": "Season 09 Episode 29: The Howling Woods",
+      "apple_collection_id": 1078112813,
+      "apple_track_id": 1000779327847,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/season-09-episode-29-the-howling-woods/id1078112813?i=1000779327847&uo=4",
+      "release_date": "2026-07-31",
+      "duration_min": 37,
+      "duration_sec": 2220,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/4be3ef45-824a-44b3-b437-b038010038fc/0f45ba97-1bce-4337-a733-b498013f0a04/audio.mp3?utm_source=Podcast&in_playlist=3eb75c81-5ed8-4148-bb7b-b03801003947",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 35562426,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7e/a9/5c/7ea95c62-4e9b-359b-7dde-2df168676370/mza_156597234584228073.jpg/600x600bb.jpg",
+      "topics": [
+        "paranormal"
+      ],
+      "hook": "Dog-headed men haunted ancient legend for centuries; one corner of folklore still resists explanation.",
       "explicit": false
     }
   ]
