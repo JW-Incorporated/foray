@@ -23860,6 +23860,27 @@
       "batch_id": "fresh-2026-07-31-72c626ec",
       "classified_at": "2026-07-31T16:51:45.395Z"
     },
+    "1458675998": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "4x4 rock crawling, Toyotas, Jeeps, fabrication, camping expertise.",
+      "display_title": "Snail Trail 4x4 Offroad Podcast",
+      "blurb": "Off-road adventures with 4x4 vehicles, featuring rock crawling, camping, and fabrication tips.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
     "1458803180": {
       "topics": [
         "business/management"
@@ -27562,6 +27583,89 @@
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
     },
+    "1485508718": {
+      "topics": [
+        "history",
+        "tv-film/history",
+        "culture/mythology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror history, folklore roots, cinema traditions, real events.",
+      "display_title": "Lunatics Radio Hour: History of Horror",
+      "blurb": "Historical and folklore-rooted horror stories examining cinema and real events.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1485692558": {
+      "topics": [
+        "comedy/stand-up",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians Drew, Carmen, DJ skewering toxic positivity.",
+      "display_title": "Gravy Baby",
+      "blurb": "Comedy with toxic positivity humor and irreverent lifestyle conversations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1485798128": {
+      "topics": [
+        "relationships",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sibling relationships, family dynamics, psychology in conversation.",
+      "display_title": "Sibling Revelry",
+      "blurb": "Free-form conversations exploring sibling bonds and family dynamics.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
     "1485875648": {
       "topics": [
         "music",
@@ -27611,6 +27715,32 @@
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
     },
+    "1486229942": {
+      "topics": [
+        "craft",
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.95
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ruler techniques, tool reviews, precision quilting, design.",
+      "display_title": "Quilting With Rulers",
+      "blurb": "Precision quilting techniques using rulers, tool reviews, design inspiration.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
     "1486231244": {
       "topics": [
         "religion/judaism"
@@ -27632,6 +27762,115 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
+    },
+    "1487173754": {
+      "topics": [
+        "news/daily",
+        "news/politics",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily global news, business, finance, politics digest.",
+      "display_title": "World in Brief from The Economist",
+      "blurb": "Daily global news agenda covering business, finance, and politics.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1487234690": {
+      "topics": [
+        "music",
+        "music/theory-production"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Drummers' creativity, identity, mental health, purpose.",
+      "display_title": "Drummers on Drumming",
+      "blurb": "Interviews exploring drummer creativity, identity, purpose, and mental wellness.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1487402264": {
+      "topics": [
+        "craft/diy-home",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Remodeling trends, products, tricks, maintenance expertise.",
+      "display_title": "Dave Fox Home Remodeling Show",
+      "blurb": "Home remodeling trends, product reviews, renovation tricks, maintenance tips.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1487406662": {
+      "topics": [
+        "fiction/sci-fi",
+        "science/storytelling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.95
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sci-fi anthology, ordinary people, extraordinary social systems.",
+      "display_title": "The Program",
+      "blurb": "Sci-fi anthology exploring ordinary people in extraordinary worlds.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
     },
     "1487530250": {
       "topics": [
@@ -27655,6 +27894,68 @@
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
     },
+    "1487789978": {
+      "topics": [
+        "food",
+        "food/fermentation",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "food/fermentation",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Craft beer, brewers, fermentation, industry professionals, culture.",
+      "display_title": "Drink Beer, Think Beer",
+      "blurb": "Craft beer exploration with brewers discussing art, culture, and business.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1487953334": {
+      "topics": [
+        "craft/diy-home",
+        "education/how-to",
+        "food/cooking-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tips for cleaning, organizing, cooking, home.",
+      "display_title": "Real Simple Tips",
+      "blurb": "Daily practical tips for cleaning, organizing, cooking, home decor.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
     "1488011300": {
       "topics": [
         "kids-family/stories"
@@ -27676,6 +27977,68 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
+    },
+    "1488015698": {
+      "topics": [
+        "health/nutrition",
+        "health/fitness",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lean body building, fitness, science-based nutrition.",
+      "display_title": "Living Lean",
+      "blurb": "Science-based fitness and body building strategies for lean health.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1488142226": {
+      "topics": [
+        "news/daily",
+        "news/politics",
+        "linguistics/language"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Spanish news, political agenda, afternoon program.",
+      "display_title": "Así las cosas con Carlos Loret de Mola",
+      "blurb": "Daily Spanish news program covering current affairs and politics.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
     },
     "1488142262": {
       "topics": [
@@ -27699,6 +28062,286 @@
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
     },
+    "1488187430": {
+      "topics": [
+        "music",
+        "music/theory-production",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Prince discography, vault recordings, collaborators, music history.",
+      "display_title": "Prince | Official Podcast",
+      "blurb": "Prince's discography, unreleased vault recordings, and collaborator stories.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1488229496": {
+      "topics": [
+        "sports/endurance",
+        "sports",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amateur marathons, 5K racing, Dutch running community.",
+      "display_title": "Running Stories",
+      "blurb": "Amateur running stories featuring marathons, 5K races, community.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1488259550": {
+      "topics": [
+        "kids-family/stories",
+        "health/mental",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sleep stories, guided meditations, kids and adults.",
+      "display_title": "Kids Meditation & Sleep Stories",
+      "blurb": "Guided meditations and sleep stories for children and adults.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1488521732": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Arsenal FC twice-weekly, transfers, women's team coverage.",
+      "display_title": "Handbrake Off: Arsenal FC",
+      "blurb": "Twice-weekly Arsenal FC coverage including transfers and women's team.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1488521834": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Newcastle United expert insight, club news coverage.",
+      "display_title": "Pod On The Tyne",
+      "blurb": "Newcastle United expert insight and coverage of club affairs.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1488554600": {
+      "topics": [
+        "business/management",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Workplace strategy, meetings, decision-making, modern work.",
+      "display_title": "At Work with The Ready",
+      "blurb": "Workplace challenges, meetings, strategy, and decision-making in modern work.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1488937700": {
+      "topics": [
+        "comedy/stand-up",
+        "linguistics/language"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish radio comedy, cultural entertainment, traditional format.",
+      "display_title": "La Tremenda Corte Tres Patines",
+      "blurb": "Spanish radio comedy with cultural humor and entertainment.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1489075772": {
+      "topics": [
+        "adventure/exploration",
+        "nature",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Musky fishing tactics, expert fishermen, adventure.",
+      "display_title": "Musky 360",
+      "blurb": "Musky fishing tips, tactics, and conversations with expert fishermen.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1489096844": {
+      "topics": [
+        "sports/volleyball",
+        "comedy/casual-hangs",
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball, comedy, sports, TikTok, gaming from creator.",
+      "display_title": "The Nick Woolley Podcast",
+      "blurb": "Volleyball and comedy covering sports, gaming, and social media.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1489335002": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swimming coach interviews, training, endurance sport.",
+      "display_title": "Swim Coach in Transit",
+      "blurb": "Long-form interviews with swimming coaches exploring training and technique.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
     "1489560920": {
       "topics": [
         "history"
@@ -27720,6 +28363,265 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
+    },
+    "1489892648": {
+      "topics": [
+        "tv-film/reviews",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Box office news, predictions, movie industry analysis.",
+      "display_title": "B.O. Boys",
+      "blurb": "Movie box office news, predictions, and industry analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1490054246": {
+      "topics": [
+        "kids-family/parenting",
+        "psychology",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Teen parenting into adulthood, expert guidance.",
+      "display_title": "Feeding The Mouth That Bites You",
+      "blurb": "Expert guidance on parenting teenagers into adulthood with compassion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1490060114": {
+      "topics": [
+        "gaming",
+        "gaming/design",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game conversations, design, culture, analysis.",
+      "display_title": "The Pre-Order Bonus",
+      "blurb": "Thoughtful conversations about video games, culture, and design.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1490197442": {
+      "topics": [
+        "religion/judaism",
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish emuna teachings, body-soul harmony, faith.",
+      "display_title": "Emuna Beams",
+      "blurb": "Jewish spiritual teachings on emuna (faith) and body-soul harmony.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1490296778": {
+      "topics": [
+        "economics/markets",
+        "business",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-term investing, macroeconomics, value factors.",
+      "display_title": "Excess Returns",
+      "blurb": "Long-term investor education in macroeconomics and value investing.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1490664572": {
+      "topics": [
+        "sports/volleyball",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long Island volleyball, Hero Volley, coaching, players.",
+      "display_title": "The Long Island Volleyball Podcast",
+      "blurb": "Long Island volleyball featuring coaching insights and player journeys.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1490722424": {
+      "topics": [
+        "fiction/comedy",
+        "gaming",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Star Wars RPG, voice actors, improvisational comedy.",
+      "display_title": "Dumb Scum & Villainy",
+      "blurb": "Star Wars Edge of Empire RPG actual-play with voice actors.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1490732024": {
+      "topics": [
+        "education/language-learning",
+        "linguistics/language"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese learning, daily expressions, idioms, instruction.",
+      "display_title": "Speak Chinese with Da Peng",
+      "blurb": "Chinese language learning featuring daily expressions and idioms.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1490750486": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Single-episode injury narrative, personal, sports/health.",
+      "display_title": "My Worst Injury",
+      "blurb": "Personal narrative of significant injury experience and recovery.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
     },
     "1490915960": {
       "topics": [
@@ -27743,6 +28645,37 @@
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
     },
+    "1490924360": {
+      "topics": [
+        "sports/basketball",
+        "comedy/casual-hangs",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Inside The NBA personalities, basketball, casual conversation.",
+      "display_title": "The Steam Room",
+      "blurb": "Candid conversations between Inside The NBA personalities about life.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
     "1490937170": {
       "topics": [
         "news/commentary"
@@ -27765,6 +28698,120 @@
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
     },
+    "1491377174": {
+      "topics": [
+        "relationships",
+        "health/mental",
+        "psychology",
+        "culture/fashion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Women 40+, identity, health, careers, lifestyle.",
+      "display_title": "Everything is Fine",
+      "blurb": "Women over 40 discussing identity shifts, health, and careers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1491535934": {
+      "topics": [
+        "culture/design",
+        "culture/art",
+        "architecture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Luxury lifestyle, designers, design, architecture, wellness.",
+      "display_title": "Iconic Hour",
+      "blurb": "Luxury lifestyle conversations with tastemakers on design and wellness.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1491784484": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kansas City Royals daily news, MLB insider coverage.",
+      "display_title": "Locked On Royals",
+      "blurb": "Daily Kansas City Royals coverage with insider analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1491804404": {
+      "topics": [
+        "fiction/drama",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sherlock Holmes radio drama, 220 episodes, classic.",
+      "display_title": "Sherlock Holmes: Rathbone & Bruce",
+      "blurb": "Classic radio drama featuring 220 episodes of Sherlock Holmes.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
     "1492008134": {
       "topics": [
         "fiction/drama"
@@ -27786,6 +28833,115 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
+    },
+    "1492099568": {
+      "topics": [
+        "nature/earth-science",
+        "science",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pacific Northwest geology, earth science, education.",
+      "display_title": "The Nick Zentner Geology Podcast",
+      "blurb": "Geologic stories and earth science exploration of the Pacific Northwest.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1492217846": {
+      "topics": [
+        "craft/diy-home",
+        "nature",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Regenerative living, farmers, artists, sustainability.",
+      "display_title": "The Good Dirt: Sustainability Explained",
+      "blurb": "Sustainable and regenerative living with farmers, artists, and leaders.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1492360046": {
+      "topics": [
+        "sports/golf"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf, PGA Tour, weekly professional insights.",
+      "display_title": "Get a Grip with Shane Bacon",
+      "blurb": "Weekly professional golf and PGA Tour insights.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1492634312": {
+      "topics": [
+        "comedy/casual-hangs",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Drunken comedy, irreverent interviews, debates.",
+      "display_title": "I Swear 2 Bob",
+      "blurb": "Comedic conversations featuring interviews, debates, and irreverent humor.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
     },
     "1492739918": {
       "topics": [
@@ -27831,6 +28987,37 @@
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
     },
+    "1493025986": {
+      "topics": [
+        "health/mental",
+        "psychology",
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.95
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental health for gamers, wellness, Dr. K.",
+      "display_title": "HealthyGamerGG",
+      "blurb": "Mental health and wellness for gamers with Dr. K.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
     "1493130920": {
       "topics": [
         "health"
@@ -27853,6 +29040,94 @@
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
     },
+    "1493229344": {
+      "topics": [
+        "news/politics",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Politics, policy, culture analysis, Hayes, Goldberg.",
+      "display_title": "The Dispatch Podcast",
+      "blurb": "Politics, policy, and culture analysis from commentators.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1493287286": {
+      "topics": [
+        "health/mental",
+        "psychology",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.95
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Morning mindfulness, affirmations, meditations, motivation.",
+      "display_title": "Wake Me Up: Morning Positivity",
+      "blurb": "Morning mindfulness, affirmations, meditations, and motivational guidance.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1493302664": {
+      "topics": [
+        "adventure/exploration",
+        "nature",
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Survival, hunting, defense, military/LE expertise.",
+      "display_title": "Gunfighter Life",
+      "blurb": "Survival, hunting, and defensive tactics from military and contracting.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
     "1493353598": {
       "topics": [
         "music"
@@ -27874,6 +29149,84 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
+    },
+    "1493403458": {
+      "topics": [
+        "sports/volleyball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College men's volleyball, big issues, weekly.",
+      "display_title": "And for Off the Block",
+      "blurb": "College men's volleyball discussing important issues and sport.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1493541692": {
+      "topics": [
+        "sports/volleyball",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College volleyball player/coach interviews, athlete insights.",
+      "display_title": "Off the Block Interviews",
+      "blurb": "College men's volleyball player and coach interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
+    },
+    "1493613536": {
+      "topics": [
+        "health/alternative",
+        "health/nutrition",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intermittent fasting, OMAD, weight loss, health.",
+      "display_title": "Fasting For Life",
+      "blurb": "Intermittent and extended fasting guidance for weight and health.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-ba687b1f",
+      "classified_at": "2026-08-01T16:54:09.799Z"
     },
     "1493678510": {
       "topics": [
@@ -27964,11 +29317,11 @@
       "classified_at": "2026-07-25T12:55:28.057Z"
     }
   },
-  "built_at": "2026-08-01T08:52:27.632Z",
+  "built_at": "2026-08-01T16:54:09.799Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-01-03977cdd",
+    "last_batch_id": "fresh-2026-08-01-ba687b1f",
     "last_batch_tier": 1
   }
 }
