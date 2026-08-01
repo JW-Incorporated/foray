@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-01T08:11:54.426Z",
+  "built_at": "2026-08-01T16:13:42.819Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-01-c016247a",
+    "last_batch_id": "fresh-2026-08-01-bd1320f5",
     "last_batch_tier": 1
   },
   "entries": {
@@ -22980,7 +22980,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhism podcast about sakya monastery dharma lectures.",
+      "display_title": "Sakya Monastery Dharma Lectures",
+      "blurb": "Sakya Monastery Dharma Lectures",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1002655335": {
       "topics": [
@@ -51267,7 +51282,26 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wilderness podcast about on the wing podcast.",
+      "display_title": "On The Wing Podcast",
+      "blurb": "Welcome to the On the Wing Podcast with Pheasants Forever and Quail Forever. On the Wing is your destination for conversations about upland bird.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1435805049": {
       "topics": [
@@ -51289,7 +51323,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf podcast about the meaning of golf.",
+      "display_title": "The Meaning of Golf",
+      "blurb": "A golf podcast hosted by Andy Hayes and Dasa Urbankova from The Golf Practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1435988964": {
       "topics": [
@@ -51363,10 +51412,30 @@
     },
     "1436146344": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion & Beauty podcast about the estée lalonde show.",
+      "display_title": "The Estée Lalonde Show",
+      "blurb": "The Estée Lalonde Show brings Estée's online community into the fold as she interviews guests that she believes will resonate with her audience..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1436176408": {
       "topics": [
@@ -51404,7 +51473,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-Up podcast about becky and cam.",
+      "display_title": "Becky and Cam",
+      "blurb": "A comedy show by Becky Lucas and Cameron James. Funny since day dot (tm).",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1436358056": {
       "topics": [
@@ -51484,7 +51568,22 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily News podcast about the morning edition.",
+      "display_title": "The Morning Edition",
+      "blurb": "The Morning Edition (formerly Please Explain) brings you the story behind the story with the best journalists in Australia. Join host Samantha.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1436456683": {
       "topics": [
@@ -51602,7 +51701,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baseball podcast about atlanta braves radio network.",
+      "display_title": "Atlanta Braves Radio Network",
+      "blurb": "On-demand content from the \"Atlanta Braves Radio Network.\" Broadcasting from \"The Battery Atlanta at Truist Park, Home of the Atlanta Braves.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1436865572": {
       "topics": [
@@ -51667,7 +51781,22 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories for Kids podcast about yourclassical storytime.",
+      "display_title": "YourClassical Storytime",
+      "blurb": "Welcome to YourClassical Storytime from American Public Media, offering classic stories with a classical twist. Each episode features our.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1436998731": {
       "topics": [
@@ -51720,11 +51849,25 @@
     },
     "1437098382": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language Learning podcast about learn russian with max | comprehensible russian podcast.",
+      "display_title": "Learn Russian with Max | Comprehensible Russian Podcast",
+      "blurb": "Учите живой русский, слушая понятный и познавательный подкаст. Slow and Comprehensible Russian Podcast for A2–B1+ learners who want to upgrade.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1437103037": {
       "topics": [
@@ -51910,7 +52053,22 @@
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Education for Kids podcast about curious kid podcast.",
+      "display_title": "Curious Kid Podcast",
+      "blurb": "Join Jacob and curious kids, 12 year old Olivia and 9 year old Noah, as they get curious about new topics each and every Sunday. Learn all about.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1437733673": {
       "topics": [
@@ -52008,10 +52166,29 @@
     "1437868374": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship podcast about god-led business - make money online, work from home, passive income, online business, start a podcast.",
+      "display_title": "GOD-LED BUSINESS - Make Money Online, Work From",
+      "blurb": "I built a multi-seven-figure business starting with nothing but a podcast. No social media. No ads. Just God, a microphone, and a strategy that.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1437916048": {
       "topics": [
@@ -52030,10 +52207,30 @@
     },
     "1437952572": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/interviews",
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film Interviews podcast about behind the screen.",
+      "display_title": "Behind The Screen",
+      "blurb": "In this podcast series, The Hollywood Reporter celebrates the cinematographers, editors, production designers, composers, visual effects supervisors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1437953157": {
       "topics": [
@@ -52090,7 +52287,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby podcast about house of rugby.",
+      "display_title": "House of Rugby",
+      "blurb": "Join Alex Goode, Rachael Burford and Hugh Woozencroft on JOE's House of Rugby. Every week, the team will bring you their thoughts on the weekend’s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1438024613": {
       "topics": [
@@ -52168,7 +52380,22 @@
         "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News Commentary podcast about the daily mojo with brad staggs.",
+      "display_title": "The Daily Mojo with Brad Staggs",
+      "blurb": "The Daily Mojo with Brad Staggs and Producer Ron Phillips is your first look each weekday, at the news, politics, faith, and absurdity that America.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1438350876": {
       "topics": [
@@ -52176,7 +52403,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running podcast about run farther & faster — the podcast with coaches lisa levin and julie sapper.",
+      "display_title": "Run Farther & Faster — The Podcast with",
+      "blurb": "Coaches Lisa Levin and Julie Sapper provide tips and tricks for running farther, faster, and stronger. After running the Boston Marathon 32 times.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1438351534": {
       "topics": [
@@ -52219,10 +52465,30 @@
     },
     "1438475364": {
       "topics": [
+        "craft",
         "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design podcast about the sew much more podcast: 30 minutes with workroom tech.",
+      "display_title": "The Sew Much More Podcast: 30 Minutes With",
+      "blurb": "This podcast is a must for workrooms and aspiring sewists who want to make professional window treatments and soft home furnishings. Each episode.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1438483128": {
       "topics": [
@@ -52255,10 +52521,25 @@
     },
     "1438740072": {
       "topics": [
-        "gaming"
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video Games podcast about jar media posdact.",
+      "display_title": "JAR Media Posdact",
+      "blurb": "A podcast about nothing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1438772276": {
       "topics": [
@@ -52286,10 +52567,30 @@
     },
     "1438781160": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marketing podcast about start tiny with allie bjerk.",
+      "display_title": "Start Tiny with Allie Bjerk",
+      "blurb": "Start Tiny is a weekly podcast hosted by Allie Bjerk for entrepreneurs, creators, and experts who want to build an online business around what they.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1438789088": {
       "topics": [
@@ -52304,7 +52605,22 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily News podcast about the take.",
+      "display_title": "The Take",
+      "blurb": "The Take is a daily interview-driven international news podcast hosted by award-winning journalist Malika Bilal. Each episode focuses on.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1438840258": {
       "topics": [
@@ -52360,10 +52676,29 @@
     "1438982040": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship podcast about she's so lucky.",
+      "display_title": "She's So Lucky",
+      "blurb": "She’s So Lucky is a chart-topping weekly podcast dedicated to women who create their own luck against all odds. Join host Les Alfred and special.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1438995143": {
       "topics": [
@@ -52377,7 +52712,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhism podcast about tao of our understanding alcohol recovery podcast.",
+      "display_title": "Tao of Our understanding Alcohol Recovery Podcast",
+      "blurb": "In this podcast, we discuss mystical works of literature, primarily Taoist text, and how they relate to alcohol recovery. Taoist Philosophy can be.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1439034317": {
       "topics": [
@@ -52422,7 +52772,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Drama podcast about video palace.",
+      "display_title": "Video Palace",
+      "blurb": "When video collector Mark Cambria watches a mysterious VHS tape, he begins talking in his sleep in a language that doesn't exist. Mark and his.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1439252196": {
       "topics": [
@@ -52494,7 +52859,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Basketball podcast about lakers lounge.",
+      "display_title": "Lakers Lounge",
+      "blurb": "Anthony Irwin takes a daily look at the Los Angeles Lakers in his own unique way, with the help of any number of guests from throughout NBA.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1439485214": {
       "topics": [
@@ -52606,7 +52986,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Earth Sciences podcast about farm food facts.",
+      "display_title": "Farm Food Facts",
+      "blurb": "Farm. Food. Facts. And everything in between. A podcast featuring the leading minds in the future of sustainable food systems. Brought to you by.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1439655378": {
       "topics": [
@@ -52653,7 +53052,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "After Shows podcast about bitchcraft: the chilling adventures of sabrina unofficial podcast podcast.",
+      "display_title": "Bitchcraft: The Chilling Adventures of Sabrina UnOfficial Podcast",
+      "blurb": "Netflix's, The Chilling Adventures of Sabrina looks so scary and so good--that Matt and Jake had to podcast about it. These are two Southern Queens,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1439735906": {
       "topics": [
@@ -52719,7 +53133,22 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christianity podcast about all in.",
+      "display_title": "All In",
+      "blurb": "What does it mean to be \"all in\" the gospel of Jesus Christ in the latter days? The answers might surprise you. All In is a podcast from LDS Living,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1440000749": {
       "topics": [
@@ -52766,14 +53195,49 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Drama podcast about the angel of vine.",
+      "display_title": "The Angel of Vine",
+      "blurb": "A present day journalist uncovers the audio tapes of a 1950s private eye who cracked the greatest unsolved murder mystery Hollywood has ever.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1440190146": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Books podcast about fated mates - romance books for novel people.",
+      "display_title": "Fated Mates - Romance Books for Novel People",
+      "blurb": "The most listened to romance novel podcast, Fated Mates is co-hosted by bestselling author Sarah MacLean and romance critic Jen Prokop. Weekly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1440209326": {
       "topics": [
@@ -52886,7 +53350,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running podcast about rmr training podcast.",
+      "display_title": "RMR Training Podcast",
+      "blurb": "Training and racing conversations for the HYROX, and Hybrid athletes. The RMR Training podcast features elite coaches and world-champion athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1440833267": {
       "topics": [
@@ -52943,25 +53426,78 @@
     "1441099644": {
       "topics": [
         "music",
-        "history"
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Music History podcast about rock's backpages.",
+      "display_title": "Rock's Backpages",
+      "blurb": "Tales from the world's largest archive of music journalism: entertaining interviews with luminaries such as Neil Tennant, Billy Bragg, Pamela Des.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1441154730": {
       "topics": [
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hockey podcast about the hockey think tank podcast.",
+      "display_title": "The Hockey Think Tank Podcast",
+      "blurb": "The Hockey Think Tank Podcast brings incredible stories, interviews, and great perspective from some of the top hockey minds in the game. Hosted by.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1441169370": {
       "topics": [
         "news/tech",
-        "computing"
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tech News podcast about high leverage.",
+      "display_title": "High Leverage",
+      "blurb": "Discussions on scaling modern software teams through better tooling and processes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1441238966": {
       "topics": [
@@ -52981,10 +53517,30 @@
     },
     "1441247448": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Careers podcast about האינטרסנטים.",
+      "display_title": "האינטרסנטים",
+      "blurb": "האינטרסנטים הוא פודקאסט כלכלי-פוליטי מבית TheMarker סמי פרץ ואיתן אבריאל, ולעיתים גם אורחים, מנתחים את אירוע השבוע בזירת העסקים והכלכלה, ומנסים.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1441251826": {
       "topics": [
@@ -53024,7 +53580,26 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wilderness podcast about trail tales - thru-hiking & backpacking.",
+      "display_title": "Trail Tales - Thru-Hiking & Backpacking",
+      "blurb": "What’s it like to hike and live in the backcountry for 5 months? Host and thru-hiker & YouTuber Kyle Hates Hiking (Kyle O’Grady), who has completed.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1441470249": {
       "topics": [
@@ -53124,7 +53699,22 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christianity podcast about ask nt wright anything.",
+      "display_title": "Ask NT Wright Anything",
+      "blurb": "The weekly podcast that connects you to NT (Tom) Wright’s thought and theology by allowing you to ask the questions. Produced by Premier.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1441659097": {
       "topics": [
@@ -53410,14 +54000,44 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Basketball podcast about the daily memphian grizzlies podcast.",
+      "display_title": "The Daily Memphian Grizzlies Podcast",
+      "blurb": "Grizzlies writer Drew Hill is joined by columnist Chris Herrington to discuss the Memphis Grizzlies and the NBA.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1444075158": {
       "topics": [
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry podcast about the toxpod.",
+      "display_title": "The Toxpod",
+      "blurb": "Forensic Toxicology: It's a matter of half-life and death A  into the  world of forensic toxicology, supported by The.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1444219798": {
       "topics": [
@@ -53605,7 +54225,22 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Football podcast about snr drive (pittsburgh steelers).",
+      "display_title": "SNR Drive (Pittsburgh Steelers)",
+      "blurb": "Members of the Steelers Audio Network team dive into the days topics each afternoon, Monday through Friday, on SNR.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1445199346": {
       "topics": [
@@ -53627,7 +54262,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby podcast about wests tigers podcast.",
+      "display_title": "Wests Tigers Podcast",
+      "blurb": "The Wests Tigers Podcast is a long-running, fan-run podcast and community that provides weekly coverage of the Wests Tigers, the NRL team..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1445368869": {
       "topics": [
@@ -53825,7 +54475,22 @@
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Education for Kids podcast about simply charlotte mason homeschooling (video).",
+      "display_title": "Simply Charlotte Mason Homeschooling (video)",
+      "blurb": "The weekly Simply Charlotte Mason homeschooling video podcast with Sonya Shafer",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1445952749": {
       "topics": [
@@ -54037,7 +54702,22 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball podcast about coach factor.",
+      "display_title": "Coach Factor",
+      "blurb": "Il primo Podcast italiano per allenatori creato da allenatori. Diventa un Membro PREMIUM sottoscrivendo l'abbonamento con Patreon:.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1446796385": {
       "topics": [
@@ -54049,11 +54729,25 @@
     },
     "1446814974": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "fiction/comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy Fiction podcast about oz 9.",
+      "display_title": "Oz 9",
+      "blurb": "It's Spring 2142 (a Tuesday), and Gated Galaxies has launched its 400 Oz-8000 ships, each carrying 50,000 \"resting guests\" to, hopefully, a new home.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1446862825": {
       "topics": [
@@ -54198,7 +54892,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hockey podcast about ingoal radio podcast.",
+      "display_title": "InGoal Radio Podcast",
+      "blurb": "InGoal Magazine is the World's most-read goaltending publication.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1447513097": {
       "topics": [
@@ -54227,7 +54936,22 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting podcast about courageous parenting.",
+      "display_title": "COURAGEOUS PARENTING",
+      "blurb": "Biblical parenting doesn&#39;t happen by accident — and in today&#39;s culture, raising confident, courageous Christian children demands more.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1447749598": {
       "topics": [
@@ -54319,10 +55043,25 @@
     },
     "1447949754": {
       "topics": [
-        "philosophy"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophy podcast about audible anarchism.",
+      "display_title": "Audible Anarchism",
+      "blurb": "A podcast broadcasting Anarchist texts and audiobooks",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1448000113": {
       "topics": [
@@ -54427,7 +55166,22 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness podcast about muscle intelligence — longevity, training & human performance with ben pakulski.",
+      "display_title": "Muscle Intelligence — Longevity, Training & Human Performance",
+      "blurb": "You don't have to decline. Your body is more capable than you think. This podcast will show you how. Muscle Intelligence is the podcast for.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1448214127": {
       "topics": [
@@ -54732,11 +55486,25 @@
     },
     "1449052830": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental Health podcast about bore you to sleep - sleep stories for adults.",
+      "display_title": "Bore You To Sleep - Sleep Stories for",
+      "blurb": "Become a Paid Subscriber: https://podcasters.spotify.com/pod/show/boreyoutosleep/subscribe Bore You To Sleep with Teddy offers intentionally dull,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-01-bd1320f5",
+      "classified_at": "2026-08-01T16:13:42.819Z"
     },
     "1449137711": {
       "topics": [
