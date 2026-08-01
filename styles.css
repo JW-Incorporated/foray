@@ -188,6 +188,18 @@ body.view-home { overflow: hidden; }
 }
 .mc-info { flex: 1; min-width: 0; }
 .mc-show { margin: 0; font-size: 0.72rem; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-stretch {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.64rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--accent, #4c9aff);
+  background: color-mix(in srgb, var(--accent, #4c9aff) 15%, transparent);
+}
 .mc-info h3 {
   margin: 1px 0;
   font-size: 0.95rem;
