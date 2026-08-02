@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-02T08:26:23.998Z",
+  "built_at": "2026-08-02T16:20:12.309Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-02-d76fe9e6",
+    "last_batch_id": "fresh-2026-08-02-cacb118c",
     "last_batch_tier": 1
   },
   "entries": {
@@ -67776,10 +67776,30 @@
     },
     "1480706373": {
       "topics": [
-        "culture/design"
+        "craft/filmmaking",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "UX design podcast focused on emerging tech (AI, AR, VR) and design systems implementation.",
+      "display_title": "Future of UX",
+      "blurb": "AI, AR, and VR transform user experience design. Covers emerging tech trends and design systems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1480709706": {
       "topics": [
@@ -67797,10 +67817,25 @@
     },
     "1480760373": {
       "topics": [
-        "comedy/interviews"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three comedians riffing on absurd topics with guests in casual conversation format.",
+      "display_title": "Durag and the Deertag",
+      "blurb": "Comedians improvise and joke around with guests on random, often ridiculous topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1480766062": {
       "topics": [
@@ -67863,10 +67898,30 @@
     },
     "1480904163": {
       "topics": [
-        "business/management"
+        "psychology/decision-making",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership and workplace mental health focused on anxiety as a condition, not a deficit.",
+      "display_title": "The Anxious Achiever",
+      "blurb": "Reframes anxiety in the workplace as manageable rather than disqualifying for success.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1480914661": {
       "topics": [
@@ -67878,17 +67933,47 @@
     },
     "1480937427": {
       "topics": [
-        "religion/buddhism"
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Thai Buddhist teaching podcast about karma, rebirth, and spiritual practice from monastic school.",
+      "display_title": "กฎแห่งกรรม จาก ร.ร. อนุบาล ฝันในฝันวิทยา",
+      "blurb": "Buddhist teachings on karma and spiritual life from Phra Dhamma monastery school.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1480951419": {
       "topics": [
-        "religion/buddhism"
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth Tibetan Buddhist teachings on meditation and philosophical practice.",
+      "display_title": "BodhiHeart Podcast with Khenpo Sherab Sangpo",
+      "blurb": "Tibetan Buddhist meditation teachings covering philosophy, enlightenment, and spiritual practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1480965056": {
       "topics": [
@@ -67945,7 +68030,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Montreal Canadiens NHL coverage with game analysis, roster moves, and team news.",
+      "display_title": "Locked On Canadiens",
+      "blurb": "Daily Montreal Canadiens roster updates, games, strategy, and NHL context.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1481088679": {
       "topics": [
@@ -68104,24 +68204,74 @@
     },
     "1481362257": {
       "topics": [
-        "culture/design"
+        "craft",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brand and graphic designers discuss business operations, pricing, and design philosophy.",
+      "display_title": "Better: The Brand Designer Podcast",
+      "blurb": "Designers share strategies for running creative agencies and client work.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1481366133": {
       "topics": [
-        "sports/football"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily college football analysis covering teams, conference realignment, and transfer portal.",
+      "display_title": "Locked On College Football",
+      "blurb": "Daily college football news, analysis, and coverage of conference changes and team dynamics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1481369481": {
       "topics": [
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Los Angeles Kings NHL coverage with team analysis and hockey league news.",
+      "display_title": "Locked On Kings",
+      "blurb": "Daily Los Angeles Kings roster updates and NHL-wide coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1481398762": {
       "topics": [
@@ -68143,7 +68293,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three hosts analyze past and current seasons of Survivor with strategy discussion.",
+      "display_title": "Castaway Consultants: A Survivor Podcast",
+      "blurb": "Survival strategy and analysis for fans of the Survivor TV show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1481447332": {
       "topics": [
@@ -68195,7 +68360,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Pittsburgh Penguins NHL coverage with roster, games, and league-wide analysis.",
+      "display_title": "Locked On Penguins",
+      "blurb": "Daily Pittsburgh Penguins updates, player analysis, and Stanley Cup history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1481597851": {
       "topics": [
@@ -68239,7 +68419,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two comedians tell stories from their video content shoots and banter.",
+      "display_title": "The Leo & Danny Show",
+      "blurb": "Behind-the-scenes comedy and storytelling from comedians Danny Mullen and Leo Dottavio.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1481776178": {
       "topics": [
@@ -68254,7 +68449,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Memphis Grizzlies NBA coverage with roster analysis and league updates.",
+      "display_title": "Grits and Grinds: Memphis Grizzlies",
+      "blurb": "Daily Memphis Grizzlies analysis, draft coverage, and NBA insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1481780227": {
       "topics": [
@@ -68392,14 +68602,44 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music interviews from underground garage rock tradition with musician guests.",
+      "display_title": "Little Steven's Underground Garage - Coolest Conversations",
+      "blurb": "Interviews with musicians about their work and influences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1482165135": {
       "topics": [
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two comedians improvise absurdist humor and tell stories in casual format.",
+      "display_title": "Questionable Material with Jack & Brian",
+      "blurb": "Two comedians improvise absurdist sketches and share unhinged stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1482184726": {
       "topics": [
@@ -68540,7 +68780,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Philadelphia Flyers NHL coverage with contract analysis and roster moves.",
+      "display_title": "Locked On Flyers",
+      "blurb": "Daily Philadelphia Flyers updates, contracts, and NHL news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1482426505": {
       "topics": [
@@ -68591,7 +68846,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional aviators discuss career paths, training, and aviation industry challenges.",
+      "display_title": "Squawk Ident - an Aviation Podcast",
+      "blurb": "Aviation careers and professional pilot perspectives on training and industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1482510236": {
       "topics": [
@@ -68710,7 +68980,22 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French podcast interviews creative entrepreneurs in crafts with focus on textiles and DIY.",
+      "display_title": "Fait Main - DIY et entrepreneuriat créatif",
+      "blurb": "Interviews with craft entrepreneurs and makers working in textiles, art, and DIY.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1482781075": {
       "topics": [
@@ -68739,7 +69024,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily college basketball analysis covering teams, transfers, and tournament updates.",
+      "display_title": "Locked On College Basketball",
+      "blurb": "Daily college basketball coverage, player analysis, and tournament insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1482820355": {
       "topics": [
@@ -68777,7 +69077,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jazz pianist interviews musicians about composition, technique, and artistic process.",
+      "display_title": "Pablo Held Investigates",
+      "blurb": "Jazz musician interviews exploring composition, improvisation, and artistic practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1482932060": {
       "topics": [
@@ -68796,12 +69111,35 @@
     },
     "1482984603": {
       "topics": [
-        "medicine/biology",
         "science",
+        "medicine/biology",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Santa Fe Institute podcast on complex systems, intelligence, and emergence.",
+      "display_title": "COMPLEXITY",
+      "blurb": "Complex systems research covering emergence, artificial intelligence, and natural systems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1483009735": {
       "topics": [
@@ -68846,7 +69184,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three hosts discuss space topics, astronomy, and cosmic science in casual format.",
+      "display_title": "The Space Cadets",
+      "blurb": "Casual conversations about space, astronomy, and cosmic mysteries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1483190315": {
       "topics": [
@@ -68929,11 +69286,30 @@
     },
     "1483264365": {
       "topics": [
-        "news/tech",
-        "computing"
+        "computing",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily 10-minute tech news focused on IT services, MSP business models, and vendor dynamics.",
+      "display_title": "Business of Tech: Daily 10-Minute IT Services Insights",
+      "blurb": "IT services industry analysis covering MSP business, tech changes, and vendor shifts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1483267004": {
       "topics": [
@@ -69089,7 +69465,22 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Anime and manga podcast covering Demon Slayer and related animation content.",
+      "display_title": "Demon Slayer Podcast",
+      "blurb": "Fan discussions of anime and manga including Demon Slayer series analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1483608500": {
       "topics": [
@@ -69104,7 +69495,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chilean stand-up comedy show with hosts riffing on news and society.",
+      "display_title": "EL SENTIDO DEL HUMOR",
+      "blurb": "Spanish-language stand-up comedy with current events and social commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1483638752": {
       "topics": [
@@ -69161,10 +69567,25 @@
     },
     "1483872549": {
       "topics": [
-        "aviation"
+        "aviation/accidents"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation/accidents",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly podcast analyzing aviation disasters and how they improved flight safety.",
+      "display_title": "Hard Landings",
+      "blurb": "Analysis of aviation disasters and their role in improving aviation safety.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1483878553": {
       "topics": [
@@ -69236,10 +69657,30 @@
     },
     "1484110017": {
       "topics": [
-        "religion/spirituality"
+        "philosophy/ideas",
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Modern spirituality discussions covering astrology, purpose, and personal growth.",
+      "display_title": "Spiritual Shit",
+      "blurb": "Contemporary spirituality covering astrology, purpose, and personal transformation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1484112288": {
       "topics": [
@@ -69332,7 +69773,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Narrated horror stories with atmospheric sound design and cinematic storytelling.",
+      "display_title": "Weekly Spooky | Scary Stories for Spooky Season",
+      "blurb": "Narrated horror and scary stories with atmospheric sound design.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1484406501": {
       "topics": [
@@ -69518,7 +69974,22 @@
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Four hosts discuss and review horror movies with interviews of horror industry figures.",
+      "display_title": "Don't Go Out There Horror Movie Review Podcast",
+      "blurb": "Horror movie reviews and interviews with filmmakers and horror personalities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1484760064": {
       "topics": [
@@ -69612,10 +70083,25 @@
     },
     "1485111837": {
       "topics": [
-        "business/careers"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Twice-weekly business podcast for wedding venue owners on operations and marketing.",
+      "display_title": "The Venue Podcast",
+      "blurb": "Wedding venue business guidance on operations, marketing, and client experience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1485118950": {
       "topics": [
@@ -69643,11 +70129,30 @@
     },
     "1485144537": {
       "topics": [
-        "news",
-        "business"
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Freight industry news, trucking market analysis, and supply chain updates.",
+      "display_title": "FreightCasts",
+      "blurb": "Freight industry news, trucking economics, and supply chain analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1485180410": {
       "topics": [
@@ -69661,7 +70166,22 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bat conservation podcast with field recordings and expert interviews on ecologists.",
+      "display_title": "BatChat",
+      "blurb": "Bat conservation research and field stories from wildlife experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1485241408": {
       "topics": [
@@ -69935,7 +70455,22 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep analysis of canonical literature from Shakespeare to Tolstoy.",
+      "display_title": "Hardcore Literature",
+      "blurb": "Book club analysis of classic literature and canonical works.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1485623466": {
       "topics": [
@@ -70000,7 +70535,22 @@
         "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Art history covering fine art and contemporary art practices like food and technology.",
+      "display_title": "Who Arted: Weekly Art History for All Ages",
+      "blurb": "Art history spanning traditional fine art to contemporary practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1485819528": {
       "topics": [
@@ -70085,7 +70635,22 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese women's professional wrestling podcast with interviews and match analysis.",
+      "display_title": "The Joshi Pod",
+      "blurb": "Japanese women's professional wrestling coverage and wrestler interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1486118282": {
       "topics": [
@@ -70097,25 +70662,69 @@
     },
     "1486169193": {
       "topics": [
-        "religion/christianity"
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily audio Bible readings in various translations covering Old and New Testament.",
+      "display_title": "The Audio Bible",
+      "blurb": "Daily Bible readings in Amplified Bible translation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1486172817": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish running science podcast covering training, physiology, and endurance sports.",
+      "display_title": "Hijos de la Resistencia",
+      "blurb": "Running science and endurance training with expert interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1486182255": {
       "topics": [
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive news, car reviews, and industry analysis from Consumer Guide editors.",
+      "display_title": "Car Stuff Podcast",
+      "blurb": "Car reviews, automotive news, and industry analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1486204787": {
       "topics": [
@@ -70155,10 +70764,25 @@
     },
     "1486230885": {
       "topics": [
-        "religion/judaism"
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish teachings on Torah portions with educational and spiritual perspectives.",
+      "display_title": "Parsha Perspectives",
+      "blurb": "Jewish Torah portion analysis and spiritual teachings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1486231244": {
       "topics": [
@@ -70173,7 +70797,22 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness conversations covering CrossFit, training, and personal development.",
+      "display_title": "Linchpin Conversations",
+      "blurb": "Fitness and personal development conversations from various athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1486335987": {
       "topics": [
@@ -70496,7 +71135,22 @@
         "math"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Persian-language mathematics Q&A podcast on optimization, fuzzy systems, and control.",
+      "display_title": "Kalami Q/A",
+      "blurb": "Mathematics Q&A covering optimization, control systems, and advanced topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1487829595": {
       "topics": [
@@ -70681,7 +71335,22 @@
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Musical theater discussions exploring shows' cultural impact and storytelling.",
+      "display_title": "A Musical Theatre Podcast",
+      "blurb": "Musical theater analysis covering shows' cultural and emotional impact.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1488187430": {
       "topics": [
@@ -70711,7 +71380,22 @@
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two-minute educational podcast for kids to enjoy while brushing teeth.",
+      "display_title": "Brushy: Fun Facts For Kids",
+      "blurb": "Two-minute educational episodes for kids during tooth brushing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1488259550": {
       "topics": [
@@ -70722,17 +71406,47 @@
     },
     "1488287205": {
       "topics": [
-        "comedy/stand-up"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast with current events commentary and absurdist humor.",
+      "display_title": "Very Good Show",
+      "blurb": "Comedic current events commentary with absurdist and satirical humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1488342885": {
       "topics": [
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "WWE wrestler podcast with behind-scenes stories, humor, and celebrity guests.",
+      "display_title": "The New Day: Feel the Power",
+      "blurb": "Behind-the-scenes wrestling stories and humor from WWE performers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-cacb118c",
+      "classified_at": "2026-08-02T16:20:12.309Z"
     },
     "1488354016": {
       "topics": [
