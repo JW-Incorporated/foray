@@ -29529,6 +29529,43 @@
       "batch_id": "fresh-2026-08-02-77dc2b98",
       "classified_at": "2026-08-02T00:52:14.698Z"
     },
+    "1494722390": {
+      "topics": [
+        "tv-film",
+        "comedy/casual-hangs",
+        "relationships",
+        "kids-family/education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment content with TV and celebrity commentary.",
+      "display_title": "Untraditionally Lala",
+      "blurb": "Reality TV commentary and celebrity gossip.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
     "1494763610": {
       "topics": [
         "news/commentary"
@@ -29774,6 +29811,65 @@
       "batch_id": "fresh-2026-08-02-77dc2b98",
       "classified_at": "2026-08-02T00:52:14.698Z"
     },
+    "1496412542": {
+      "topics": [
+        "sports/endurance",
+        "news/politics",
+        "relationships",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports show focused on team analysis and coverage.",
+      "display_title": "Not Another Politics Podcast",
+      "blurb": "Training tips and injury prevention for runners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1496516498": {
+      "topics": [
+        "tv-film"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment content with TV and celebrity commentary.",
+      "display_title": "Bitch Is Better",
+      "blurb": "Reality TV commentary and celebrity gossip.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
     "1496891390": {
       "topics": [
         "tv-film/animation"
@@ -29796,6 +29892,92 @@
       "batch_id": "fresh-2026-08-02-77dc2b98",
       "classified_at": "2026-08-02T00:52:14.698Z"
     },
+    "1497383342": {
+      "topics": [
+        "sports/hockey",
+        "tv-film/interviews",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports show focused on team analysis and coverage.",
+      "display_title": "Flyers Talk: A Philadelphia Flyers Podcast",
+      "blurb": "Team analysis and prospect coverage from hockey experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1497387116": {
+      "topics": [
+        "tv-film/interviews",
+        "news/commentary",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment content with TV and celebrity commentary.",
+      "display_title": "Streamed & Screened",
+      "blurb": "Real-time intelligence and global news briefings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1497539324": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific topics and research-based content.",
+      "display_title": "Fortnite tips and tricks",
+      "blurb": "Science stories grounded in research and curiosity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
     "1497680408": {
       "topics": [
         "business/startups"
@@ -29817,6 +29999,33 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-02-77dc2b98",
       "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1497683396": {
+      "topics": [
+        "sports/hockey",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports show focused on team analysis and coverage.",
+      "display_title": "Tip of the Ice-Burgh Podcast",
+      "blurb": "Real-time intelligence and global news briefings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
     },
     "1497740360": {
       "topics": [
@@ -29867,6 +30076,151 @@
       "batch_id": "fresh-2026-08-02-77dc2b98",
       "classified_at": "2026-08-02T00:52:14.698Z"
     },
+    "1498172564": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship guidance and communication advice.",
+      "display_title": "Small Things Often",
+      "blurb": "Gottman-based relationship tips in short episodes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1498200908": {
+      "topics": [
+        "education",
+        "tv-film/interviews",
+        "news/commentary",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content for teachers and learners.",
+      "display_title": "Reach All Readers",
+      "blurb": "Structured literacy practices and reading instruction for teachers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1498382420": {
+      "topics": [
+        "kids-family/education",
+        "education",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content for teachers and learners.",
+      "display_title": "Mystery Recipe",
+      "blurb": "Structured literacy practices and reading instruction for teachers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1498568096": {
+      "topics": [
+        "news/politics",
+        "news/commentary",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Policy and political analysis with academic rigor.",
+      "display_title": "S2 Underground",
+      "blurb": "Political science analysis grounded in research and data.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1498637804": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports show focused on team analysis and coverage.",
+      "display_title": "Reif ist live – Fußball Talk von BILD",
+      "blurb": "EM 2024-Spezial: „Jetzt kommt Scholl“ mit Mehmet Scholl! Der frühere Nationalspieler und langjährige...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
     "1498801064": {
       "topics": [
         "business/startups",
@@ -29893,6 +30247,55 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-02-77dc2b98",
       "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1498988870": {
+      "topics": [
+        "sports/baseball",
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports show focused on team analysis and coverage.",
+      "display_title": "On The Verge | An Orioles Prospect Podcast",
+      "blurb": "On The Verge is focused on the Baltimore Orioles organization and the Orioles Minor League system. T...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1499018480": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports show focused on team analysis and coverage.",
+      "display_title": "Fireside Yankees - A New York Yankees Podcast",
+      "blurb": "For the die-hards, by the die-hards, and all about the New York Yankees on Empire Sports Media. Stay...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
     },
     "1499075672": {
       "topics": [
@@ -29938,6 +30341,28 @@
       "batch_id": "fresh-2026-08-02-77dc2b98",
       "classified_at": "2026-08-02T00:52:14.698Z"
     },
+    "1499227454": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment content with TV and celebrity commentary.",
+      "display_title": "Charmed Rewind",
+      "blurb": "A comedic Charmed podcast! Let the hate flow through you....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
     "1499244260": {
       "topics": [
         "culture/books"
@@ -29960,6 +30385,55 @@
       "batch_id": "fresh-2026-08-02-77dc2b98",
       "classified_at": "2026-08-02T00:52:14.698Z"
     },
+    "1499294498": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific topics and research-based content.",
+      "display_title": "The APsolute RecAP: Biology Edition",
+      "blurb": "Science stories grounded in research and curiosity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1499510936": {
+      "topics": [
+        "religion/judaism",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Religious texts and spiritual learning.",
+      "display_title": "The Quick Daf",
+      "blurb": "The Quick Daf has revolutionized Daf Yomi the way we know it. Unlike any shiur of its kind, The Quic...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
     "1499594546": {
       "topics": [
         "culture/books"
@@ -29981,13 +30455,670 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-02-77dc2b98",
       "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1500157502": {
+      "topics": [
+        "comedy/casual-hangs",
+        "education",
+        "kids-family/education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy content with crank calls and absurdist humor.",
+      "display_title": "World Record Podcast with Brendon Walsh",
+      "blurb": "Structured literacy practices and reading instruction for teachers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1500399200": {
+      "topics": [
+        "news/politics",
+        "relationships",
+        "education",
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Policy and political analysis with academic rigor.",
+      "display_title": "Spacepower Podcast",
+      "blurb": "Structured literacy practices and reading instruction for teachers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1500452264": {
+      "topics": [
+        "sports/endurance",
+        "news/commentary",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports show focused on team analysis and coverage.",
+      "display_title": "Healthy Runner Podcast",
+      "blurb": "Training tips and injury prevention for runners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1500453500": {
+      "topics": [
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment content with TV and celebrity commentary.",
+      "display_title": "Talking Sopranos",
+      "blurb": "Sopranos co-stars Michael Imperioli and Steve Schirripa host the definitive Sopranos re-watch podcas...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1501005518": {
+      "topics": [
+        "comedy/casual-hangs",
+        "tv-film/interviews",
+        "kids-family/education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy content with crank calls and absurdist humor.",
+      "display_title": "Standup Comedy   \"Your Host and MC\"",
+      "blurb": "Absurdist comedy with crank calls and sketches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1501052684": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific topics and research-based content.",
+      "display_title": "The Dork-O-Motive Podcast",
+      "blurb": "The Dork-O-Motive Podcast hosted by Brian Lohnes is a research driven, story fueled, mechanically st...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1501548680": {
+      "topics": [
+        "news/politics",
+        "education",
+        "news/commentary",
+        "engineering"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Policy and political analysis with academic rigor.",
+      "display_title": "PlasticPills Critical Theory & Philosophy",
+      "blurb": "Structured literacy practices and reading instruction for teachers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1501550336": {
+      "topics": [
+        "sports/endurance",
+        "kids-family/education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sports show focused on team analysis and coverage.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1501859306": {
+      "topics": [
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports show focused on team analysis and coverage.",
+      "display_title": "Держи темп",
+      "blurb": "Training tips and injury prevention for runners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1502298896": {
+      "topics": [
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment content with TV and celebrity commentary.",
+      "display_title": "Another Woodshop Podcast",
+      "blurb": "A weekly podcast featuring 3 guys who share a passion for woodworking, making and content creation. ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1502321024": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship guidance and communication advice.",
+      "display_title": "Mind of the Meanie",
+      "blurb": "Join former WWE Superstar and ECW Original The Blue Meanie and Adam Barnard each week as they take a...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1502491952": {
+      "topics": [
+        "education",
+        "health/fitness",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content for teachers and learners.",
+      "display_title": "The Holistic GLP-1 Podcast with Elizabeth McGann",
+      "blurb": "Structured literacy practices and reading instruction for teachers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1502683214": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship guidance and communication advice.",
+      "display_title": "The Viral Volley Podcast",
+      "blurb": "Volleyball from sport court to the sand court-- from the preps to the pros and beyond. Home of Colle...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1502796518": {
+      "topics": [
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment content with TV and celebrity commentary.",
+      "display_title": "The Audit Podcast",
+      "blurb": "On the show you can expect to hear from everyone: from the intern, to the IT audit director, CAE and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1503007208": {
+      "topics": [
+        "relationships",
+        "education",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship guidance and communication advice.",
+      "display_title": "The Quantum Awakening Podcast",
+      "blurb": "Structured literacy practices and reading instruction for teachers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1503399104": {
+      "topics": [
+        "kids-family/education",
+        "education",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content for teachers and learners.",
+      "display_title": "Not Aspirational with Hannah Aaron Brown",
+      "blurb": "Interactive cooking activities and food science for kids.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1503408650": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content for teachers and learners.",
+      "display_title": "Literally Reading",
+      "blurb": "Structured literacy practices and reading instruction for teachers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1503451022": {
+      "topics": [
+        "sports/endurance",
+        "relationships",
+        "kids-family/education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports show focused on team analysis and coverage.",
+      "display_title": "The Divorce Course Podcast",
+      "blurb": "Training tips and injury prevention for runners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1503515198": {
+      "topics": [
+        "sports/endurance",
+        "relationships",
+        "news/commentary",
+        "kids-family/education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports show focused on team analysis and coverage.",
+      "display_title": "The Oakley Podcast",
+      "blurb": "Training tips and injury prevention for runners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1504752194": {
+      "topics": [
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News and current events coverage.",
+      "display_title": "Panther Nation Podcast",
+      "blurb": "Real-time intelligence and global news briefings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1504795544": {
+      "topics": [
+        "sports/endurance",
+        "relationships",
+        "tv-film/interviews",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports show focused on team analysis and coverage.",
+      "display_title": "MSL Talk",
+      "blurb": "Training tips and injury prevention for runners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1505257676": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship guidance and communication advice.",
+      "display_title": "excellence, actually",
+      "blurb": "\"excellence, actually\" is a podcast from The Growth Equation, hosted by Steve Magness, Brad Stulberg...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1505435378": {
+      "topics": [
+        "news/commentary",
+        "science",
+        "tv-film"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "News and current events coverage.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-a0c6a343",
+      "classified_at": "2026-08-02T08:50:49.746Z"
     }
   },
-  "built_at": "2026-08-02T00:53:01.441Z",
+  "built_at": "2026-08-02T08:50:49.746Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-02-77dc2b98",
+    "last_batch_id": "fresh-2026-08-02-a0c6a343",
     "last_batch_tier": 1
   }
 }
