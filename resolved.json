@@ -1,355 +1,147 @@
 {
-  "generated_at": "2026-08-01T09:04:15.302Z",
+  "generated_at": "2026-08-02T09:05:06.227Z",
   "resolved": [
     {
-      "id": "being-an-engineer--s7e32-steven-szymeczek-from-taking-things",
-      "show": "Being an Engineer",
-      "title": "S7E32 Steven Szymeczek | From Taking Things Apart to Teaching Engineers How to Build",
-      "apple_collection_id": 1508222292,
-      "apple_track_id": 1000779257035,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/s7e32-steven-szymeczek-from-taking-things-apart-to/id1508222292?i=1000779257035&uo=4",
-      "release_date": "2026-07-31",
-      "duration_min": 47,
-      "duration_sec": 2814,
-      "audio_url": "https://www.buzzsprout.com/995575/episodes/19569204-s7e32-steven-szymeczek-from-taking-things-apart-to-teaching-engineers-how-to-build.mp3",
+      "id": "stuff-you-should-know--selects-how-peanut-butter-works",
+      "show": "Stuff You Should Know",
+      "title": "Selects: How Peanut Butter Works",
+      "apple_collection_id": 278981407,
+      "apple_track_id": 1000779401197,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/selects-how-peanut-butter-works/id278981407?i=1000779401197&uo=4",
+      "release_date": "2026-08-01",
+      "duration_min": 57,
+      "duration_sec": 3403,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/pscrb.fm/rss/p/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/a91018a4-ea4f-4130-bf55-ae270180c327/9cbcf3dc-90bc-4773-a61a-b496013901a5/audio.mp3?utm_source=Podcast&in_playlist=44710ecc-10bb-48d1-93c7-ae270180c33e",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 33804157,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
+      "audio_bytes": 54484001,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/precision-mfg",
-        "craft/diy-home"
-      ],
-      "explicit": false,
-      "_description": "Send us Fan Mail Steven Szymeczek joins the podcast to share a career shaped by curiosity, hands-on learning, and a willingness to explore new opportunities. He traces his path from taking apart gadgets as a child to manufacturing crop-duster components early in his career, designing aircraft interiors, and eventually launching his own product development business. Steven and Aaron discuss the realities of moving from engineering into entrepreneurship, including learning how to communicate with "
-    },
-    {
-      "id": "fall-of-civilizations--21-majapahit-empire-of-the-islands",
-      "show": "Fall of Civilizations Podcast",
-      "title": "21. Majapahit - Empire of the Islands",
-      "apple_collection_id": 1449884495,
-      "apple_track_id": 1000779302867,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/21-majapahit-empire-of-the-islands/id1449884495?i=1000779302867&uo=4",
-      "release_date": "2026-07-31",
-      "duration_min": 271,
-      "duration_sec": 16270,
-      "audio_url": "https://traffic.megaphone.fm/APO5468803676.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 263131689,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/0a/06/85/0a0685c1-86d4-6f5d-27e4-75e1771d0bae/mza_3060333100547218575.jpg/600x600bb.jpg",
-      "topics": [
-        "history/military-ancient",
+        "science/materials",
         "history/technology"
       ],
       "explicit": false,
-      "_description": "Beneath the shade of an Indonesian teak forest, a great brick gateway stands in ruins... In this episode, I want to tell the story of the Majapahit Empire of medieval Indonesia. I want to show how this empire of the islands grew up on the volcanic island of Java, and how it beat the odds to survive in a world of medieval superpowers. I want to show how Majapahit expanded its influence and dominion to other lands, and undertook voyages that have few precedents in history. And I want to show what "
+      "_description": "No food is more all-American than peanut butter &ndash; 80 percent of homes in the country have a jar of it in the pantry right now. And while the rest of the world might find peanut butter peculiar, maybe even gross, the rest of the world is wrong. Enjoy a smooth ride through one of our top condiments in this classic episode. See omnystudio.com/listener for privacy information."
     },
     {
-      "id": "hardcore-history--show-74-mania-for-subjugation-iv",
-      "show": "Dan Carlin's Hardcore History",
-      "title": "Show 74 - Mania for Subjugation IV",
-      "apple_collection_id": 173001861,
-      "apple_track_id": 1000779313976,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/mania-for-subjugation-iv/id173001861?i=1000779313976&uo=4",
-      "release_date": "2026-07-31",
-      "duration_min": 241,
-      "duration_sec": 14480,
-      "audio_url": "https://dts.podtrac.com/redirect.mp3/traffic.libsyn.com/dancarlinhh/dchha74_Mania_for_Subjugation_IV.mp3",
+      "id": "the-ancients--the-catiline-conspiracy",
+      "show": "The Ancients",
+      "title": "The Catiline Conspiracy",
+      "apple_collection_id": 1520403988,
+      "apple_track_id": 1000779260737,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-catiline-conspiracy/id1520403988?i=1000779260737&uo=4",
+      "release_date": "2026-08-02",
+      "duration_min": 64,
+      "duration_sec": 3860,
+      "audio_url": "https://sphinx.acast.com/p/acast/s/the-ancients/e/6a6c780664ca11687090ae33/media.mp3?tk=eyJ0ayI6ImRlZmF1bHQiLCJhZHMiOnRydWUsInNwb25zIjp0cnVlLCJzdGF0dXMiOiJwdWJsaWMifQ==&sig=xsDf0Xo9gz2fXMh8XPL2ax0F1dVZyD3wd1E94Utw2xo",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 179177054,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/49/b7/eb/49b7eb32-8f08-6fac-aadb-2f002131fe5f/mza_15196161972010256532.jpg/600x600bb.jpg",
+      "audio_bytes": 61771023,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/6c/94/31/6c943113-5484-a41d-5cb7-bf606ff289ef/mza_6401313720037127611.jpeg/600x600bb.jpg",
       "topics": [
         "history/military-ancient"
       ],
       "explicit": false,
-      "_description": "The stage is set for an in-person showdown between Alexander and Persia's Great King. The resulting Battle of Issus, although often ignored by Hollywood, is one of the most important battles in all ancient history. It gets its due here."
+      "_description": "In 63 BC, Rome faced a conspiracy that threatened to tear the Roman Republic apart. At its centre stood two figures: Marcus Tullius Cicero, the grand old orator of Rome and Lucius Sergius Catilina, accused of plotting violence, rebellion and the overthrow of Rome’s political order. But was the danger as great as Cicero claimed? In this episode of The Ancients , Tristan Hughes is joined by Professor Catharine Edwards to uncover the truth behind the Catiline Conspiracy. Did Cicero save the Roman R"
     },
     {
-      "id": "this-week-in-startups--why-ai-has-no-taste-and",
-      "show": "This Week in Startups",
-      "title": "Why AI has no taste and how to fix it (w/ Thais Castello Branco) | E2319",
-      "apple_collection_id": 315114957,
-      "apple_track_id": 1000779344951,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/why-ai-has-no-taste-and-how-to-fix-it-w-thais/id315114957?i=1000779344951&uo=4",
-      "release_date": "2026-07-31",
-      "duration_min": 75,
-      "duration_sec": 4509,
-      "audio_url": "https://pscrb.fm/rss/p/traffic.libsyn.com/secure/4a885955-6823-4b22-a3e1-a526c25516a5/MAIN_1.mp3?dest-id=5500155",
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1611",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 1611: Benjamin Franklin and Cotton Mather",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000779490909,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1611-benjamin/id121493645?i=1000779490909&uo=4",
+      "release_date": "2026-08-02",
+      "duration_min": 4,
+      "duration_sec": 226,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260802.mp3?srcid=apple-podcasts",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 110284354,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/bf/ce/23/bfce2354-2548-00f0-d795-a34404946a6b/mza_10222213905677371023.jpg/600x600bb.jpg",
+      "audio_bytes": 1809630,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "topics": [
+        "history/technology"
+      ],
+      "explicit": false,
+      "_description": "Episode: 1611 Benjamin Franklin and Cotton Mather: ideologies diverge and converge. Today, Benjamin Franklin and Cotton Mather."
+    },
+    {
+      "id": "founders--427-how-raymond-plank-built-a",
+      "show": "Founders",
+      "title": "#427 How Raymond Plank Built a $50 Billion Oil Company",
+      "apple_collection_id": 1141877104,
+      "apple_track_id": 1000779471100,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/427-how-raymond-plank-built-a-%2450-billion-oil-company/id1141877104?i=1000779471100&uo=4",
+      "release_date": "2026-08-01",
+      "duration_min": 38,
+      "duration_sec": 2290,
+      "audio_url": "https://traffic.megaphone.fm/DSLLC1260176282.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ed/71/4f/ed714f67-f095-a4ef-f38e-d8c02300666a/mza_11432355988627368701.jpg/600x600bb.jpg",
       "topics": [
         "business/startups"
       ],
       "explicit": false,
-      "_description": "This Week In Startups is made possible by: YSecurity https://YSecurity.io/TWIST MongoDB https://MongoDB.com/ai Odoo https://Odoo.com/twist Today's show: AI models can solve PhD-level math equations and code an app in minutes… So why does everything they design look like identical slop? Thais Castello Branco, founder of Taste Labs, raised $18.5M in seed funding to teach frontier models about aesthetics and outputting quality content. She talks to Jason and Lon about why even frontier models regre"
+      "_description": "Raymond Plank founded Apache Corporation with just $250,000 in 1954. 50 years later his company was worth $50 billion. This episode examines the life and entrepreneurial philosophy of Raymond Plank through his memoir A Small Difference Rather than presenting a conventional history of Apache, this episode focuses on the lessons, maxims, and beliefs Plank accumulated over seven decades in business. Written when he was nearly 90, the memoir reads like a lifelong diary of how to think about opportun"
     },
     {
-      "id": "luthier-on-luthier--116-paco-chorobo",
-      "show": "Luthier on Luthier with Michael Bashkin",
-      "title": "116: Paco Chorobo",
-      "apple_collection_id": 1208172851,
-      "apple_track_id": 1000779327444,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/116-paco-chorobo/id1208172851?i=1000779327444&uo=4",
-      "release_date": "2026-07-31",
-      "duration_min": 54,
-      "duration_sec": 3237,
-      "audio_url": "https://traffic.libsyn.com/secure/luthieronluthier/LOL116.mp3?dest-id=480616",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 51908400,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/61/85/33/618533ae-ee68-8a43-0da7-c01d2652c700/mza_6282196726920991032.jpg/600x600bb.jpg",
-      "topics": [
-        "craft/instrument-making"
-      ],
-      "explicit": false,
-      "_description": "For episode 116, we're joined by Spanish guitarmaker Paco Chorobo from Úbeda, Spain. Paco shares his journey from telecommunications engineer to full-time luthier and discusses his approach to building both classical and flamenco guitars while blending traditional hand craftsmanship with modern technology. We also explore the cultural roots of flamenco guitars, the construction differences between flamenco and classical instruments, and his philosophy of building guitars around the individual pl"
-    },
-    {
-      "id": "fretboard-journal-guitar-podcast--podcast-558-glen-hansard-remembered",
-      "show": "The Fretboard Journal Guitar Podcast",
-      "title": "Podcast 558: Glen Hansard Remembered",
-      "apple_collection_id": 394447340,
-      "apple_track_id": 1000779357207,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/podcast-558-glen-hansard-remembered/id394447340?i=1000779357207&uo=4",
-      "release_date": "2026-07-31",
-      "duration_min": 50,
-      "duration_sec": 3005,
-      "audio_url": "https://pscrb.fm/rss/p/traffic.libsyn.com/secure/fretboardjournal/glenn-rx-no-dn.mp3?dest-id=338739",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 48315894,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/a2/43/83/a2438301-5237-b57b-0397-513a28d9f36a/mza_8050638846459341682.jpeg/600x600bb.jpg",
-      "topics": [
-        "craft/instrument-making"
-      ],
-      "explicit": true,
-      "_description": "Today, we pay tribute to singer-songwriter Glen Hansard (1970-2026), frontman for the Frames and Swell Season. In 2009, Fretboard Journal publisher Jason Verlinde sat down with Glen at Seattle's Kells Irish Restaurant & Pub for an hour-long chat about guitars (including his famously worn Takamine), meeting your heroes, busking, and more. Today, we're sharing the audio from that conversation for the very first time. This interview ended up serving as the cover story for our 17 th issue, which we "
-    },
-    {
-      "id": "bad-friends--new-episode-today-on-patreon",
-      "show": "Bad Friends",
-      "title": "New Episode Today on Patreon",
-      "apple_collection_id": 1496265971,
-      "apple_track_id": 1000779299274,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/new-episode-today-on-patreon/id1496265971?i=1000779299274&uo=4",
-      "release_date": "2026-07-31",
-      "duration_min": 5,
-      "duration_sec": 314,
-      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/pfx.vpixl.com/u8u9X/mgln.ai/e/1118/arttrk.com/p/YMH00/clrtpod.com/m/traffic.megaphone.fm/YMH2649979357.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b0/26/c8/b026c805-1a24-55ea-cff3-d0329d2338ce/mza_11376115143280052758.jpeg/600x600bb.jpg",
-      "topics": [
-        "comedy/casual-hangs"
-      ],
-      "explicit": true,
-      "_description": "For more exclusive content and ad-free early episodes go to https://www.patreon.com/cw/badfriends Learn more about your ad choices. Visit megaphone.fm/adchoices"
-    },
-    {
-      "id": "planet-money--what-makes-a-toy-go-viral",
-      "show": "Planet Money",
-      "title": "What makes a toy go viral",
-      "apple_collection_id": 290783428,
-      "apple_track_id": 1000779158683,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/what-makes-a-toy-go-viral/id290783428?i=1000779158683&uo=4",
-      "release_date": "2026-07-31",
-      "duration_min": 26,
-      "duration_sec": 1535,
-      "audio_url": "https://tracking.swap.fm/track/XvDEoI11TR00olTUO8US/prfx.byspotify.com/e/play.podtrac.com/npr-510289/npr.simplecastaudio.com/43b5acee-463e-4612-95ad-d2596d9dd337/episodes/b6460919-2391-4ec2-9e6e-b645a97d1655/audio/128/default.mp3?awCollectionId=43b5acee-463e-4612-95ad-d2596d9dd337&awEpisodeId=b6460919-2391-4ec2-9e6e-b645a97d1655&feed=hvWWWzRv&t=podcast&e=nx-s1-5913719&p=510289&d=1535&size=24568563",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 24568563,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/85/df/53/85df5334-0fae-28a9-2bc4-b97b81061d0e/mza_10839245066228881011.jpg/600x600bb.jpg",
-      "topics": [
-        "economics/markets"
-      ],
-      "explicit": false,
-      "_description": "Squishy, slimy, fidgety toys are having a moment. But it’s more than just an anxiety-soothing, social-media fueled trend – these toys are reshaping how toys get made. Today on the show, we have the story of the once-humble squishy dumpling and what it teaches us about how to make a viral hit and how to manufacture it, without getting left holding the bag. Hear it all firsthand from the creator of this trendy toy. Read: Our book: Planet Money: A Guide to the Economic Forces That Shape Your Life O"
-    },
-    {
-      "id": "freakonomics-radio--683-in-the-new-space-race",
-      "show": "Freakonomics Radio",
-      "title": "683. In the New Space Race, Who Makes the Rules?",
-      "apple_collection_id": 354668519,
-      "apple_track_id": 1000779178357,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/683-in-the-new-space-race-who-makes-the-rules/id354668519?i=1000779178357&uo=4",
-      "release_date": "2026-07-31",
-      "duration_min": 56,
-      "duration_sec": 3387,
-      "audio_url": "https://mgln.ai/e/2/pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/2be48404-a43c-4fa8-a32c-760a3216272e/episodes/0c4b8e6d-9c83-462f-879d-344ca000e34d/audio/128/default.mp3?aid=rss_feed&awCollectionId=2be48404-a43c-4fa8-a32c-760a3216272e&awEpisodeId=0c4b8e6d-9c83-462f-879d-344ca000e34d&feed=Y8lFbOT4",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 54197435,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
-      "topics": [
-        "economics/markets"
-      ],
-      "explicit": false,
-      "_description": "Governments started the space age. Now, billionaires and private firms are reinventing it. Guest host Steve Levitt explores what the past can teach us about a high-stakes future. (Part two of a two-part series .) SOURCES: Blaise Agüera y Arcas , vice president and fellow at Google, C.T.O. of technology and society. Rosanna Hoffman , head of space law, policy, and sustainability at the United Nations Office for Outer Space Affairs. Alex Macdonald , former first chief economist at NASA, senior ass"
-    },
-    {
-      "id": "partially-examined-life--pel-presents-nem-257-josh-joplin",
-      "show": "The Partially Examined Life Philosophy Podcast",
-      "title": "PEL Presents NEM#257: Josh Joplin Doesn't Look Back… Until Now",
-      "apple_collection_id": 318345767,
-      "apple_track_id": 1000779314062,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/pel-presents-nem-257-josh-joplin-doesnt-look-back-until-now/id318345767?i=1000779314062&uo=4",
-      "release_date": "2026-07-31",
-      "duration_min": 76,
-      "duration_sec": 4558,
-      "audio_url": "https://prfx.byspotify.com/e/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/mgln.ai/e/802/claritaspod.com/measure/traffic.libsyn.com/secure/partiallyexaminedlife/NEM_ep_257_6-25-26.mp3?dest-id=16399",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 109535634,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/32/eb/a9/32eba9ac-dfb0-618b-e874-6696c69ea59d/mza_257738567509116492.jpeg/600x600bb.jpg",
-      "topics": [
-        "philosophy/ideas"
-      ],
-      "explicit": false,
-      "_description": "With his roots in folk, Josh released three rock albums in the '90s before his big hit \"Camera One,\" from Useful Music (2001), which is getting a Silver Anniversary rework/reissue. (The intro music for this episode is the new version.) He has released seven more albums since then. We discuss \"Goodbye Berlin\" from GpYr (2025), \"History of I Do\" from Figure Drawing (2023), \"Juniper\" from Boxing Nostalgic (1997), and conclude by listening to \"High, Low & Wide\" from the self-titled album by his folk"
-    },
-    {
-      "id": "radiolab--the-shoe-thrower",
-      "show": "Radiolab",
-      "title": "The Shoe Thrower",
-      "apple_collection_id": 152249110,
-      "apple_track_id": 1000779306092,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-shoe-thrower/id152249110?i=1000779306092&uo=4",
-      "release_date": "2026-07-31",
-      "duration_min": 77,
-      "duration_sec": 4649,
-      "audio_url": "https://pscrb.fm/rss/p/mgln.ai/e/14/prfx.byspotify.com/e/dts.podtrac.com/pts/redirect.mp3/waaa.wnyc.org/758af4c0-a2c3-47ec-a2d8-05f41bfbde51/episodes/4e8d47c7-d565-49ea-9ec2-dae68c3b9656/audio/128/default.mp3?aid=rss_feed&awCollectionId=758af4c0-a2c3-47ec-a2d8-05f41bfbde51&awEpisodeId=4e8d47c7-d565-49ea-9ec2-dae68c3b9656&feed=EmVW7VGp",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 74386038,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/2b/b2/4d/2bb24d28-f3bb-916f-6bf3-9e125ba5219b/mza_4476298389845914795.jpg/600x600bb.jpg",
-      "topics": [
-        "science/storytelling"
-      ],
-      "explicit": false,
-      "_description": "When no one seems to be listening, how far do you go to be heard? In December 2008, George W. Bush made a surprise visit to Baghdad for a press conference. And at the very end of his remarks, a shoe came flying past his head. It was “the shoe heard around the world,” and countless jokes and memes ensued. But in the pandemonium, many missed the story of the man at the center: Muntadhar Al-Zaidi, a weary journalist trying to get the world to see the Iraq War in a different light. Even fewer people"
-    },
-    {
-      "id": "amicus-dahlia-lithwick--by-the-people-two-steps-forward",
-      "show": "Amicus With Dahlia Lithwick | Law, justice, and the courts",
-      "title": "By The People | Two Steps Forward, One Step Back",
-      "apple_collection_id": 928790786,
-      "apple_track_id": 1000779330129,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/by-the-people-two-steps-forward-one-step-back/id928790786?i=1000779330129&uo=4",
+      "id": "the-sharp-end-podcast--ep-127-trapped-by-wilderness-fires",
+      "show": "the Sharp End Podcast",
+      "title": "Ep 127 - Trapped by Wilderness Fires - Juliet and Amy",
+      "apple_collection_id": 1080036452,
+      "apple_track_id": 1000779431119,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/ep-127-trapped-by-wilderness-fires-juliet-and-amy/id1080036452?i=1000779431119&uo=4",
       "release_date": "2026-08-01",
-      "duration_min": 46,
-      "duration_sec": 2755,
-      "audio_url": "https://sphinx.acast.com/p/open/s/695ea2381c1db1c5bdf7c59b/e/6a6d0c4961ae402f614aaf60/media.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 38577112,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e8/52/9b/e8529b7b-21fe-9692-48fd-7696d23a8807/mza_17089514366859568033.jpeg/600x600bb.jpg",
-      "topics": [
-        "society/law"
-      ],
-      "explicit": false,
-      "_description": "Long before the Supreme Court handed down the landmark Obergefell ruling on equal marriage in 2015, activists were canvassing door-to-door, courting any lawmaker who would listen, and losing at the local level—a lot. Their scrappy determination helped convince family members, neighbors and eventually the rest of the country that the Constitution's guarantees of liberty and equality applied to same-sex couples.&nbsp; In Episode 3 of By the People , equal marriage campaign architect Marc Solomon j"
-    },
-    {
-      "id": "happier-gretchen-rubin--more-happier-introduce-whimsy-schedule-a",
-      "show": "Happier with Gretchen Rubin",
-      "title": "More Happier: Introduce Whimsy, Schedule a Personal Playdate, and Embrace Fun Plans",
-      "apple_collection_id": 969519520,
-      "apple_track_id": 1000778758282,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/more-happier-introduce-whimsy-schedule-a-personal/id969519520?i=1000778758282&uo=4",
-      "release_date": "2026-08-01",
-      "duration_min": 35,
-      "duration_sec": 2100,
-      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/claritaspod.com/measure/pscrb.fm/rss/p/mgln.ai/e/491/traffic.megaphone.fm/LEME1922620678.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/0b/27/95/0b2795f3-14ec-5d75-9881-bd727ca84bb5/mza_3253128002242948917.jpeg/600x600bb.jpg",
-      "topics": [
-        "education/self-improvement"
-      ],
-      "explicit": false,
-      "_description": "We revisit listener-favorite hacks for cultivating summer fun. If you want to make the most of the weeks ahead, these practical ideas can help you add more fun, adventure, and whimsy to everyday life. Revisited Highlights: Episode 146: Introduce a note of whimsy Episode 178: Schedule a weekly playdate with yourself Episode 98: Give yourself a quest Episode 477: Embrace fun plans Mentioned in This Episode: Share your Summer Recap in the Happier App Learn more about your ad choices. Visit megaphon"
-    },
-    {
-      "id": "casefile--casefile-revisited-pamela-lawrence",
-      "show": "Casefile True Crime",
-      "title": "Casefile Revisited: Pamela Lawrence",
-      "apple_collection_id": 998568017,
-      "apple_track_id": 1000778301867,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/casefile-revisited-pamela-lawrence/id998568017?i=1000778301867&uo=4",
-      "release_date": "2026-08-01",
-      "duration_min": 84,
-      "duration_sec": 5014,
-      "audio_url": "https://sphinx.acast.com/p/open/s/679acff465f74095106abfaa/e/6a6da216034f16a52efcafdd/media.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 120963546,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/32/81/a3/3281a345-6fa5-1d0d-b0bc-f02b0850a0ae/mza_17562537467118278179.jpeg/600x600bb.jpg",
-      "topics": [
-        "true-crime"
-      ],
-      "explicit": true,
-      "_description": "Casefile Revisited features newly re-recorded versions of classic episodes, revisiting the stories with enhanced production, fresh narration, and updated research where possible. When Mosman Park jewellery store owner Pamela Lawrence was late to return home from work on May 23 1994, her husband Peter went to check if everything was okay. There, he found Pamela clinging to life with serious head injuries, which she later succumbed to in the hospital. Despite a lack of physical evidence or any DNA"
-    },
-    {
-      "id": "unexplained--season-09-episode-29-the-howling",
-      "show": "Unexplained",
-      "title": "Season 09 Episode 29: The Howling Woods",
-      "apple_collection_id": 1078112813,
-      "apple_track_id": 1000779327847,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/season-09-episode-29-the-howling-woods/id1078112813?i=1000779327847&uo=4",
-      "release_date": "2026-07-31",
       "duration_min": 37,
       "duration_sec": 2220,
-      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/4be3ef45-824a-44b3-b437-b038010038fc/0f45ba97-1bce-4337-a733-b498013f0a04/audio.mp3?utm_source=Podcast&in_playlist=3eb75c81-5ed8-4148-bb7b-b03801003947",
+      "audio_url": "https://chrt.fm/track/CB49F9/http://feeds.soundcloud.com/stream/2369860043-the_sharp_end-ep-127-trapped-by-wilderness.mp3",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 35562426,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7e/a9/5c/7ea95c62-4e9b-359b-7dde-2df168676370/mza_156597234584228073.jpg/600x600bb.jpg",
+      "audio_bytes": 53286033,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/74/f2/d7/74f2d72c-fa5e-6ad6-6ca8-665b6aa2798a/mza_3128307597345150216.jpg/600x600bb.jpg",
       "topics": [
-        "paranormal"
+        "adventure/exploration"
       ],
       "explicit": false,
-      "_description": "Dog-headed men haunted the fringes of the entire ancient world. With time, these stories have steadily dissolved into folklore, and the world moved on from such tall tales. However, there does remain one corner of the modern world in which the dogman has not yet been explained into extinction... Written by Neil McRobert and Produced by Richard MacLean Smith Watch/follow at youtube.com/@unexplainedpod , tiktok.com/@unexplainedpodcast , X @unexplainedpod , facebook.com/unexplainedpodcast , bsky.ap"
+      "_description": "Ep 127 - Trapped by Wilderness Fires - Juliet and Amy Tune into this episode to hear Juliet Evans and Amy Lu recount their harrowing experience in the North Cascades, navigating a wildfire threat during a backpacking trip. Learn about their decision-making, resourcefulness, and the importance of communication in outdoor safety. This podcast is produced by Ashley Saupe. This episode is sponsored by Rocky Talkie and onX Backcountry. → 70% off onX Backcountry Premium or Elite - SHARPEND70 → 10% off"
     },
     {
-      "id": "welcome-to-night-vale--291-mall-madness-1987",
-      "show": "Welcome to Night Vale",
-      "title": "291 - Mall Madness (1987)",
-      "apple_collection_id": 536258179,
-      "apple_track_id": 1000779374845,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/291-mall-madness-1987/id536258179?i=1000779374845&uo=4",
-      "release_date": "2026-08-01",
-      "duration_min": 28,
-      "duration_sec": 1672,
-      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/mgln.ai/e/495/pscrb.fm/rss/p/tracking.swap.fm/track/bwUd3PHC9DH3VTlBXDTt/traffic.megaphone.fm/SBP3031902189.mp3",
+      "id": "common-descent--episode-249-sexual-dimorphism",
+      "show": "The Common Descent Podcast",
+      "title": "Episode 249 - Sexual Dimorphism",
+      "apple_collection_id": 1207586509,
+      "apple_track_id": 1000779471396,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-249-sexual-dimorphism/id1207586509?i=1000779471396&uo=4",
+      "release_date": "2026-08-02",
+      "duration_min": 177,
+      "duration_sec": 10644,
+      "audio_url": "https://mcdn.podbean.com/mf/web/7rvxdagg2cu6iqjr/Episode_249_Sexual_Dimorphism.mp3",
       "audio_type": "audio/mpeg",
-      "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f1/11/54/f1115463-8f5f-234b-9725-e56f22f4d21e/mza_13833430698337489046.jpg/600x600bb.jpg",
+      "audio_bytes": 255458426,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/2d/ad/58/2dad5885-6566-fdd4-6b52-f87b69af3688/mza_3078482384516892224.png/600x600bb.jpg",
       "topics": [
-        "fiction",
-        "fiction/drama"
+        "nature/paleontology"
       ],
       "explicit": false,
-      "_description": "From the archive (1987): There's a new mall in town. Weather: \"I Will If You Will\" by Gladie⁠⁠ The voice of Leonard Burton is James Urbaniak The voice of the 1-900 line is Brie Williams Original episode art by Jessica Hayworth Episode transcripts Night Vale Live Tour Dec 2026 Pre-order THE NUDGE by Joseph Fink Listen to UNLICENSED⁠⁠ by Joseph Fink & Jeffrey Cranor. Only on Audible Welcome to Night Vale Roleplaying Game Subscribe to the Night Vale newsletter for news and stories Patreon is how we"
+      "_description": "In most animal species, there are differences in the anatomy, behavior, and lifestyle of male and female individuals. In this episode, we explore the incredible variety of these differences and the equally incredible blurry areas between the sexes, we investigate the evolutionary processes behind these features, and we examine the constant and confounding discussion about whether or not we can spot sexual dimorphism in the fossil record. In the news: The Story of Birds, early snakes, and early a"
+    },
+    {
+      "id": "wow-in-the-world--wewow-on-the-weekend-a-laugh",
+      "show": "Wow in the World",
+      "title": "WeWow on the Weekend: A Laugh a Minute, and How Pandas Got Their Spots!",
+      "apple_collection_id": 1233834541,
+      "apple_track_id": 1000779498582,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/wewow-on-the-weekend-a-laugh-a-minute-and/id1233834541?i=1000779498582&uo=4",
+      "release_date": "2026-08-02",
+      "duration_min": 15,
+      "duration_sec": 920,
+      "audio_url": "https://pscrb.fm/rss/p/rss.art19.com/episodes/0e66a903-a17c-4bd1-b769-7d9ad5b0734a.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 14728463,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ea/b3/45/eab34534-ac7d-9036-c664-2dfe28e4f722/mza_9883217874917379703.jpeg/600x600bb.jpg",
+      "topics": [
+        "kids-family/education"
+      ],
+      "explicit": false,
+      "_description": "What do timers, laughs, and pandas have in common? This episode of WeWow, the bonkerballs variety show for kids and families from the creators of Wow in the World, has all of that and more. Dennis and Reggie are back with another weekend full of laughs, listener love, and a panda-tastic encore episode that'll have the whole family talking all over again. Whether you're a longtime Wowzer or just tuning in, WeWow on the Weekend is the kind of family variety podcast that makes every car ride, break"
     }
   ],
-  "dropped": [
-    {
-      "show": "CBC Ideas",
-      "title": "Why we should 'fight like hell' against Big AI",
-      "reason": "no trackId match"
-    },
-    {
-      "show": "Engines of Our Ingenuity",
-      "title": "The Engines of Our Ingenuity 1610: Experimental Proof",
-      "reason": "no trackId match"
-    },
-    {
-      "show": "The Twenty Minute VC (20VC)",
-      "title": "20VC: The Best AI Companies Have Unique Data Acquisition Strategies | Will Simile Kill Kalshi, Polymarkets and NASDAQ | How to Sign Fortune 500 Companies As Customers in Weeks with Joon Sung Park, Simile",
-      "reason": "no trackId match"
-    },
-    {
-      "show": "The Race F1 Podcast",
-      "title": "Race Business: How Flavio Briatore turned a 'very bad idea' into a $150 million F1 deal",
-      "reason": "no trackId match"
-    },
-    {
-      "show": "Wow in the World",
-      "title": "WeWow on the Weekend: Turtle Week Requests, and Inviting Yourself to Dinner!",
-      "reason": "no trackId match"
-    }
-  ]
+  "dropped": []
 }
