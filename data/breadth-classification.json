@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-02T08:57:39.537Z",
+  "built_at": "2026-08-02T16:59:50.178Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-02-68385eb3",
+    "last_batch_id": "fresh-2026-08-02-e000f876",
     "last_batch_tier": 1
   },
   "entries": {
@@ -66849,7 +66849,22 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Knitting techniques, patterns, and community for crafters of all levels.",
+      "display_title": "Brave Knitting",
+      "blurb": "Knitting podcast where hosts Pat and Linda share techniques, patterns, and tips to inspire crafters at every skill level.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1481720142": {
       "topics": [
@@ -66915,7 +66930,22 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Waldorf-inspired parenting coaching addressing tantrums, sibling struggles, and emotional regulation.",
+      "display_title": "We Nurture: Waldorf Inspired Parenting",
+      "blurb": "Parenting coaching podcast featuring real sessions addressing tantrums, sibling dynamics, and helping parents build confidence and inner rhythm.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1481869152": {
       "topics": [
@@ -67067,7 +67097,26 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.88
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Speckled trout fishing with legendary anglers discussing techniques, industry developments, and guide experiences.",
+      "display_title": "The Speckled Truth Podcast",
+      "blurb": "Fishing podcast featuring interviews with legendary anglers and industry experts exploring speckled trout techniques and competitive angling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1482212953": {
       "topics": [
@@ -67307,7 +67356,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Late-night sports radio covering soccer passion, analysis, humor, and breaking news.",
+      "display_title": "Les nuits du Cazarre enchaîné",
+      "blurb": "Late-night RMC radio program with live sports debate, humorous commentary, and passionate soccer analysis from hosts Cazarre and Drouet.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1482645186": {
       "topics": [
@@ -67354,7 +67418,25 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily Miami Hurricanes football and basketball analysis, recruiting updates, and insider news.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1482723951": {
       "topics": [
@@ -67533,7 +67615,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Middlesex County Cricket League updates, match analysis, and standings coverage.",
+      "display_title": "Middlesex County Cricket League (MCCL)",
+      "blurb": "Weekly podcast covering Middlesex County Cricket League matches, standings, and commentary from hosts Sal and Dan.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1483231486": {
       "topics": [
@@ -67682,7 +67779,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized audio drama about a cult with a missing girl resurfaces years later.",
+      "display_title": "Gaslight",
+      "blurb": "Audio drama featuring a missing girl who resurfaces years later, exploring the dark reality of cult influence and manipulation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1483501448": {
       "topics": [
@@ -67840,7 +67952,25 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily New Jersey Devils NHL news, analysis, and fan commentary.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1483953764": {
       "topics": [
@@ -67875,17 +68005,55 @@
     },
     "1483995737": {
       "topics": [
-        "craft"
+        "philosophy",
+        "psychology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.55
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Explorations of complexity, finance, innovation, productivity, and human connection.",
+      "display_title": "ListenIn",
+      "blurb": "Podcast exploring philosophical and psychological topics including complexity, entrepreneurship, and human connection.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1484090159": {
       "topics": [
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily New York Rangers NHL coverage with expert opinions and locker room analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1484091952": {
       "topics": [
@@ -67928,7 +68096,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.89
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality TV rewatches and deep dives into reality entertainment culture.",
+      "display_title": "Bye Pumkin",
+      "blurb": "Rewind podcast about niche reality TV shows hosted by Princess, offering pop culture commentary on shallow entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1484198990": {
       "topics": [
@@ -67971,7 +68154,25 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily Calgary Flames NHL analysis and insider coverage.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1484363220": {
       "topics": [
@@ -68338,10 +68539,30 @@
     },
     "1485255815": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neurodiversity-affirming parenting support for autistic and ADHD children.",
+      "display_title": "THE AUTISM ADHD PODCAST",
+      "blurb": "Podcast providing neurodiversity-affirming guidance for raising autistic and ADHD children with mental health and social support.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1485260474": {
       "topics": [
@@ -68471,14 +68692,49 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Zen teacher discusses Buddhist practice, meditation, and enlightenment philosophy.",
+      "display_title": "Hardcore Zen",
+      "blurb": "Zen teacher Brad Warner shares reflections on Buddhist practice, meditation, and achieving enlightenment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1485475085": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political commentary and interviews about democracy, environment, and social issues.",
+      "display_title": "Stand Up! with Pete Dominick",
+      "blurb": "Daily political podcast featuring expert interviews about democracy, climate change, and progressive social issues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1485475729": {
       "topics": [
@@ -68492,7 +68748,22 @@
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.91
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Broadway performers and performers discussing theater, entertainment, and New York City culture.",
+      "display_title": "DRAMA. with Connor & Dylan MacDowell",
+      "blurb": "Theater podcast featuring Broadway performers discussing theater, entertainment careers, and vibrant NYC cultural life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1485508718": {
       "topics": [
@@ -68557,7 +68828,22 @@
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish film and series commentary with guests, featuring cinema and pop culture analysis.",
+      "display_title": "Par-Impar",
+      "blurb": "Spanish cinema podcast analyzing films and series with humor, guests, and cultural analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1485736558": {
       "topics": [
@@ -68694,7 +68980,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.88
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Water science, climate, and global water security solutions.",
+      "display_title": "What About Water? with Jay Famiglietti",
+      "blurb": "Water science podcast connecting environmental research with solutions and adaptation strategies for global water challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1485931128": {
       "topics": [
@@ -68761,7 +69066,22 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.89
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sailor Moon series episode-by-episode analysis with cultural and language context.",
+      "display_title": "Sailor Noob",
+      "blurb": "Episode-by-episode analysis of Sailor Moon featuring a superfan and newcomer discussing anime, culture, and Japanese language.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1486210336": {
       "topics": [
@@ -68919,7 +69239,25 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily Chicago White Sox MLB analysis and trade deadline coverage.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1486973454": {
       "topics": [
@@ -69203,7 +69541,25 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Women's T20 cricket coverage featuring player and coach interviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1487898258": {
       "topics": [
@@ -69224,7 +69580,22 @@
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Non-monogamous relationships, polyamory, and authentic love practices.",
+      "display_title": "Making Polyamory Work",
+      "blurb": "Podcast on polyamorous relationships addressing communication, cohabitation, and healthy non-monogamous practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1488011300": {
       "topics": [
@@ -69312,11 +69683,25 @@
     },
     "1488201401": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "IELTS speaking exam preparation with sample answers and vocabulary.",
+      "display_title": "IELTS Speaking for Success",
+      "blurb": "IELTS preparation podcast providing model answers, vocabulary, and speaking strategies for language learners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1488229496": {
       "topics": [
@@ -69513,7 +69898,26 @@
         "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.88
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Boundaries, emotional regulation, and personal wellbeing practices.",
+      "display_title": "The Boundaries.me Podcast",
+      "blurb": "Psychology podcast on healthy boundaries, emotional regulation, and building resilience for personal wellbeing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1488924067": {
       "topics": [
@@ -69531,10 +69935,30 @@
     },
     "1488944333": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese chemistry education for children with engaging science stories.",
+      "display_title": "小小化学家·科学故事",
+      "blurb": "Children's chemistry podcast with engaging science stories about elements, materials, and the natural world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1488953625": {
       "topics": [
@@ -69631,10 +70055,32 @@
     "1489301603": {
       "topics": [
         "education/language-learning",
-        "linguistics/language"
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.88
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "English learning through history, psychology, culture, and business storytelling.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1489328856": {
       "topics": [
@@ -69658,7 +70104,26 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cryptocurrency market analysis and blockchain industry developments.",
+      "display_title": "Markets Outlook",
+      "blurb": "Crypto markets podcast analyzing blockchain developments, trading trends, and industry analysis from CoinDesk.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1489399975": {
       "topics": [
@@ -69723,14 +70188,47 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily Nashville Predators NHL analysis and coverage.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1489547249": {
       "topics": [
         "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Verse-by-verse Tao Te Ching commentary for everyday wisdom and peace.",
+      "display_title": "The Tao Te Ching for Everyday Living",
+      "blurb": "Philosophical podcast exploring Tao Te Ching verses for practical wisdom and inner peace.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1489560920": {
       "topics": [
@@ -69760,8 +70258,23 @@
       "topics": [
         "sports/volleyball"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Iranian sports radio covering soccer/football with political analysis and national team issues.",
+      "display_title": "ChandChand- چندچند",
+      "blurb": "Iranian sports podcast analyzing football with political and national team coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1489808026": {
       "topics": [
@@ -69799,7 +70312,26 @@
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live-play RPG adventures with professional voice actors in various game systems.",
+      "display_title": "One Shots a Live-Play Mini Series Podcast",
+      "blurb": "Live-play RPG podcast featuring professional voice actors in one-shot adventures across multiple game systems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1489934613": {
       "topics": [
@@ -69895,10 +70427,30 @@
     },
     "1490213585": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Veterinary dermatology practical tips and navigating career in veterinary medicine.",
+      "display_title": "The Derm Vet Podcast",
+      "blurb": "Veterinary dermatology podcast with practical clinical tips for treating allergic dogs and cats.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1490240263": {
       "topics": [
@@ -69945,7 +70497,22 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry research interviews covering catalysis, biochemistry, and energy.",
+      "display_title": "Modern Chemistry Podcast",
+      "blurb": "Chemistry research podcast featuring interviews with leading scientists on catalysis, biochemistry, and innovation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1490499334": {
       "topics": [
@@ -70095,7 +70662,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Colombian sports journalist daily commentary on soccer and athletics.",
+      "display_title": "Palabras Mayores",
+      "blurb": "Sports commentary podcast with Colombian journalist Carlos Antonio Vélez discussing football and athletics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1490976759": {
       "topics": [
@@ -70124,7 +70706,22 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.91
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unsolved homicides and missing persons cases with investigative analysis.",
+      "display_title": "Last Seen Alive",
+      "blurb": "True crime podcast investigating unsolved homicides and missing persons cases with detailed forensic analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1491112396": {
       "topics": [
@@ -70188,7 +70785,22 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Formula 1 expert analysis covering races, driver performance, and championship strategy.",
+      "display_title": "ams.f1 | Formel Schmidt",
+      "blurb": "Formula 1 podcast with expert analysis from German motorsports journalists covering races and championship dynamics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1491416976": {
       "topics": [
@@ -70216,7 +70828,22 @@
         "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.89
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Critical care medicine education with practical clinical scenarios.",
+      "display_title": "Critical Care Scenarios",
+      "blurb": "Medical podcast teaching practical critical care with clinical scenarios and expert guest physicians.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1491569277": {
       "topics": [
@@ -70237,7 +70864,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama serial about submersible exploring Antarctic trench with crew conflict.",
+      "display_title": "Down",
+      "blurb": "Science fiction audio drama series about submarine crew exploring Antarctic trench facing psychological and environmental challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1491784484": {
       "topics": [
@@ -70355,10 +70997,30 @@
     },
     "1492135529": {
       "topics": [
-        "travel"
+        "travel",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.88
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Overlanding community profiles, vehicle builds, and adventure travel.",
+      "display_title": "The Overland Journal Podcast",
+      "blurb": "Adventure travel podcast featuring overlanders, vehicle builds, and expedition stories from global explorers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1492147099": {
       "topics": [
@@ -70512,10 +71174,33 @@
     },
     "1492747637": {
       "topics": [
-        "health/alternative"
+        "health/alternative",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Gut health, hormone optimization, and alternative health solutions.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1492752400": {
       "topics": [
@@ -70573,7 +71258,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.88
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running training, fitness, and weight management for runners.",
+      "display_title": "Running Lean",
+      "blurb": "Running podcast covering training strategies, fitness, and weight management for faster endurance performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1492827360": {
       "topics": [
@@ -70684,7 +71388,22 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Forensic toxicology, drugs, poisons, and chemistry explained.",
+      "display_title": "Dose Makes The Poison: The Toxcast",
+      "blurb": "Forensic toxicology podcast discussing drugs, poisons, and chemistry in news and pop culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1493055485": {
       "topics": [
@@ -70770,7 +71489,22 @@
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dance careers, performance strategies, and creative industry navigation.",
+      "display_title": "DANCE +",
+      "blurb": "Dance industry podcast providing career guidance and creative strategies from established performers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1493151811": {
       "topics": [
@@ -70781,10 +71515,33 @@
     },
     "1493189231": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.87
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Christian mental health coaching on negative thoughts and faith-based wellbeing.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 19w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-e000f876",
+      "classified_at": "2026-08-02T16:59:50.178Z"
     },
     "1493191701": {
       "topics": [
