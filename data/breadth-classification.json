@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-02T00:18:27.954Z",
+  "built_at": "2026-08-02T08:26:23.998Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-02-db82dc82",
+    "last_batch_id": "fresh-2026-08-02-d76fe9e6",
     "last_batch_tier": 1
   },
   "entries": {
@@ -63937,7 +63937,21 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Canadian rugby podcast covering national team matches and players.",
+      "display_title": "Le Rouge Rugby Podcast",
+      "blurb": "Coverage of Canada's rugby teams, international matches, and player interviews from the sport.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1469497070": {
       "topics": [
@@ -64025,7 +64039,21 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedy performances and interviews at London's Comedy Unleashed club.",
+      "display_title": "Comedy Unleashed",
+      "blurb": "Free-speech comedy performances and interviews featuring stand-up comedians.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1469846551": {
       "topics": [
@@ -64036,10 +64064,29 @@
     },
     "1469950419": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/casual-hangs",
+        "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sibling banter about culture and life, not stand-up performances; conflicts with tier-0 stand-up prior.",
+      "display_title": "The One Millionth Podcast",
+      "blurb": "Comedian Chris Porter and his sister Andi discuss recent events, culture, and their lives.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1469997998": {
       "topics": [
@@ -64088,10 +64135,29 @@
     },
     "1470283431": {
       "topics": [
-        "food"
+        "food",
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wine and food exploration with Beard Award-winning host; focuses on culinary storytelling.",
+      "display_title": "SOMM TV wine & food",
+      "blurb": "Wine, food, and storytelling from a James Beard Award-winning author exploring global cuisine.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1470303692": {
       "topics": [
@@ -64116,10 +64182,29 @@
     },
     "1470457923": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep film criticism and analysis of Criterion Collection movies; expanding cultural horizons.",
+      "display_title": "Random Acts of Cinema",
+      "blurb": "Film criticism and analysis of movies from the Criterion Collection with friends.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1470490447": {
       "topics": [
@@ -64184,7 +64269,21 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish spiritual teaching on Bitachon (trust in Divine); religious guidance.",
+      "display_title": "The Bitachon Podcast",
+      "blurb": "Jewish spiritual teachings on trust and faith from the Vedic tradition.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1470599745": {
       "topics": [
@@ -64269,14 +64368,51 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese language learning content at various proficiency levels (N1-N5).",
+      "display_title": "Let's Talk in Japanese!",
+      "blurb": "Japanese language instruction at multiple proficiency levels for learners.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1470860703": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Case studies of film villains and antiheroes; pop culture character analysis.",
+      "display_title": "Rogues Gallery",
+      "blurb": "Analysis of memorable villains and antiheroes in film and television.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1470873097": {
       "topics": [
@@ -64312,7 +64448,21 @@
         "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cultural commentary and analysis of current events and social issues.",
+      "display_title": "The Seth Gruber Show",
+      "blurb": "Cultural and political analysis exploring trends in American society.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1471111035": {
       "topics": [
@@ -64387,14 +64537,47 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Animated film reviews and discussion; coverage of animation festivals.",
+      "display_title": "FLAN - Faut L'ANimer",
+      "blurb": "French animated film reviews and analysis with coverage of Annecy Film Festival.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1471556007": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/interviews",
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Post-production professional interviews on editing, sound design, film production.",
+      "display_title": "The Rough Cut",
+      "blurb": "In-depth interviews with film and TV post-production professionals.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1471581521": {
       "topics": [
@@ -64406,10 +64589,29 @@
     },
     "1471585701": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Old-time radio broadcasts, dramas, and comedy from golden age of radio.",
+      "display_title": "www.RADIOthen.network",
+      "blurb": "Classic old-time radio broadcasts, dramas, and comedy from early 20th century.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1471628291": {
       "topics": [
@@ -64623,7 +64825,21 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians in casual conversation and banter; improv-style podcast.",
+      "display_title": "Bag Fries with Bruce Gray & Kevin Tienken",
+      "blurb": "Comedians Bruce Gray and Kevin Tienken chat in casual, unstructured conversations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1472939543": {
       "topics": [
@@ -64645,7 +64861,21 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game news, reviews, and industry analysis from independent gaming publication.",
+      "display_title": "The DayOne Show | A Video Games Podcast",
+      "blurb": "Video game news, reviews, and industry discussion from independent media outlet.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1473055758": {
       "topics": [
@@ -64841,10 +65071,32 @@
     },
     "1473696717": {
       "topics": [
-        "music"
+        "music",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Billboard Top 10 retrospectives and music history of 70s and 80s.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 15w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1473703394": {
       "topics": [
@@ -64873,10 +65125,28 @@
     "1473746379": {
       "topics": [
         "adventure/exploration",
-        "nature"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Backcountry hunting gear, tactics, and wilderness survival storytelling.",
+      "display_title": "Rokcast",
+      "blurb": "Backcountry hunting and wilderness adventure with gear reviews and tactics.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1473747182": {
       "topics": [
@@ -64998,7 +65268,21 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis discussion, player analysis, and sport commentary from experienced coaches.",
+      "display_title": "At The Net Podcast",
+      "blurb": "Tennis analysis and discussion from coaches and sport experts with diverse perspectives.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1474429475": {
       "topics": [
@@ -65057,7 +65341,21 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Free children's bedtime stories, fairy tales, and audio fiction.",
+      "display_title": "Storyberries Audio Books for Kids",
+      "blurb": "Free bedtime stories and fairy tales for children with educational themes.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1474828818": {
       "topics": [
@@ -65109,7 +65407,25 @@
         "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship and small business strategy from experienced business owner.",
+      "display_title": "The Jeremy Hanson Podcast / Optimized Entrepreneur",
+      "blurb": "Business strategy and entrepreneurship focusing on building profitable service businesses.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1475060182": {
       "topics": [
@@ -65153,10 +65469,29 @@
     },
     "1475261223": {
       "topics": [
+        "health/fitness",
         "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Osteoporosis and bone health through natural approaches and scientific evidence.",
+      "display_title": "Happy Bones, Happy Life",
+      "blurb": "Bone health and osteoporosis management through exercise, nutrition, and wellness.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1475378148": {
       "topics": [
@@ -65167,10 +65502,32 @@
     },
     "1475412003": {
       "topics": [
-        "gaming"
+        "gaming",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cyberpunk tabletop RPG and video game lore, news, and community content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1475414717": {
       "topics": [
@@ -65200,7 +65557,21 @@
         "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vacation planning, destination recommendations, and travel hacks from experienced travelers.",
+      "display_title": "Travel Squad Podcast",
+      "blurb": "Travel advice, destination guides, and vacation planning tips from friends.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1475466071": {
       "topics": [
@@ -65416,10 +65787,29 @@
     },
     "1476323409": {
       "topics": [
-        "comedy/interviews"
+        "comedy/interviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language comedy interviews with Latin American personalities and artists.",
+      "display_title": "Somos Los Pichy Boys",
+      "blurb": "Spanish-language comedy interviews with Latin American artists and personalities.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1476326650": {
       "topics": [
@@ -65463,7 +65853,24 @@
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Alcoholics Anonymous recovery story and 12-step spiritual principles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1476434291": {
       "topics": [
@@ -65489,10 +65896,29 @@
     },
     "1476456225": {
       "topics": [
-        "business/careers"
+        "sports/endurance",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Walleye fishing tournament coverage, techniques, and guides in Midwest.",
+      "display_title": "JMO Podcast",
+      "blurb": "Midwest walleye fishing coverage with tournament updates and fishing techniques.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1476486886": {
       "topics": [
@@ -65629,7 +66055,24 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep analysis of anime and animation history; critical focus on Tomino's works.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1477011156": {
       "topics": [
@@ -65681,14 +66124,47 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis discussion with poetic, literary style focusing on sport's art and drama.",
+      "display_title": "The Tennis Tragic",
+      "blurb": "Tennis discussion and player analysis with literary and artistic perspective.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1477287015": {
       "topics": [
+        "paranormal",
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal and supernatural stories; hosts explore hauntings and eerie phenomena.",
+      "display_title": "Scared To Death",
+      "blurb": "Paranormal and supernatural stories with emphasis on hauntings and eerie encounters.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1477323816": {
       "topics": [
@@ -65739,12 +66215,29 @@
     },
     "1477483749": {
       "topics": [
-        "medicine/biology",
         "science",
-        "nature"
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Protein engineering, drug development, and biotherapeutics research interviews.",
+      "display_title": "The Chain: Protein Engineering Podcast",
+      "blurb": "Protein engineering and biotherapeutic research with expert scientist interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1477524410": {
       "topics": [
@@ -65793,10 +66286,29 @@
     },
     "1477567359": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/stand-up",
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians exploring paranormal and supernatural topics with humor and investigation.",
+      "display_title": "Paragordo Activity",
+      "blurb": "Comedians investigating paranormal phenomena and supernatural stories with humor.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1477578107": {
       "topics": [
@@ -65808,18 +66320,53 @@
     },
     "1477588695": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swimming coaches discussing training, athlete development, and coaching strategies.",
+      "display_title": "The Poolside Pass",
+      "blurb": "Swimming coaches discussing training methods and athlete development strategies.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1477654911": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Buddhist meditation teaching and spirituality integrated with business and creativity.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1477655202": {
       "topics": [
@@ -65839,17 +66386,54 @@
     "1477661505": {
       "topics": [
         "health/nutrition",
-        "food"
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Binge eating recovery with evidence-based nutrition and behavioral psychology tools.",
+      "display_title": "Breaking Up With Binge Eating",
+      "blurb": "Evidence-based eating behavior recovery with nutrition science and psychology.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1477747461": {
       "topics": [
+        "paranormal",
         "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy interviews with guests sharing ghost stories and supernatural encounters.",
+      "display_title": "Real Hauntings Real Ghost Stories",
+      "blurb": "Comedic interviews with people sharing their paranormal and ghost stories.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1477757732": {
       "topics": [
@@ -65878,7 +66462,21 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "German-language daily news summary and analysis from Der Spiegel.",
+      "display_title": "Die Lage",
+      "blurb": "Daily German news summary and analysis from Der Spiegel editorial team.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1477905257": {
       "topics": [
@@ -65905,10 +66503,29 @@
     },
     "1477930581": {
       "topics": [
-        "comedy/interviews"
+        "comedy/interviews",
+        "health/sexuality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews about sexuality, kink, and adult topics from comedy/education perspective.",
+      "display_title": "Watts Your Safepod",
+      "blurb": "Adult conversations about sexuality and kink breaking down stigma with humor.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1477991794": {
       "topics": [
@@ -65991,7 +66608,24 @@
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcasting strategy and audience growth techniques for podcast creators.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 19w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1478188105": {
       "topics": [
@@ -66088,7 +66722,21 @@
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional hair care brand education; styling trends and color formulas.",
+      "display_title": "Conversations with Kevin",
+      "blurb": "Professional hair care advice and styling trends from Australian beauty brand.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1478429244": {
       "topics": [
@@ -66211,12 +66859,32 @@
     },
     "1478837409": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "medicine/neuroscience",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Neuroscience and psychiatry research; brain biology of mental health.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 14w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1478839226": {
       "topics": [
@@ -66266,10 +66934,32 @@
     },
     "1478975367": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Bodybuilding training, nutrition, and performance-enhancing substances discussion.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1479022357": {
       "topics": [
@@ -66290,7 +66980,21 @@
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Network marketing leadership and organizational building strategies.",
+      "display_title": "Network Marketing Breakthroughs with Rob Sperry",
+      "blurb": "Network marketing leadership and team building strategies for direct sales.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1479053665": {
       "topics": [
@@ -66381,10 +67085,29 @@
     },
     "1479308325": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beauty and cosmetic procedures; skincare advice from professional injector.",
+      "display_title": "The Things We Do",
+      "blurb": "Beauty, skincare, and cosmetic procedure advice from a professional aesthetician.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1479312117": {
       "topics": [
@@ -66623,7 +67346,21 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu spiritual wisdom from the Vedas; meditation and self-realization teaching.",
+      "display_title": "The End Of The Spiritual Quest",
+      "blurb": "Hindu spiritual teachings from the Vedas exploring self-realization and identity.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1479882159": {
       "topics": [
@@ -66871,7 +67608,21 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language football analysis and World Cup coverage.",
+      "display_title": "Sin Llorar",
+      "blurb": "Spanish-language football analysis and World Cup coverage and debate.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1480311435": {
       "topics": [
@@ -66992,7 +67743,21 @@
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog training tips and reactive dog behavior strategies from certified trainer.",
+      "display_title": "The Naughty Dog Podcast",
+      "blurb": "Dog training advice and behavior guidance from certified professional trainer.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-d76fe9e6",
+      "classified_at": "2026-08-02T08:26:23.998Z"
     },
     "1480657973": {
       "topics": [
