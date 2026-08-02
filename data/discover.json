@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-01T11:43:44.766Z",
+  "built_at": "2026-08-02T11:44:12.042Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -23271,6 +23271,132 @@
         "paranormal"
       ],
       "hook": "Dog-headed men haunted ancient legend for centuries; one corner of folklore still resists explanation.",
+      "explicit": false
+    },
+    {
+      "id": "the-ancients--the-catiline-conspiracy",
+      "show": "The Ancients",
+      "title": "The Catiline Conspiracy",
+      "apple_collection_id": 1520403988,
+      "apple_track_id": 1000779260737,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-catiline-conspiracy/id1520403988?i=1000779260737&uo=4",
+      "release_date": "2026-08-02",
+      "duration_min": 64,
+      "duration_sec": 3860,
+      "audio_url": "https://sphinx.acast.com/p/acast/s/the-ancients/e/6a6c780664ca11687090ae33/media.mp3?tk=eyJ0ayI6ImRlZmF1bHQiLCJhZHMiOnRydWUsInNwb25zIjp0cnVlLCJzdGF0dXMiOiJwdWJsaWMifQ==&sig=xsDf0Xo9gz2fXMh8XPL2ax0F1dVZyD3wd1E94Utw2xo",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 61771023,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/6c/94/31/6c943113-5484-a41d-5cb7-bf606ff289ef/mza_6401313720037127611.jpeg/600x600bb.jpg",
+      "topics": [
+        "history/military-ancient"
+      ],
+      "hook": "Cicero accused Catiline of plotting to overthrow Rome; historian Catharine Edwards weighs the truth.",
+      "explicit": false
+    },
+    {
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1611",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 1611: Benjamin Franklin and Cotton Mather",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000779490909,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1611-benjamin/id121493645?i=1000779490909&uo=4",
+      "release_date": "2026-08-02",
+      "duration_min": 4,
+      "duration_sec": 226,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260802.mp3?srcid=apple-podcasts",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 1809630,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "topics": [
+        "history/technology"
+      ],
+      "hook": "Franklin cited Cotton Mather's writing as a boyhood influence, though their ideologies later diverged.",
+      "explicit": false
+    },
+    {
+      "id": "founders--427-how-raymond-plank-built-a",
+      "show": "Founders",
+      "title": "#427 How Raymond Plank Built a $50 Billion Oil Company",
+      "apple_collection_id": 1141877104,
+      "apple_track_id": 1000779471100,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/427-how-raymond-plank-built-a-%2450-billion-oil-company/id1141877104?i=1000779471100&uo=4",
+      "release_date": "2026-08-01",
+      "duration_min": 38,
+      "duration_sec": 2290,
+      "audio_url": "https://traffic.megaphone.fm/DSLLC1260176282.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ed/71/4f/ed714f67-f095-a4ef-f38e-d8c02300666a/mza_11432355988627368701.jpg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "Raymond Plank turned $250,000 into a $50 billion oil company, per his memoir A Small Difference.",
+      "explicit": false
+    },
+    {
+      "id": "the-sharp-end-podcast--ep-127-trapped-by-wilderness-fires",
+      "show": "the Sharp End Podcast",
+      "title": "Ep 127 - Trapped by Wilderness Fires - Juliet and Amy",
+      "apple_collection_id": 1080036452,
+      "apple_track_id": 1000779431119,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/ep-127-trapped-by-wilderness-fires-juliet-and-amy/id1080036452?i=1000779431119&uo=4",
+      "release_date": "2026-08-01",
+      "duration_min": 37,
+      "duration_sec": 2220,
+      "audio_url": "https://chrt.fm/track/CB49F9/http://feeds.soundcloud.com/stream/2369860043-the_sharp_end-ep-127-trapped-by-wilderness.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 53286033,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/74/f2/d7/74f2d72c-fa5e-6ad6-6ca8-665b6aa2798a/mza_3128307597345150216.jpg/600x600bb.jpg",
+      "topics": [
+        "adventure/exploration"
+      ],
+      "hook": "Juliet Evans and Amy Lu recount getting trapped by a wildfire backpacking in the North Cascades.",
+      "explicit": false
+    },
+    {
+      "id": "common-descent--episode-249-sexual-dimorphism",
+      "show": "The Common Descent Podcast",
+      "title": "Episode 249 - Sexual Dimorphism",
+      "apple_collection_id": 1207586509,
+      "apple_track_id": 1000779471396,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-249-sexual-dimorphism/id1207586509?i=1000779471396&uo=4",
+      "release_date": "2026-08-02",
+      "duration_min": 177,
+      "duration_sec": 10644,
+      "audio_url": "https://mcdn.podbean.com/mf/web/7rvxdagg2cu6iqjr/Episode_249_Sexual_Dimorphism.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 255458426,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/2d/ad/58/2dad5885-6566-fdd4-6b52-f87b69af3688/mza_3078482384516892224.png/600x600bb.jpg",
+      "topics": [
+        "nature/paleontology"
+      ],
+      "hook": "How male and female anatomy differs across species, and how reliably it shows in fossils.",
+      "explicit": false
+    },
+    {
+      "id": "wow-in-the-world--wewow-on-the-weekend-a-laugh",
+      "show": "Wow in the World",
+      "title": "WeWow on the Weekend: A Laugh a Minute, and How Pandas Got Their Spots!",
+      "apple_collection_id": 1233834541,
+      "apple_track_id": 1000779498582,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/wewow-on-the-weekend-a-laugh-a-minute-and/id1233834541?i=1000779498582&uo=4",
+      "release_date": "2026-08-02",
+      "duration_min": 15,
+      "duration_sec": 920,
+      "audio_url": "https://pscrb.fm/rss/p/rss.art19.com/episodes/0e66a903-a17c-4bd1-b769-7d9ad5b0734a.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 14728463,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ea/b3/45/eab34534-ac7d-9036-c664-2dfe28e4f722/mza_9883217874917379703.jpeg/600x600bb.jpg",
+      "topics": [
+        "kids-family/education"
+      ],
+      "hook": "Dennis and Reggie mix comedy, listener call-ins, and the science of how pandas got their spots.",
       "explicit": false
     }
   ]
