@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-02T00:57:51.439Z",
+  "built_at": "2026-08-02T08:57:39.537Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-02-44075a1a",
+    "last_batch_id": "fresh-2026-08-02-68385eb3",
     "last_batch_tier": 1
   },
   "entries": {
@@ -61682,10 +61682,40 @@
     },
     "1467820967": {
       "topics": [
-        "sports/soccer"
+        "sports",
+        "sports/soccer",
+        "news",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/soccer",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on sports topics and analysis.",
+      "display_title": "At The Bridge Pod: A Chelsea FC Podcast",
+      "blurb": "The Chelsea FC Podcast That Doesn’t Take Itself Too Seriously | #1 in Canada 🇨🇦 | New Episodes Every Monday & Thursday.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1467828055": {
       "topics": [
@@ -61696,11 +61726,40 @@
     },
     "1467982091": {
       "topics": [
+        "tv-film",
         "tv-film/history",
-        "history"
+        "history",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on tv & film topics and analysis.",
+      "display_title": "Awesome Movie Year",
+      "blurb": "Each season looks at why a certain year was an awesome movie year.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1468013270": {
       "topics": [
@@ -61730,10 +61789,38 @@
       "topics": [
         "medicine/biology",
         "science",
-        "nature"
+        "nature",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on biology topics and analysis.",
+      "display_title": "Discover CircRes",
+      "blurb": "This discussion will pull opinions from the podcast hosts, editorial team, research leaders and authors – both the corre",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1468181343": {
       "topics": [
@@ -61871,10 +61958,39 @@
     "1468827005": {
       "topics": [
         "sports/endurance",
-        "health/fitness"
+        "health/fitness",
+        "relationships",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on endurance topics and analysis.",
+      "display_title": "Road to the Trials",
+      "blurb": "Co-hosts Matt Chittim, Lindsey Hein, and Peter Bromka interview every 2028 Olympic Marathon Trials Qualifier along with .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1468915450": {
       "topics": [
@@ -62004,10 +62120,43 @@
     },
     "1469293841": {
       "topics": [
-        "business/management"
+        "health",
+        "business",
+        "business/management",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on health & fitness topics and analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1469319650": {
       "topics": [
@@ -62080,10 +62229,40 @@
     },
     "1469635169": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "fiction",
+        "relationships",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on parenting topics and analysis.",
+      "display_title": "The Nacho Kids Podcast: Blended Family Lifesaver",
+      "blurb": "With a failure rate of over 70%, it's clear that blended families need help.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1469643813": {
       "topics": [
@@ -62229,7 +62408,25 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on islam topics and analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1470422004": {
       "topics": [
@@ -62287,7 +62484,25 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on islam topics and analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1470595534": {
       "topics": [
@@ -62547,7 +62762,22 @@
         "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on travel & places topics and analysis.",
+      "display_title": "壮游者|人文旅行声音游记",
+      "blurb": "“壮游者”是一档人文旅行声音游记播客， 由前媒体人Yang主持，邀请不同身份和视角的旅行者，从人文、地理、历史…等不同角度进入全球目的地，并分享他们的参与式观察体验。 曾获苹果播客（Podcasts）“2022年编辑精选节目”；2023CP",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1471679636": {
       "topics": [
@@ -62752,10 +62982,40 @@
     },
     "1472945003": {
       "topics": [
-        "music"
+        "music",
+        "travel",
+        "news",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on music topics and analysis.",
+      "display_title": "Two Gay Matts",
+      "blurb": "The other Matt loves musical theatre.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1472948373": {
       "topics": [
@@ -62774,11 +63034,35 @@
     },
     "1473057761": {
       "topics": [
+        "nature",
         "adventure/exploration",
-        "nature"
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on nature topics and analysis.",
+      "display_title": "Deer Society",
+      "blurb": "Next-Level deer hunting tactics and strategies for the serious whitetail hunter.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1473072044": {
       "topics": [
@@ -62886,10 +63170,35 @@
     },
     "1473621869": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "music",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.75
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on pets & animals topics and analysis.",
+      "display_title": "Canine Hoopers World",
+      "blurb": "Train dogs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1473626965": {
       "topics": [
@@ -62949,10 +63258,35 @@
     },
     "1473735209": {
       "topics": [
+        "sports",
+        "nature",
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on sports topics and analysis.",
+      "display_title": "The IDP Show",
+      "blurb": "Jon brings his signature data-timen approach to everything the show has always done best: dynasty rankings, rookie analy",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1473746379": {
       "topics": [
@@ -63053,11 +63387,40 @@
     },
     "1474023755": {
       "topics": [
+        "health",
+        "news/politics",
         "sports/endurance",
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health & fitness topics and analysis.",
+      "display_title": "The JakeShell Show",
+      "blurb": "This is the Podcast for Polymaths.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1474103917": {
       "topics": [
@@ -63168,11 +63531,40 @@
     },
     "1474706111": {
       "topics": [
+        "health",
+        "kids-family/parenting",
         "health/nutrition",
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health & fitness topics and analysis.",
+      "display_title": "The Melanie Avalon Biohacking Podcast",
+      "blurb": "Because why not live awesome.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1474796049": {
       "topics": [
@@ -63213,10 +63605,40 @@
     },
     "1474978235": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "science",
+        "relationships",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on careers topics and analysis.",
+      "display_title": "The Level Up Latina Podcast",
+      "blurb": "Level Up Latina partners with working women and mommas alike to guide them in achieving fulfilling career and life goals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1474983385": {
       "topics": [
@@ -63364,10 +63786,30 @@
     },
     "1475466071": {
       "topics": [
+        "fiction",
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on fiction & audio drama topics and analysis.",
+      "display_title": "FPL Pod",
+      "blurb": "Join Kelly Somers, Julien Laurens and Sam Bonfield ahead of each Gameweek as they discuss and digress about the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1475482850": {
       "topics": [
@@ -63455,10 +63897,40 @@
     },
     "1475814911": {
       "topics": [
+        "health",
+        "business",
+        "kids-family/parenting",
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health & fitness topics and analysis.",
+      "display_title": "The Art of Longevity",
+      "blurb": "We talk about how these artists have navigated the mangle of the music industry to keep on making great music.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1475835329": {
       "topics": [
@@ -63557,11 +64029,40 @@
     },
     "1476302603": {
       "topics": [
+        "health",
+        "sports/endurance",
         "health/nutrition",
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health & fitness topics and analysis.",
+      "display_title": "The Eat for Endurance Podcast",
+      "blurb": "Sports Dietitian and distance runner Claire Shorenstein  the connection between nutrition, performance, and health for b",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1476316441": {
       "topics": [
@@ -63618,10 +64119,40 @@
     },
     "1476434291": {
       "topics": [
-        "aviation"
+        "aviation",
+        "space",
+        "news/politics",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on aviation topics and analysis.",
+      "display_title": "Aerospace Unplugged",
+      "blurb": "So, if you work in the industry, are passionate about the ins and outs of the aerospace world or just.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1476446599": {
       "topics": [
@@ -63654,11 +64185,40 @@
     },
     "1476501557": {
       "topics": [
+        "kids-family/parenting",
         "health/mental",
-        "psychology"
+        "psychology",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on parenting topics and analysis.",
+      "display_title": "The Imperfects",
+      "blurb": "On this podcast, founder of The Resilience Project Hugh van Cuylenburg, his good friend Ryan Shelton, and only one of.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1476552025": {
       "topics": [
@@ -63715,10 +64275,30 @@
     },
     "1476744233": {
       "topics": [
+        "tv-film",
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on tv & film topics and analysis.",
+      "display_title": "Down The Hatch",
+      "blurb": "The series stars Edward James Olmos, Mary McDonnell, Tricia Helfer, Katee Sackhoff and more.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1476819288": {
       "topics": [
@@ -63758,10 +64338,40 @@
     },
     "1476957977": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction",
+        "tv-film",
+        "true-crime",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on fiction & audio drama topics and analysis.",
+      "display_title": "The Subjective Truth",
+      "blurb": "What starts as an investigation into a hikers disappearance, quickly transforms into an observation on the subjective na",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1476971066": {
       "topics": [
@@ -63791,7 +64401,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on space topics and analysis.",
+      "display_title": "Просто космос",
+      "blurb": "Чёрные дыры, кротовые норы, теория струн, космический туризм, вот это всё от Илона Маска… Слушать — не оторваться.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1477126939": {
       "topics": [
@@ -63881,7 +64510,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on space topics and analysis.",
+      "display_title": "Evrim Ağacı ile Bilime Dair Her Şey!",
+      "blurb": "Bu yayın listemizde, Evrim Ağacı'nda yayınladığımız içeriklerden seçilmiş yazılarımızı yazarlarımızın kendileri, diğer y.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1477483749": {
       "topics": [
@@ -64066,10 +64714,40 @@
     },
     "1477905257": {
       "topics": [
-        "culture/performing-arts"
+        "tv-film",
+        "fiction",
+        "culture/performing-arts",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.75
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on tv & film topics and analysis.",
+      "display_title": "An Actor Despairs",
+      "blurb": "Join your host Ryan M.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1477905385": {
       "topics": [
@@ -64119,11 +64797,35 @@
     },
     "1478013779": {
       "topics": [
+        "news/politics",
         "economics/markets",
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on politics topics and analysis.",
+      "display_title": "WashingtonWise",
+      "blurb": "In each episode of WashingtonWise, host Mike Townsend, Charles Schwab’s Vice President for Legislative and Regulatory Af",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1478026758": {
       "topics": [
@@ -64153,7 +64855,26 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on sports topics and analysis.",
+      "display_title": "Halas Intrigue",
+      "blurb": "Listen as we evaluate games, make predictions, provide insights and analyze the day’s big stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1478129934": {
       "topics": [
@@ -64236,10 +64957,40 @@
     },
     "1478296139": {
       "topics": [
-        "sports/basketball"
+        "hobbies",
+        "sports/basketball",
+        "relationships",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on hobbies & leisure topics and analysis.",
+      "display_title": "Sources Say Podcast",
+      "blurb": "In their weekly show, the duo will discuss the latest with the team, talk to high-level prospects, update listeners on.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1478303230": {
       "topics": [
@@ -64295,18 +65046,77 @@
     },
     "1478561777": {
       "topics": [
+        "tv-film",
+        "kids-family/parenting",
         "tv-film/history",
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on tv & film topics and analysis.",
+      "display_title": "Two Dollar Late Fee - 80s Movie Podcast",
+      "blurb": "It’s also the home of Territory Marks, revisiting the glory days of pro wrestling, with Paul London.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1478573357": {
       "topics": [
-        "culture/art"
+        "health",
+        "craft/photography",
+        "fiction",
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health & fitness topics and analysis.",
+      "display_title": "Wildlife Photo Chat",
+      "blurb": "Ray Hennessy has a new guest on each episode to discuss what they are currently working on and how they are trying to be.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1478580185": {
       "topics": [
@@ -64353,10 +65163,35 @@
     },
     "1478742413": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction",
+        "fiction/sci-fi",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on fiction & audio drama topics and analysis.",
+      "display_title": "SCP: Find Us Alive",
+      "blurb": "Find Us Alive follows the strange developments at Site-107, a small Foundation research site trapped inside dimensional .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1478746415": {
       "topics": [
@@ -64402,10 +65237,35 @@
     },
     "1478827007": {
       "topics": [
-        "news/commentary"
+        "news/politics",
+        "news/commentary",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on politics topics and analysis.",
+      "display_title": "The Situation & The Weekend with Michael Brown",
+      "blurb": "Smart.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1478837409": {
       "topics": [
@@ -64521,10 +65381,30 @@
     },
     "1479124505": {
       "topics": [
-        "music"
+        "music",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on music topics and analysis.",
+      "display_title": "Demolisten",
+      "blurb": "Two grown men passionately discussing a thing most people grow out of by age 25.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1479133426": {
       "topics": [
@@ -64867,10 +65747,40 @@
     },
     "1479709811": {
       "topics": [
-        "kids-family/stories"
+        "fiction",
+        "kids-family/parenting",
+        "kids-family/stories",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.75
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on fiction & audio drama topics and analysis.",
+      "display_title": "The Creeping Hour",
+      "blurb": "The Creeping Hour is a horror anthology series hosted by the Creeps, three friends who listened to so many scary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1479711891": {
       "topics": [
@@ -64905,10 +65815,40 @@
     },
     "1479905027": {
       "topics": [
-        "travel"
+        "hobbies",
+        "philosophy",
+        "travel",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on hobbies & leisure topics and analysis.",
+      "display_title": "WAYPOINTS Fly Fishing Podcast - with Jim Klug",
+      "blurb": "WAYPOINTS is an informative and entertaining fly fishing podcast for those that fish .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1479914467": {
       "topics": [
@@ -64988,17 +65928,62 @@
     },
     "1480069613": {
       "topics": [
-        "comedy/casual-hangs"
+        "health",
+        "sports/endurance",
+        "comedy/casual-hangs",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health & fitness topics and analysis.",
+      "display_title": "ManDogPod",
+      "blurb": "Support the show at www.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1480101719": {
       "topics": [
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on stand-up topics and analysis.",
+      "display_title": "鬼故事《大圣鬼话》",
+      "blurb": "大家好我是主播孙宇孙大圣！为您讲述发生在您身边而您并不曾听说过的故事！大圣鬼话每天晚上与您不见不散！！",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1480127734": {
       "topics": [
@@ -65115,10 +66100,30 @@
     },
     "1480270157": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on true crime topics and analysis.",
+      "display_title": "Hunting the Suicide Salesman",
+      "blurb": "When people around the world started killing themselves with an obscure substance a few years ago, police were unaware t",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1480305567": {
       "topics": [
@@ -65227,10 +66232,35 @@
     },
     "1480615007": {
       "topics": [
-        "religion/christianity"
+        "health",
+        "religion/christianity",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health & fitness topics and analysis.",
+      "display_title": "Three of Seven Podcast",
+      "blurb": "The Three of Seven Project team discusses faith, fitness, mindset and current events every Monday and Wednesday along wi",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1480639251": {
       "topics": [
@@ -65241,10 +66271,40 @@
     },
     "1480657973": {
       "topics": [
-        "sports/golf"
+        "health",
+        "sports",
+        "sports/golf",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/golf",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health & fitness topics and analysis.",
+      "display_title": "Pro-Fit Golf Conditioning Podcast",
+      "blurb": "Golfers just like you and me.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1480674640": {
       "topics": [
@@ -65270,10 +66330,40 @@
     },
     "1480713299": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "nature",
+        "hobbies",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on philosophy topics and analysis.",
+      "display_title": "Urgency of Change • The Krishnamurti Podcast",
+      "blurb": "Can anyone show you the way, or must you be a light to yourself.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1480760373": {
       "topics": [
@@ -65444,10 +66534,30 @@
     },
     "1481120045": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on parenting topics and analysis.",
+      "display_title": "Mommy Labor Nurse",
+      "blurb": "Tune in each week as we dive into pregnancy-related topics, expert interviews, and a variety of birth stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1481124544": {
       "topics": [
@@ -65470,7 +66580,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on soccer topics and analysis.",
+      "display_title": "Posse de Bola",
+      "blurb": "Toda semana, sempre às segundas e sextas-feiras, os jornalistas Arnaldo Ribeiro, Eduardo Tironi, José Trajano, Juca Kfou",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1481170982": {
       "topics": [
@@ -65532,10 +66657,40 @@
     },
     "1481293001": {
       "topics": [
-        "food"
+        "health",
+        "food",
+        "science",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health & fitness topics and analysis.",
+      "display_title": "Making Coffee with Lucia Solis",
+      "blurb": "Lucia is a former winemaker turned coffee processing specialist.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1481307685": {
       "topics": [
@@ -65613,10 +66768,30 @@
     },
     "1481464961": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on art topics and analysis.",
+      "display_title": "THE XXXTENTACION Legacy",
+      "blurb": "LLJ🖤🕊 Start to Love yourself, work on your life (awareness, Energy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-68385eb3",
+      "classified_at": "2026-08-02T08:57:39.537Z"
     },
     "1481488618": {
       "topics": [
