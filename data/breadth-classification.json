@@ -29250,6 +29250,50 @@
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
     },
+    "1493713982": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers sci-fi. Content-driven classification based on description and episodes.",
+      "display_title": "The Well Told Tale",
+      "blurb": "Hi everyone.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1493717594": {
+      "topics": [
+        "health/alternative"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers alternative. Content-driven classification based on description and episodes.",
+      "display_title": "Ancient Health Podcast",
+      "blurb": "Discover ancient solutions for modern health challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
     "1493894492": {
       "topics": [
         "religion/christianity"
@@ -29271,6 +29315,126 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
+    },
+    "1493902736": {
+      "topics": [
+        "sports/fantasy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers fantasy. Content-driven classification based on description and episodes.",
+      "display_title": "Be Better Bettors",
+      "blurb": "@spanky discusses life as a professional sports bettor and interviews other professional bettors and bookmakers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1494170696": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers judaism. Content-driven classification based on description and episodes.",
+      "display_title": "Rabbi Yoni Fischer Shiurim - Fischer’s Yeshiva",
+      "blurb": "All Rabbi Yoni Fischer Shiurim To join the Rabbi Fischer Shiur WhatsApp chat: https://chat.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1494236156": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers hockey. Content-driven classification based on description and episodes.",
+      "display_title": "Minnesota Wild Audio Network",
+      "blurb": "The official podcast of the Minnesota Wild with all the audio from in and around the Wild locker room.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1494262016": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers books. Content-driven classification based on description and episodes.",
+      "display_title": "Kingslingers | A Dark Tower Podcast",
+      "blurb": "Kingslingers is a podcast exploring and analyzing Stephen King's Dark Tower series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1494354554": {
+      "topics": [
+        "religion/christianity",
+        "business/careers",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Covers christianity, careers, health. Content-driven classification based on description and episodes.",
+      "display_title": "Next Level Leaders with Dr. Joseph Walker, III",
+      "blurb": "Next Level Leaders, hosted by Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
     },
     "1494634862": {
       "topics": [
@@ -29315,13 +29479,515 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-25-b12e2c4c",
       "classified_at": "2026-07-25T12:55:28.057Z"
+    },
+    "1494641162": {
+      "topics": [
+        "sports/rugby",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers rugby, business. Content-driven classification based on description and episodes.",
+      "display_title": "The Rig Biz Podcast",
+      "blurb": "WINNER - Best Sports Comedy Podcast @ 'Sports Podcast Awards'.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1494719756": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers baseball. Content-driven classification based on description and episodes.",
+      "display_title": "Locked On Nationals - Daily Podcast On The",
+      "blurb": "Locked On Nationals podcast is your daily ticket to stay ahead of the game and the first to know the latest news, analysis, and insider info for the 2019 World.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1494763610": {
+      "topics": [
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers commentary. Content-driven classification based on description and episodes.",
+      "display_title": "Real Coffee with Scott Adams",
+      "blurb": "Scott Adams discusses the latest happenings in the world through a persuasion filter.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1494880178": {
+      "topics": [
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers language-learning. Content-driven classification based on description and episodes.",
+      "display_title": "Coffee Break Swedish",
+      "blurb": "Learn Swedish with teacher Hanna and her student Mark.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1495067186": {
+      "topics": [
+        "science",
+        "science/physics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers science, physics. Content-driven classification based on description and episodes.",
+      "display_title": "The Joy of x",
+      "blurb": "The acclaimed mathematician and author Steven Strogatz interviews some of the world's leading scientists about their lives and work.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1495274744": {
+      "topics": [
+        "tv-film/animation",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers animation, comedy. Content-driven classification based on description and episodes.",
+      "display_title": "Eric Hates Dragon Ball Z",
+      "blurb": "Eric Hates Dragon Ball Z is a DBZ rewatch podcast where hosts John and Spencer undertake the impossible task of converting their friend Eric into becoming a fan of Dragon.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1495324190": {
+      "topics": [
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers space. Content-driven classification based on description and episodes.",
+      "display_title": "The Supermassive Podcast",
+      "blurb": "The UK's #1 space podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1495610258": {
+      "topics": [
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers stories. Content-driven classification based on description and episodes.",
+      "display_title": "Fun Fables - Bedtime Stories With A Twist",
+      "blurb": "Fun Fables are clever, funny re-imaginings of classic tales and fables.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1495733618": {
+      "topics": [
+        "aviation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers aviation. Content-driven classification based on description and episodes.",
+      "display_title": "FAR AIM | Aviation Reg's | Aeronautical Info",
+      "blurb": "Old aviation podcast that records once in awhile for old times' sake.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1496034764": {
+      "topics": [
+        "relationships",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers relationships, health. Content-driven classification based on description and episodes.",
+      "display_title": "Let’s Get Vulnerable: Relationship and Dating Advice",
+      "blurb": "Are you ready to take the mystery out of having great relationships and to gain the knowledge you need to step confidently into the next level of your life?",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1496181176": {
+      "topics": [
+        "sports/hockey",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers hockey, business. Content-driven classification based on description and episodes.",
+      "display_title": "Flyers Daily with Jason Myrtetus",
+      "blurb": "Your daily check in for all things orange and black, this podcast gives you everything you need-to-know now for Flyers Hockey from Host and Content Contributor Jason Myrtetus.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1496196680": {
+      "topics": [
+        "fiction",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers fiction, history. Content-driven classification based on description and episodes.",
+      "display_title": "History's Great Mysteries",
+      "blurb": "Every other week, I take a into some of the most compelling and unexplained events in human history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1496891390": {
+      "topics": [
+        "tv-film/animation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers animation. Content-driven classification based on description and episodes.",
+      "display_title": "The One Piece Virgin",
+      "blurb": "Follow along as a grown man reads One Piece for the very first time, one week at a time!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1497680408": {
+      "topics": [
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Covers startups. Content-driven classification based on description and episodes.",
+      "display_title": "The Creative Boom Podcast",
+      "blurb": "The Creative Boom Podcast is a weekly interview show for designers, illustrators, animators, and creative professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1497740360": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Covers books. Content-driven classification based on description and episodes.",
+      "display_title": "Less Is Morgue",
+      "blurb": "Less is Morgue is an award-winning comedy fiction podcast about Riley, a paranoid ghoul, and Evelyn, a cheerful ghost who died at a Nickelback concert in 2004.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1497963218": {
+      "topics": [
+        "religion/christianity",
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers christianity, books. Content-driven classification based on description and episodes.",
+      "display_title": "The Charlotte Mason Show | A Homeschool Podcast",
+      "blurb": "Welcome to The Charlotte Mason Show, a podcast dedicated to discussing Miss Mason's philosophy, principles, and methods.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1498801064": {
+      "topics": [
+        "business/startups",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers startups, science. Content-driven classification based on description and episodes.",
+      "display_title": "Creator Science with Jay Clouse",
+      "blurb": "The best creators experiment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1499075672": {
+      "topics": [
+        "religion/buddhism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers buddhism. Content-driven classification based on description and episodes.",
+      "display_title": "Meditation Retreat 2019 by Ajahn Sumedho",
+      "blurb": "These are talks given by Luang Por Sumedho (Ajahn Sumedho) during a ten day retreat at Phu Tara Fa in October 2019 in Thailand.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1499140700": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers comedy. Content-driven classification based on description and episodes.",
+      "display_title": "Are You Garbage? Comedy Podcast",
+      "blurb": "Comedians H.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1499244260": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Covers books. Content-driven classification based on description and episodes.",
+      "display_title": "The Best 5 Minute Wine Podcast",
+      "blurb": "The Best 5 Minute Wine Podcast delivers quick wine education for busy wine lovers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
+    },
+    "1499594546": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Covers books. Content-driven classification based on description and episodes.",
+      "display_title": "The Radiology Review Podcast",
+      "blurb": "The Radiology Review Podcast delivers concise, high-quality educational insights on essential radiology topics, designed to help you ace your board examinations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-77dc2b98",
+      "classified_at": "2026-08-02T00:52:14.698Z"
     }
   },
-  "built_at": "2026-08-01T16:54:09.799Z",
+  "built_at": "2026-08-02T00:53:01.441Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-01-ba687b1f",
+    "last_batch_id": "fresh-2026-08-02-77dc2b98",
     "last_batch_tier": 1
   }
 }
