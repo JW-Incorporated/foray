@@ -29892,6 +29892,28 @@
       "batch_id": "fresh-2026-08-02-77dc2b98",
       "classified_at": "2026-08-02T00:52:14.698Z"
     },
+    "1496988806": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Limited signal; using genre classification.",
+      "display_title": "رادیو راه با مجتبی شکوری",
+      "blurb": "رادیوراه کنج آرامی از دنیاست برای خواندن، فکر کردن و جستجوی راهی برای بهتر زیستن..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
     "1497383342": {
       "topics": [
         "sports/hockey",
@@ -30407,6 +30429,28 @@
       "batch_id": "fresh-2026-08-02-a0c6a343",
       "classified_at": "2026-08-02T08:50:49.746Z"
     },
+    "1499411102": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science news and research storytelling.",
+      "display_title": "La Ciencia Pop",
+      "blurb": "Weekly coverage of scientific discoveries and research advances..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
     "1499510936": {
       "topics": [
         "religion/judaism",
@@ -30578,6 +30622,28 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-02-a0c6a343",
       "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1500652478": {
+      "topics": [
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business strategies and entrepreneurial growth guidance.",
+      "display_title": "Fullerton Unfiltered",
+      "blurb": "Business advice for scaling companies and entrepreneurial success..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
     },
     "1501005518": {
       "topics": [
@@ -30820,6 +30886,28 @@
       "batch_id": "fresh-2026-08-02-a0c6a343",
       "classified_at": "2026-08-02T08:50:49.746Z"
     },
+    "1502769182": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy performance and humorous entertainment.",
+      "display_title": "LA TREMENDA CORTE",
+      "blurb": "Comedy sketches and humorous entertainment..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
     "1502796518": {
       "topics": [
         "tv-film/interviews"
@@ -30841,6 +30929,28 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-02-a0c6a343",
       "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1502888066": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "History-focused podcast on origins of everyday objects and concepts.",
+      "display_title": "Chizcast | چیزکست",
+      "blurb": "Chronicles the history of everyday items and innovations..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
     },
     "1503007208": {
       "topics": [
@@ -30873,6 +30983,55 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-02-a0c6a343",
       "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1503017924": {
+      "topics": [
+        "education",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mathematics concepts explained for general audiences.",
+      "display_title": "מתמטיקה שמתמטיקה",
+      "blurb": "Mathematics concepts made accessible and engaging through storytelling..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1503330002": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports commentary and team analysis.",
+      "display_title": "The Rugby Wrap",
+      "blurb": "Sports coverage and professional team commentary..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
     },
     "1503399104": {
       "topics": [
@@ -30997,6 +31156,28 @@
       "batch_id": "fresh-2026-08-02-a0c6a343",
       "classified_at": "2026-08-02T08:50:49.746Z"
     },
+    "1503979394": {
+      "topics": [
+        "religion/buddhism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teachings and spiritual practice.",
+      "display_title": "Luangpor Paisal Visalo‘s Podcast (ธรรมะ จาก หลวงพ่อไพศาล วิสาโล)",
+      "blurb": "Buddhist wisdom and spiritual practice guidance..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
     "1504752194": {
       "topics": [
         "news/commentary"
@@ -31112,13 +31293,908 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-02-a0c6a343",
       "classified_at": "2026-08-02T08:50:49.746Z"
+    },
+    "1505459510": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home gardening and horticultural practice.",
+      "display_title": "The Frequency",
+      "blurb": "Gardening advice and horticulture for home growers..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1505640020": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fiber arts and knitting community discussion.",
+      "display_title": "Knitting Nerdcast",
+      "blurb": "Knitting techniques and fiber arts for enthusiasts..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1505843600": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music and performance arts.",
+      "display_title": "Lights Out",
+      "blurb": "Music appreciation and performance discussion..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1506045350": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Country music and regional cultural discussion.",
+      "display_title": "At Last She Said It",
+      "blurb": "Country music and regional culture discussion..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1506230012": {
+      "topics": [
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business strategies and entrepreneurial growth guidance.",
+      "display_title": "The Hot Slice",
+      "blurb": "Business advice for scaling companies and entrepreneurial success..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1506265448": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy performance and humorous entertainment.",
+      "display_title": "For the Nostalgia",
+      "blurb": "Comedy sketches and humorous entertainment..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1506312134": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Animal nutrition and equine care expertise.",
+      "display_title": "The Sheep Show Podcast with Jill & Andrew",
+      "blurb": "Specialized equine nutrition and horse care guidance..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1506330860": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science news and research storytelling.",
+      "display_title": "Feed Room Chemist: An Equine Nutrition Podcast",
+      "blurb": "Weekly coverage of scientific discoveries and research advances..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1506480938": {
+      "topics": [
+        "fiction/comedy"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Limited signal; using genre classification.",
+      "display_title": "Juha | جحا",
+      "blurb": "جحا مسلسل روائي جديد يحكي قصص حكيم الحمقى المشهورة وقصص لم تسمعوها من قبل. يروي لنا راوٍ م.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1506501380": {
+      "topics": [
+        "tv-film"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and cinematic analysis.",
+      "display_title": "The Maria Liberati Show",
+      "blurb": "Film analysis and cinema discussion..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1506544496": {
+      "topics": [
+        "tv-film"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and cinematic analysis.",
+      "display_title": "House of Cinema",
+      "blurb": "Film analysis and cinema discussion..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1506811658": {
+      "topics": [
+        "sports/cricket"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Limited signal; using genre classification.",
+      "display_title": "Mt. Whitney trip -",
+      "blurb": "A podcast about sharing stories and adventures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1506959744": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy performance and humorous entertainment.",
+      "display_title": "6th and Jump",
+      "blurb": "Comedy sketches and humorous entertainment..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1507296920": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fiber arts and knitting community discussion.",
+      "display_title": "Hex Positive",
+      "blurb": "Knitting techniques and fiber arts for enthusiasts..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1507348706": {
+      "topics": [
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business strategies and entrepreneurial growth guidance.",
+      "display_title": "Accelerate Your Insurance Sales Podcast",
+      "blurb": "Business advice for scaling companies and entrepreneurial success..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1507446314": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports commentary and team analysis.",
+      "display_title": "Shout! A football podcast on the Buffalo Bills",
+      "blurb": "Sports coverage and professional team commentary..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1507590488": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports commentary and team analysis.",
+      "display_title": "Mary Wanless - Ride With Your Mind",
+      "blurb": "Sports coverage and professional team commentary..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1507621076": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology trends and digital innovation.",
+      "display_title": "Tech Won't Save Us",
+      "blurb": "Technology trends and digital systems..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1507811918": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Short-form educational talks on diverse topics.",
+      "display_title": "Weirdly Helpful (formerly The Best Advice Show)",
+      "blurb": "Educational talks on ideas and innovation..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1507839530": {
+      "topics": [
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health, wellness, and nutritional guidance.",
+      "display_title": "Culture Apothecary with Alex Clark",
+      "blurb": "Health and wellness information and guidance..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1507978046": {
+      "topics": [
+        "music",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music and performance arts.",
+      "display_title": "Bach flower remedies",
+      "blurb": "Music appreciation and performance discussion..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1507979834": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports commentary and team analysis.",
+      "display_title": "The Jeff Ward Show",
+      "blurb": "Sports coverage and professional team commentary..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1508098400": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime narratives and investigative storytelling.",
+      "display_title": "Murder With My Husband",
+      "blurb": "True crime stories and investigative narratives..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1508111756": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports commentary and team analysis.",
+      "display_title": "What you talking about Willis?",
+      "blurb": "Sports coverage and professional team commentary..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1508341634": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic teachings and spiritual motivation.",
+      "display_title": "Islamic Motivation",
+      "blurb": "Islamic wisdom and spiritual encouragement..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1508380100": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science news and research storytelling.",
+      "display_title": "Live Well Be Well with Sarah Ann Macklin",
+      "blurb": "Weekly coverage of scientific discoveries and research advances..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1508447240": {
+      "topics": [
+        "culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal development and life advice.",
+      "display_title": "Dear Nikky: Hidden Desires",
+      "blurb": "Personal advice and life experience sharing..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1508985962": {
+      "topics": [
+        "culture",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Documentary-style cultural and social exploration.",
+      "display_title": "Grounded with Louis Theroux",
+      "blurb": "Cultural exploration and social documentary storytelling..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1509307460": {
+      "topics": [
+        "culture/pop-culture",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Documentary on music history and Cold War intrigue.",
+      "display_title": "Wind of Change",
+      "blurb": "Documentary investigation into the origins of the Scorpions hit and geopolitical mysteries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:52:15.745Z"
+    },
+    "1509561884": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy performance and humorous entertainment.",
+      "display_title": "TEDx Shorts",
+      "blurb": "Comedy sketches and humorous entertainment..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1509779834": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology trends and digital innovation.",
+      "display_title": "Mastering Social Media for Schools",
+      "blurb": "Technology trends and digital systems..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1509884894": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports commentary and team analysis.",
+      "display_title": "The Oklahoma Breakdown with Ikard and Lehman",
+      "blurb": "Sports coverage and professional team commentary..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1510277822": {
+      "topics": [
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language instruction and cultural learning.",
+      "display_title": "Learn Spanish and Go",
+      "blurb": "Spanish language instruction and cultural immersion..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1510471190": {
+      "topics": [
+        "sports/biomechanics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Equestrian biomechanics and riding instruction.",
+      "display_title": "Mary Wanless",
+      "blurb": "Equestrian biomechanics and advanced riding techniques.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:52:15.745Z"
+    },
+    "1510472996": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science news and research storytelling.",
+      "display_title": "Machine Learning Street Talk (MLST)",
+      "blurb": "Weekly coverage of scientific discoveries and research advances..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1510589252": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home gardening and horticultural practice.",
+      "display_title": "Central Texas Gardener",
+      "blurb": "Gardening advice and horticulture for home growers..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1510671938": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports commentary and team analysis.",
+      "display_title": "The RAF and Backcountry Flying",
+      "blurb": "Sports coverage and professional team commentary..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1510823750": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science news and research storytelling.",
+      "display_title": "رادیو استروفیل / Radio Astrophile",
+      "blurb": "Weekly coverage of scientific discoveries and research advances..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:50:41.659Z"
+    },
+    "1511047964": {
+      "topics": [
+        "aviation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation operations and backcountry flying.",
+      "display_title": "Control the Controllables",
+      "blurb": "Aviation expertise and backcountry flying operations..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1511158172": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology trends and digital innovation.",
+      "display_title": "KPMG Financial Reporting podcast",
+      "blurb": "Technology trends and digital systems..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-02-f611593d",
+      "classified_at": "2026-08-02T16:51:26.412Z"
     }
   },
-  "built_at": "2026-08-02T08:50:49.746Z",
+  "built_at": "2026-08-02T16:52:15.745Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-02-a0c6a343",
+    "last_batch_id": "fresh-2026-08-02-f611593d",
     "last_batch_tier": 1
   }
 }
