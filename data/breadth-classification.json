@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-02T16:13:49.766Z",
+  "built_at": "2026-08-03T00:12:48.340Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-02-aaa7c90b",
+    "last_batch_id": "fresh-2026-08-03-7c5204bd",
     "last_batch_tier": 1
   },
   "entries": {
@@ -65042,7 +65042,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama following Korean American family dynamics and cultural identity.",
+      "display_title": "MOONFACE",
+      "blurb": "Audio drama about a Korean American son navigating family relationships. Coming-of-age story set in Downey, CA.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1479124505": {
       "topics": [
@@ -65185,10 +65200,30 @@
     },
     "1479342168": {
       "topics": [
-        "medicine"
+        "medicine",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pediatric GI specialist discussion podcast for healthcare professionals.",
+      "display_title": "Bowel Sounds: The Pediatric GI Podcast",
+      "blurb": "Pediatric gastroenterology experts discuss nutrition, hepatology, and GI conditions. From NASPGHAN.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1479346591": {
       "topics": [
@@ -65200,17 +65235,60 @@
     },
     "1479350394": {
       "topics": [
-        "travel"
+        "travel",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Biweekly deep dives into Japanese culture and travel experiences.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1479360792": {
       "topics": [
+        "health/fitness",
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Licensed esthetician covers acne science and skincare wellness, not pure fashion/beauty.",
+      "display_title": "The Treatment Room",
+      "blurb": "Esthetician discusses acne science, skincare ingredients, hormones. Clinical evidence on breakout prevention.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1479389232": {
       "topics": [
@@ -65373,10 +65451,34 @@
     "1479610314": {
       "topics": [
         "news",
-        "business"
+        "news/tech",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.65
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Global news analysis covering geopolitics, markets, AI, and international relations.",
+      "display_title": "Here's Why",
+      "blurb": "Brief news analysis on nuclear treaties, global markets, AI, geopolitics. Clarity and insight without overload.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1479619320": {
       "topics": [
@@ -65384,7 +65486,26 @@
         "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneur Jasmine Star coaches on brand building, marketing, and business mindset.",
+      "display_title": "The Jasmine Star Show",
+      "blurb": "Jasmine Star delivers raw business coaching on branding and marketing. Strategy for scaling passion into profit.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1479643724": {
       "topics": [
@@ -65407,7 +65528,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Trail and ultrarunning coaching, training strategies, and community building.",
+      "display_title": "\"The Dirt\" Trailrunning Podcast",
+      "blurb": "Coaches Loretta and Lindsay share ultrarunning training and race recaps. Endurance community and tactics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1479709811": {
       "topics": [
@@ -65547,10 +65687,30 @@
     },
     "1480067454": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode-by-episode reviews of Great British Baking Show with team commentary.",
+      "display_title": "A Date With The Bake",
+      "blurb": "Weekly Great British Baking Show episode reviews and analysis. Team commentary on competition weeks.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1480068586": {
       "topics": [
@@ -65675,7 +65835,22 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Documentary investigation of 1996 Cal Poly student Kristin Smart disappearance.",
+      "display_title": "Your Own Backyard",
+      "blurb": "Documentary investigation of Kristin Smart's 1996 disappearance. Trial recap and conviction analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1480270157": {
       "topics": [
@@ -65794,7 +65969,25 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily Vancouver Canucks news, analysis, and insider insights.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1480615007": {
       "topics": [
@@ -65837,7 +66030,22 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sisters research murders by Black offenders and unsolved Black victim cases.",
+      "display_title": "Black True Crime Podcast",
+      "blurb": "Sisters investigate underreported murders and missing person cases. Focus on Black communities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1480713299": {
       "topics": [
@@ -65873,14 +66081,47 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestler Gregory Iron and commentator Aaron Bauer discuss wrestling and pop culture.",
+      "display_title": "Iron-On Wrestling with Gregory Iron",
+      "blurb": "Gregory Iron (cerebral palsy wrestler) and Aaron Bauer discuss wrestling history and pop culture weekly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1480846404": {
       "topics": [
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily Toronto Maple Leafs news, analysis, and NHL coverage.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1480847786": {
       "topics": [
@@ -65979,10 +66220,30 @@
     },
     "1481010774": {
       "topics": [
-        "music"
+        "music",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NYC media critics discuss pop culture trends, viral moments, and music personalities.",
+      "display_title": "Legends Only - A Pop Culture Podcast",
+      "blurb": "Bradley and T. Kyle discuss pop culture, viral TikTok trends, and music. High fashion and meme analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1481021366": {
       "topics": [
@@ -66060,10 +66321,29 @@
     "1481135244": {
       "topics": [
         "health/mental",
-        "psychology"
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "William Curb teaches ADHD strategies and tools for neurodivergent brains.",
+      "display_title": "Hacking Your ADHD",
+      "blurb": "William Curb shares techniques for working with ADHD brains. Tools for focus, motivation, and organization.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1481145773": {
       "topics": [
@@ -66150,14 +66430,47 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily Las Vegas Golden Knights news and NHL analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1481268414": {
       "topics": [
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film reviews recorded immediately after leaving theater.",
+      "display_title": "Leaving the Theater",
+      "blurb": "Ronald Young Jr. reviews movies freshly after viewing. Solo and guest reviews across all genres.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1481293001": {
       "topics": [
@@ -66272,10 +66585,30 @@
     },
     "1481543700": {
       "topics": [
-        "culture/fashion"
+        "science/chemistry",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Skincare chemists decode science and test products; not purely fashion/beauty focused.",
+      "display_title": "Chemist Confessions",
+      "blurb": "Skincare chemists Gloria and Victoria decode product claims and test formulas. Sunscreen, PDRN, ingredients.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1481597697": {
       "topics": [
@@ -66293,10 +66626,30 @@
     },
     "1481716218": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "architecture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Architect Katharine MacPhail educates on home renovation best practices and homeowner stories.",
+      "display_title": "Talking Home Renovations with the House Maven",
+      "blurb": "Architect discusses renovations with contractors, vendors, and homeowners. Educational and interview-based.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1481720117": {
       "topics": [
@@ -66383,10 +66736,30 @@
     },
     "1481789790": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "adventure"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Narrative series on people pursuing excellence in design and extreme competition.",
+      "display_title": "This is The Goods",
+      "blurb": "Stories about people who seek more than default. Design and extreme performance competition narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1481862269": {
       "topics": [
@@ -66401,7 +66774,30 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep dives into forgotten and underappreciated music albums.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1481898329": {
       "topics": [
@@ -66416,7 +66812,25 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily Utah Mammoth hockey and NHL news analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1481907254": {
       "topics": [
@@ -66457,10 +66871,30 @@
     },
     "1481996448": {
       "topics": [
-        "business/management"
+        "business/management",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Software engineering leaders share critical perspectives on tech leadership.",
+      "display_title": "The Engineering Leadership Podcast",
+      "blurb": "Engineering leaders share insights on software development and organizational excellence. Expert interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1481999470": {
       "topics": [
@@ -66581,10 +67015,30 @@
     },
     "1482286194": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Performer and psychiatrist analyze Drag Race episodes with performance and psychology focus.",
+      "display_title": "Spilling the G&T: Rupaul's Drag Race",
+      "blurb": "Performer Paulo and psychiatrist Dr. Tom analyze Drag Race episodes. Performance technique and psychology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1482297423": {
       "topics": [
@@ -66652,7 +67106,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comprehensive Utah Jazz team coverage and analysis.",
+      "display_title": "Utah Jazz Podcast Network",
+      "blurb": "Utah Jazz Podcast Network offers extensive team coverage. Multiple shows on news, analysis, and players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1482455669": {
       "topics": [
@@ -66696,7 +67165,22 @@
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amy Belair teaches spiritual awakening, consciousness expansion, and psychic development.",
+      "display_title": "Third Eye Awakening",
+      "blurb": "Amy Belair teaches spiritual awakening and consciousness expansion. Psychic gifts and 5D activation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1482584144": {
       "topics": [
@@ -66853,7 +67337,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ultrarunning podcast covering athlete mindset and endurance accomplishment stories.",
+      "display_title": "Run The Riot Podcast",
+      "blurb": "Ultrarunning and endurance athlete podcast. Mindset, methods, and accomplishment stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1482887969": {
       "topics": [
@@ -66929,14 +67432,49 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Movie reviews with randomly selected genres; interviews filmmakers and industry professionals.",
+      "display_title": "DieCast Movie Podcast",
+      "blurb": "Movie review podcast with dice-determined genres. Guest interviews with filmmakers and industry experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1483175040": {
       "topics": [
-        "tv-film/animation"
+        "tv-film/animation",
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Feature animators share practical career advice for breaking into animation industry.",
+      "display_title": "Animation Happy Hour",
+      "blurb": "Three feature animators provide practical career guidance for animation. Jobs, internships, industry insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1483183935": {
       "topics": [
@@ -67033,7 +67571,29 @@
         "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Licensed therapists explore mental health topics accessibly without psychobabble.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1483264365": {
       "topics": [
@@ -67340,10 +67900,30 @@
     },
     "1483781070": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Student-run science show about chemical elements with interviews and games.",
+      "display_title": "Elementary",
+      "blurb": "Student-run science podcast about chemical elements. Interviews with scientists and educational games.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1483821484": {
       "topics": [
@@ -67444,10 +68024,30 @@
     },
     "1484112288": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physical therapists teach evidence-based rehabilitation and injury prevention.",
+      "display_title": "The E3 Rehab Podcast",
+      "blurb": "Doctors of PT discuss rehabilitation and injury prevention. Evidence-based musculoskeletal health education.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1484134393": {
       "topics": [
@@ -67479,10 +68079,30 @@
     },
     "1484235756": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three hosts discuss fragrances, brands, shopping, and fragrance travel experiences.",
+      "display_title": "Perfume Philosophers",
+      "blurb": "Misty, Karen, and Jon discuss fragrances and perfume culture. Shopping hauls and travel stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1484277662": {
       "topics": [
@@ -67516,10 +68136,29 @@
     "1484363220": {
       "topics": [
         "health/nutrition",
-        "food"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition expert bridges complex metabolism and functional medicine for coaches.",
+      "display_title": "Sam Miller Science",
+      "blurb": "Nutrition expert Sam Miller explains metabolism and functional medicine. Coaching and body composition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1484378635": {
       "topics": [
@@ -67653,10 +68292,33 @@
     },
     "1484648736": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Magician and performer Steve Faulkner discusses magic, performance technique, and creativity.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1484694580": {
       "topics": [
@@ -67671,7 +68333,29 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "James Maynard covers astronomy, space news, and science education accessibly.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1484710747": {
       "topics": [
@@ -67754,7 +68438,25 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Weekly automotive livestream discussing news and tool reviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1484825992": {
       "topics": [
@@ -67802,10 +68504,30 @@
     },
     "1485082674": {
       "topics": [
-        "music"
+        "music",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "K-Pop culture, trends, artist discussion, and concert experiences.",
+      "display_title": "Idol Talk Kpop Podcast",
+      "blurb": "K-Pop culture discussions on trends and artists. Accessible perspectives on global idol entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1485109198": {
       "topics": [
@@ -67823,12 +68545,30 @@
     },
     "1485118950": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "medicine/neuroscience",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neuroscience research explained by experts on nervous system topics.",
+      "display_title": "This Week in Neuroscience",
+      "blurb": "Neuroscience research explained by Vincent Racaniello and team. Weekly nervous system discoveries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1485124480": {
       "topics": [
@@ -67895,7 +68635,25 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Detroit Red Wings rebuild news and NHL analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1485255815": {
       "topics": [
@@ -67916,7 +68674,22 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Former NFL player Chris Long and guests discuss football and sports.",
+      "display_title": "Green Light with Chris Long",
+      "blurb": "Former NFL player Chris Long discusses football and sports. Expert guests and humorous commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1485278388": {
       "topics": [
@@ -67924,7 +68697,26 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Retrospective of Phish's 1999 Big Cypress festival with band and fan interviews.",
+      "display_title": "After Midnight: Phish's Big Cypress Festival",
+      "blurb": "Five-episode retrospective of Phish's 1999 Big Cypress Festival. Band interviews and fan memories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1485280958": {
       "topics": [
@@ -67938,7 +68730,22 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth Notre Dame football analysis and college football commentary.",
+      "display_title": "Irish Breakdown",
+      "blurb": "In-depth Notre Dame football analysis from Bryan Driskell and Sean Stires. Recruiting and college football.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1485292153": {
       "topics": [
@@ -68068,7 +68875,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby coaches and athletes discuss habits of success and coaching insights.",
+      "display_title": "The Rugby Bricks Podcast",
+      "blurb": "Interviews with rugby coaches and athletes on success habits. Training insights and team culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1485527143": {
       "topics": [
@@ -68101,10 +68923,30 @@
     },
     "1485623466": {
       "topics": [
-        "music"
+        "music",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rock music stories and interviews with musicians, promoters, and DJs.",
+      "display_title": "Rock And Roll Confessional",
+      "blurb": "Rock music stories from musicians, promoters, DJs, and venue management. Industry interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1485692558": {
       "topics": [
@@ -68269,7 +69111,22 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College football analysis with insider intel and game breakdowns.",
+      "display_title": "Josh Pate's College Football Show",
+      "blurb": "Josh Pate delivers college football analysis with insider intel. Predictions and recruiting coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-7c5204bd",
+      "classified_at": "2026-08-03T00:12:48.340Z"
     },
     "1485919205": {
       "topics": [
