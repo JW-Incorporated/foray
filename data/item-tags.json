@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-02T11:44:12.042Z",
+  "built_at": "2026-08-03T11:45:47.777Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -10067,6 +10067,287 @@
       "animals",
       "family",
       "comedy"
+    ],
+    "cbc-ideas--are-psychopaths-real-a-review-of": [
+      "psychology",
+      "criminal-justice",
+      "mental-health",
+      "debunking",
+      "forensics",
+      "authors"
+    ],
+    "the-rest-is-history--693-elizabeth-i-vs-the-catholics": [
+      "elizabeth-i",
+      "tudor-england",
+      "spanish-empire",
+      "royal-navy",
+      "exploration",
+      "biography",
+      "war"
+    ],
+    "conan-obrien-needs-a-friend--ice-cube": [
+      "conan-obrien",
+      "hip-hop",
+      "comedians",
+      "interview",
+      "entertainment",
+      "celebrity"
+    ],
+    "smartless--professor-brian-cox": [
+      "smartless",
+      "physics",
+      "black-holes",
+      "astrophysics",
+      "comedians",
+      "interview"
+    ],
+    "making-chips--craftsman-with-character-how-to-mentor": [
+      "manufacturing",
+      "mentorship",
+      "machining",
+      "careers",
+      "craftsmanship",
+      "education"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3394": [
+      "aviation",
+      "world-war-1",
+      "technology",
+      "engineering-history",
+      "history-of-technology",
+      "books"
+    ],
+    "twenty-minute-vc--20vc-70-of-neolabs-will-die": [
+      "artificial-intelligence",
+      "startups",
+      "venture-capital",
+      "founders",
+      "benchmarks",
+      "tech-industry"
+    ],
+    "fly-on-the-wall--is-spade-david-s-real-last": [
+      "comedians",
+      "talk-show",
+      "celebrity",
+      "banter",
+      "entertainment",
+      "comedy"
+    ],
+    "science-for-sport-podcast--331-why-energy-management-is-the": [
+      "sports-science",
+      "materials-science",
+      "athletic-performance",
+      "injury-prevention",
+      "sports-equipment",
+      "materials"
+    ],
+    "odd-lots--the-tungsten-market-is-warning-of": [
+      "commodities",
+      "critical-minerals",
+      "geopolitics",
+      "mining",
+      "war",
+      "markets"
+    ],
+    "you-are-not-so-smart--345-a-pox-on-fools-thomas": [
+      "history-of-science",
+      "public-health",
+      "misinformation",
+      "science-history",
+      "medical-history",
+      "debunking"
+    ],
+    "you-are-not-so-smart--344-intellectual-humility-tenelle-porter": [
+      "psychology",
+      "research-methods",
+      "epistemics",
+      "self-improvement",
+      "critical-thinking",
+      "science"
+    ],
+    "partially-examined-life--ep-397-federalist-papers-live-part": [
+      "philosophy",
+      "us-constitution",
+      "founding-fathers",
+      "american-history",
+      "civics",
+      "politics"
+    ],
+    "unexplainable--the-hidden-world-that-birds-see": [
+      "birds",
+      "animal-cognition",
+      "biology",
+      "science",
+      "ornithology",
+      "perception"
+    ],
+    "how-i-built-this--serena-lily-serena-dugan-and-lily": [
+      "entrepreneurship",
+      "founders",
+      "business",
+      "retail",
+      "startups",
+      "home"
+    ],
+    "strong-towns-podcast--this-atlanta-corridor-makes-walking-normal": [
+      "urban-planning",
+      "walkability",
+      "road-design",
+      "traffic-engineering",
+      "pedestrian-safety",
+      "cities"
+    ],
+    "huberman-lab--how-your-immune-system-works-how": [
+      "immunology",
+      "health",
+      "sleep",
+      "cancer",
+      "biology",
+      "neuroscience"
+    ],
+    "the-matt-walker-podcast--146-how-sleep-changes-across-the": [
+      "sleep",
+      "aging",
+      "menopause",
+      "trauma",
+      "health",
+      "neuroscience"
+    ],
+    "the-peter-attia-drive--402-nmr-blood-analysis-how-heart": [
+      "health",
+      "biomarkers",
+      "longevity",
+      "medicine",
+      "cholesterol",
+      "metabolism"
+    ],
+    "strict-scrutiny--will-trump-succeed-in-rigging-the": [
+      "law",
+      "supreme-court",
+      "politics",
+      "courts",
+      "government",
+      "news"
+    ],
+    "happiness-lab--why-being-alone-might-be-better": [
+      "loneliness",
+      "solitude",
+      "psychology",
+      "mental-health",
+      "wellbeing",
+      "happiness"
+    ],
+    "ten-percent-happier--for-the-lonely-suffocated-or-overextended": [
+      "relationships",
+      "boundaries",
+      "therapy",
+      "self-help",
+      "mental-health",
+      "communication"
+    ],
+    "mel-robbins-podcast--if-this-doesn-t-make-you": [
+      "motivation",
+      "athletes",
+      "olympics",
+      "sprinting",
+      "self-improvement",
+      "mindset"
+    ],
+    "happier-gretchen-rubin--little-happier-why-people-don-t": [
+      "gretchen-rubin",
+      "artificial-intelligence",
+      "happiness",
+      "philosophy",
+      "technology",
+      "ideas"
+    ],
+    "armchair-expert--scott-eastwood": [
+      "acting",
+      "interview",
+      "celebrity",
+      "entertainment",
+      "film",
+      "biography"
+    ],
+    "comedy-bang-bang--i-think-we-ate-the-dogs": [
+      "comedy-bang-bang",
+      "sketch-comedy",
+      "improv",
+      "comedians",
+      "absurdist",
+      "banter"
+    ],
+    "working-it-out-birbiglia--220-jo-firestone-returns-you-better": [
+      "comedians",
+      "interview",
+      "comedy",
+      "books",
+      "banter",
+      "entertainment"
+    ],
+    "lore--legends-85-down-under": [
+      "lore",
+      "folklore",
+      "australia",
+      "mythology",
+      "cryptid",
+      "legend"
+    ],
+    "crime-junkie--missing-kerry-o-brien-krueger": [
+      "crime-junkie",
+      "true-crime",
+      "missing-persons",
+      "cold-case",
+      "investigation",
+      "unsolved"
+    ],
+    "morbid--the-unsolved-murders-of-barry-and": [
+      "morbid",
+      "true-crime",
+      "murder",
+      "cold-case",
+      "canada",
+      "unsolved"
+    ],
+    "wicked-words--kate-casey-martha-moxley": [
+      "wicked-words",
+      "true-crime",
+      "murder",
+      "cold-case",
+      "investigation",
+      "criminal-justice"
+    ],
+    "this-american-life--894-i-couldn-039-t-help": [
+      "this-american-life",
+      "personal-stories",
+      "storytelling",
+      "reported-story",
+      "community",
+      "change"
+    ],
+    "where-should-we-begin--i-love-my-partner-so-why": [
+      "esther-perel",
+      "relationships",
+      "grief",
+      "love",
+      "therapy",
+      "breakup"
+    ],
+    "wow-in-the-world--bird-glars-beware-how-scientists-used": [
+      "birds",
+      "animal-behavior",
+      "science-for-kids",
+      "ornithology",
+      "hawaii",
+      "wildlife-biology"
+    ],
+    "design-matters--best-of-design-matters-quiara-alegr": [
+      "design-matters",
+      "theater",
+      "writing",
+      "identity",
+      "family",
+      "memoir"
     ]
   }
 }
