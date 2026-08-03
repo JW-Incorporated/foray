@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-03T00:29:56.580Z",
+  "built_at": "2026-08-03T08:35:33.722Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-03-c140f1b4",
+    "last_batch_id": "fresh-2026-08-03-57bd265e",
     "last_batch_tier": 1
   },
   "entries": {
@@ -76560,10 +76560,30 @@
     },
     "1500039589": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily gambling and sports picks show discussing fantasy sports bets, lines, and predictions.",
+      "display_title": "Picks Central",
+      "blurb": "Daily sports gambling show with expert picks, discussing betting lines and fantasy sports strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1500048571": {
       "topics": [
@@ -76602,10 +76622,35 @@
     },
     "1500081265": {
       "topics": [
+        "craft/photography",
+        "business/careers",
         "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Portrait photography business coaching show focused on pricing, client acquisition, and sustainable operations.",
+      "display_title": "Freedom Focus Photography",
+      "blurb": "Business coaching for photographers on pricing services, client acquisition, and building profitable studios.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1500126155": {
       "topics": [
@@ -76638,11 +76683,30 @@
     },
     "1500165757": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "fiction/drama",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized audio drama following broken people healing each other, based on the play Two and Two Together.",
+      "display_title": "Putting 2&2 Together",
+      "blurb": "Serialized audio drama about community healing in aftermath of love triangle and personal crises.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1500168597": {
       "topics": [
@@ -76692,10 +76756,30 @@
     },
     "1500354709": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/interviews",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Screenwriters discuss craft including structure, rewrites, representation, and the business of writing.",
+      "display_title": "Act Two Podcast",
+      "blurb": "Screenwriting education: craft tips, industry insights, and interviews with working writers and producers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1500388439": {
       "topics": [
@@ -76938,10 +77022,35 @@
     },
     "1501057207": {
       "topics": [
-        "music"
+        "music/classical",
+        "music/theory-production",
+        "education/courses"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/classical",
+          "confidence": 0.95
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classical music analysis focusing on Bach: counterpoint, baroque history, performance practice.",
+      "display_title": "WTF Bach",
+      "blurb": "Classical music analysis: Bach's compositions, counterpoint, baroque history, and performance practice explained.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1501057347": {
       "topics": [
@@ -77056,10 +77165,34 @@
     "1501544101": {
       "topics": [
         "news/tech",
+        "science",
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily science and technology news covering space, innovation, research discoveries, and life-hacks.",
+      "display_title": "Cool Stuff Daily",
+      "blurb": "Daily science and tech news: research breakthroughs, space exploration, innovation, and human interest.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1501545678": {
       "topics": [
@@ -77128,10 +77261,30 @@
     },
     "1501761301": {
       "topics": [
-        "music"
+        "music",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth artist interviews in punk, hardcore, post-hardcore, and emo music subgenres.",
+      "display_title": "The New Scene",
+      "blurb": "In-depth interviews with artists in punk, hardcore, and adjacent music subgenres discussing life and craft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1501778039": {
       "topics": [
@@ -77330,10 +77483,30 @@
     },
     "1502474233": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political commentary podcast discussing elections, government policy, and cultural issues.",
+      "display_title": "The Carl Jackson Podcast",
+      "blurb": "Political commentary on elections, government, and policy with conservative perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1502483536": {
       "topics": [
@@ -77389,10 +77562,34 @@
     "1502643985": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health/alternative",
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's functional medicine and holistic health covering thyroid, hormones, nutrition, and wellness.",
+      "display_title": "SHE Talks Health",
+      "blurb": "Women's health podcast covering functional medicine, hormonal health, thyroid, and wellness strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1502664617": {
       "topics": [
@@ -77595,10 +77792,30 @@
     },
     "1503102889": {
       "topics": [
-        "aviation"
+        "aviation",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "RC helicopter enthusiast podcast discussing models, maintenance, trends, and community events.",
+      "display_title": "RC Heli Nation V 2.0",
+      "blurb": "RC helicopter enthusiast community: model reviews, maintenance, competition updates, and expert tips.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1503110007": {
       "topics": [
@@ -77632,10 +77849,30 @@
     },
     "1503232531": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "CrossFit programming analysis: examining workout design, movement selection, and competition preparation.",
+      "display_title": "Get With The Programming",
+      "blurb": "CrossFit fitness analysis: programming breakdowns, workout structure, and competition strategy discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1503236243": {
       "topics": [
@@ -77846,10 +78083,30 @@
     },
     "1503887245": {
       "topics": [
-        "craft"
+        "craft",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Community of planner and journal enthusiasts sharing stories, tips, and creative practices.",
+      "display_title": "The Plan on Purpose Podcast",
+      "blurb": "Interviews with planner and journaling enthusiasts: creative practices, storytelling, and community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1503897906": {
       "topics": [
@@ -77949,10 +78206,37 @@
     "1504001443": {
       "topics": [
         "tv-film/history",
-        "history"
+        "history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chronological analysis of Laurel and Hardy films: production history, untold stories, film scholarship.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1504020473": {
       "topics": [
@@ -77971,11 +78255,35 @@
     },
     "1504184065": {
       "topics": [
+        "psychology/decision-making",
         "health/mental",
-        "psychology"
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motivational and self-empowerment podcast using storytelling to inspire personal transformation.",
+      "display_title": "Your World Within Podcast by Eddie Pinero",
+      "blurb": "Motivational storytelling focused on self-empowerment, personal transformation, and life perspective shifts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1504249857": {
       "topics": [
@@ -78148,7 +78456,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Russian TV series and film reviews discussing current shows, cultural moments, and cinema news.",
+      "display_title": "Прослушка",
+      "blurb": "Russian TV series and film reviews with cultural commentary and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1504731378": {
       "topics": [
@@ -78214,10 +78537,30 @@
     },
     "1504940209": {
       "topics": [
-        "sports/wrestling"
+        "sports/wrestling",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestling commentary and analysis by wrestlers Karl Anderson and Luke Gallows.",
+      "display_title": "Talk'n Shop",
+      "blurb": "Professional wrestling discussion and analysis by wrestlers Karl Anderson and Luke Gallows.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1504942990": {
       "topics": [
@@ -78244,10 +78587,30 @@
     },
     "1505049559": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/stand-up",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Australian comedians Sam Taunton and Tom Cashman in casual hangs discussing life and humor.",
+      "display_title": "Really Good Stuff",
+      "blurb": "Australian comedians in casual conversations about life, humor, experiences, and current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1505081153": {
       "topics": [
@@ -78289,17 +78652,57 @@
     },
     "1505137111": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "HBO Euphoria series analysis: episode breakdowns, fashion, music, interviews, and fan theories.",
+      "display_title": "That's So Euphoric",
+      "blurb": "Weekly Euphoria analysis: episode breakdowns, fashion, music, and behind-the-scenes insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1505222737": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        },
+        {
+          "node": "religion",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian biblical teaching podcast explaining scripture and theology with practical application.",
+      "display_title": "Dial In with Jonny Ardavanis",
+      "blurb": "Christian biblical teaching: scripture exploration, theology, and practical faith application.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1505225853": {
       "topics": [
@@ -78457,10 +78860,35 @@
     },
     "1505562187": {
       "topics": [
+        "religion",
+        "education/courses",
         "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily biblical education: chapter-by-chapter guide through every Bible book with explanation.",
+      "display_title": "Through the Word",
+      "blurb": "Daily bible education: guided chapter-by-chapter readings through all biblical books with commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1505569443": {
       "topics": [
@@ -78523,7 +78951,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Smooth jazz music selection and curation podcast featuring various jazz artists and tracks.",
+      "display_title": "Smooth Jazz",
+      "blurb": "Smooth jazz music selection: curated tracks for relaxation and listening enjoyment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1505642470": {
       "topics": [
@@ -78587,10 +79030,35 @@
     },
     "1505854159": {
       "topics": [
-        "automotive"
+        "automotive",
+        "culture",
+        "transport"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        },
+        {
+          "node": "transport",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dedicated Porsche and sports car podcast covering automotive culture, history, and enthusiast community.",
+      "display_title": "9WERKS Radio",
+      "blurb": "Porsche and sports car podcast: automotive culture, history, market analysis, and expert interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1505855709": {
       "topics": [
@@ -78689,10 +79157,30 @@
     },
     "1506190195": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "kids-family"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's audio stories and adventure series to spark imagination and engage young audiences.",
+      "display_title": "Puffin Podcast: Mission Imagination",
+      "blurb": "Children's audio adventure series designed to inspire imagination and engage young listeners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1506227206": {
       "topics": [
@@ -78734,10 +79222,30 @@
     },
     "1506259735": {
       "topics": [
-        "relationships"
+        "relationships",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Breakup and relationship healing podcast with expert advice and listener stories about moving forward.",
+      "display_title": "Heal Your Heartbreak",
+      "blurb": "Breakup recovery podcast: healing strategies, expert interviews, and support for relationship healing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1506265448": {
       "topics": [
@@ -78752,7 +79260,26 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brazilian choro music podcast featuring musician interviews and historical musical portraits.",
+      "display_title": "Rádio a Granel - Nó na Garganta",
+      "blurb": "Brazilian choro music podcast: musician interviews, historical portraits, and musical heritage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1506303807": {
       "topics": [
@@ -78791,10 +79318,34 @@
     "1506362773": {
       "topics": [
         "space",
-        "science"
+        "science",
+        "education/courses"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy podcast in Chinese covering celestial events, space exploration, and historical astronomy.",
+      "display_title": "吳老師與Maggie聊天文與生活",
+      "blurb": "Astronomy education: celestial events, space exploration, and Chinese astronomical history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1506385128": {
       "topics": [
@@ -78904,10 +79455,34 @@
     "1506469669": {
       "topics": [
         "economics/markets",
-        "business"
+        "business",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Monetary science and finance policy podcast analyzing markets, banking, and economic trends.",
+      "display_title": "Eurodollar University",
+      "blurb": "Monetary and finance podcast: market analysis, economic policy, and financial systems discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1506480938": {
       "topics": [
@@ -78941,10 +79516,30 @@
     },
     "1506503059": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting and anxiety management podcast with expert advice and practical strategies for families.",
+      "display_title": "Flusterclux With Lynn Lyons",
+      "blurb": "Parenting podcast: anxiety management, child development, and family wellbeing strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1506519162": {
       "topics": [
@@ -78970,10 +79565,30 @@
     },
     "1506525565": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Watch design and horology podcast discussing timepieces, watch culture, and design trends.",
+      "display_title": "OT: The Podcast",
+      "blurb": "Watch design podcast: horology, timepiece culture, design trends, and collector interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1506544496": {
       "topics": [
@@ -79090,10 +79705,34 @@
     "1506774121": {
       "topics": [
         "news",
-        "business"
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Banking and financial services policy podcast analyzing regulatory changes and industry trends.",
+      "display_title": "Banking with Interest",
+      "blurb": "Banking and finance podcast: policy analysis, regulatory trends, and financial services industry insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1506811658": {
       "topics": [
@@ -79163,10 +79802,30 @@
     },
     "1507017403": {
       "topics": [
-        "music"
+        "music",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music and entertainment interviews with musicians, producers, and industry professionals.",
+      "display_title": "The Zak Kuhn Show",
+      "blurb": "Music and entertainment interviews: candid conversations with musicians and industry leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1507073938": {
       "topics": [
@@ -79277,10 +79936,30 @@
     },
     "1507433269": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/stand-up",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Clean comedy podcast featuring interviews with stand-up comedians about their craft and stories.",
+      "display_title": "Clean Comedy Time",
+      "blurb": "Clean comedy podcast: stand-up interviews, behind-the-scenes stories, and comedy discussions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1507444393": {
       "topics": [
@@ -79313,10 +79992,30 @@
     },
     "1507457683": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "E-commerce business podcast covering marketing strategies, sales, and online retail growth.",
+      "display_title": "eCommerce Badassery",
+      "blurb": "E-commerce podcast: marketing strategies, sales optimization, and online retail business growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1507537920": {
       "topics": [
@@ -79409,7 +80108,26 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.95
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Digital privacy and security podcast covering surveillance, data protection, and digital rights.",
+      "display_title": "Surveillance Report",
+      "blurb": "Digital privacy and security podcast: surveillance, data protection, and digital rights advocacy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1507751825": {
       "topics": [
@@ -79438,10 +80156,32 @@
     "1507796551": {
       "topics": [
         "tv-film/history",
-        "history"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Film history and criticism podcast featuring deep dives into directors, actors, and cinema.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1507811918": {
       "topics": [
@@ -79499,10 +80239,30 @@
     },
     "1507943911": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brand strategy and design podcast discussing logo design, branding, and creative strategy.",
+      "display_title": "JUST Branding",
+      "blurb": "Brand design and strategy podcast: logo design, branding methodology, and creative leadership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1507975080": {
       "topics": [
@@ -79550,10 +80310,30 @@
     },
     "1508035189": {
       "topics": [
-        "news/daily"
+        "news/daily",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        },
+        {
+          "node": "news",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news briefing from Los Angeles covering local events, politics, and community stories.",
+      "display_title": "The LA Report",
+      "blurb": "Daily Los Angeles news briefing: local events, community issues, and Southern California coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1508049730": {
       "topics": [
@@ -79649,10 +80429,30 @@
     },
     "1508243785": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "kids-family"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish education game show for children teaching Jewish culture, holidays, and traditions.",
+      "display_title": "Hebrew School",
+      "blurb": "Jewish education game show: teaching Jewish culture, holidays, and heritage through entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1508270932": {
       "topics": [
@@ -79823,19 +80623,57 @@
     },
     "1508682193": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "paranormal",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Paranormal and unexplained phenomena podcast with moderate confidence; lacks clear descriptive signal.",
+      "display_title": "TRUE UFO, Bigfoot and Ghost Stories",
+      "blurb": "Paranormal and unexplained phenomena discussion with investigative approach.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1508718451": {
       "topics": [
-        "craft"
+        "craft",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Craft podcast celebrating textile arts, knitting, crochet, sewing, and creative makers.",
+      "display_title": "Making Stitches Podcast",
+      "blurb": "Textile and craft podcast: knitting, crochet, sewing, maker interviews, and creative community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-57bd265e",
+      "classified_at": "2026-08-03T08:35:33.722Z"
     },
     "1508846057": {
       "topics": [
