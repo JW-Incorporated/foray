@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-03T08:59:34.121Z",
+  "built_at": "2026-08-03T16:57:13.049Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-03-c98ec165",
+    "last_batch_id": "fresh-2026-08-03-587a2dd1",
     "last_batch_tier": 1
   },
   "entries": {
@@ -79124,7 +79124,21 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian faith development podcast with biblical principles and spiritual formation focus.",
+      "display_title": "Positive Thinking Podcast",
+      "blurb": "Dr. Jasmine Baker guides listeners through faith, spiritual clarity, and intentional living using biblical principles and practical wisdom.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1508892492": {
       "topics": [
@@ -79170,7 +79184,21 @@
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth fashion industry interviews with designers, thinkers, and influential figures.",
+      "display_title": "Creative Conversations with Suzy Menkes",
+      "blurb": "Suzy Menkes sits down with fashion's most influential designers and thinkers for candid conversations about style, creativity, and the industry.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1509056023": {
       "topics": [
@@ -79288,17 +79316,53 @@
     },
     "1509440093": {
       "topics": [
-        "science/physics"
+        "science",
+        "engineering/precision-mfg"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/precision-mfg",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Semiconductors bridge physics and engineering; limited signal from single-episode feed.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1509454223": {
       "topics": [
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis development, academies, leadership, and USTA-focused discussions.",
+      "display_title": "Here To Serve",
+      "blurb": "USTA discussions on tennis player development, academy impact, and growing the sport.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1509469494": {
       "topics": [
@@ -79418,7 +79482,25 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily running commentary and community engagement from a casual run club perspective.",
+      "display_title": "Kofuzi Run Club",
+      "blurb": "Daily livestreams from a virtual running community covering training, races, and fitness.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1509716748": {
       "topics": [
@@ -79441,7 +79523,21 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dedicated fantasy football analysis with personality-driven commentary on DFS and best ball.",
+      "display_title": "The Swolecast",
+      "blurb": "Fantasy football analysis with hot takes and expert strategies for DFS and best-ball NFL.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1509749824": {
       "topics": [
@@ -79455,7 +79551,24 @@
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Supply chain thought leadership from MIT Center for Transportation covering logistics, AI, sustainability.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1509779834": {
       "topics": [
@@ -79491,7 +79604,21 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep Dune universe exploration through novels, films, and extended universe canon.",
+      "display_title": "Gom Jabbar: A Dune Podcast",
+      "blurb": "Comprehensive Dune universe guide covering Frank Herbert's novels, films, and expanded lore.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1509882933": {
       "topics": [
@@ -79512,7 +79639,21 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Turkish-language solo comedian discussing random life observations and philosophy.",
+      "display_title": "Deniz Göktaş'a Ayıracak Vaktim Yok",
+      "blurb": "Turkish-language comedy podcast with unstructured thoughts on life and philosophy.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1509989788": {
       "topics": [
@@ -79696,7 +79837,21 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Italian tennis podcast covering Grand Slams and professional circuit events with expert commentary.",
+      "display_title": "Close Call",
+      "blurb": "Close tennis coverage of Grand Slam tournaments and professional circuit with detailed match analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1510264715": {
       "topics": [
@@ -79911,7 +80066,21 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sci-fi anthology series exploring human themes across colonized worlds and space scenarios.",
+      "display_title": "The Outer Reach: Stories from Beyond",
+      "blurb": "Mid-century pulp sci-fi anthology exploring love, ambition, and meaning across distant planets.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1510657409": {
       "topics": [
@@ -79919,7 +80088,25 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Society of Economic Geologists podcast on ore deposits, mineral discovery, geoscience innovation.",
+      "display_title": "Minerals - Discovery to Recovery",
+      "blurb": "Geoscience stories from mining and ore deposits, covering exploration technology and industry.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1510669335": {
       "topics": [
@@ -79977,7 +80164,21 @@
         "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comic book collecting, market trends, and Bronze/Modern Age comic investment analysis.",
+      "display_title": "Bronze and Modern Gods",
+      "blurb": "Comic book collecting and investment podcast tracking market trends and rare Bronze-Modern Age books.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1510823750": {
       "topics": [
@@ -80274,28 +80475,84 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hunting dog breed history, genetics, and performance from dog historian Craig Koshyk.",
+      "display_title": "Hunting Dog Confidential",
+      "blurb": "Comprehensive hunting dog breed histories and genetics from dog historian Craig Koshyk.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1511590199": {
       "topics": [
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity interview podcast covering actors, musicians, comedians, and entertainment personalities.",
+      "display_title": "Life & Laughs",
+      "blurb": "Celebrity interviews with actors, musicians, and entertainment figures hosted by Johnny Sanchez.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1511603633": {
       "topics": [
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Independent Scottish cricket podcast covering domestic, international, and T20 World Cup events.",
+      "display_title": "HalfwayUpMiddle",
+      "blurb": "Independent Scottish cricket podcast covering domestic events and international cricket.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1511614931": {
       "topics": [
         "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political philosophy exploration of canonical texts from Plato, Hobbes, Huntington, and contemporary theorists.",
+      "display_title": "Good in Theory: A Political Philosophy Podcast",
+      "blurb": "Political philosophy guide explaining canonical texts and theories for modern understanding.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1511646504": {
       "topics": [
@@ -80349,8 +80606,22 @@
       "topics": [
         "sports/cricket"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Minimal signal: single episode with placeholder text 'Sou' and 'F/G' descriptions.",
+      "display_title": "56",
+      "blurb": "Cricket-related podcast with limited available episode information.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1511822683": {
       "topics": [
@@ -80439,7 +80710,21 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball development guide covering clubs, camps, high school, and beach volleyball.",
+      "display_title": "Volleyball A-Z",
+      "blurb": "Volleyball guide for players at all levels covering camps, tryouts, and development.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1512499633": {
       "topics": [
@@ -80534,7 +80819,21 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pilates education and practice guidance for students at all experience levels.",
+      "display_title": "Pilates Students' Manual",
+      "blurb": "Pilates education for students covering techniques, anatomy, and practice progression.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1512847066": {
       "topics": [
@@ -80680,7 +80979,21 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wine education covering history, regions, production, and tasting from VinePair.",
+      "display_title": "Wine 101",
+      "blurb": "Wine education covering regions, production, history, and American wine evolution.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1513216353": {
       "topics": [
@@ -80806,7 +81119,25 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism examining real history behind movies claiming true-story basis.",
+      "display_title": "Real Movies Fake History with Gari and Mel",
+      "blurb": "Hosts examine the real history behind films claiming true stories, analyzing accuracy and representation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1513521139": {
       "topics": [
@@ -80820,7 +81151,21 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Minnesota Vikings and NFL analysis focusing on training camp, roster decisions, and strategy.",
+      "display_title": "Purple Insider",
+      "blurb": "Minnesota Vikings and NFL analysis from training camp through season.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1513602017": {
       "topics": [
@@ -80948,8 +81293,22 @@
       "topics": [
         "science/chemistry"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French-language chemistry podcast exploring chemistry in daily life and career guidance.",
+      "display_title": "OZONE PODCAST",
+      "blurb": "French-language chemistry podcast showing chemistry's role in everyday life.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1513832916": {
       "topics": [
@@ -80972,7 +81331,21 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wine business analysis covering marketing, consumer trends, and industry economics.",
+      "display_title": "XChateau Wine Podcast",
+      "blurb": "Wine industry podcast covering business, marketing, and economic trends ex-chateau.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1513942867": {
       "topics": [
@@ -81010,14 +81383,46 @@
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "D&D actual-play campaign blending comedy and fantasy roleplay.",
+      "display_title": "Curse, Code & Crown",
+      "blurb": "D&D actual-play campaign with comedy and worldbuilding in an original fantasy setting.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1514035625": {
       "topics": [
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nostalgic film recap podcast analyzing movies that shaped hosts' childhoods.",
+      "display_title": "Movies That Raised Us",
+      "blurb": "Hosts recap formative films analyzing nostalgia, themes, and cultural impact.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1514058408": {
       "topics": [
@@ -81187,7 +81592,21 @@
         "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Photography podcast covering technique, equipment, creative processes from professional photographer.",
+      "display_title": "Photography Adventures",
+      "blurb": "Photography education from retired professional covering techniques, equipment, and creative challenges.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1514696421": {
       "topics": [
@@ -81226,14 +81645,42 @@
         "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical sales career guidance covering pharma, devices, and industry strategies.",
+      "display_title": "The Medical Sales Podcast",
+      "blurb": "Medical sales career podcast with strategies for breaking in and advancing in pharmaceuticals and devices.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1514897753": {
       "topics": [
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Positive affirmations created by and for children covering emotions, gratitude, and self-esteem.",
+      "display_title": "Affirmation Kids",
+      "blurb": "Child-created affirmations for emotional wellness, gratitude, and self-confidence.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1514957887": {
       "topics": [
@@ -81269,7 +81716,24 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Music history podcast with songwriters discussing creation and recording of iconic songs.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1515027050": {
       "topics": [
@@ -81413,11 +81877,29 @@
     },
     "1515306077": {
       "topics": [
-        "news",
-        "business"
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Banking regulation and risk podcast from Financial Times covering compliance, regulation, and policy.",
+      "display_title": "Banking Risk & Regulation Podcast",
+      "blurb": "Banking regulation and risk podcast covering compliance, policy, and industry trends.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1515326224": {
       "topics": [
@@ -81440,7 +81922,21 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Master gardener advice for Pacific Northwest covering lawns, plants, composting, and sustainability.",
+      "display_title": "Gardening Advice from a Master Gardener",
+      "blurb": "Master gardener advice for Pacific Northwest covering plant care, lawns, and sustainability.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1515360130": {
       "topics": [
@@ -81477,7 +81973,21 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vedic astrology exploring Hindu philosophy, cosmic principles, and self-awareness.",
+      "display_title": "Cosmic Gestures : Vedic Astrology",
+      "blurb": "Vedic astrology guide exploring Hindu cosmology, planetary influences, and spiritual growth.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1515536209": {
       "topics": [
@@ -81586,7 +82096,25 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sedimentary rocks education from scientist discussing geology and rock formation.",
+      "display_title": "Sedimentary Rocks - Alley Simmons",
+      "blurb": "Geology lesson on sedimentary rocks and rock formation from a scientist.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1515808276": {
       "topics": [
@@ -81601,7 +82129,21 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mountain flying etiquette course from Westminster College discussing wilderness aviation.",
+      "display_title": "Mountain Flying Etiquette",
+      "blurb": "Course on mountain flying ethics and wilderness aviation practices.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1515827446": {
       "topics": [
@@ -81671,7 +82213,21 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian faith and personal wellness podcast with authentic conversations on spirituality.",
+      "display_title": "Happy & Healthy with Jeanine Amapola Ward",
+      "blurb": "Christian faith podcast covering wellness, dating, faith topics from YouTuber and influencer.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1515973516": {
       "topics": [
@@ -81880,19 +82436,58 @@
     },
     "1516523741": {
       "topics": [
-        "medicine/biology",
         "science",
-        "nature"
+        "medicine/biology",
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Neuroscience, consciousness, and contemplative science exploring spirituality and psychedelics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1516528703": {
       "topics": [
-        "sports/volleyball"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Weekly banter podcast starts as volleyball review then pivots to film criticism; genre unclear.",
+      "display_title": "Phoning It In",
+      "blurb": "Weekly friendship podcast with unstructured banter on films, life, and random observations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1516529429": {
       "topics": [
@@ -81900,14 +82495,46 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running community podcast covering training, races, and personal running stories.",
+      "display_title": "Will Run For...",
+      "blurb": "Running podcast with community stories covering 5Ks, ultramarathons, and RunDisney events.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1516536935": {
       "topics": [
         "math"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language mathematics history podcast covering geometry and mathematical concepts.",
+      "display_title": "Capítulo 16 Primera Parte",
+      "blurb": "Spanish-language podcast on mathematics history including advanced geometry topics.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1516541392": {
       "topics": [
@@ -81982,7 +82609,21 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French-language tennis podcast covering ATP/WTA circuit with insider stories and technique.",
+      "display_title": "Tennis Legend Podcast",
+      "blurb": "French tennis podcast exploring ATP/WTA circuit with player interviews and insider stories.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-587a2dd1",
+      "classified_at": "2026-08-03T16:57:13.049Z"
     },
     "1516817035": {
       "topics": [
