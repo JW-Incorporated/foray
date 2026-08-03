@@ -32188,13 +32188,1195 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-02-f611593d",
       "classified_at": "2026-08-02T16:51:26.412Z"
+    },
+    "1511214890": {
+      "topics": [
+        "philosophy",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ayurveda, yoga, and Indian philosophy with spiritual teachings.",
+      "display_title": "Living with Reality with Dr. Robert Svoboda",
+      "blurb": "Dr. Robert Svoboda is the first Westerner ever to graduate from a college of Ayurveda and be licensed to practice Ayurveda in India. During and after his formal Ayurvedic training.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1511802512": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Send Me To Sleep",
+      "blurb": "Tonight, Andrew will talk you to sleep — no effort needed from you. Just listen, relax, and allow the calming voice to lull you into a natural, restful sleep. If.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1512016028": {
+      "topics": [
+        "computing",
+        "computing/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology, computing, and digital innovation.",
+      "display_title": "Deep Sleep Sounds",
+      "blurb": "Sleep, relax, and unwind with our original sleepy soundscapes. Featuring nature soundscapes, binaural sleep music, and calming white noise. Become a premium member for access to 8-hour episodes and ad.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1512599468": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Perfume manufacturing as craft; minimal content depth.",
+      "display_title": "Perfume manufacturing",
+      "blurb": "How perfume is made.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1512840260": {
+      "topics": [
+        "philosophy",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophy, spirituality, and consciousness exploration.",
+      "display_title": "Śrīmad Bhāgavatam - The Story of the Fortunate",
+      "blurb": "The book, the Śrīmad Bhāgavatam, being read in this podcast, is also called the Bhāgavata Purāṇa. It was written by the Vedic sage Śrī Kṛṣṇa Dvaipāyana Vyāsadeva. It is about.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1512861386": {
+      "topics": [
+        "philosophy",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophy, spirituality, and consciousness exploration.",
+      "display_title": "SuperLife with Darin Olien",
+      "blurb": "I'm Darin Olien, the \"Superfood Hunter.\" If you're looking for motivation to take the next step towards a happier, healthier life then you're in the right place. On this podcast,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1512948836": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Super Scary Haunted Homeschool",
+      "blurb": "New York Times Bestselling author, Grady Hendrix , brings his lunacy directly into your earholes with the world's spookiest spooky history podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1513316282": {
+      "topics": [
+        "computing",
+        "computing/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology, computing, and digital innovation.",
+      "display_title": "Hindi Kahaniyan",
+      "blurb": "Its a podcast for everything, Here you will listen Romantic stories, comedy Stories, social issues, international issues, self-help and motivational contents, poetry, Books and so many things. So plea.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1513356620": {
+      "topics": [
+        "computing",
+        "computing/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology, computing, and digital innovation.",
+      "display_title": "the UNCOMMODiFiED Podcast",
+      "blurb": "WE ARE ALL BORN WITH THE WONDROUS POTENTIAL TO STAND OUT FROM THE HERD AND LIVE A SIGNIFICANTLY IMPACTFUL LIFE- SO, LET’S START RIGHT NOW! the UNCOMMODiFiED Podcast … an.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1513640702": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Borrasca",
+      "blurb": "A gripping psychological thriller starring Cole Sprouse as Sam Walker. In the first season we followed Sam as he painstakingly recounts the summer his sister disappeared; the friends he made,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1513671470": {
+      "topics": [
+        "computing",
+        "computing/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology, computing, and digital innovation.",
+      "display_title": "REACH A Space Podcast for Kids",
+      "blurb": "REACH: A Space Podcast for Kids is a bi-weekly, family friendly exploration of our galaxy (and beyond!) with hosts Brian Holden and Meredith Stepien. Built for kids and based on.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1513675382": {
+      "topics": [
+        "craft/filmmaking"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Film industry professions podcast; Russian-language content.",
+      "display_title": "Кинопрофессии",
+      "blurb": "Podcast about film and advertising professions with industry interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1513950542": {
+      "topics": [
+        "computing",
+        "computing/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology, computing, and digital innovation.",
+      "display_title": "The In-Between Fantasy Football Podcast",
+      "blurb": "Hosted by Seth Woolcock &#038; a combination of IBT personalities, this podcast provides a refreshing &#038; feel-good take on fantasy football &#038; NFL betting advice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1514094392": {
+      "topics": [
+        "philosophy",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophy, spirituality, and consciousness exploration.",
+      "display_title": "Gem Pursuit: An Antique Jewellery Podcast",
+      "blurb": "Gem Pursuit dives into the world of antique and vintage jewellery, uncovering the stories behind history's most remarkable jewels, from the geological forces that created them to the designers, collec.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1514880062": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Therapy in a Nutshell",
+      "blurb": "I’m Emma McAdam, a Licensed Marriage and Family Therapist and my mission is to make mental health resources more easy to access. I take therapy skills and psychological research and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1515008420": {
+      "topics": [
+        "craft",
+        "craft/photography"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Craft, making, and artisanal work.",
+      "display_title": "Deutsch Podcast - Deutsch lernen",
+      "blurb": "Lerne Deutsch mit Sandra und Virpi! Willkommen beim Deutsch-Podcast! Mit uns kannst Du Dein Deutsch verbessern, Deine Grammatik festigen und neuen Wortschatz lernen. Wir sind Virpi und Sandra, zwei ze.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1515027050": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Regulation Podcast",
+      "blurb": "The Regulation Podcast is a show about friendship and embracing absurdity. Join Andrew, Nick, Eric, Geoff and Gavin in a never-ending pursuit to make each other laugh at almost any.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1515055586": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Lane Four Podcast",
+      "blurb": "Bienvenido a Lane Four Podcast donde platicamos con nadadores, entrenadores y concocedores de la natación de Latinoamérica y escuchamos sus historias y experiencias en el mundo de la natación. Los.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1515070058": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1515134150": {
+      "topics": [
+        "history",
+        "history/military-ancient"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Cinemapodgrapher",
+      "blurb": "A podcast by filmmakers. For the world. Trusted by professionals and loved by film fans around the globe, Cinemapodgrapher is your backstage pass to the stories behind the stories—and the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1515215888": {
+      "topics": [
+        "history",
+        "history/technology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "A Quilting Life Podcast",
+      "blurb": "Discussions on quilting, fabric, inspiration, creativity and more. Hosted by mother and daughter Moda fabric designers Sherri McConnell and Chelsi Stratton, A Quilting Life Podcast with Sherri & Chels.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1515596660": {
+      "topics": [
+        "computing",
+        "computing/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology, computing, and digital innovation.",
+      "display_title": "Tuk Tuk Till I Die Cricket Podcast",
+      "blurb": "This is a podcast for everything Pakistan cricket. We discuss (and sometimes over-rationalize) the on-field highs and lows to the ever-present drama behind the scenes in Pakistan cricket. This is.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1515834398": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Smart Home Insider",
+      "blurb": "Learn about the latest smart home news on Smart Home Insider! Host Andrew O'Hara discusses the weekly news, exclusive interviews, in-depth how-to's, smart home automations, integrating Siri Shortcuts,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1515875252": {
+      "topics": [
+        "philosophy",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophy, spirituality, and consciousness exploration.",
+      "display_title": "The Swim Culture",
+      "blurb": "Dr. Asherah Allen and Coach Adrienne Lakate discuss all things aquatics and how it impacts the Black Culture! We want to create a safe space for to be able to.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1516007432": {
+      "topics": [
+        "nature",
+        "nature/animal-cognition",
+        "nature/ocean-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.65
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nature, wildlife, and environmental content.",
+      "display_title": "The Knepp Wilding Podcast",
+      "blurb": "Join Knepp co-owner Isabella Tree and experience some of the wildlife wonders encountered, the secrets uncovered and the remarkable people who are part of the Knepp Wilding project.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1516336058": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "ONE TRUE HISTORY UNCOVERED",
+      "blurb": "Welcome to TRUE HISTORY UNCOVERED, the podcast where we dive into the unforgettable chronicles that shaped our world. Our videos are a journey of discovery, designed for curious minds who.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1516339436": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "19 Cats and Counting on Pet Life Radio",
+      "blurb": "Does your cat pee on the rug? Is you feline unwelcoming to your significant other? Are you out of patience because your cat wakes you up at 3am for food?.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1516567838": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Sleep Sounds - White Noise & Sleep Music",
+      "blurb": "Relaxing Sleep Meditation Music, White Noise and Ambient & Nature Sounds from the people who bring you the Sleep Cove Podcast. Sleep & unwind with relaxing nature sounds, calming ambient.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1516640396": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Your Longevity Blueprint",
+      "blurb": "We all want to live longer, healthier lives. The problem is that we’re constantly being bombarded with so many new diets, workout plans, and lifestyle adjustments that it’s hard to.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1516748840": {
+      "topics": [
+        "philosophy",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophy, spirituality, and consciousness exploration.",
+      "display_title": "Choose Happy with Swami Nityananda",
+      "blurb": "Techniques, teachings, and meditations rooted in yoga philosophy to help you let go of stress, calm your mind, and live with more ease and connection. awakeyogameditation.substack.com.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1516852358": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "The PCOS Girls Podcast",
+      "blurb": "Welcome to The PCOS Girls Podcast! We are Brigitte and Mel, two Australian women with PCOS..who can't stop talking about it. Join us as we over-share about our lives with.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1517065166": {
+      "topics": [
+        "computing",
+        "computing/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology, computing, and digital innovation.",
+      "display_title": "Meta Pod: A Pokemon TCG Podcast",
+      "blurb": "A Pokemon TCG Podcast featuring @gyrosean & @atrociousjake.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1517084540": {
+      "topics": [
+        "computing",
+        "computing/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology, computing, and digital innovation.",
+      "display_title": "Nursing School Lectures",
+      "blurb": "NURSING school lectures on Pathophysiology, Medical Surgical Nursing, NCLEX topics, test-taking practice questions, Quantitative Research, and Nursing Practice as Relational Inquiry. This is intended.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1517116280": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "The Science of Personality Podcast",
+      "blurb": "Personality affects the way we relate to the world and the people in it, how we work, who we love, and how other people see us. Although the study of.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1517169338": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Development Purgatory",
+      "blurb": "Formally known as How Did This NOT Get Made. A podcast about the movies, TV shows, and video games that never got made and the history behind them.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1517256758": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Two Messianic Jews",
+      "blurb": "Two Messianic Jewish graduate students think deeply about Messianic Jewish history and theology. We also engage with questions asked by other Jews, Hebrew Roots/One Law groups, and Christians. These q.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1517823848": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Best Seat on the Couch",
+      "blurb": "A podcast where 4 close friends discuss their favorite animated movies and TV shows together. Come for the intelligent discourse, stay for the lighthearted humor, and follow for the hottest.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1517899850": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Domestic appliance content; niche DIY focus.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1517915666": {
+      "topics": [
+        "computing",
+        "computing/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Technology, computing, and digital innovation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1517954480": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1518316928": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1518322346": {
+      "topics": [
+        "linguistics"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "English conversation practice via podcast; language learning.",
+      "display_title": "Kevin's English Room Podcast",
+      "blurb": "Natural English conversation practice with native speakers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1518488318": {
+      "topics": [
+        "computing",
+        "computing/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology, computing, and digital innovation.",
+      "display_title": "القران الكريم كاملا mp3 - قران كريم mp3",
+      "blurb": "القران الكريم كاملا mp3 - قران كريم mp3 بسم الله الرحمن الرحيم كيفية شراء البيتكوين في المملكة العربية السعودية ببطاقة الائتمان أسرع طريقة في ثواني تذكر الاشتراك عبر هذا الرابط.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1518860114": {
+      "topics": [
+        "computing",
+        "computing/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology, computing, and digital innovation.",
+      "display_title": "The Daily Objective",
+      "blurb": "YouTube Playlist: The Daily Objective - YouTube.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1518875342": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Social Media Decoded",
+      "blurb": "Social Media Decoded is your go-to podcast for marketing, visibility, and monetization strategies to grow your business online. Hosted by marketing expert Michelle Thames, this show breaks down social.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1519130222": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "HBO's I'll Be Gone In The Dark Podcast",
+      "blurb": "The official HBO podcast hosted by Nancy Miller. In 2013, author Michelle McNamara published her groundbreaking article about The Golden State Killer in LA Magazine with the help of her.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1519234952": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Doppelgänger",
+      "blurb": "Mehr als 50.000 Menschen lauschen zweimal wöchentlich, wenn die Tech-Experten Philipp Glöckler & Philipp “Pip” Klöckner aktuelle Ereignisse aus den Themen Innovation, Marketing, Produkt und Führung de.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
+    },
+    "1519290428": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and period analysis.",
+      "display_title": "Rule Your Pool",
+      "blurb": "Rule Your Pool is a podcast by Orenda Technologies. This show was created for pool owners, operators, and service pros who want the best water quality possible. If you want.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2387c556",
+      "classified_at": "2026-08-03T00:51:52.444Z"
     }
   },
-  "built_at": "2026-08-02T16:52:15.745Z",
+  "built_at": "2026-08-03T00:51:52.444Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-02-f611593d",
+    "last_batch_id": "fresh-2026-08-03-2387c556",
     "last_batch_tier": 1
   }
 }
