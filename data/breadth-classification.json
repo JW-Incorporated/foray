@@ -33800,6 +33800,28 @@
       "batch_id": "fresh-2026-08-03-9e68ed23",
       "classified_at": "2026-08-03T08:51:46.725Z"
     },
+    "1522708820": {
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal philosophy podcast exploring metacognition, education, and life perspectives.",
+      "display_title": "PURI JAGANNADH",
+      "blurb": "Reflections on philosophy, education, and personal growth through daily musings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
     "1522966208": {
       "topics": [
         "religion/judaism",
@@ -34482,13 +34504,1198 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-03-9e68ed23",
       "classified_at": "2026-08-03T08:51:46.725Z"
+    },
+    "1527007748": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Self-promotion by rapper; unclear if actual podcast content exists beyond trailer.",
+      "display_title": "Nba_youngboy",
+      "blurb": "Promotional content from rapper NBA YoungBoy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1527018692": {
+      "topics": [
+        "economics/markets",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio documentaries about edge-seeking traders, investors, and advantage players across casinos and markets.",
+      "display_title": "Risk of Ruin",
+      "blurb": "Stories of risk-takers exploiting market edges through sports betting, investing, and card counting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1527059276": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form interviews with rugby league personalities, legends, and emerging players.",
+      "display_title": "Andy Raymond #UNFILTERED",
+      "blurb": "Unfiltered interviews with rugby league legends, dream teams, and historic moments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1527159764": {
+      "topics": [
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Story-driven Spanish language learning for intermediate learners using narrative immersion.",
+      "display_title": "StoryLearning Spanish",
+      "blurb": "Learn intermediate Spanish through daily story chapters and natural immersion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1527286862": {
+      "topics": [
+        "philosophy/ideas",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert interviews on philosophy, theology, nature, and ideas; thoughtful deep-discussion format.",
+      "display_title": "Parker's Pensées",
+      "blurb": "Philosophical conversations with experts on theology, nature, and life's deepest questions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1527449114": {
+      "topics": [
+        "sports/golf"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's golf education and coverage including player interviews, LPGA analysis, and beginner guidance.",
+      "display_title": "Fore the Ladies Golf Podcast",
+      "blurb": "Women's golf education, LPGA coverage, and interviews with players across professional and amateur levels.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1527536282": {
+      "topics": [
+        "craft/diy-home",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Houseplant care education from someone with plant science background; guides, care tips, history.",
+      "display_title": "Plant School Podcast",
+      "blurb": "Houseplant care guides, history, and cultivation techniques from a plant science educator.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1527609854": {
+      "topics": [
+        "health/mental",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Caller-driven advice show on relationships and mental health challenges from a mental health professional.",
+      "display_title": "The Dr. John Delony Show",
+      "blurb": "Caller-driven advice on relationships, mental health, and life challenges from a licensed counselor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1527642350": {
+      "topics": [
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Award-winning children's storytelling with geeky retellings, original lore, and historical hero stories.",
+      "display_title": "Dorktales Storytime",
+      "blurb": "Award-winning stories for kids: geeky fairy tale retellings and inspiring historical biographies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1527889334": {
+      "topics": [
+        "sports",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Trail-riders' cowboy culture and heritage stories from Houston Livestock Show participants.",
+      "display_title": "TEXAS TRAILS",
+      "blurb": "Stories of Texas cowboys and cowgirls on historic trail rides with the Houston Livestock Show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1527896240": {
+      "topics": [
+        "kids-family/education",
+        "nature/paleontology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/paleontology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Child host teaches dinosaur and prehistoric creature facts; updates with new paleontological research.",
+      "display_title": "Dinosaurs and Prehistoric Creatures with Morgan",
+      "blurb": "A young enthusiast teaches listeners about dinosaurs and prehistoric creatures with current science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1527917732": {
+      "topics": [
+        "music",
+        "health"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.5
+        },
+        {
+          "node": "health",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mixed signal: listed as relaxing music for sleep but episodes are diverse (Tamil music, comedy, speeches).",
+      "display_title": "Relaxing Music For Sleep And Stress Relief",
+      "blurb": "Curated audio for sleep and stress relief, including instrumental music and motivational speeches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1528031270": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional cycling race analysis, recaps, and interviews; Tour de France and major tour coverage.",
+      "display_title": "Lanterne Rouge Cycling Podcast",
+      "blurb": "In-depth professional cycling analysis covering Tour de France, race strategy, and athlete interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1528052306": {
+      "topics": [
+        "sports/cricket"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Single-episode interview with cricket legend Sachin Tendulkar; biographical focus.",
+      "display_title": "Interview Of Sachin Tendulkar",
+      "blurb": "A conversation with cricket legend Sachin Tendulkar about his career and life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1528209872": {
+      "topics": [
+        "nature/earth-science",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Geologists discuss geological topics, field stories, and earth processes in conversational format.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1528234628": {
+      "topics": [
+        "relationships",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marriage restoration coaching from 25-year coach; infidelity, communication, reconnection focus.",
+      "display_title": "Rebuilding Us: Marriage Podcast",
+      "blurb": "Marriage coaching for couples rebuilding trust, deepening intimacy, and restoring connection.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1528364708": {
+      "topics": [
+        "comedy",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Comedy album retrospectives of famous comedians from various eras; biographical and archival focus.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1528411508": {
+      "topics": [
+        "nature/pets",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog training advice and relationship coaching from professional trainer; habit formation and behavior.",
+      "display_title": "The Everyday Trainer Podcast",
+      "blurb": "Dog training and behavior coaching to improve owner-dog relationships and build healthy habits.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1528594034": {
+      "topics": [
+        "news/tech",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NYT journalists analyze emerging tech trends, AI developments, and industry implications weekly.",
+      "display_title": "Hard Fork",
+      "blurb": "Weekly analysis of emerging technology trends and their impact on society from NYT journalists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1528612502": {
+      "topics": [
+        "science/physics",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astrophysics education covering black holes, quantum mechanics, stellar evolution, cosmology.",
+      "display_title": "For the love of Astrophysics",
+      "blurb": "Astrophysics education exploring black holes, quantum mechanics, and the universe's mysteries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1528806866": {
+      "topics": [
+        "nature/animal-cognition",
+        "nature"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Monthly animal biology education from host Alex Re; adaptations, behavior, ecology.",
+      "display_title": "On Wildlife",
+      "blurb": "Monthly animal biology education exploring unique adaptations, behavior, and ecology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1528860764": {
+      "topics": [
+        "gaming/design",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "D&D and tabletop RPG news, GM prep strategies, and live campaign sessions.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 15w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1528883018": {
+      "topics": [
+        "sports/cricket",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket nostalgia series covering key players and matches from 1980s and 1990s era.",
+      "display_title": "The 80s and 90s Cricket Show",
+      "blurb": "Cricket nostalgia exploring legendary players and historic matches from the 1980s-90s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1528899170": {
+      "topics": [
+        "health/mental",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Stress reduction and wellness strategies for busy women; interviews with experts on health topics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1528900418": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quran recitation by two prominent Islamic scholars and mosque leaders.",
+      "display_title": "السديس و الشريم | القرآن الكريم",
+      "blurb": "Quran recitation by prominent Islamic scholars and religious leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1529103794": {
+      "topics": [
+        "true-crime",
+        "society/law"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Arabic true-crime podcast analyzing real criminal cases with psychological and investigative depth.",
+      "display_title": "جناية",
+      "blurb": "True-crime narratives analyzing real criminal investigations with psychological and legal insight.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1529124116": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Comedy podcast with unclear format; episode descriptions suggest philosophical/lifestyle discussion.",
+      "display_title": "WAR MODE",
+      "blurb": "Comedy and conversation exploring contemporary culture and ideas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1529193914": {
+      "topics": [
+        "sports/volleyball",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball coaching education covering rules, brain science, and skill development.",
+      "display_title": "Just a Volleyball Guy",
+      "blurb": "Volleyball coaching covering rules, skill development, and sports science for athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1529318900": {
+      "topics": [
+        "engineering/ai-robotics",
+        "medicine/biology",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Healthcare innovation podcast from a16z Bio + Health; AI, biotech, clinical systems discussion.",
+      "display_title": "Raising Health",
+      "blurb": "Healthcare innovation exploring AI, biotech, and clinical systems from venture investor perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1529323964": {
+      "topics": [
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parent and child reading children's books; classic stories and fairy tales for young audience.",
+      "display_title": "Story time with Philip and Mommy!",
+      "blurb": "A parent and child read classic children's books and fairy tales together.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1529359232": {
+      "topics": [
+        "nature",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Arboriculture and urban forestry podcast; tree planting, climate, and environmental conservation.",
+      "display_title": "The Plant a Trillion Trees Podcast",
+      "blurb": "Arboriculture and urban forestry education exploring tree science and environmental conservation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1529499626": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Original science fiction audio drama set in 2309; narrative-driven with production quality.",
+      "display_title": "Entropy: An Original Sci-Fi Audio Drama",
+      "blurb": "Sci-fi audio drama set in future space colonies threatened by criminal empire.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1530064310": {
+      "topics": [
+        "culture/books",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror fiction interviews with authors; literary analysis and horror craft discussion.",
+      "display_title": "Talking Scared",
+      "blurb": "Conversations with horror fiction authors exploring the craft and psychology of fear.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1530430766": {
+      "topics": [
+        "aviation",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation avionics technology industry podcast; expert interviews on cockpit systems and innovation.",
+      "display_title": "AEA Amplified",
+      "blurb": "Aviation avionics technology discussion with industry experts on cockpit systems and innovation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1530600146": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Christian Bible teaching from seminary professors; chapter-by-chapter biblical analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1530955400": {
+      "topics": [
+        "comedy",
+        "relationships",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mandarin comedy podcast about post-divorce life; humor, relationships, personal stories.",
+      "display_title": "失婚婦女Chill High High",
+      "blurb": "Mandarin comedy about post-divorce life, relationships, and personal growth with humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1531019348": {
+      "topics": [
+        "science/chemistry",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry education podcast about atoms and atomic structure; radioactivity explained.",
+      "display_title": "Atoms!",
+      "blurb": "Chemistry education exploring atoms, atomic structure, and radioactive processes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1531030448": {
+      "topics": [
+        "health/nutrition",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Clinical nutrition and wellness strategies from Harvard-trained doctor; research-based health advice.",
+      "display_title": "Wellness Your Way with Dr. Megan Lyons",
+      "blurb": "Clinical nutrition and wellness strategies from a Harvard-trained doctor; evidence-based health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1531128734": {
+      "topics": [
+        "society",
+        "culture/pop-culture",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish documentary podcast on social realities; prisons, aging, trauma, ethics, justice.",
+      "display_title": "Más Allá del Rosa",
+      "blurb": "Documentary stories exploring social realities, justice, and human experiences in Latin America.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1531179284": {
+      "topics": [
+        "religion/buddhism",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teachings with guided meditations; 2500+ year tradition applied to modern life.",
+      "display_title": "Buddhist Wisdom, Modern Life",
+      "blurb": "Buddhist teachings and guided meditations exploring ancient wisdom for modern challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1531206254": {
+      "topics": [
+        "religion/christianity",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Orthodox Christian theology and tradition; seen and unseen spiritual worlds discussed.",
+      "display_title": "The Lord of Spirits",
+      "blurb": "Orthodox Christian theology exploring the seen and unseen spiritual world and church tradition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1531535720": {
+      "topics": [
+        "culture/fashion",
+        "science",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beauty science podcast; cosmetic chemistry, dermatology, skincare and haircare research.",
+      "display_title": "Allure: The Science of Beauty",
+      "blurb": "Beauty science exploring cosmetic chemistry, dermatology, skincare, and hair care research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1531902278": {
+      "topics": [
+        "business/marketing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marketing strategy and consumer insights discussion from CMO and research leaders.",
+      "display_title": "Inside Insights",
+      "blurb": "Marketing strategy and consumer insights from CMOs and leaders driving brand growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1532435030": {
+      "topics": [
+        "food",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vegan food culture and plant-based lifestyle; restaurant reviews, interviews, product commentary.",
+      "display_title": "Vegan Hacks",
+      "blurb": "Vegan food culture, plant-based product reviews, and vegetarian lifestyle community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1532755016": {
+      "topics": [
+        "sports/tennis",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "12-episode tennis biography series on Serena Williams; career, rivalries, personal journey.",
+      "display_title": "The GOAT: Serena Williams",
+      "blurb": "Tennis biography series examining Serena Williams' career, rivals, and path to tennis greatness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-b0c3701e",
+      "classified_at": "2026-08-03T16:50:51.435Z"
     }
   },
-  "built_at": "2026-08-03T08:51:46.725Z",
+  "built_at": "2026-08-03T16:50:51.435Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-03-9e68ed23",
+    "last_batch_id": "fresh-2026-08-03-b0c3701e",
     "last_batch_tier": 1
   }
 }
