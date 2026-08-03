@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-03T08:40:46.796Z",
+  "built_at": "2026-08-03T16:37:36.962Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-03-54957119",
+    "last_batch_id": "fresh-2026-08-03-d1aa89ff",
     "last_batch_tier": 1
   },
   "entries": {
@@ -88861,7 +88861,21 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Veteran NFL reporter provides in-depth Patriots analysis covering training camp, roster moves, player performance.",
+      "display_title": "Greg Bedard Patriots Podcast",
+      "blurb": "Veteran NFL reporter Greg Bedard analyzes the New England Patriots through comprehensive training camp coverage and player-by-player breakdowns.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1529355597": {
       "topics": [
@@ -88873,10 +88887,29 @@
     },
     "1529357266": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.92
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two hosts compare episodes of Buffy and Gilmore Girls, discussing writing, character arcs, and cultural impact.",
+      "display_title": "Buffy the Gilmore Slayer Podcast",
+      "blurb": "Comedians compare Buffy and Gilmore Girls episode-by-episode, analyzing writing, character development, and which show triumphs.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1529359232": {
       "topics": [
@@ -88936,7 +88969,21 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Colorado Sun's daily podcast covers state news, politics, outdoor recreation, and local issues in depth.",
+      "display_title": "The Daily Sun-Up",
+      "blurb": "Colorado news podcast covering state politics, tourism, outdoor recreation, and local business developments daily.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1529499626": {
       "topics": [
@@ -88985,10 +89032,31 @@
     "1529524084": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.88
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.82
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fitness and nutrition coach discusses macro tracking, weight loss psychology, summer consistency, and physique goals.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1529533747": {
       "topics": [
@@ -89000,17 +89068,60 @@
     "1529604634": {
       "topics": [
         "music",
-        "history"
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.88
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast about music culture covering history of technology, music criticism, social media discourse, storytelling in songs.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1529617900": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.78
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Character-focused podcast about Marvel's X-Men universe, with deep dives on individual mutants across 60 years.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1529628558": {
       "topics": [
@@ -89094,7 +89205,21 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Solo podcast about USMNT soccer, featuring young player analysis and commentary on matches.",
+      "display_title": "Stars and Stripes USMNT Podcast",
+      "blurb": "Discusses emerging US national soccer team talent and provides match commentary with personal perspectives.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1529847511": {
       "topics": [
@@ -89110,14 +89235,51 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Forbes 30U30 investor breaks down investing, wealth building, asset classes, and personal finance psychology.",
+      "display_title": "Friends That Invest",
+      "blurb": "An optometrist-turned-investor demystifies investing, asset classes, and financial decision-making for wealth building.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1529893516": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.92
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Queer-centered Buffy rewatch discussing season episodes through LGBTQ lens with hosts analyzing themes.",
+      "display_title": "SLAY!!! A Queer Buffy Podcast",
+      "blurb": "Two friends rewatch Buffy's Vampire Slayer through an explicitly queer lens, analyzing representation and subtext.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1529931681": {
       "topics": [
@@ -89132,15 +89294,47 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Portuguese-language podcast covering chemistry history from origins through modern developments and discoveries.",
+      "display_title": "Química",
+      "blurb": "Portuguese-language podcast tracing chemistry's history from ancient origins to contemporary discoveries.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1529934646": {
       "topics": [
         "space",
-        "science"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.62
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Malayalam podcast covering space, books, cinema, society with general educational scope across topics.",
+      "display_title": "Fomalhaut -Malayalam Podcast",
+      "blurb": "Malayalam podcast exploring space, literature, film, and society across multiple cultural and scientific subjects.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1529935603": {
       "topics": [
@@ -89210,10 +89404,29 @@
     },
     "1530093214": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.88
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three comedians improvise then edit for comedy podcast with unique post-production effects and guest appearances.",
+      "display_title": "Improv is Dead",
+      "blurb": "Comedy podcast featuring three hosts improvising and then editing for surreal humor with recurring guest comedians.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1530094769": {
       "topics": [
@@ -89371,10 +89584,24 @@
     },
     "1530648964": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rotten Tomatoes team debates why critics and audiences disagree on films and TV shows.",
+      "display_title": "Rotten Tomatoes Is Wrong",
+      "blurb": "Rotten Tomatoes hosts investigate discrepancies between critic and audience ratings on beloved and despised films.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1530654909": {
       "topics": [
@@ -89412,7 +89639,21 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mexican hosts cover authentic football with interviews, analysis, and passionate discussion of leagues.",
+      "display_title": "Supergol Podcast",
+      "blurb": "Mexican football podcast with authentic locker-room perspective, interviews, analysis, and passionate opinions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1530709233": {
       "topics": [
@@ -89582,7 +89823,25 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.78
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Swimming pool industry podcast covering maintenance, water quality, chlorine, energy, staff, business topics.",
+      "display_title": "Poolcast The Swimming Pool Podcast",
+      "blurb": "Professional podcast for swimming pool industry covering maintenance, water chemistry, energy efficiency, and operations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1531105768": {
       "topics": [
@@ -89715,7 +89974,21 @@
         "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with luxury travel experts covering destinations, resorts, safari lodges, and exclusive experiences.",
+      "display_title": "Luxury Travel Insider",
+      "blurb": "Expert interviews on luxury travel destinations, ultra-exclusive lodges, and world-class travel experiences.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1531456453": {
       "topics": [
@@ -89852,26 +90125,81 @@
     },
     "1531585576": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "adventure/exploration",
+        "nature/earth-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Overland adventure podcast featuring guests discussing four-wheeling routes, vehicle types, and off-road expeditions.",
+      "display_title": "Overland Trail Guides Podcast",
+      "blurb": "Interviews with overlanding adventurers covering routes, vehicles, wilderness exploration, and off-road experiences.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1531586056": {
       "topics": [
         "fiction/comedy",
-        "comedy"
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.88
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama following soul reaper chaperoning dead woman back to earth investigating her possible murder.",
+      "display_title": "Today's Lucky Winner",
+      "blurb": "Audio drama following a deceased woman on a year-long earth quest with her reaper, investigating supernatural mysteries.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1531588276": {
       "topics": [
-        "science/physics"
+        "science/physics",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.92
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AP Physics exam review podcast covering mechanics, electricity, sound through guided lessons and strategies.",
+      "display_title": "The APsolute RecAP Physics 1",
+      "blurb": "Comprehensive AP Physics 1 exam review covering mechanics, electricity, and sound with test-taking strategies.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1531593864": {
       "topics": [
@@ -90003,10 +90331,29 @@
     },
     "1531881184": {
       "topics": [
+        "paranormal",
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.88
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast featuring firsthand paranormal encounters and supernatural stories from listeners in dark storytelling format.",
+      "display_title": "Geist",
+      "blurb": "Real paranormal encounter stories told in immersive narrative format exploring the unexplained and supernatural.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1531900057": {
       "topics": [
@@ -90079,7 +90426,21 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two newbies watch Star Trek TNG and DS9 alternately, discussing episodes with comedy and philosophy.",
+      "display_title": "Newbie Star Trek",
+      "blurb": "Two Star Trek newcomers analyze episodes of TNG and DS9 with humor, tangents, and philosophical discussions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1532153109": {
       "topics": [
@@ -90109,7 +90470,25 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golden Age radio show archive from pre-television era featuring classic programs like Shadow, Abbott & Costello.",
+      "display_title": "Harold's Old Time Radio",
+      "blurb": "Archive of classic Golden Age radio programs including mystery dramas, comedy, and entertainment from the 1930s-40s.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1532255711": {
       "topics": [
@@ -90279,17 +90658,55 @@
     },
     "1532674246": {
       "topics": [
+        "news/commentary",
         "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.82
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Arabic-language podcast with deep conversations with thought leaders and influential professionals across sectors.",
+      "display_title": "بترولي",
+      "blurb": "Arabic-language podcast featuring in-depth conversations with business leaders, artists, and cultural figures.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1532674642": {
       "topics": [
-        "science/physics"
+        "science/physics",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hi-Fi audio engineer and marketing expert discuss speakers, amplifiers, DACs, vinyl, cables, soundstage tuning.",
+      "display_title": "The Hifi Podcast",
+      "blurb": "Audio engineers discuss audiophile equipment including speakers, amplifiers, DACs, vinyl, and sound optimization.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1532755016": {
       "topics": [
@@ -90356,14 +90773,54 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.92
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Hosts Jane and Ellen explain Earth's geology through rocks, minerals, volcanoes, earthquakes, and field trips.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1532830228": {
       "topics": [
-        "music"
+        "music",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.88
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast for musicians covering online audience growth, income sustainability, industry careers.",
+      "display_title": "Modern Musician Podcast",
+      "blurb": "Educational series teaching musicians how to build audiences, monetize, and create sustainable careers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1532849701": {
       "topics": [
@@ -90397,10 +90854,29 @@
     },
     "1532902456": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.92
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.78
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coaching team covers bodybuilding prep, nutrition, mindset, training, competition strategy, nervous system.",
+      "display_title": "The ProPhysique Code",
+      "blurb": "Bodybuilding coaches discuss physique competition prep, nutrition strategy, mindset, and contest performance.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1532910864": {
       "topics": [
@@ -90510,8 +90986,22 @@
       "topics": [
         "religion/hinduism"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Telugu-language podcast about Mahabharata with minimal episode descriptions and limited signal.",
+      "display_title": "Voice Of Telugu Mahabharatam",
+      "blurb": "Telugu-language Mahabharata podcast featuring Hindu epic content and cultural storytelling.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1533072212": {
       "topics": [
@@ -90586,10 +91076,29 @@
     },
     "1533194848": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.88
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two friends cover true crime, paranormal, and conspiracy cases with humor and chaotic chemistry.",
+      "display_title": "Creeps and Crimes",
+      "blurb": "Two friends discuss true crime, paranormal cases, and conspiracies with humor and entertainment focus.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1533216336": {
       "topics": [
@@ -90626,7 +91135,21 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Italian tennis podcast covering Grand Slam tournaments, player analysis, and tour commentary.",
+      "display_title": "Quiet please",
+      "blurb": "Italian tennis analysis covering Grand Slam tournaments with commentary on players and performances.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1533462141": {
       "topics": [
@@ -90660,10 +91183,29 @@
     },
     "1533522022": {
       "topics": [
-        "tv-film/animation"
+        "tv-film/animation",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.92
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three hosts discuss anime news, debates, anime awards, and weeb culture with bi-weekly episodes.",
+      "display_title": "Anime Junkies Three Weebs",
+      "blurb": "Three hosts discuss anime news, series debates, awards coverage, and broader weeb culture trends.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1533527397": {
       "topics": [
@@ -90722,7 +91264,21 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis coach Jako Garos analyzes 2020 French Open women's draw in three-part series.",
+      "display_title": "2020 French Open Women's Draw",
+      "blurb": "Tennis coach analyzes 2020 French Open women's tournament draw and player matchups.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1533560948": {
       "topics": [
@@ -90751,7 +91307,21 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror film review podcast focusing on underseen movies with under 1000 Letterboxd views.",
+      "display_title": "Unsung Horrors",
+      "blurb": "Deep-cut horror film reviews covering underseen entries from Italian to British cinema.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1533606473": {
       "topics": [
@@ -90808,10 +91378,29 @@
     },
     "1533685480": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Taiwan culture podcast exploring philosophy, identity, personal growth, and contemporary anxieties.",
+      "display_title": "只能喝酒的圖書館",
+      "blurb": "Taiwan cultural podcast exploring philosophy, identity, relationships, and contemporary human experiences.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1533700329": {
       "topics": [
@@ -90827,7 +91416,21 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three friends discuss cricket covering IPL, test series, team analysis, and tournament coverage.",
+      "display_title": "BCCI Beardos Cricket Chat",
+      "blurb": "Three friends analyze cricket including IPL coverage, test series commentary, and tournament updates.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1533706303": {
       "topics": [
@@ -90929,10 +91532,29 @@
     },
     "1533739264": {
       "topics": [
-        "business/management"
+        "business/management",
+        "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.88
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive industry podcast covering shop management, business improvement, mentorship, and technician training.",
+      "display_title": "Changing The Industry Podcast",
+      "blurb": "Automotive business podcast covering shop management, technician development, and industry improvement strategies.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1533742435": {
       "topics": [
@@ -91021,14 +91643,51 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.92
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy podcast covering night sky observation, planetary positions, Venus, Mars, Mercury, asteroids.",
+      "display_title": "SkyCaramba",
+      "blurb": "Astronomy podcast tracking night sky objects, planetary positions, and naked-eye observation opportunities.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1533955756": {
       "topics": [
-        "tv-film/animation"
+        "tv-film/animation",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.88
+        },
+        {
+          "node": "music",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese anime DJ project podcast featuring DJ education, artist interviews, DJ techniques.",
+      "display_title": "D4DJ Peaky P-key Mix Podcast",
+      "blurb": "Japanese anime DJ podcast featuring DJ education, artist interviews, and music production insights.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1533975843": {
       "topics": [
@@ -91091,10 +91750,29 @@
     },
     "1534158550": {
       "topics": [
-        "craft"
+        "craft",
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.92
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hand spinning podcast covering fleece, wool, silk yarns, spinning techniques, and sustainable crafting.",
+      "display_title": "Spinning a Yarn",
+      "blurb": "Hand spinning inspiration covering fleece types, yarn production techniques, and fiber sustainability.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1534167756": {
       "topics": [
@@ -91230,7 +91908,25 @@
         "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.88
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneur Jeremy Miner interviews elite performers on mindset, communication, wealth, and leadership.",
+      "display_title": "Next Level Podcast Jeremy Miner",
+      "blurb": "Founder Jeremy Miner interviews successful entrepreneurs on mindset, communication, and business strategy.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1534370789": {
       "topics": [
@@ -91375,7 +92071,21 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Black woman reviews Murder She Wrote, analyzing episodes, fashion, plot twists, and Jessica's methods.",
+      "display_title": "The Fletcher Files",
+      "blurb": "Podcast reviewing Murder She Wrote episodes with analysis of Jessica's investigative work and fashion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1534639387": {
       "topics": [
@@ -91547,10 +92257,29 @@
     },
     "1534836922": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.92
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.62
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedian Ash Williams and journalist David Zita discuss tennis, tournaments, players, and analysis.",
+      "display_title": "Get a Grip",
+      "blurb": "Tennis discussion with comedic analysis covering tournaments, players, and the sport's personalities.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1534887549": {
       "topics": [
@@ -91600,10 +92329,29 @@
     },
     "1534967020": {
       "topics": [
-        "nature"
+        "nature",
+        "economics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.82
+        },
+        {
+          "node": "economics",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Climate solutions podcast highlighting renewable energy, sustainable agriculture, carbon removal projects.",
+      "display_title": "Speed & Scale",
+      "blurb": "Climate solutions podcast showcasing real-world projects in renewable energy and sustainability.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1534972612": {
       "topics": [
@@ -91665,10 +92413,32 @@
     },
     "1535102476": {
       "topics": [
-        "relationships"
+        "relationships",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.88
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.82
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Gay men discuss relationships, identity, sexuality, dating, shame, masculinity, emotional intimacy.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1535249499": {
       "topics": [
@@ -91707,17 +92477,50 @@
     },
     "1535290162": {
       "topics": [
+        "business/management",
         "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.88
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business school dean interviews executives on leadership journeys, success strategies, and overcoming obstacles.",
+      "display_title": "The Leadership Playbook",
+      "blurb": "Interviews with business executives on leadership strategies, career journeys, and organizational culture.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1535319502": {
       "topics": [
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese-language children's storytelling podcast with character voices, fairy tales, and original stories.",
+      "display_title": "從前從前",
+      "blurb": "Chinese-language storytelling podcast with character voices, fairy tales, and original children's stories.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1535358465": {
       "topics": [
@@ -91798,10 +92601,28 @@
     "1535427676": {
       "topics": [
         "fiction/comedy",
-        "comedy"
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama following couple renovating inherited possibly-haunted house with quirky neighbors.",
+      "display_title": "Haunted House Flippers",
+      "blurb": "Audio comedy-horror drama following a couple renovating an inherited home with supernatural complications.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-d1aa89ff",
+      "classified_at": "2026-08-03T16:37:36.962Z"
     },
     "1535484907": {
       "topics": [
