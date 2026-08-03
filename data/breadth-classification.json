@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-02T16:30:49.793Z",
+  "built_at": "2026-08-03T00:29:56.580Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-02-147d588a",
+    "last_batch_id": "fresh-2026-08-03-c140f1b4",
     "last_batch_tier": 1
   },
   "entries": {
@@ -72859,22 +72859,66 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "Marlon and Jake Read Dead People",
+      "blurb": "Marlon and Jake Read Dead People is a podcast hosted by the Booker Prize-winning and internationally bestselling author Marlon James and his editor, Jake Morrissey, Executive Editor at Riverhead Books",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1492167547": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "AIGA Design Podcast",
+      "blurb": "The official podcast feed of AIGA, the professional association for design.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
+    },
+    "1492179907": {
       "topics": [
         "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
-    },
-    "1492179907": {
-      "topics": [
-        "health/nutrition",
-        "food"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "needs_review": false,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": "The Gabby Reece Show",
+      "blurb": "Navigate life's biggest challenges and unlock your full potential with former professional athlete and wellness advocate Gabby Reece as she dives deep with leading experts in health, nutrition, fitnes",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1492217846": {
       "topics": [
@@ -72885,10 +72929,30 @@
     },
     "1492288969": {
       "topics": [
+        "news/politics",
         "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Persian-language political and current affairs analysis.",
+      "display_title": "Cheshmandaz",
+      "blurb": "Analytical program examining latest political, cultural, and social news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:56.580Z"
     },
     "1492327668": {
       "topics": [
@@ -72907,10 +72971,25 @@
     },
     "1492391341": {
       "topics": [
-        "gaming"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "Play, Watch, Listen",
+      "blurb": "Join Alanah Pearce (game writer), Mike Bithell (game director), and Austin Wintory (game composer) as they talk about all the games, movies, TV and 'whatever else' that took their interest",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1492397139": {
       "topics": [
@@ -72944,10 +73023,25 @@
     },
     "1492533163": {
       "topics": [
-        "business/marketing"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": "The Think Media Podcast",
+      "blurb": "Welcome to the Think Media Podcast!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1492584441": {
       "topics": [
@@ -73249,7 +73343,22 @@
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog training and pet relationship guidance.",
+      "display_title": "Honest To Dog Podcast",
+      "blurb": "Honest to Dog is a weekly podcast aimed at strengthening your relationship and understanding with the dogs in your life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1493189231": {
       "topics": [
@@ -73267,10 +73376,25 @@
     },
     "1493228953": {
       "topics": [
-        "automotive"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "Classic Car Talk",
+      "blurb": "If you love classic cars, join us for news, interviews, back-to-back classic shootouts, and a few laughs too!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1493229344": {
       "topics": [
@@ -73297,10 +73421,30 @@
     },
     "1493323435": {
       "topics": [
-        "culture/fashion"
+        "health/nutrition",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health, nutrition, and fitness advice from wellness expert.",
+      "display_title": "Honest AF Show",
+      "blurb": "Join Daniella Clarke & Barbaranne Wylde, rock wives and beauty icons, for an Honest AF conversation on life, love and (not) aging gracefully.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1493324091": {
       "topics": [
@@ -73455,10 +73599,25 @@
     },
     "1493645287": {
       "topics": [
-        "religion/spirituality"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "God’s Little Hummingbird: Bible Time (Messianic )",
+      "blurb": "This podcast is devoted to studying the word of God from the beginning to the end.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1493651992": {
       "topics": [
@@ -73576,10 +73735,25 @@
     },
     "1494041647": {
       "topics": [
-        "religion/christianity"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "Turning to the Mystics with James Finley",
+      "blurb": "Turning to the Mystics is a podcast for people searching for something more meaningful, intimate and richly present in the divine gift of their lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1494045070": {
       "topics": [
@@ -73643,10 +73817,25 @@
     },
     "1494213769": {
       "topics": [
-        "health/fitness"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "Weight Loss for Women Over 40 Podcast",
+      "blurb": "Lose weight without losing your mind!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1494233187": {
       "topics": [
@@ -73679,11 +73868,28 @@
     },
     "1494256705": {
       "topics": [
-        "space",
-        "science"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1494262016": {
       "topics": [
@@ -73912,10 +74118,28 @@
     },
     "1494564673": {
       "topics": [
-        "religion/spirituality"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1494634862": {
       "topics": [
@@ -74039,10 +74263,25 @@
     },
     "1494764707": {
       "topics": [
-        "comedy/casual-hangs"
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political news and current affairs commentary.",
+      "display_title": "Review Revue",
+      "blurb": "A comedy podcast hosted by Reilly Anspaugh and Alfred Bardwell-Evans that blends riffing on the week's topic--everything from Haunted Houses to Socks--with tear-inducingly funny improv scenes based on",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1494774849": {
       "topics": [
@@ -74138,11 +74377,25 @@
     },
     "1495047937": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": "The Backpacking Podcast presented by Outdoor Vitals",
+      "blurb": "Be prepared to listen to great stories, hear from incredible guests, and laugh until your stomach hurts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1495067186": {
       "topics": [
@@ -74169,10 +74422,25 @@
     },
     "1495103557": {
       "topics": [
-        "travel"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "Armchair Explorer",
+      "blurb": "Award-winning podcast featuring travel documentaries recorded on location, immersive adventure stori",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1495112369": {
       "topics": [
@@ -74212,10 +74480,25 @@
     },
     "1495256257": {
       "topics": [
-        "business/management"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "Take Command: A Leadership Podcast",
+      "blurb": "Embark on a journey of real-life business insights and inspiring personal growth narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1495274744": {
       "topics": [
@@ -74234,10 +74517,25 @@
     },
     "1495344067": {
       "topics": [
-        "news/daily"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "Puestos pa' la mañana",
+      "blurb": "Puestos Pa’ la Mañana con Luis Herrero y Jonathan Lebrón es un programa matutino transmitido de lunes a viernes de 8:00 a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1495384061": {
       "topics": [
@@ -74263,10 +74561,25 @@
     },
     "1495403653": {
       "topics": [
-        "tv-film/after-shows"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": "The McMillion$ Podcast",
+      "blurb": "The official podcast of the new HBO documentary series McMillion$, from Unrealistic Ideas and Fun Meter.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1495463421": {
       "topics": [
@@ -74281,7 +74594,25 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classic car enthusiast news and interviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1495553789": {
       "topics": [
@@ -74302,10 +74633,25 @@
     },
     "1495563595": {
       "topics": [
-        "tv-film/animation"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "Lore OlymPOD",
+      "blurb": "A podcast about the web comic Lore Olympus by two people who have no qualifications but a lot of feelings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1495573107": {
       "topics": [
@@ -74359,10 +74705,25 @@
     },
     "1495604053": {
       "topics": [
-        "tv-film/reviews"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic car enthusiast news and interviews.",
+      "display_title": "70mm",
+      "blurb": "A podcast for movie fans, inspired by Letterboxd.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1495610258": {
       "topics": [
@@ -74373,11 +74734,28 @@
     },
     "1495681837": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 18w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1495692137": {
       "topics": [
@@ -74471,10 +74849,25 @@
     },
     "1496134315": {
       "topics": [
-        "business/marketing"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": "Product Marketing Life",
+      "blurb": "Your very own biweekly dose of all things product marketing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1496181176": {
       "topics": [
@@ -74510,10 +74903,25 @@
     },
     "1496247619": {
       "topics": [
-        "health/alternative"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": "Michelle's Sanctuary: Bedtime Stories & Sleep Meditations",
+      "blurb": "Michelle's Sanctuary offers imaginative bedtime stories and sleep meditations to help get you to sleep fast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1496265971": {
       "topics": [
@@ -74590,10 +74998,25 @@
     },
     "1496469073": {
       "topics": [
-        "nature"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "Sasquatch Experience",
+      "blurb": "Sasquatch Experience: Unraveling the Mystery of Bigfoot Bigfoot isn't just a pop culture icon—it's a living mystery roaming the world's forests, seen by thousands yet leaving little trace behind.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1496516498": {
       "topics": [
@@ -74605,11 +75028,25 @@
     },
     "1496543809": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": "GEO Podcast",
+      "blurb": "A place to learn about geology for teachers, students, rock hounds, and geology enthusiasts - that comes out on Fridays!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1496557812": {
       "topics": [
@@ -74628,11 +75065,25 @@
     },
     "1496564299": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": "Stuck N The Rut",
+      "blurb": "Welcome to the Stuck N The Rut podcast, hosted by Adam and Tana Grenda.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1496578780": {
       "topics": [
@@ -74741,10 +75192,28 @@
     },
     "1496693461": {
       "topics": [
-        "nature/pets"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1496719683": {
       "topics": [
@@ -74854,10 +75323,25 @@
     },
     "1497024925": {
       "topics": [
-        "nature"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "Arizona State Parks and Trails Podcast",
+      "blurb": "Do you enjoy outdoor recreation, or want to learn more about Arizona’s outdoor scene?",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1497037638": {
       "topics": [
@@ -74981,10 +75465,25 @@
     },
     "1497529501": {
       "topics": [
-        "sports/basketball"
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political news and current affairs commentary.",
+      "display_title": "How 'Bout Them Celtics",
+      "blurb": "Formerly the From the Rafters podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1497539324": {
       "topics": [
@@ -75155,10 +75654,25 @@
     },
     "1497802387": {
       "topics": [
-        "religion/spirituality"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": "The Witch Next Door",
+      "blurb": "The podcast that invites listeners to live a more magical life through the use of practical every day magic.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1497808783": {
       "topics": [
@@ -75259,10 +75773,25 @@
     },
     "1498142155": {
       "topics": [
-        "business/marketing"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "This Can't Be That Hard",
+      "blurb": "You love photography, but running a business?",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1498155864": {
       "topics": [
@@ -75311,10 +75840,25 @@
     },
     "1498254607": {
       "topics": [
-        "health/fitness"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": "Embrace Your Real",
+      "blurb": "Welcome to Embrace Your Real with me, Julie Ledbetter, a podcast where I empower you to just be you.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1498261768": {
       "topics": [
@@ -75393,10 +75937,25 @@
     },
     "1498410685": {
       "topics": [
-        "kids-family/stories"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "Papa’s Bible Stories (for Kids)",
+      "blurb": "“Papa’s Bible Stories” brings the Bible to life for your kids.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1498459173": {
       "topics": [
@@ -75407,10 +75966,25 @@
     },
     "1498509529": {
       "topics": [
-        "tv-film/animation"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "The Lookout on RNC RADIO",
+      "blurb": "Welcome to The Lookout on RNC RADIO, home of The Lookout Podcast, Mt.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1498522890": {
       "topics": [
@@ -75727,11 +76301,25 @@
     },
     "1499355853": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": "Sales Logic - Selling Strategies That Work",
+      "blurb": "Hosted by sales experts Mark Hunter and Meridith Elliott Powell, Sales Logic answers today's toughest selling questions with logical answers that will help you win more deals and make more",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1499409058": {
       "topics": [
@@ -75758,10 +76346,25 @@
     },
     "1499496997": {
       "topics": [
-        "craft/diy-home"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": "The English Florist",
+      "blurb": "Lindsey Kitchin is The English Florist.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1499510936": {
       "topics": [
@@ -75823,17 +76426,47 @@
     },
     "1499631337": {
       "topics": [
-        "fiction/sci-fi"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional design discipline and industry discussion.",
+      "display_title": "Terrores Nocturnos",
+      "blurb": "Historias de terror, misterio, casos reales, hechos inexplicables...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1499633749": {
       "topics": [
-        "science/chemistry"
+        "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video marketing and creator business strategies.",
+      "display_title": "Olinium",
+      "blurb": "Chemie je láska!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1499646507": {
       "topics": [
@@ -75868,10 +76501,25 @@
     },
     "1499745733": {
       "topics": [
-        "kids-family/parenting"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and author discussion podcast.",
+      "display_title": "The MAVEN Parent Podcast",
+      "blurb": "Brett and Erin Kunkle guide you through Christian parenting in a secular culture, with wisdom and a bunch of practical help.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-c140f1b4",
+      "classified_at": "2026-08-03T00:29:47.267Z"
     },
     "1499760048": {
       "topics": [
