@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-02T16:39:03.303Z",
+  "built_at": "2026-08-03T00:38:00.360Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-02-27dad4dc",
+    "last_batch_id": "fresh-2026-08-03-2e20e8fe",
     "last_batch_tier": 1
   },
   "entries": {
@@ -69621,10 +69621,30 @@
     },
     "1488080680": {
       "topics": [
-        "comedy/interviews"
+        "comedy",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese comedy talk show with stand-up comedians discussing life topics.",
+      "display_title": "谐星聊天会",
+      "blurb": "谐星聊天会是一档单口喜剧演员与听众一同线下录制完成的音频节目，用幽默开解生活中的沉杂琐事！",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1488142226": {
       "topics": [
@@ -80066,11 +80086,25 @@
     },
     "1511796352": {
       "topics": [
-        "fiction/comedy",
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scripted romantic comedy podcast about politics and relationships.",
+      "display_title": "Vote For Love",
+      "blurb": "What if your job depended on the guy who ghosted you? Lucy is an intern for the Governor of Texas… who has a VERY cute son. They had the perfect",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1511802512": {
       "topics": [
@@ -80144,10 +80178,25 @@
     },
     "1512032536": {
       "topics": [
-        "sports/tennis"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly tennis coverage in Southern states with interviews and analysis.",
+      "display_title": "Talking Tennis Southern Style",
+      "blurb": "Talking Tennis Southern Style covers tennis in nine Southern states and is hosted by longtime tennis TV & radio personality Sam Crenshaw. The weekly podcast is the official show of",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1512287385": {
       "topics": [
@@ -80158,17 +80207,47 @@
     },
     "1512338578": {
       "topics": [
-        "relationships"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Reddit stories about relationships, parents, and social situations.",
+      "display_title": "Redditor",
+      "blurb": "Stories of crazy entitled parents, incredible tales of revenge, amusing answers to compelling questions; The Redditor Podcast has it all. If you enjoy listening to intriguing, funny and realistic tale",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1512400906": {
       "topics": [
-        "sports/tennis"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis community podcast with fans, players, coaches, and gear discussion.",
+      "display_title": "Tennisnerd - Where we bond over tennis",
+      "blurb": "The space where tennis fans, players, journalists, coaches, and gear heads connect through the sport we all love.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1512476045": {
       "topics": [
@@ -80187,10 +80266,25 @@
     },
     "1512546904": {
       "topics": [
-        "religion/christianity"
+        "philosophy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Inspirational discussions with Christian author Christine Caine.",
+      "display_title": "Equip & Empower Podcast with Christine Caine",
+      "blurb": "Christine Caine is here to activate you to live on mission for Jesus. Through God's Word and the power of the Holy Spirit, you will be awakened to God's unique",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1512582252": {
       "topics": [
@@ -80211,7 +80305,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pilot perspectives and aviation industry discussions.",
+      "display_title": "The Wayward Pilot Podcast",
+      "blurb": "A discussion about all things aviation with certificated flight instructor and general aviation pilot, Jonathan Groner.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1512615438": {
       "topics": [
@@ -80423,10 +80532,25 @@
     },
     "1513246144": {
       "topics": [
-        "tv-film/after-shows"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Entertainment podcast discussing 90 Day Fiancé reality show.",
+      "display_title": "90 Day Fiancé - Coupled with Chaos",
+      "blurb": "If there was a WAY Before the 90 Days show, Kelly and Steve would qualify. After getting engaged after only spending two weeks together and living an ocean apart for",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1513297026": {
       "topics": [
@@ -80469,10 +80593,25 @@
     },
     "1513391500": {
       "topics": [
-        "sports/baseball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chicago Cubs baseball coverage and fan discussions.",
+      "display_title": "Cubs Now",
+      "blurb": "Alex Cohen is a play-by-play announcer, and Lance Brozdowski is a player development analyst -- Chicago Cubs insiders who see the game from completely different angles and aren't afraid to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1513405224": {
       "topics": [
@@ -80491,10 +80630,25 @@
     },
     "1513422232": {
       "topics": [
-        "sports/cricket"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Caribbean cricket news and analysis podcast.",
+      "display_title": "Caribbean Cricket Podcast",
+      "blurb": "A diaspora based podcast chewing the fat on Caribbean Cricket. Hosted by Machel St Patrick Hewitt (@MashStPaddy) & Santokie Nagulendran (@santokie89)",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1513430808": {
       "topics": [
@@ -80589,10 +80743,30 @@
     },
     "1513711258": {
       "topics": [
-        "religion/buddhism"
+        "philosophy",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhism and meditation practices for daily empowerment and happiness.",
+      "display_title": "Paramita",
+      "blurb": "Free podcasts offering Buddhist teachings and practices for personal empowerment and well-being.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:38:00.360Z"
     },
     "1513744350": {
       "topics": [
@@ -80718,11 +80892,25 @@
     },
     "1513966684": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lacrosse sport coverage, strategy, and player interviews.",
+      "display_title": "Lacrosse Classified",
+      "blurb": "An in-depth look at all things Box Lacrosse. Hosted by Jake Elliott and Lucas Argier who bring you the biggest names in the sport and hottest storylines from the NLL",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1513967803": {
       "topics": [
@@ -80801,10 +80989,25 @@
     },
     "1514325670": {
       "topics": [
-        "kids-family/education"
+        "science/storytelling"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "News content designed for curious children audience.",
+      "display_title": "The Ten News, News For Curious Kids",
+      "blurb": "Interested in what's going on around you? 🤔 The Ten News podcast is a bite-sized podcast for kids and their adults that explains what’s going on in the world. 🌎",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1514330355": {
       "topics": [
@@ -80891,17 +81094,47 @@
     },
     "1514645020": {
       "topics": [
-        "craft"
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Carpentry techniques, projects, and woodworking crafts.",
+      "display_title": "The Carpentry Show",
+      "blurb": "Join Robin Clevett as he takes a look at all the latest topics from the world of woodwork including product launches, top tips, and special guests. Robin will also be",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1514660548": {
       "topics": [
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swedish knitting podcast with hosts discussing fiber crafts.",
+      "display_title": "Mamma stickar",
+      "blurb": "Swedish language podcast about knitting and fiber crafting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:38:00.360Z"
     },
     "1514672591": {
       "topics": [
@@ -81069,10 +81302,25 @@
     },
     "1515141160": {
       "topics": [
-        "science/physics"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physics education and explanations for learners.",
+      "display_title": "Physics With Me",
+      "blurb": "This podcast is my attempt to learn Physics by talking about it. It is on the level of students of Engineering and basic sciences in their undergrad or higher levels",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1515152489": {
       "topics": [
@@ -81084,11 +81332,25 @@
     },
     "1515187888": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pop culture interviews with celebrities and personalities.",
+      "display_title": "Classic Conversations: Pop culture Interviews with Jeff Dwoskin",
+      "blurb": "Take a  into pop nostalgia with us! Pop culture influencers, TV stars, film actors, comedians, and musicians share inspirational stories about the road to success. Insightful conversations that",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1515215888": {
       "topics": [
@@ -81154,10 +81416,25 @@
     },
     "1515360130": {
       "topics": [
-        "sports/volleyball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball sport discussions and athlete interviews.",
+      "display_title": "Volley Talk",
+      "blurb": "Join coach Marco and the big city family to discuss coaching philosophies, the science of learning skills faster, drills, interviews with staff and players, healthy living tips, and personal developme",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1515385282": {
       "topics": [
@@ -81309,11 +81586,25 @@
     },
     "1515808276": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Personal consistency and self-improvement strategies.",
+      "display_title": "The Consistency Project",
+      "blurb": "Simplifying nutrition, health, and wellbeing by breaking down the concepts and actions we can all take to live fuller, more functional lives. From EC Synkowski, founder of the #800gChallenge® and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1515818663": {
       "topics": [
@@ -81385,11 +81676,25 @@
     },
     "1515962134": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swimming sport coverage and athlete profiles.",
+      "display_title": "SwimOut",
+      "blurb": "I believe swimming is more than just a past-time, it's about ecology, creativity, conquering personal demons and redefining the limits of endurance. Presented by Vicki, a London based outdoor swimmer",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1515967243": {
       "topics": [
@@ -81407,10 +81712,25 @@
     },
     "1515973516": {
       "topics": [
-        "religion/spirituality"
+        "philosophy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily spiritual inspiration and religious reflection.",
+      "display_title": "Starting Your Day with God",
+      "blurb": "This podcast consist of short inspirational devotional thoughts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1515974585": {
       "topics": [
@@ -81443,17 +81763,47 @@
     },
     "1516025992": {
       "topics": [
-        "kids-family/stories"
+        "science/storytelling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/storytelling",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "African folktales and cultural stories with educational value.",
+      "display_title": "African Folktales with Miss Jo Jo",
+      "blurb": "African Folktales with Miss Jo Jo is a Webby Award-winning children's podcast of diverse short stories originating in Africa, originally passed down through generations by word of mouth. These traditi",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1516037494": {
       "topics": [
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beatles music analysis, history, and fan discussions.",
+      "display_title": "Untitled Beatles Podcast",
+      "blurb": "Gen X ex-cruise ship comedians T.J. Shanoff and Tony Mendoza celebrate the Fab Four without taking anything too seriously. Roll up for the long and rambling road. More at untitledbeatlespodcast.com",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1516051176": {
       "topics": [
@@ -81464,10 +81814,25 @@
     },
     "1516068172": {
       "topics": [
-        "business/careers"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tax professional insights and financial guidance.",
+      "display_title": "The Tax Professionals Podcast",
+      "blurb": "This podcast helps tax professionals, typically by helping you become a better tax professional, helping you pass the ATT and CTA exams, or helping you decide what you want to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1516093381": {
       "topics": [
@@ -81487,10 +81852,25 @@
     },
     "1516180720": {
       "topics": [
-        "science/physics"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hip-hop and rap music discussions and culture.",
+      "display_title": "RAP PODCAST",
+      "blurb": "ngobrol tentang dunia pokokna👍",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1516182984": {
       "topics": [
@@ -81571,10 +81951,25 @@
     },
     "1516361974": {
       "topics": [
-        "religion/hinduism"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Conversations with geopolitical commentator and author.",
+      "display_title": "Ishkaran Singh Bhandari Conversations",
+      "blurb": "Ishkaran Singh Bhandari is a legal expert, a lawyer, researcher, and a political analyst based in New Delhi. As a lawyer he has appeared in many prominent and major cases",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1516443513": {
       "topics": [
@@ -81585,11 +81980,25 @@
     },
     "1516486486": {
       "topics": [
-        "health/mental",
         "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental health and anxiety management with medical professional.",
+      "display_title": "The Anxiety Dr. Podcast",
+      "blurb": "The Anxiety Dr. Podcast is a weekly Podcast about anxiety, fear, stress, and all the other layers of anxiety. Dr. Lisa Cortez, a psychotherapist known as The Anxiety Dr, chats",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1516523741": {
       "topics": [
@@ -81624,10 +82033,25 @@
     },
     "1516541392": {
       "topics": [
-        "tv-film/reviews"
+        "science/storytelling"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/storytelling",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science fiction discussion podcast.",
+      "display_title": "Escape Hatch (formerly Dune Pod)",
+      "blurb": "Your portal into cinematic pocket universes, fostering community far from the digital chaos. Join co-hosts Haitch and Jason as we welcome special guests and talk about their favorite movies. We",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1516567838": {
       "topics": [
@@ -81640,10 +82064,25 @@
     },
     "1516582816": {
       "topics": [
-        "sports/rugby"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Comedy and entertainment discussion podcast.",
+      "display_title": "What a Lad",
+      "blurb": "What a Lad is a podcast by James Marshall who talks to some of the biggest names and best lads on the planet. Hosted on Acast. See acast.com/privacy for more",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1516640396": {
       "topics": [
@@ -81657,8 +82096,23 @@
       "topics": [
         "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Art and interior decoration discussions.",
+      "display_title": "Malagueta's ART & Decor",
+      "blurb": "Mostrar o meu trabalho Através de vídeos,através das redes sociais.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1516680750": {
       "topics": [
@@ -81817,11 +82271,25 @@
     },
     "1517144428": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition and registered dietitian exam preparation.",
+      "display_title": "Chomp Down Dietetics Presents: Chomping Down the RD",
+      "blurb": "For RD exam video lectures & colorful notes, check out https://www.chompdowndietetics.com/ Studying for the RD exam or the DTR exam? Then partner up with Dr. Feraz, EdD, RDN, as he",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1517151870": {
       "topics": [
@@ -81854,10 +82322,25 @@
     },
     "1517215030": {
       "topics": [
-        "kids-family/education"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science education for children with problem-solving focus.",
+      "display_title": "SolveItForKids Science podcast",
+      "blurb": "Solve It! for Kids - The science podcast for curious & creative kids and their families. Peek into the world of real-life scientists, engineers, and experts as they solve problems",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1517256758": {
       "topics": [
@@ -81894,7 +82377,22 @@
         "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical knowledge and healthcare discussions.",
+      "display_title": "Mehlman Medical",
+      "blurb": "This is the official podcast of Mehlmanmedical.com",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1517313007": {
       "topics": [
@@ -81919,10 +82417,25 @@
     },
     "1517600614": {
       "topics": [
-        "kids-family/parenting"
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hypnobirthing techniques and childbirth preparation.",
+      "display_title": "The Hypnobirthing Podcast",
+      "blurb": "This series is all about hypnobirthing and positivity around birth. I am a hypnobirthing teacher and a mum of two and am aware how much negativity there is around birth",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1517628801": {
       "topics": [
@@ -81980,7 +82493,22 @@
         "math"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mathematics education focusing on linear equation systems.",
+      "display_title": "Systems of Linear Equations",
+      "blurb": "Solving Systems of Linear Equations",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1517698133": {
       "topics": [
@@ -82009,7 +82537,22 @@
         "math"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical geometry for 6th grade mathematics students.",
+      "display_title": "6th std-PRACTICAL GEOMETRY",
+      "blurb": "How to arrange and put tally marks",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1517899850": {
       "topics": [
@@ -82042,10 +82585,25 @@
     },
     "1518158884": {
       "topics": [
-        "business/management"
+        "engineering"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Firefighter experiences and emergency response discussions.",
+      "display_title": "The Weekly Scrap, Firefighter Podcast",
+      "blurb": "Firehouse Vigilance presents the Weekly Scrap. A podcast for firefighters with the best interviews of the best guests.Host Corley Moore discusses everything fire service related in his never ending fi",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1518177169": {
       "topics": [
@@ -82141,10 +82699,25 @@
     },
     "1518475264": {
       "topics": [
-        "science/chemistry"
+        "science/materials"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/materials",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Organic chemistry education with practical tricks.",
+      "display_title": "Organic Chemistricks",
+      "blurb": "A podcast dedicated in telling the whole world about the greatness of Organic Chemistry",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1518488318": {
       "topics": [
@@ -82155,11 +82728,25 @@
     },
     "1518562762": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business growth and success strategies.",
+      "display_title": "Multiply Your Success with Dr. Tom DuFore",
+      "blurb": "You’ve worked hard to build your business and now it’s time to grow. Join Tom DuFore, CEO of Big Sky Franchise Team, each week as he interviews leading entrepreneurs, executives,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1518598548": {
       "topics": [
@@ -82181,8 +82768,23 @@
       "topics": [
         "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fiber farming and textile crafting lifestyle.",
+      "display_title": "A Fiber Life | ordinary moments on the",
+      "blurb": "A farm lifestyle podcast about raising exotic animals called guanacos, getting back to nature, making things by hand and living with every fiber of our being. We hope you join",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1518639507": {
       "topics": [
@@ -82251,10 +82853,25 @@
     },
     "1518750946": {
       "topics": [
-        "kids-family/parenting"
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice and strategies for teenagers.",
+      "display_title": "Parenting Today's Teens",
+      "blurb": "The Parenting Today's Teens Podcast is a daily resource for parents raising teenagers. Hosted by Mark Gregston, a renowned parenting expert with over 45 years of experience, this podcast provides",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1518752185": {
       "topics": [
@@ -82332,10 +82949,25 @@
     },
     "1519009936": {
       "topics": [
-        "sports/wrestling"
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling and sports entertainment coverage.",
+      "display_title": "TNA Cross The Line Podcast",
+      "blurb": "Bob Colling Jr. & Dallas Gridley take a retrospective look at the genesis of TNA Wrestling starting at the very beginning!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1519022535": {
       "topics": [
@@ -82354,12 +82986,25 @@
     },
     "1519106242": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual conversations with research scientists.",
+      "display_title": "Coffee Chats with Researchers",
+      "blurb": "Ever wanted to sit down with your favorite researcher or practitioner and chat about all the cool things they do? Well look no further than our Coffee Chat series! We’re",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1519130222": {
       "topics": [
@@ -82482,10 +83127,25 @@
     },
     "1519601518": {
       "topics": [
-        "tv-film/animation"
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History and behind-scenes of Scooby-Doo series.",
+      "display_title": "Unmasked History of Scooby-Doo",
+      "blurb": "The Unmasked History of Scooby-Doo dives into the mystery of Scooby-Doo media! Getting clues through interviews with the people working behind the scenes of Scooby-Doo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1519611185": {
       "topics": [
@@ -82504,10 +83164,25 @@
     },
     "1519667776": {
       "topics": [
-        "sports/cricket"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Q&A podcast with casual conversation format.",
+      "display_title": "#ask Tavish",
+      "blurb": "#ask Tavish is a cricket related show in which it’s your questions and my answers related to cricket live match commentary, match preview, review, probably playing xi all you can",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1519689024": {
       "topics": [
@@ -82646,11 +83321,25 @@
     },
     "1520125042": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "science/storytelling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/storytelling",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic literature adaptation and discussion.",
+      "display_title": "Anne of Green Gables",
+      "blurb": "Mary Kate Wiles and friends read L.M. Montgomery’s classic, Anne of Green Gables.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1520140118": {
       "topics": [
@@ -82691,12 +83380,25 @@
     },
     "1520229508": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Music streaming and lifestyle radio format.",
+      "display_title": "Flow Radio",
+      "blurb": "Flow Research Collective Radio is a podcast dedicated to helping you unlock the upper edge of your potential. Join New York Times bestselling author Steven Kotler and Co-Founder of the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1520232516": {
       "topics": [
@@ -82723,10 +83425,25 @@
     },
     "1520304490": {
       "topics": [
-        "fiction/sci-fi"
+        "science/storytelling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/storytelling",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Atmospheric science fiction short stories set in cyberpunk and post-apocalyptic worlds.",
+      "display_title": "Beyond the Dark",
+      "blurb": "Immersive science fiction stories set in cyberpunk, post-apocalyptic, and alien worlds.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:38:00.360Z"
     },
     "1520318017": {
       "topics": [
@@ -82831,10 +83548,25 @@
     },
     "1520478046": {
       "topics": [
-        "news/daily"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Commentary and conversation format podcast.",
+      "display_title": "Turley Talks",
+      "blurb": "Tired of the mainstream media? You’re not alone. Hosted by Dr. Steve Turley—best-selling author, political analyst, and the &#34;Patriot Professor&#34;—the Turley Talks Podcast delivers bold, faith-fi",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-2e20e8fe",
+      "classified_at": "2026-08-03T00:37:40.749Z"
     },
     "1520478402": {
       "topics": [
