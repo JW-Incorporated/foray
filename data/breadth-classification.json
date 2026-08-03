@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-03T00:38:00.360Z",
+  "built_at": "2026-08-03T08:40:46.796Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-03-2e20e8fe",
+    "last_batch_id": "fresh-2026-08-03-54957119",
     "last_batch_tier": 1
   },
   "entries": {
@@ -58119,10 +58119,40 @@
     },
     "1454026756": {
       "topics": [
-        "business/management"
+        "business/management",
+        "comedy/casual-hangs",
+        "engineering/ai-robotics",
+        "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dental practice management guidance for office teams.",
+      "display_title": "Dental A Team Podcast",
+      "blurb": "This podcast is here to give dentists and all dental office team members, in EVERY position, TACTICAL and PRACTICAL TIPS to: - Be more efficient - Hav.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1454036760": {
       "topics": [
@@ -83577,11 +83607,40 @@
     },
     "1520509804": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "sports/basketball",
+        "kids-family/stories",
+        "nature/ocean-science",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Retrospective discussion of childhood films and their cultural impact.",
+      "display_title": "The Old Kids Movies",
+      "blurb": "Revisit millennial kids movies! Trevor Howell and AJ Beltis recount the popular, obscure, and forgotten movies of our childhood, asking ourselves if t.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1520679444": {
       "topics": [
@@ -83622,10 +83681,53 @@
     },
     "1520796424": {
       "topics": [
-        "health/alternative"
+        "craft/woodworking",
+        "nature/ocean-science",
+        "health/alternative",
+        "health/mental",
+        "engineering/ai-robotics",
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Stress and trauma recovery through holistic health approaches.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1520894322": {
       "topics": [
@@ -83802,10 +83904,40 @@
     },
     "1521454822": {
       "topics": [
-        "kids-family/stories"
+        "tv-film/after-shows",
+        "kids-family/stories",
+        "travel",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories for kids featuring Thomas and friends on Sodor.",
+      "display_title": "Thomas & Friends™ Storytime (UK)",
+      "blurb": "Join Thomas and his friends on a new adventure in Thomas & Friends™ Storytime, a new podcast series featuring stories from the magical island of Sodor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1521470438": {
       "topics": [
@@ -83836,7 +83968,22 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry education and organic chemistry concepts.",
+      "display_title": "EYCN Podcast - Chemistry To Your Ears",
+      "blurb": "Learn more about interesting chemistry related topics from interviews with young professionals and professors. Also hear something about the latest ne.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1521514886": {
       "topics": [
@@ -83855,10 +84002,60 @@
     },
     "1521530338": {
       "topics": [
-        "relationships"
+        "science/chemistry",
+        "relationships",
+        "comedy/stand-up",
+        "nature/ocean-science",
+        "health/mental",
+        "engineering/ai-robotics",
+        "business/marketing",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dating and relationship advice from professional matchmaker.",
+      "display_title": "Ask a Matchmaker",
+      "blurb": "Ask a Matchmaker is your weekly go-to podcast for all things love and relationships. Hosted by fourth generation matchmaker and founder of Agape Match.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1521532868": {
       "topics": [
@@ -84067,11 +84264,35 @@
     },
     "1522054150": {
       "topics": [
+        "tv-film/reviews",
         "sports/endurance",
-        "health/fitness"
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ultramarathon and distance running culture and training.",
+      "display_title": "Ultra Running Magazine Podcast",
+      "blurb": "The UltraRunning Magazine Podcast brings listeners in-depth conversations with elite ultrarunners, coaches, medical professionals, race directors and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1522055041": {
       "topics": [
@@ -84238,24 +84459,109 @@
     },
     "1522364806": {
       "topics": [
-        "craft/diy-home"
+        "nature/ocean-science",
+        "health/alternative",
+        "engineering/ai-robotics",
+        "society/law",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.75
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cannabis growing and cultivation at home.",
+      "display_title": "High on Home Grown, The Cannabis Podcast",
+      "blurb": "A Cannabis podcast hosted by a panel of cannabis growers from the UK, USA, Canada and Australia. We bring you weekly cannabis news from around the wor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1522372858": {
       "topics": [
-        "true-crime"
+        "tv-film/after-shows",
+        "kids-family/stories",
+        "nature/ocean-science",
+        "health/alternative",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime stories and investigation discussions.",
+      "display_title": "LOVE MURDER",
+      "blurb": "Jessie Pray and Andie Cassette team up each week to tell stories of love and relationships gone fatally wrong. This show is all about seemingly normal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1522375678": {
       "topics": [
-        "comedy/stand-up"
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy performance and conversation from comedians.",
+      "display_title": "3'S A PARTY",
+      "blurb": "Give us a listen. You might like it........",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1522378503": {
       "topics": [
@@ -84370,10 +84676,30 @@
     },
     "1522709884": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pregnancy, birth, and parenting support for new mothers.",
+      "display_title": "Positive Pregnancy, Birth and Motherhood by Pop That",
+      "blurb": "Welcome to the Pop That Mumma Podcast. Hosted by Poppy Child, founder of Pop That Mumma, creator of Birth Box, certified Hypnobirthing practitioner, b.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1522738259": {
       "topics": [
@@ -84393,17 +84719,57 @@
     },
     "1522780468": {
       "topics": [
-        "sports/rugby"
+        "sports/rugby",
+        "nature/ocean-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby analysis, commentary, and sports discussion.",
+      "display_title": "The Rugby Rant",
+      "blurb": "Introducing The Rugby Rant podcast show where we tackle the tough topics related to everything Rugby in North America. Enjoy player interviews, rugby.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1522826188": {
       "topics": [
-        "sports/cricket"
+        "sports/cricket",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Engaging podcast content on specialized topics.",
+      "display_title": "Top of Off",
+      "blurb": "Two lads chatting about cricket. Basically just that. Can't guarantee you'll agree with everything we say; can guarantee you'll love the banter. Updat.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1522882428": {
       "topics": [
@@ -84692,10 +85058,30 @@
     },
     "1523342002": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/stand-up",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improv comedy and casual entertainment conversations.",
+      "display_title": "Do Less God Bless",
+      "blurb": "Trey Kennedy is a comedian and content creator who's generated tens of millions of views with his comedic skits. While he's always been in front of th.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1523342671": {
       "topics": [
@@ -84734,10 +85120,45 @@
     },
     "1523382406": {
       "topics": [
-        "news/commentary"
+        "kids-family/parenting",
+        "news/commentary",
+        "tv-film/reviews",
+        "news/politics",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political analysis and Christian conservative commentary.",
+      "display_title": "CrossPolitic Show",
+      "blurb": "CrossPolitic (Christ over politics) mixes the taboo formula of faith, culture, and politics to bring the clarity of the gospel into muddle America. We.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1523414560": {
       "topics": [
@@ -84829,10 +85250,40 @@
     },
     "1523682676": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "health/alternative",
+        "engineering/ai-robotics",
+        "history/archaeology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish books, literature, and cultural discussion.",
+      "display_title": "Seforimchatter",
+      "blurb": "The Seforimchatter podcast is dedicated to the discussion of Seforim (holy texts and works pertaining to them), Jewish (non-sacred) Books, Jewish Hist.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1523684874": {
       "topics": [
@@ -84921,8 +85372,23 @@
       "topics": [
         "comedy/stand-up"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy stand-up performance and entertainment.",
+      "display_title": "Travis Scott",
+      "blurb": "Born in Houston.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1523877524": {
       "topics": [
@@ -84943,11 +85409,45 @@
     },
     "1523900602": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "comedy/stand-up",
+        "tv-film/reviews",
+        "sports/endurance",
+        "engineering/ai-robotics",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film reviews and retrospectives of cult movie classics.",
+      "display_title": "Almost Cult Classics",
+      "blurb": "Join cinephiles Ryan and Joe as they dive into the making and history behind some of cinema's forgotten gems. From Hats Off Entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1523916037": {
       "topics": [
@@ -84993,10 +85493,35 @@
     },
     "1523972332": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/after-shows",
+        "nature/ocean-science",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "After-show discussion and analysis of comedy TV series.",
+      "display_title": "The Produce Stand Podcast 🍁 A Letterkenny and",
+      "blurb": "The Produce Stand Podcast is a fan-driven show celebrating Letterkenny and its spinoff Shoresy . Join hosts Tanya, Mat, Victor, and Al as they break d.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1523991891": {
       "topics": [
@@ -85007,10 +85532,30 @@
     },
     "1524030736": {
       "topics": [
-        "culture/art"
+        "nature/ocean-science",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language visual arts and cultural discussion.",
+      "display_title": "Para Mentes Inquietas - Podcast En Español",
+      "blurb": "Si alguna vez has sentido que ni tú mism@ puedes con tu propia mente, tienes inquietudes sobre lo que sucede y cuestionas todo acerca del mundo genera.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1524032937": {
       "topics": [
@@ -85029,10 +85574,35 @@
     },
     "1524085408": {
       "topics": [
+        "tv-film/after-shows",
+        "health/alternative",
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual guidance and advice on wellness topics.",
+      "display_title": "Ask Julie Ryan",
+      "blurb": "Julie Ryan, world renowned psychic and medical intuitive, is ready to answer your personal questions, even those you never knew you could ask! Do you.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1524091545": {
       "topics": [
@@ -85183,10 +85753,30 @@
     },
     "1524662392": {
       "topics": [
-        "sports/wrestling"
+        "nature/ocean-science",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling culture and entertainment discussion.",
+      "display_title": "Instinct Culture by Denise Salcedo",
+      "blurb": "Instinct Culture by Denise Salcedo started off as YouTube channel that provides pro wrestling content. Now Denise has expanded by making all of her po.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1524670753": {
       "topics": [
@@ -85259,10 +85849,35 @@
     },
     "1524856936": {
       "topics": [
-        "philosophy"
+        "philosophy/ideas",
+        "news/politics",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophy discussion and intellectual ideas.",
+      "display_title": "New Polity",
+      "blurb": "Laying the intellectual foundation necessary for building Christian societies free from the violent presuppositions of liberalism.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1524940951": {
       "topics": [
@@ -85317,10 +85932,35 @@
     },
     "1525050646": {
       "topics": [
-        "craft"
+        "craft/diy-home",
+        "comedy/casual-hangs",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quilting and textile crafting storytelling.",
+      "display_title": "Quilting Stories podcast",
+      "blurb": "The Quilting Stories podcast interviews quilters about their quilts, their quilting journeys, and their creative process.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1525087545": {
       "topics": [
@@ -85374,10 +86014,30 @@
     },
     "1525204132": {
       "topics": [
-        "travel"
+        "travel",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel experiences and place exploration.",
+      "display_title": "Naturally Adventurous",
+      "blurb": "Charley Hesse and Ken Behrens have travelled all over the globe, and accumulated a lifetime worth of adventure stories, in pursuit of wild places and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1525228139": {
       "topics": [
@@ -85527,10 +86187,25 @@
     },
     "1525432576": {
       "topics": [
-        "comedy/interviews"
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy interviews and entertainment conversations.",
+      "display_title": "The Bubba Army Podcast",
+      "blurb": "The Bubba Army Podcast - Klem & Kush, Bubba Uncensored, Tiggy & The Handler, Juggling Chainsaws with Tara Clem, The Blizzard, Over The Line, Loner & S.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1525433226": {
       "topics": [
@@ -85623,10 +86298,40 @@
     },
     "1525493536": {
       "topics": [
-        "sports/soccer"
+        "sports/soccer",
+        "tv-film/after-shows",
+        "kids-family/stories",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soccer betting analysis and sports wagering.",
+      "display_title": "Soccer Betting Podcast",
+      "blurb": "Home of 'The EPL Show', 'The Champions League Show', 'Däs Bündesliga Show' and various other soccer gambling podcasts, all hosted by our long-term res.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1525514686": {
       "topics": [
@@ -85887,32 +86592,146 @@
     },
     "1525899214": {
       "topics": [
-        "sports/cricket"
+        "sports/cricket",
+        "engineering/ai-robotics",
+        "business/management",
+        "history/archaeology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket news and analysis from the sport.",
+      "display_title": "Museum of Welsh Cricket Podcast",
+      "blurb": "A Podcast interviewing a range of people from all areas of the great country of Wales who have a connection with or a story to tell about the great ga.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1525926766": {
       "topics": [
-        "fiction/drama"
+        "nature/ocean-science",
+        "tv-film/reviews",
+        "travel",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel experiences and place exploration.",
+      "display_title": "The Adventures of Sam Spade",
+      "blurb": "&#34;The Adventures of Sam Spade&#34; was a highly popular and critically acclaimed radio series based loosely on Dashiell Hammett&#39;s iconic privat.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1525931356": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "comedy/casual-hangs",
+        "engineering/ai-robotics",
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Warhammer 40K tabletop RPG comedy adventure.",
+      "display_title": "The Valentyne Heresy: A Warhammer 40K RPG",
+      "blurb": "The Valentyne Heresy: A Warhammer 40K RPG is a Dumb-Dumbs & Dice live-play podcast where professional voice actors and improvisers journey into the gr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1525933414": {
       "topics": [
+        "tv-film/reviews",
+        "travel",
+        "engineering/ai-robotics",
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic dramatic radio stories and adventures.",
+      "display_title": "Tales of the Texas Rangers",
+      "blurb": "Tales of the Texas Rangers, a western adventure old-time radio drama, premiered on July 8, 1950, on the US NBC radio network and remained on the air t.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1525951683": {
       "topics": [
@@ -86007,10 +86826,35 @@
     },
     "1526066728": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/reviews",
+        "health/alternative",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lovecraft Country TV series after-show discussion.",
+      "display_title": "Lovecraft Country Radio",
+      "blurb": "The official podcast for HBO’s Lovecraft Country. Every Sunday, Ashley C. Ford and Lovecraft Country writer Shannon Houston discuss the latest episode.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1526080983": {
       "topics": [
@@ -86113,7 +86957,22 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy sports trades and NFL discussion.",
+      "display_title": "Smash Accept Dynasty Trades",
+      "blurb": "Smash Accept trade show is your home of in depth dynasty trades, roster construction & all things Dynasty Fantasy Football featuring Dynasty Dad & FF.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1526470404": {
       "topics": [
@@ -86135,10 +86994,45 @@
     },
     "1526477866": {
       "topics": [
-        "craft"
+        "craft/diy-home",
+        "tv-film/after-shows",
+        "nature/ocean-science",
+        "engineering/ai-robotics",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sewing crafts and textile mindfulness.",
+      "display_title": "Sew Mindful Podcast",
+      "blurb": "Tips, tricks and expert interviews to share everything you need to know to have fun making your own fabulous clothes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1526481041": {
       "topics": [
@@ -86262,10 +87156,30 @@
     },
     "1526702728": {
       "topics": [
-        "craft"
+        "nature/ocean-science",
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Crafting and textile arts discussion.",
+      "display_title": "Stitch Talk",
+      "blurb": "Hello and welcome to Stitch Talk! Here we indulge in the love of all things cross stitch! From stitching tips to chats with your favourite designers,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1526715605": {
       "topics": [
@@ -86310,10 +87224,50 @@
     },
     "1526765602": {
       "topics": [
-        "kids-family/education"
+        "kids-family/stories",
+        "nature/ocean-science",
+        "tv-film/reviews",
+        "sports/endurance",
+        "news/politics",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content for kids and young learners.",
+      "display_title": "What Will She Do Next?",
+      "blurb": "Broadway stars, historical women, and family-friendly showstoppers. Musical theatre writing team Bird & Mirabella present an independent, donation-bas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1526851765": {
       "topics": [
@@ -86498,10 +87452,35 @@
     },
     "1527031084": {
       "topics": [
+        "tv-film/after-shows",
+        "engineering/ai-robotics",
         "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mecha design and robot anime discussion.",
+      "display_title": "Mechanista in G",
+      "blurb": "Speaking your mind is its own reward.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1527032817": {
       "topics": [
@@ -86556,11 +87535,30 @@
     },
     "1527059992": {
       "topics": [
-        "sports",
-        "news"
+        "engineering/ai-robotics",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports news and general athletics coverage.",
+      "display_title": "The Different Knock",
+      "blurb": "Welcome to The Different Knock, the home of Arsenal analysis. 📧 thedifferentknock@gmail.com 📧 Joe@intertalentgroup.com (Commercial enquiries) ❤️ Get.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1527111125": {
       "topics": [
@@ -86688,10 +87686,45 @@
     },
     "1527357862": {
       "topics": [
-        "business/marketing"
+        "health/alternative",
+        "sports/endurance",
+        "engineering/ai-robotics",
+        "business/marketing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marketing funnels and sales coaching for business.",
+      "display_title": "Doing It Online : Funnels, Sales & Scaling",
+      "blurb": "The Doing It Online podcast is your weekly dose of sales funnel strategies, evergreen automation, and scaling tips for coaches who want to grow withou.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1527362747": {
       "topics": [
@@ -86865,10 +87898,35 @@
     },
     "1527788908": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "nature/ocean-science",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry education and organic chemistry concepts.",
+      "display_title": "Organic Chemistry means Ajnish Sir",
+      "blurb": "This podcast is for giving complete information regarding Organic Chemistry. Here I will explain you about the concepts from the best Organic Chemistr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1527837623": {
       "topics": [
@@ -86903,11 +87961,29 @@
     "1527895582": {
       "topics": [
         "medicine/biology",
-        "science",
-        "nature"
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Life sciences education and career success.",
+      "display_title": "Life Science Success",
+      "blurb": "On this podcast, you'll find interviews with high-performing successful individuals in Life Sciences. On a weekly basis, we cover their proven methods.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1527896223": {
       "topics": [
@@ -86925,10 +88001,30 @@
     },
     "1527904336": {
       "topics": [
-        "nature"
+        "nature/ocean-science",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ocean life and marine creatures nature discussion.",
+      "display_title": "Seacreatures",
+      "blurb": "Welcome to the Seacreatures Podcast, a show all about the amazing animals that live beneath the waves. On each episode we chat about a specific seacre.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1527917732": {
       "topics": [
@@ -87009,10 +88105,40 @@
     },
     "1527984094": {
       "topics": [
-        "fiction/drama"
+        "craft/woodworking",
+        "fiction/drama",
+        "tv-film/reviews",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic dramatic radio theatre and story performances.",
+      "display_title": "Lux Radio Theatre",
+      "blurb": "&#34;Lux Radio Theatre&#34; was an iconic American radio show that ran from 1934 to 1955, primarily on CBS Radio. It was renowned for its weekly, hour.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1528031270": {
       "topics": [
@@ -87144,17 +88270,77 @@
     },
     "1528306060": {
       "topics": [
-        "food"
+        "kids-family/parenting",
+        "engineering/ai-robotics",
+        "business/marketing",
+        "society/law",
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.75
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Food culture and dining experiences.",
+      "display_title": "The Agave Social Club",
+      "blurb": "We are talking with some of the best tequila brands around to hear their story, learn the process and sip on some excellent tequila. To see the video.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1528346446": {
       "topics": [
-        "religion/spirituality"
+        "health/alternative",
+        "religion/spirituality",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual growth and new age consciousness topics.",
+      "display_title": "The Spiritual Quest 5D New Human",
+      "blurb": "The 5D Perception of Love and Light ... Call it God, The Creator, Mother Nature, Energy, Source, etc. We all have a unique perspective that we inherit.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1528351125": {
       "topics": [
@@ -87210,10 +88396,35 @@
     },
     "1528529944": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "nature/ocean-science",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL fantasy sports and daily fantasy sports strategy.",
+      "display_title": "Stokastic NFL DFS",
+      "blurb": "The Stokastic NFL DFS Channel includes all of our top-tier NFL DFS Strategy, Fantasy Football Strategy, & NFL Betting Picks. Here you’ll find Daily Fa.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1528535502": {
       "topics": [
@@ -87375,10 +88586,40 @@
     },
     "1528895194": {
       "topics": [
-        "math"
+        "relationships",
+        "philosophy/ideas",
+        "news/politics",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mathematics, data, human behavior, and philosophy.",
+      "display_title": "How 2 rob a bank",
+      "blurb": "A podcast discussing topics which lie on the intersections of maths, data, human behaviour, and philosophy. Hosted by Bia and Zoey.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-03-54957119",
+      "classified_at": "2026-08-03T08:40:46.796Z"
     },
     "1528899170": {
       "topics": [
