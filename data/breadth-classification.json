@@ -37150,13 +37150,1098 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-04-0a7b742c",
       "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1539823196": {
+      "topics": [
+        "science/physics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Student-led physics show interviewing faculty and researchers on topics like neutron stars and black holes.",
+      "display_title": "Gryphons and Gluons",
+      "blurb": "University of Guelph physics students interview professors on research, astrophysics, and scientific careers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1540031114": {
+      "topics": [
+        "tv-film/animation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about anime and manga culture with casual host commentary.",
+      "display_title": "Fancy Weebs",
+      "blurb": "Two hosts discuss anime, manga, and nerd culture with humor and personal anecdotes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1540228676": {
+      "topics": [
+        "kids-family/parenting",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast on early childhood development and Montessori parenting methods.",
+      "display_title": "Montessori Babies",
+      "blurb": "Parenting guidance for infants and toddlers using Montessori philosophy and child development science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1540428224": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Elite distance running podcast featuring athlete interviews and race coverage.",
+      "display_title": "The Sunday Plodcast",
+      "blurb": "Weekly running show with interviews from elite distance runners and coaches on training and competition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1540573682": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert gardening advice from BBC presenters and guest speakers.",
+      "display_title": "BBC Gardeners' World Magazine Podcast",
+      "blurb": "Weekly gardening guidance from BBC experts covering design, planting, and seasonal care.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1540898594": {
+      "topics": [
+        "news/commentary",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News and analysis of oil, gas, and cleantech industries.",
+      "display_title": "Big Digital Energy",
+      "blurb": "Weekly energy industry news covering oil, gas, and clean energy with insider commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1541022146": {
+      "topics": [
+        "science",
+        "science/chemistry"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/chemistry",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interview series introducing scientists and breaking down academic research.",
+      "display_title": "Lady Scientist Podcast",
+      "blurb": "Conversations with working scientists spanning biotech, research, and entrepreneurship.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1541384174": {
+      "topics": [
+        "business/startups",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Education for contractors on scaling, systems, and business growth.",
+      "display_title": "Contractor Evolution",
+      "blurb": "Business training for contractors covering systems, sales, and profitability.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1541466512": {
+      "topics": [
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "UK paranormal investigation podcast exploring UFOs, hauntings, and cryptids.",
+      "display_title": "Pursuit of the Paranormal",
+      "blurb": "Paranormal investigations including UFO sightings, hauntings, and cryptid research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1541514434": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese cross-talk comedy performances with traditional humor.",
+      "display_title": "郭德纲于谦相声专辑",
+      "blurb": "Traditional Chinese cross-talk comedy featuring comedy duo performances.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1541602946": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians summarizing popular and obscure books with humor.",
+      "display_title": "The Book Pile",
+      "blurb": "Comedians humorously summarize books so listeners needn't read them.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1541914166": {
+      "topics": [
+        "true-crime",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast about Dr. Chris Duntsch, a criminal surgeon.",
+      "display_title": "Dr Death",
+      "blurb": "True crime story of neurosurgeon Chris Duntsch and his criminal actions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1542068102": {
+      "topics": [
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedian Aaron Cheatham interviews diverse guests on life and culture.",
+      "display_title": "The Gray Area",
+      "blurb": "Comedian interviews featuring discussions on culture, entertainment, and personal stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1542091472": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian teaching and preaching focused on Jesus and faith.",
+      "display_title": "Real Life Radio with Jack Hibbs",
+      "blurb": "Pastor Jack teaches on Jesus, faith, and Christian discipleship.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1542158654": {
+      "topics": [
+        "music",
+        "culture/pop-culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Street culture and music industry interviews with artists and personalities.",
+      "display_title": "Reallyfe Street Starz Podcast",
+      "blurb": "Unfiltered interviews with music industry figures and street culture personalities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1542301310": {
+      "topics": [
+        "business/non-profit",
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership and business strategy for nonprofit organizations.",
+      "display_title": "A Modern Nonprofit Podcast",
+      "blurb": "Business and culture topics for nonprofit leaders and organizations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1542316760": {
+      "topics": [
+        "science/chemistry",
+        "health/alternative"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Educational podcast on delta-8 cannabinoids and related compounds.",
+      "display_title": "SconiBoys",
+      "blurb": "Discussion of delta-8 THC and cannabinoids with science and myths.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1542487892": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical landscape design education from experienced coach.",
+      "display_title": "Yard Coach",
+      "blurb": "DIY landscaping advice covering design, drainage, and long-term landscape planning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1542676280": {
+      "topics": [
+        "science/physics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational physics podcast covering concepts and experiments.",
+      "display_title": "Science Hub- Physics",
+      "blurb": "Physics education covering units, measurements, atoms, and radioactive materials.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1542891074": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama with scripted horror and supernatural storytelling.",
+      "display_title": "The Cellar Letters",
+      "blurb": "Serialized audio drama with supernatural mystery and suspense.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1542985814": {
+      "topics": [
+        "math"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast on linear equations and mathematical problem-solving.",
+      "display_title": "linear equations in 1 variable",
+      "blurb": "Mathematics education focused on solving linear equations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1543090622": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL insider news and analysis from trusted sports journalists.",
+      "display_title": "NFL: The Insiders",
+      "blurb": "NFL news and insider coverage from sports journalists and former players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1543252280": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast with interviews on law enforcement and criminal justice.",
+      "display_title": "Have A Seat with Chris Hansen",
+      "blurb": "True crime stories and interviews with law enforcement on crime and justice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1543331870": {
+      "topics": [
+        "health/fitness",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biohacking and longevity focused on nutrition, exercise, and wellness.",
+      "display_title": "The Biohacking Standards",
+      "blurb": "Evidence-based biohacking covering fitness, sleep, nutrition, and longevity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1543527788": {
+      "topics": [
+        "history",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "History podcast exploring world events and historical mysteries.",
+      "display_title": "MovarekhPodcast",
+      "blurb": "History podcast examining global events, wars, and historical puzzles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1543578254": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual knitting podcast with hosts sharing patterns and life.",
+      "display_title": "Gravel Knits",
+      "blurb": "Knitting podcast where hosts discuss projects, patterns, and casual life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1543871378": {
+      "topics": [
+        "paranormal",
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language podcast on paranormal cases, ghosts, and mysteries.",
+      "display_title": "Relatos del lado oscuro",
+      "blurb": "Spanish horror and paranormal stories covering mysterious cases and legends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1543989710": {
+      "topics": [
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive industry education for sales, service, and management.",
+      "display_title": "Dealer Talk With Jen Suzuki",
+      "blurb": "Automotive sales and service coaching for dealers and advisors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1544140088": {
+      "topics": [
+        "society/government",
+        "society/law"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Indigenous land governance and policy affecting First Nations.",
+      "display_title": "Land Decolonized Podcast",
+      "blurb": "Indigenous podcast on land governance and First Nations policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1544173982": {
+      "topics": [
+        "education/self-improvement",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal growth and spirituality with Martha Beck's philosophy.",
+      "display_title": "The Gathering Room Podcast",
+      "blurb": "Personal growth and spirituality conversations on creativity, purpose, and intuition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1544532602": {
+      "topics": [
+        "paranormal",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Documentary podcast exploring mythology, occult, and alternative history.",
+      "display_title": "The Hidden Passage",
+      "blurb": "Supernatural documentary examining mythology, occult traditions, and mysteries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1544914934": {
+      "topics": [
+        "science/chemistry"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry education covering chromatography and laboratory techniques.",
+      "display_title": "Chemical Duo",
+      "blurb": "Chemistry education covering analytical techniques and laboratory methods.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1545011366": {
+      "topics": [
+        "engineering/energy-fusion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fusion energy industry news from young researchers.",
+      "display_title": "Fusion News",
+      "blurb": "Biweekly fusion energy industry news from academic researchers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1545052064": {
+      "topics": [
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political news commentary from conservative perspective.",
+      "display_title": "The Right View with Lara Trump",
+      "blurb": "Political news and commentary from conservative viewpoint.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1545439016": {
+      "topics": [
+        "economics/markets",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial planning and retirement strategy from certified planner.",
+      "display_title": "Early Retirement - Financial Freedom",
+      "blurb": "Financial planning for early retirement covering investing and tax strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1545444200": {
+      "topics": [
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership coaching for high performers overcoming career challenges.",
+      "display_title": "Coaching Real Leaders",
+      "blurb": "Leadership coaching conversations on promotion readiness and professional growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1545792830": {
+      "topics": [
+        "relationships",
+        "health/sexuality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sex and dating podcast addressing modern relationship challenges.",
+      "display_title": "Coffee and Cleavage",
+      "blurb": "Sex and dating podcast tackling modern relationships and intimacy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1546000046": {
+      "topics": [
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror creepypasta narrations with sound design and music.",
+      "display_title": "The Dark Somnium",
+      "blurb": "Narrated horror stories with original music and sound design.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1546027190": {
+      "topics": [
+        "science/chemistry"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language biochemistry education podcast.",
+      "display_title": "Bioquímica Para Todos",
+      "blurb": "Biochemistry education in Spanish covering metabolism and cellular processes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1546256912": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily comedy and piano podcast by award-winning comedian.",
+      "display_title": "Daily Notes from Nathan Cassidy",
+      "blurb": "Daily comedy sketches with piano accompaniment from UK comedian.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1546282862": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NHL news, analysis, and prospect rankings from The Athletic.",
+      "display_title": "The Athletic Hockey Show",
+      "blurb": "Daily NHL news and analysis covering teams, prospects, and trades.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1546312664": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marriage and sex education addressing intimacy and relationship issues.",
+      "display_title": "The Horny Housewife",
+      "blurb": "Candid conversations on marriage, sex, and long-term intimacy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1546623428": {
+      "topics": [
+        "medicine",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nursing education and career guidance for students and new graduates.",
+      "display_title": "Life In Scrubs",
+      "blurb": "Nursing career education for students and new graduate nurses.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1546630514": {
+      "topics": [
+        "nature",
+        "nature/ocean-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about fish species, ecology, and fishing conservation.",
+      "display_title": "Fish of the Week!",
+      "blurb": "Weekly exploration of fish species, ecology, and fishing culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1546879892": {
+      "topics": [
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "US stock market investing podcast in Mandarin Chinese.",
+      "display_title": "美股投資學-財女珍妮",
+      "blurb": "US stock investing guidance in Mandarin for Asian investors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-4a318e9b",
+      "classified_at": "2026-08-04T09:00:15.365Z"
     }
   },
-  "built_at": "2026-08-04T00:51:44.966Z",
+  "built_at": "2026-08-04T09:00:15.365Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-04-0a7b742c",
+    "last_batch_id": "fresh-2026-08-04-4a318e9b",
     "last_batch_tier": 1
   }
 }
