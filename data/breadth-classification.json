@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-03T16:57:13.049Z",
+  "built_at": "2026-08-04T01:00:47.606Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-03-587a2dd1",
+    "last_batch_id": "fresh-2026-08-04-df65f813",
     "last_batch_tier": 1
   },
   "entries": {
@@ -1668,7 +1668,22 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Biblical teaching and application from pastor with practical spiritual guidance.",
+      "display_title": "Insight for Living Daily Broadcast",
+      "blurb": "Pastor Chuck Swindoll delivers 15-minute daily Bible messages with practical application for everyday life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "90253586": {
       "topics": [
@@ -2075,11 +2090,30 @@
     },
     "118796495": {
       "topics": [
-        "kids-family"
+        "kids-family",
+        "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.95
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Religious puppet show for children with Bible stories and moral lessons.",
+      "display_title": "Paws & Tales",
+      "blurb": "Animal characters teach children Bible stories and life lessons in fun, memorable ways.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "119777571": {
       "topics": [
@@ -12333,10 +12367,29 @@
     "520986449": {
       "topics": [
         "education/language-learning",
-        "linguistics/language"
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversational English learning anchored in American culture and contemporary topics.",
+      "display_title": "潘吉Jenny告诉你|学英语聊美国|开言英语 · Podcast",
+      "blurb": "Jenny and Diana teach natural English through conversations about US culture, slang, and current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "521594713": {
       "topics": [
@@ -81748,7 +81801,22 @@
         "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physician-led interviews on healthcare system issues and patient stories from diverse perspectives.",
+      "display_title": "The Podcast by KevinMD",
+      "blurb": "KevinMD shares stories from people at the intersection of healthcare, exploring system issues and human experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1515055586": {
       "topics": [
@@ -82760,10 +82828,30 @@
     },
     "1517156345": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stationery community interviews celebrating paper makers, designers, and independent stationery creators.",
+      "display_title": "The Paper Fold",
+      "blurb": "Sarah hosts charming conversations with designers, makers, and curators in the stationery community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1517169338": {
       "topics": [
@@ -82805,10 +82893,30 @@
     },
     "1517296859": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "culture/mythology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Storytelling about Hindu gods, mantras, and spiritual teachings from Indian mythology and texts.",
+      "display_title": "Mythological Stories In English",
+      "blurb": "Stories about Hindu gods, mantras, and spiritual wisdom from ancient Indian scripture and tradition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1517302239": {
       "topics": [
@@ -82898,10 +83006,33 @@
     },
     "1517698133": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Musicians discuss parenting challenges and life lessons with humor and heartfelt insight.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1517818935": {
       "topics": [
@@ -82989,7 +83120,22 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily readings from Hindu spiritual texts with devotional philosophy and scriptural commentary.",
+      "display_title": "Daily READINGS of Srila Prabhupada's Books",
+      "blurb": "Daily recitations of Hindu spiritual texts with insights into bhakti-yoga and devotional practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1518292579": {
       "topics": [
@@ -83011,7 +83157,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided Buddhist meditation practices and teachings from Amaravati monastery.",
+      "display_title": "How to meditate | Guided Meditation and talks",
+      "blurb": "Guided meditation and talks from Amaravati Buddhist Monastery providing practical spiritual instruction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1518316928": {
       "topics": [
@@ -83039,10 +83200,30 @@
     },
     "1518376121": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with remarkable Jewish people exploring contemporary issues and Jewish cultural identity.",
+      "display_title": "People Jew Wanna Know",
+      "blurb": "Margarita interviews interesting Jewish guests and historical figures shaping Jewish culture and identity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1518409554": {
       "topics": [
@@ -83158,10 +83339,33 @@
     },
     "1518687797": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily readings and commentary on Hindu spiritual teachings and wisdom from contemporary saint.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1518750946": {
       "topics": [
@@ -83184,14 +83388,48 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beatles superfan ranks entire catalog discussing musical greatness and cultural significance.",
+      "display_title": "Ranking The Beatles",
+      "blurb": "Jonathan ranks Beatles songs with guests, exploring what makes each track significant in music history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1518818543": {
       "topics": [
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three-times-weekly coverage of women's soccer including NWSL, national team, and international play.",
+      "display_title": "Full Time: A show about women's soccer",
+      "blurb": "The Athletic's dedicated podcast covers US women's soccer with in-depth analysis and insider perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1518860114": {
       "topics": [
@@ -83225,10 +83463,30 @@
     },
     "1518903701": {
       "topics": [
-        "nature"
+        "nature/animal-cognition",
+        "paranormal"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.7
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Scientific examination of undiscovered species claims with emphasis on Sasquatch and cryptozoology.",
+      "display_title": "Sasquatch Tracks",
+      "blurb": "Scientific investigation of claimed large undiscovered species, focusing on Sasquatch and cryptozoology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1518908403": {
       "topics": [
@@ -83239,10 +83497,33 @@
     },
     "1518914711": {
       "topics": [
-        "travel"
+        "travel",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep exploration of world geography, culture, and human stories from unconventional travel perspectives.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1519009936": {
       "topics": [
@@ -83329,10 +83610,35 @@
     },
     "1519377425": {
       "topics": [
-        "culture/design"
+        "architecture",
+        "engineering",
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "architecture",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Architecture and engineering practice with AI, digital tools, and firm leadership conversations.",
+      "display_title": "TRXL",
+      "blurb": "Long-running conversations on technology, architecture, AI, and how the profession is transforming.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1519453887": {
       "topics": [
@@ -83351,10 +83657,30 @@
     },
     "1519458581": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family podcast exploring African American historical figures and achievements outside classroom.",
+      "display_title": "Hey Black Child: The Podcast",
+      "blurb": "The Ausmer Family discusses lesser-known African American historical figures and their accomplishments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1519529995": {
       "topics": [
@@ -83369,7 +83695,22 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Verse-by-verse study of Hindu sacred text with philosophical analysis and spiritual commentary.",
+      "display_title": "Vivekachudamani Archives - Arsha Bodha Center",
+      "blurb": "Detailed verse-by-verse study of Hindu philosophical text with insights on spiritual knowledge.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1519539469": {
       "topics": [
@@ -83403,10 +83744,30 @@
     },
     "1519611185": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast on chemistry fundamentals covering stoichiometry and mole concept.",
+      "display_title": "Stoichiometry and mole concept",
+      "blurb": "Educational overview of stoichiometry and mole concept in chemistry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1519637634": {
       "topics": [
@@ -83460,7 +83821,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two Scottish/Welsh rugby fans discuss current fixtures and league performance.",
+      "display_title": "Dragon Thistle Rugby",
+      "blurb": "Mike and Sean discuss Scottish and Welsh rugby with humor and weekly match analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1519830825": {
       "topics": [
@@ -83486,11 +83862,30 @@
     },
     "1519878239": {
       "topics": [
-        "news",
-        "business"
+        "economics/markets",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily 5-minute recaps of US market-moving news and economic data from financial data provider.",
+      "display_title": "FactSet Evening Market Recap",
+      "blurb": "FactSet's 5-minute daily market recap covering important economic news and stock market activity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1519896831": {
       "topics": [
@@ -83528,14 +83923,49 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert fantasy football analysis and draft strategy from YouTube content creator.",
+      "display_title": "Ron Stewart on Youtube Podcast",
+      "blurb": "Fantasy football draft rankings and analysis from YouTube content creator Ron Stewart.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1520080073": {
       "topics": [
-        "music"
+        "music",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hip hop radio personality interviews guests on music, culture, and entertainment.",
+      "display_title": "The Bootleg Kev Podcast",
+      "blurb": "Bootleg Kev interviews guests on hip hop, music, and entertainment topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1520102889": {
       "topics": [
@@ -83553,10 +83983,30 @@
     },
     "1520121119": {
       "topics": [
-        "aviation"
+        "aviation",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviator storyteller chronicles aerial adventures and American culture from his small airplane.",
+      "display_title": "Greg Brown: Cockpit Adventures from the Flying Carpet",
+      "blurb": "Aviator Greg Brown shares stories of aerial adventures and American landscapes from his airplane.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1520125042": {
       "topics": [
@@ -83765,10 +84215,30 @@
     },
     "1520763407": {
       "topics": [
-        "fiction/drama"
+        "fiction/drama",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic radio drama series from 1974-1982 featuring macabre mystery stories with host commentary.",
+      "display_title": "CBS Radio Mystery Theater",
+      "blurb": "Classic 1970s radio drama series featuring suspenseful mystery stories with host narration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1520780199": {
       "topics": [
@@ -83992,11 +84462,25 @@
     },
     "1521478601": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Two hosts review adult films with historical analysis and humorous commentary.",
+      "display_title": "The Raincoat Report",
+      "blurb": "Two amateur historians discuss adult films as cultural artifacts with analysis and humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1521483126": {
       "topics": [
@@ -84074,7 +84558,22 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided Hindu meditation practices from Swami with advanced spiritual techniques.",
+      "display_title": "Guided Meditations Archives - Arsha Bodha Center",
+      "blurb": "Guided Hindu meditations with spiritual techniques from Swami Tadatmananda.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1521544183": {
       "topics": [
@@ -84193,7 +84692,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "World rugby commentator and international coach interview rugby legends and players.",
+      "display_title": "Rugby Hive",
+      "blurb": "Dallen Stanford and Robin MacDowell interview legendary rugby players and coaches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1521758802": {
       "topics": [
@@ -84223,7 +84737,30 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "In-depth music biographies exploring lives and careers of renowned musicians.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1521863834": {
       "topics": [
@@ -84243,10 +84780,33 @@
     },
     "1521872795": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Exploration of self-knowledge through natural law, alchemy, and mystical traditions.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1521874291": {
       "topics": [
@@ -84390,10 +84950,29 @@
     "1522215911": {
       "topics": [
         "nature/earth-science",
-        "science"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sustainability and environmental innovation interviews with industry leaders and changemakers.",
+      "display_title": "The Environmental Transformation Podcast with Sean Grady",
+      "blurb": "Sean Grady interviews environmental innovation leaders on sustainability, policy, and solutions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1522222281": {
       "topics": [
@@ -84421,11 +85000,25 @@
     },
     "1522302143": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relaxing French language learning through storytelling and conversational content.",
+      "display_title": "French Through Stories",
+      "blurb": "French language learning delivered through engaging personal stories and cultural narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1522325262": {
       "topics": [
@@ -84556,7 +85149,22 @@
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Veteran marketers share proven strategies for building and scaling ecommerce brands.",
+      "display_title": "The Smart Marketer Podcast",
+      "blurb": "Molly Pittman, Ezra Firestone, and John Grimshaw share marketing strategies and business wisdom.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1522707363": {
       "topics": [
@@ -84738,10 +85346,29 @@
     "1523129735": {
       "topics": [
         "education/language-learning",
-        "linguistics/language"
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversational Spanish learning focused on Dominican dialect and Caribbean culture.",
+      "display_title": "Dominican Spanish 101",
+      "blurb": "Tamara and Kesia teach authentic Dominican Spanish through conversations on culture and tradition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1523174914": {
       "topics": [
@@ -84880,10 +85507,30 @@
     },
     "1523353907": {
       "topics": [
-        "sports/football"
+        "sports/football",
+        "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fox Sports host provides bold opinions on NFL, sports betting, and daily sports news.",
+      "display_title": "Straight Fire with Jason McIntyre",
+      "blurb": "Jason McIntyre delivers daily sports opinions, betting analysis, and insider commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:47.606Z"
     },
     "1523360049": {
       "topics": [
@@ -84924,10 +85571,30 @@
     },
     "1523505575": {
       "topics": [
-        "craft"
+        "craft",
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about free software, open source culture, and making things together.",
+      "display_title": "FOSS and Crafts",
+      "blurb": "Discussions on free software, open culture, and hands-on making in the digital age.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1523507379": {
       "topics": [
@@ -84938,11 +85605,30 @@
     },
     "1523513153": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "history",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two hosts explore 1980s culture, politics, and social movements through entertainment.",
+      "display_title": "Time Barbarians of the 1980's in Time",
+      "blurb": "Ty Fighter and T-Bone journey through 1980s culture, politics, and social history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1523543528": {
       "topics": [
@@ -85028,10 +85714,30 @@
     },
     "1523742299": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "craft/photography"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth interviews with photographers, curators, and photobook publishers on artistic practice.",
+      "display_title": "PhotoWork with Sasha Wolf - Photography Podcast",
+      "blurb": "Sasha interviews photographers and curators on artistic practice, photobooks, and fine art.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1523755658": {
       "topics": [
@@ -85239,10 +85945,30 @@
     },
     "1524216377": {
       "topics": [
-        "nature"
+        "nature",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with zoo and aquarium professionals about animal care and conservation.",
+      "display_title": "Rossifari Podcast - Zoos, Aquariums, and Animal Conservation",
+      "blurb": "Interviews with zoo and aquarium professionals on animal care, species conservation, and husbandry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1524246467": {
       "topics": [
@@ -85318,7 +86044,22 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dynasty fantasy football discussion with analysis, evaluation, and unconventional strategic insights.",
+      "display_title": "Dynasty Underdog",
+      "blurb": "Jake and Billy discuss dynasty fantasy football strategy, rookie evaluation, and league dynamics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1524485241": {
       "topics": [
@@ -85358,10 +86099,33 @@
     },
     "1524566675": {
       "topics": [
-        "health/alternative"
+        "health/alternative",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Yoga instruction and discussion on practice philosophy and teacher training.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1524662392": {
       "topics": [
@@ -85401,7 +86165,22 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly golf DFS strategy and betting picks for DraftKings and FanDuel.",
+      "display_title": "Stokastic PGA DFS",
+      "blurb": "Golf daily fantasy sports analysis with strategy, picks, and betting recommendations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1524757694": {
       "topics": [
@@ -85498,10 +86277,25 @@
     },
     "1525024019": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Movie podcast with guest creating themed lists and discussing film picks.",
+      "display_title": "Force Five",
+      "blurb": "Jason hosts movie conversations where guests create and discuss film-themed top-five lists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1525050646": {
       "topics": [
@@ -85569,11 +86363,30 @@
     },
     "1525228139": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "comedy/casual-hangs",
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Group of guys have casual conversations about life topics while in a pool.",
+      "display_title": "Pool Boys",
+      "blurb": "Boys discuss life, humor, and banter while hanging out in a pool.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1525233430": {
       "topics": [
@@ -85684,17 +86497,57 @@
     },
     "1525381787": {
       "topics": [
-        "science/chemistry"
+        "science",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with STEM leaders on career acceleration and scientific research.",
+      "display_title": "The STEAM Success Blueprint",
+      "blurb": "Interviews with MIT leaders, biotech pioneers, and researchers on STEM career strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1525390103": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dairy goat breeding, showing, and management advice from experienced enthusiasts.",
+      "display_title": "Ringside: An American Dairy Goat Podcast",
+      "blurb": "Jon and Danielle discuss dairy goat breeding, showing, management, and production.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-df65f813",
+      "classified_at": "2026-08-04T01:00:32.780Z"
     },
     "1525402495": {
       "topics": [
