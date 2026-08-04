@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-04T08:12:53.965Z",
+  "built_at": "2026-08-04T16:11:55.199Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-04-3574b269",
+    "last_batch_id": "fresh-2026-08-04-a012248f",
     "last_batch_tier": 1
   },
   "entries": {
@@ -16747,10 +16747,40 @@
     },
     "785274726": {
       "topics": [
-        "sports/hockey"
+        "engineering",
+        "engineering/energy-fusion",
+        "history",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.23
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.23
+        },
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Engineering with supporting topics.",
+      "display_title": "Mayor's Manor",
+      "blurb": "NHL hockey, trade rumors, and interviews Follow @mayorNHL Per the annual summer tradition at Sirius XM NHL Network Radio,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "786360375": {
       "topics": [
@@ -81991,10 +82021,30 @@
     },
     "1515943362": {
       "topics": [
-        "sports/soccer"
+        "history",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "The Brazilian Shirt Name Podcast",
+      "blurb": "Dotun Adebayo and Tim Vickery chat about football, music and culture. Tim Vickery takes a break from his holiday to discuss FIFA's plan to get Private.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1515962134": {
       "topics": [
@@ -82070,10 +82120,40 @@
     },
     "1516051176": {
       "topics": [
-        "tv-film/reviews"
+        "history",
+        "craft",
+        "comedy",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "The ABINGERS - An MCU Podcast",
+      "blurb": "A fun place for Marvel Studios fans to come together for the latest news and reviews for the Marvel Cinematic Universe. We binge all MCU content! We b Send us.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1516068172": {
       "topics": [
@@ -82126,10 +82206,30 @@
     },
     "1516182984": {
       "topics": [
-        "sports/rugby"
+        "comedy",
+        "espionage"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.23
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Comedy with supporting topics.",
+      "display_title": "The RFD Show",
+      "blurb": "Welcome to the RFD show (Rugby For Days) We are Rugby enthusiast that discusses rugby rules, tactics, teams, referees and much more! If you are a pass Hi there Rugby.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1516194847": {
       "topics": [
@@ -82149,10 +82249,25 @@
     },
     "1516219302": {
       "topics": [
-        "comedy/stand-up"
+        "espionage"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "espionage",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Espionage.",
+      "display_title": "Raccoon Tweeties podcast",
+      "blurb": "This is just my twitter @cooneyordie in podcast form. NEW REDDIT https://www.reddit.com/r/raccoon_tweeties JOIN OUR PATREON! https://w.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1516259107": {
       "topics": [
@@ -82313,10 +82428,40 @@
     },
     "1516680750": {
       "topics": [
-        "culture/design"
+        "history",
+        "craft",
+        "business/startups",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "The Institute of Black Imagination.",
+      "blurb": "Welcome to The Institute of Black Imagination hosted by artist, writer, and designer Dario Calmese. Each week we bring you conversations from The Pool E101: Answering The Call with Rev..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1516681509": {
       "topics": [
@@ -82366,18 +82511,67 @@
     },
     "1516838160": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "craft",
+        "comedy",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Craft & making with supporting topics.",
+      "display_title": "A Story a Day ! Keep Your Worries",
+      "blurb": "Vaishu kutty story ,rj__vaishnavi. This presents a cool, true based story , informative ,entertaining,comical stories,series,cinema stories etc..which Where does God truly reside? In this episode, we ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1516849884": {
       "topics": [
-        "fiction/sci-fi"
+        "history",
+        "craft",
+        "aviation/accidents"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "aviation/accidents",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "Cuentos y Leyendas de Honduras",
+      "blurb": "Cuentos y leyendas de Honduras nació como un programa radial creado por Jorge Montenegro a la edad de 24 años, fue transmitido por primera vez el 9 de Cuatro hombres.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1516852358": {
       "topics": [
@@ -82412,11 +82606,40 @@
     },
     "1517073114": {
       "topics": [
-        "space",
-        "science"
+        "science",
+        "history",
+        "comedy/casual-hangs",
+        "architecture/infrastructure"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.23
+        },
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        },
+        {
+          "node": "architecture/infrastructure",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science with supporting topics.",
+      "display_title": "Quantum Entanglement or Just Coincidence?",
+      "blurb": "I talk about the universe and how it affects humanity. Sometimes it’s scientific and sometimes it’s mythological. Edited by Annelise Hanson This is the final episode of the series. It.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1517074983": {
       "topics": [
@@ -82490,10 +82713,38 @@
     },
     "1517151870": {
       "topics": [
-        "comedy/interviews"
+        "science",
+        "craft/diy-home",
+        "espionage"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.23
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science with supporting topics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1517156345": {
       "topics": [
@@ -82846,11 +83097,40 @@
     },
     "1518598548": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "engineering/energy-fusion",
+        "science",
+        "history",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.23
+        },
+        {
+          "node": "science",
+          "confidence": 0.23
+        },
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fusion & energy systems with supporting topics.",
+      "display_title": "The Resilient Retail Game Plan - retail insights,",
+      "blurb": "Welcome to the Resilient Retail Game Plan - giving you retail insights, retail trends updates and best practices for any retailer, from Shopify stores \"It's with a heavy heart that.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1518622561": {
       "topics": [
@@ -82878,10 +83158,25 @@
     },
     "1518663810": {
       "topics": [
-        "comedy/stand-up"
+        "architecture/infrastructure"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "architecture/infrastructure",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Infrastructure.",
+      "display_title": "DS Sycho",
+      "blurb": "Shyco ma #¥handai xu ma.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1518666256": {
       "topics": [
@@ -83091,10 +83386,30 @@
     },
     "1519341432": {
       "topics": [
-        "comedy/stand-up"
+        "history",
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "Boo's Your Daddy!?!",
+      "blurb": "A unscripted comedy podcast about embarrassing life stories and trivia about stuff you should know featuring Alan Snyder Ep344 BYD LIVE🎙️goes south of the border, Jerk's Quirks, Whatcha Watchin', AIT",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1519377425": {
       "topics": [
@@ -83203,11 +83518,40 @@
     },
     "1519637634": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "engineering",
+        "history",
+        "craft",
+        "architecture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.23
+        },
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Engineering with supporting topics.",
+      "display_title": "On The Top Coaching Podcast",
+      "blurb": "Exploring new waves in the sport of swimming! Today we sat down with Abbie Fish, creator and head coach of swimlikeafish.org,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1519667776": {
       "topics": [
@@ -83329,11 +83673,40 @@
     },
     "1520028468": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "engineering",
+        "engineering/energy-fusion",
+        "science",
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.23
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.23
+        },
+        {
+          "node": "science",
+          "confidence": 0.23
+        },
+        {
+          "node": "history",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Engineering with supporting topics.",
+      "display_title": "Provider's Edge",
+      "blurb": "The healthcare industry is in a state of flux, with new technologies, regulations, and challenges emerging all the time. Healthcare entrepreneurs and In this episode of Provider's Edge, I sat.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1520069029": {
       "topics": [
@@ -83365,10 +83738,35 @@
     },
     "1520106150": {
       "topics": [
-        "food"
+        "history",
+        "craft",
+        "business/startups"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "Where Wine Takes You - A Paso Wine",
+      "blurb": "Keeping it real with owners, winemakers, growers and personalities as they discuss the places and wines that have shaped the Paso Robles Wine Region 🍇 Where Wine Takes You –.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1520121119": {
       "topics": [
@@ -83447,10 +83845,40 @@
     },
     "1520232516": {
       "topics": [
-        "nature/pets"
+        "science",
+        "craft",
+        "comedy/casual-hangs",
+        "architecture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science with supporting topics.",
+      "display_title": "The Good Dog Pod",
+      "blurb": "Good Dog is on a mission to build a better world for our dogs and the people who love them by educating the public and advocating for dog breeders. Th.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1520255159": {
       "topics": [
@@ -83545,11 +83973,40 @@
     },
     "1520464284": {
       "topics": [
-        "news",
-        "business"
+        "history",
+        "craft",
+        "comedy/casual-hangs",
+        "espionage"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "The Florida Roundup",
+      "blurb": "Each week, The Florida Roundup brings us up to speed on all things Florida- be it politics, the environment, the economy, culture and more. Join host This week on The.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1520478046": {
       "topics": [
@@ -83560,10 +84017,30 @@
     },
     "1520478402": {
       "topics": [
-        "true-crime"
+        "history",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "Deep Cover",
+      "blurb": "Deep Cover is a show about people who lead double lives. Pulitzer Prize-winning journalist Jake Halpern reveals webs of deception and dark underworlds If you liked this past season of.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1520509804": {
       "topics": [
@@ -83638,17 +84115,67 @@
     },
     "1520894322": {
       "topics": [
-        "music"
+        "history",
+        "business/startups",
+        "comedy",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "GET REAL",
+      "blurb": "📲 Download DIVE Studios' daily wellness app (for FREE) at www.getmindset.com GET REAL is BACK with another season! Please welcome our fantastic four It has come to an end!! Season.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1521010620": {
       "topics": [
-        "science/physics"
+        "engineering/energy-fusion",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fusion & energy systems with supporting topics.",
+      "display_title": "Quantum to Infinity",
+      "blurb": "Your one-stop shop for all quantum phenomenon explained as quickly as possible. In this podcast, we will go over the various phenomenon that governs t Hello! In this episode of.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1521036457": {
       "topics": [
@@ -83718,10 +84245,25 @@
     },
     "1521107610": {
       "topics": [
-        "automotive"
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History.",
+      "display_title": "Respect The Drive",
+      "blurb": "Respect The Drive is an Automotive themed podcast Hosted by Tedward of Tedward Drives on YouTube Visit Garage 42 https://www.garagefortytwo.com/ Support on Patreon https://www.p.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1521108629": {
       "topics": [
@@ -83756,10 +84298,43 @@
     },
     "1521180246": {
       "topics": [
-        "nature"
+        "engineering",
+        "engineering/energy-fusion",
+        "science",
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.23
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.23
+        },
+        {
+          "node": "science",
+          "confidence": 0.23
+        },
+        {
+          "node": "history",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Engineering with supporting topics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1521247617": {
       "topics": [
@@ -83810,10 +84385,35 @@
     },
     "1521384978": {
       "topics": [
-        "religion/buddhism"
+        "history",
+        "comedy/casual-hangs",
+        "architecture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "Insight Meditation Society - Retreat Center: dharm",
+      "blurb": "IMS’s Retreat Center first opened its doors in 1976. It offers a yearly schedule of meditation courses, lasting from a weekend to three months. Most r (Insight Meditation Society -.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1521398745": {
       "topics": [
@@ -83985,17 +84585,67 @@
     },
     "1521609282": {
       "topics": [
-        "comedy/casual-hangs"
+        "history",
+        "comedy/casual-hangs",
+        "espionage"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "Aadu Magadu Ra Bujji - Red FM Telugu",
+      "blurb": "He was born and raised with expectations. Often identified as a son, brother & husband. He is struggling for an identity. Dive into the life of the MA Adavallani ardam.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1521619380": {
       "topics": [
-        "true-crime"
+        "history",
+        "craft/diy-home",
+        "espionage"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.23
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "Hidden True Crime",
+      "blurb": "Welcome to Hidden True Crime. Hosted by journalist Lauren Matthias and forensic psychologist Dr. John Matthias, Hidden True Crime  the hidden Day 5 of the Lindsay Clancy murder trial.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1521632905": {
       "topics": [
@@ -84131,12 +84781,40 @@
     },
     "1521937224": {
       "topics": [
-        "medicine/biology",
         "science",
-        "nature"
+        "history",
+        "business",
+        "architecture/infrastructure"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.23
+        },
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "business",
+          "confidence": 0.23
+        },
+        {
+          "node": "architecture/infrastructure",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science with supporting topics.",
+      "display_title": "The Clinical Research Circle",
+      "blurb": "Where science, clinical research, and business intersect for clinicians Q&A Session With Travis Mickle, \"The People's CEO\" on KMPH Stock and Upcoming Ev.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1521964254": {
       "topics": [
@@ -84171,33 +84849,136 @@
     },
     "1522058082": {
       "topics": [
-        "news/daily"
+        "history",
+        "craft",
+        "craft/instrument-making",
+        "aviation/accidents"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft/instrument-making",
+          "confidence": 0.23
+        },
+        {
+          "node": "aviation/accidents",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "Giorno per giorno",
+      "blurb": "Il podcast quotidiano sui fatti più importanti per orientarsi nel mondo, con le voci dei giornalisti del Corriere della Sera. Monica Ricci Sargentini parla delle tensioni fra Roma e Madrid.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1522062006": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "history",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "Italiano Bello",
+      "blurb": "Un podcast per imparare l'italiano, in italiano. Io sono Irene Regini, e nel mio podcast \"Italiano Bello\" troverai tanti episodi in italiano semplice. Ti do il benvenuto su Italiano bello.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1522069734": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "science",
+        "history",
+        "craft",
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.23
+        },
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science with supporting topics.",
+      "display_title": "Food Freedom and Fertility Podcast",
+      "blurb": "A fun, honest conversation about food, fertility, and women's health. The Food Freedom Fertility podcast started when Caitlin's mom overheard a conver Welcome to a very special episode of the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1522076592": {
       "topics": [
-        "medicine"
+        "engineering/energy-fusion",
+        "science",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.23
+        },
+        {
+          "node": "science",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fusion & energy systems with supporting topics.",
+      "display_title": "Nursing School Week by Week",
+      "blurb": "Get the inside scoop on nursing school from someone who's been through it! Join nursing student Melanie each week for expert tips on studying smarter, Send a text Mastering the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1522122781": {
       "topics": [
@@ -84216,10 +84997,40 @@
     },
     "1522154616": {
       "topics": [
-        "science/chemistry"
+        "engineering",
+        "engineering/precision-mfg",
+        "science/materials",
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.23
+        },
+        {
+          "node": "engineering/precision-mfg",
+          "confidence": 0.23
+        },
+        {
+          "node": "science/materials",
+          "confidence": 0.23
+        },
+        {
+          "node": "history",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Engineering with supporting topics.",
+      "display_title": "CMC Live - Chemistry, Manufacturing & Controls",
+      "blurb": "FDA CMC regulations and guidance simplified through examination, real life experiences and risk-based advice. This podcast hopes to educate sponsors a What We Covered 00:55 – Ed, Meranda and Brian.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1522162686": {
       "topics": [
@@ -84295,10 +85106,40 @@
     },
     "1522325262": {
       "topics": [
-        "sports/golf"
+        "craft",
+        "business",
+        "comedy/casual-hangs",
+        "espionage"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "business",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Craft & making with supporting topics.",
+      "display_title": "The Loop",
+      "blurb": "This is The Loop, a refreshing mix of everything you love to talk about around golf, with the only rule that you don’t take yourself or the game too s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1522343168": {
       "topics": [
@@ -84373,11 +85214,35 @@
     },
     "1522516308": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "history",
+        "craft",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History with supporting topics.",
+      "display_title": "Learn English Vocabulary",
+      "blurb": "Learn English Vocabulary is a short format podcast that teaches English vocabulary! To read the transcript and complete interactive activities, visit In this episode, Jack talks about A2 verbs that.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1522530009": {
       "topics": [
@@ -84478,10 +85343,40 @@
     },
     "1522882428": {
       "topics": [
-        "nature/pets"
+        "engineering/energy-fusion",
+        "science",
+        "history",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.23
+        },
+        {
+          "node": "science",
+          "confidence": 0.23
+        },
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fusion & energy systems with supporting topics.",
+      "display_title": "In The Barn",
+      "blurb": "Welcome to our little corner in the podcast world. Where we have real conversations about real topics that matter to you and your horse. Join us along Oliver Townend, currently.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1522898719": {
       "topics": [
@@ -84515,10 +85410,40 @@
     },
     "1522936362": {
       "topics": [
-        "kids-family/education"
+        "engineering",
+        "engineering/energy-fusion",
+        "history",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.23
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.23
+        },
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Engineering with supporting topics.",
+      "display_title": "The Mystery Kids Podcast",
+      "blurb": "A podcast about the weird and unexplained! Think Unsolved Mysteries for kids! What if one of the world&#39;s strangest creatures was hiding beneath the ice of.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1522960417": {
       "topics": [
@@ -84544,11 +85469,40 @@
     },
     "1523063562": {
       "topics": [
-        "space",
-        "science"
+        "engineering/energy-fusion",
+        "history",
+        "craft",
+        "business/startups"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.23
+        },
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fusion & energy systems with supporting topics.",
+      "display_title": "The Live Launch Podcast",
+      "blurb": "A couple blue collar guys tackle rockets, space, and beyond by asking the professionals how they do what it is they do. Instead of a Multi Planetary Species what about.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1523094649": {
       "topics": [
@@ -84625,10 +85579,40 @@
     },
     "1523226942": {
       "topics": [
-        "culture/fashion"
+        "science",
+        "history",
+        "craft",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.23
+        },
+        {
+          "node": "history",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science with supporting topics.",
+      "display_title": "Clotheshorse with Amanda Lee McCarty",
+      "blurb": "Host Amanda Lee McCarty (she/they) decodes and demystifies the fashion and retail industries, and takes on topics like consumerism, workers rights, pe In a world of greenwashing, wall-to-wall podcast ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1523229361": {
       "topics": [
@@ -84699,10 +85683,25 @@
     },
     "1523318778": {
       "topics": [
-        "math"
+        "espionage"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "espionage",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Espionage.",
+      "display_title": "Carl Friedrich Gauss",
+      "blurb": "Mathematician Mathematician.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1523332645": {
       "topics": [
@@ -84714,10 +85713,40 @@
     },
     "1523341200": {
       "topics": [
-        "kids-family/education"
+        "craft",
+        "craft/diy-home",
+        "business/startups",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.23
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Craft & making with supporting topics.",
+      "display_title": "Akili and Me",
+      "blurb": "Akili is a curious 4-year-old who lives with her family at the foot of Mt. Kilimanjaro, in Tanzania. She has a secret: every night when she falls asle We've got.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1523342002": {
       "topics": [
@@ -84735,10 +85764,40 @@
     },
     "1523345346": {
       "topics": [
-        "sports/fantasy"
+        "engineering",
+        "engineering/precision-mfg",
+        "craft",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.23
+        },
+        {
+          "node": "engineering/precision-mfg",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Engineering with supporting topics.",
+      "display_title": "Fantasy Football Almanac",
+      "blurb": "The Fantasy Football Almanac is the best Fantasy Football Strategy Podcast around. The Fantasy Football Almanac's author, Sean Ryan, hosts with Guru F In this episode, I unveil my 2026.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1523350670": {
       "topics": [
@@ -84942,10 +86001,40 @@
     },
     "1523705334": {
       "topics": [
-        "craft"
+        "science",
+        "craft",
+        "craft/diy-home",
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft",
+          "confidence": 0.23
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.23
+        },
+        {
+          "node": "business",
+          "confidence": 0.23
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science with supporting topics.",
+      "display_title": "Sloydcast",
+      "blurb": "Conversations with greenwoodworkers, spoon carvers, bowl turners, tool makers and craftspeople from around the world. Enjoy this chat with blacksmith and tool maker, Adam Ashworth. He shares his sto.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-a012248f",
+      "classified_at": "2026-08-04T16:11:55.199Z"
     },
     "1523712290": {
       "topics": [
