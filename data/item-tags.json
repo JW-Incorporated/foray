@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-03T11:45:47.777Z",
+  "built_at": "2026-08-04T11:43:38.221Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -10348,6 +10348,199 @@
       "identity",
       "family",
       "memoir"
+    ],
+    "stuff-you-should-know--beans-and-rice-feeds-the-world": [
+      "food",
+      "food-history",
+      "agriculture",
+      "nutrition",
+      "explainer",
+      "beginner-friendly",
+      "stuff-you-should-know"
+    ],
+    "mtdcnc-podcast--concorde-cnc-controls-and-the-real": [
+      "cnc",
+      "aerospace",
+      "engineering",
+      "manufacturing",
+      "machining",
+      "aviation",
+      "interview"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3395": [
+      "history-of-science",
+      "physics",
+      "medicine",
+      "science-history",
+      "bite-sized",
+      "explainer"
+    ],
+    "this-week-in-startups--how-bespoke-faked-ai-until-it": [
+      "startups",
+      "ai",
+      "founders",
+      "customer-service",
+      "travel",
+      "business",
+      "interview"
+    ],
+    "this-podcast-will-kill-you--ep-218-the-lowdown-on-statins": [
+      "medicine",
+      "cholesterol",
+      "cardiology",
+      "pharmacology",
+      "public-health",
+      "explainer",
+      "evidence-based"
+    ],
+    "switched-on-pop--iv-take-it-to-the-bridge": [
+      "music-theory",
+      "songwriting",
+      "music-analysis",
+      "pop-music",
+      "interview",
+      "composition"
+    ],
+    "99-percent-invisible--the-borrowed-nature-of-biomimicry": [
+      "design",
+      "biomimicry",
+      "biology",
+      "engineering",
+      "architecture",
+      "storytelling"
+    ],
+    "advent-of-computing--live-from-vcf-west-wait-is": [
+      "computing-history",
+      "retrocomputing",
+      "unix",
+      "operating-systems",
+      "software",
+      "live",
+      "storytelling"
+    ],
+    "software-engineering-daily--ai-powered-threats-to-the-software": [
+      "cybersecurity",
+      "ai",
+      "software",
+      "supply-chain",
+      "open-source",
+      "developer-tools",
+      "tech-industry"
+    ],
+    "hidden-brain--making-the-most-of-your-mistakes": [
+      "psychology",
+      "decision-making",
+      "behavior-change",
+      "personal-finance",
+      "interview",
+      "self-improvement"
+    ],
+    "the-race-f1-podcast--what-next-for-aston-martin-alonso": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "aston-martin",
+      "honda",
+      "technical",
+      "explainer"
+    ],
+    "masters-of-scale--the-new-rules-of-brand-building": [
+      "brands",
+      "marketing",
+      "business",
+      "ceo",
+      "culture",
+      "interview",
+      "founders"
+    ],
+    "we-have-ways-of-making-you-talk--operation-barbarossa-winning-to-death-part": [
+      "world-war-2",
+      "eastern-front",
+      "soviet-union",
+      "military-history",
+      "operation-barbarossa",
+      "storytelling"
+    ],
+    "unauthorized-history-pacific-war--the-battle-of-the-pockets-and": [
+      "world-war-2",
+      "pacific-war",
+      "bataan",
+      "philippines",
+      "military-history",
+      "storytelling"
+    ],
+    "history-of-wwii-podcast--episode-643-battle-of-bloody-ridge": [
+      "world-war-2",
+      "pacific-war",
+      "guadalcanal",
+      "combat",
+      "military-history",
+      "storytelling"
+    ],
+    "the-archaeology-show--geoglyphs-in-brazil-a-deadly-polish": [
+      "archaeology",
+      "history",
+      "brazil",
+      "poland",
+      "pompeii",
+      "research",
+      "explainer"
+    ],
+    "mwa-woodworking--mwa618-wilbur-pan-at-handworks": [
+      "woodworking",
+      "hand-tools",
+      "craftsmanship",
+      "handworks",
+      "interview",
+      "tools"
+    ],
+    "sigma-nutrition-radio--615-why-processing-doesn-t-determine": [
+      "nutrition",
+      "nutrition-science",
+      "evidence-based",
+      "diet",
+      "ultra-processed-food",
+      "research",
+      "interview"
+    ],
+    "good-inside-dr-becky--when-depression-doesn-t-look-like": [
+      "mental-health",
+      "depression",
+      "fatherhood",
+      "parenting",
+      "psychology",
+      "interview"
+    ],
+    "handsome--michael-urie-asks-about-encounters-with": [
+      "comedy",
+      "storytelling",
+      "friendship",
+      "hang",
+      "interview",
+      "handsome"
+    ],
+    "kill-tony--779-adam-ray": [
+      "comedy",
+      "stand-up",
+      "open-mic",
+      "live-show",
+      "roast",
+      "kill-tony"
+    ],
+    "death-sex-money--i-have-a-crush-on-my": [
+      "relationships",
+      "therapy",
+      "psychology",
+      "personal-journals",
+      "interview"
+    ],
+    "dissect--chromakopia-last-song-standing-e6": [
+      "music-analysis",
+      "music-theory",
+      "hip-hop",
+      "album",
+      "cole-cuchna",
+      "interview"
     ]
   }
 }
