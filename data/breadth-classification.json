@@ -35689,13 +35689,1474 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-03-b0c3701e",
       "classified_at": "2026-08-03T16:50:51.435Z"
+    },
+    "1532759582": {
+      "topics": [
+        "science/chemistry"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on science based on content and signal.",
+      "display_title": "La química y los huracanes",
+      "blurb": "En este episodio estaremos hablando sobre las propiedades químicas que influyen en la formación de un huracán",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1533072212": {
+      "topics": [
+        "kids-family/stories",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on kids-family based on content and signal.",
+      "display_title": "Super Great Kids' Stories",
+      "blurb": "Supergreat Kids' Stories is a collection of fun tales to make you laugh and cry, told by some of the best storytellers f…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1533088916": {
+      "topics": [
+        "science/chemistry",
+        "health/fitness",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on science based on content and signal.",
+      "display_title": "Hit Play Not Pause",
+      "blurb": "Perimenopause and menopause hit active women differently.  We have a different lifestyle and different goals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1533115958": {
+      "topics": [
+        "kids-family/stories",
+        "computing",
+        "personal-journals",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on kids-family based on content and signal.",
+      "display_title": "Me, Myself, and AI",
+      "blurb": "Discover what separates AI success from AI hype.  In this series from MIT Sloan Management Review, AI winners share thei…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1533428270": {
+      "topics": [
+        "kids-family/stories",
+        "personal-journals",
+        "culture",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on kids-family based on content and signal.",
+      "display_title": "The Thomas FreeMe Show: From Prison to Prosperity!",
+      "blurb": "Hello, Im Thomas FreeMe and this is The Thomas FreeMe Show.  Spending most of my life in and out of prison I finally cam…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1533481826": {
+      "topics": [
+        "kids-family/stories",
+        "fiction",
+        "religion/christianity",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on kids-family based on content and signal.",
+      "display_title": "Snuggle Up: Bedtime Bible Stories",
+      "blurb": "Bedtime Bible stories and meditations for children ages 3 - 10.  Together we wonder at the love of God.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1533560948": {
+      "topics": [
+        "kids-family/stories",
+        "news/politics",
+        "religion/christianity",
+        "religion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focuses on kids-family based on content and signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1533780254": {
+      "topics": [
+        "tv-film/after-shows",
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        },
+        {
+          "node": "travel",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focuses on tv-film based on content and signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1534217240": {
+      "topics": [
+        "society/law",
+        "sports/basketball",
+        "sports/fantasy",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on society based on content and signal.",
+      "display_title": "Digging a Hole: The Legal Theory Podcast",
+      "blurb": "Yale Law School professors Samuel Moyn and David Schleicher interview legal scholars and dig into the debates heard insi…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1534240136": {
+      "topics": [
+        "kids-family/stories",
+        "sports/basketball",
+        "sports",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focuses on kids-family based on content and signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1534272032": {
+      "topics": [
+        "philosophy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on philosophy based on content and signal.",
+      "display_title": "Philosophie pour tous",
+      "blurb": "Titulaire d'un master en philosophie, Charles Robin a été professeur particulier pendant plus de dix ans.  En 2018, il a…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1534412600": {
+      "topics": [
+        "computing",
+        "fiction",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on computing based on content and signal.",
+      "display_title": "Passages, le podcast d'histoires vraies de Louie Media",
+      "blurb": "Quand le réel dépasse la fiction.  Que se passe-t-il quand on retrouve la fille qu’on a abandonnée 26 ans plus tôt ?",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1534427618": {
+      "topics": [
+        "kids-family/stories",
+        "true-crime",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focuses on kids-family based on content and signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1534531130": {
+      "topics": [
+        "kids-family/parenting",
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.88
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focuses on kids-family based on content and signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 15w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1534591370": {
+      "topics": [
+        "kids-family/stories",
+        "tv-film/after-shows",
+        "sports/basketball",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on kids-family based on content and signal.",
+      "display_title": "UNDISTRACTED With Brittany Packnett Cunningham",
+      "blurb": "Want a better world?  And a group chat to help you get there?",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1534809194": {
+      "topics": [
+        "tv-film/reviews",
+        "craft/diy-home",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on tv-film based on content and signal.",
+      "display_title": "Killer Klowns From Outer Kast",
+      "blurb": "An impromptu podcast about the greatest film of all time: Killer Klowns From Outer Space!  Hosted by Betsy Sodaro and Ju…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1534823042": {
+      "topics": [
+        "sports/cricket",
+        "computing",
+        "craft/diy-home",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on sports based on content and signal.",
+      "display_title": "Silly Points: UC Berkeley's First Cricket Podcast",
+      "blurb": "The UC Berkeley Cricket team talking about everything under the sun to do with cricket making silly points along the way…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1534938368": {
+      "topics": [
+        "computing",
+        "craft/diy-home",
+        "space",
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on computing based on content and signal.",
+      "display_title": "Wunderdog",
+      "blurb": "Norway's fourth tallest cartoonist Øystein Runde asks scientists about the details behind their biggest ideas or crazies…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1534944224": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on craft based on content and signal.",
+      "display_title": "Ripstop on the Record",
+      "blurb": "Welcome to Ripstop on the Record.  The podcast for makers, by makers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1535384390": {
+      "topics": [
+        "computing",
+        "personal-journals",
+        "news/commentary",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on computing based on content and signal.",
+      "display_title": "Ruthless Podcast",
+      "blurb": "A variety progrum.  Smug, Holmes, Duncan, and Ashbrook bring next generation conservative talk to the next level with RU…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1535401964": {
+      "topics": [
+        "philosophy",
+        "education/language-learning",
+        "space",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on philosophy based on content and signal.",
+      "display_title": "Thinking in English",
+      "blurb": "Thinking in English is a podcast for intermediate and advanced English learners who want to do more than just study gram…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1535403320": {
+      "topics": [
+        "true-crime",
+        "fiction",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on true-crime based on content and signal.",
+      "display_title": "Dark Downeast",
+      "blurb": "Dark Downeast: Maine and New England's True Crime Podcast digs into the decades-old and modern day cases that prickle th…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1535414324": {
+      "topics": [
+        "tv-film/reviews",
+        "space",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on tv-film based on content and signal.",
+      "display_title": "Dark Side Divas - A Star Wars Podcast",
+      "blurb": "This is a podcast about the Star Wars Saga, from a nerdy Texas woman and a California gay man who loves lightsabers, dro…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1535719142": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on business based on content and signal.",
+      "display_title": "Modern Healthcare's Healthcare Insider Podcast",
+      "blurb": "Modern Healthcare's Healthcare Insider Podcast is a sponsored podcast series from Modern Healthcare Custom Media.  In th…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1535879222": {
+      "topics": [
+        "kids-family/stories",
+        "fiction",
+        "tv-film/history",
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on kids-family based on content and signal.",
+      "display_title": "The Stuff Dreams Are Made Of",
+      "blurb": "From Kane’s Rosebud to Indy’s Whip to Captain America’s shield...  Iconic treasures from the world of film and televisio…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1535997752": {
+      "topics": [
+        "kids-family/stories",
+        "fiction",
+        "medicine",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on kids-family based on content and signal.",
+      "display_title": "Rapid Response RN",
+      "blurb": "Do you want to go from dreading emergencies to feeling confident and ready to jump into action to rescue your patient?…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1536188252": {
+      "topics": [
+        "education/courses"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on education based on content and signal.",
+      "display_title": "The Mobile Notary Business Expert Podcast",
+      "blurb": "Do you want to start a mobile notary business?  The Mobile Notary Business Expert Podcast is for passionate individuals…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1536277916": {
+      "topics": [
+        "sports/basketball",
+        "health/fitness",
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on sports based on content and signal.",
+      "display_title": "Hoops Tonight with Jason Timpf",
+      "blurb": "Jason Timpf breaks down the NBA's biggest games, storylines and scuttlebutt (hopefully in that order).",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1536332774": {
+      "topics": [
+        "religion/spirituality",
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on religion based on content and signal.",
+      "display_title": "Comfy Cozy Witch Podcast",
+      "blurb": "Jennie Blonde (Comfy Cozy Witch), talks about all things witchcraft!  From House and Hearth witchery to Kitchen and Gree…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1536352412": {
+      "topics": [
+        "medicine",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.92
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on medicine.",
+      "display_title": "Giggly Squad",
+      "blurb": "Welcome to Giggly Squad. Each week, Hannah Berner and Paige DeSorbo make fun of everything, but most importantly themsel…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:51:44.966Z"
+    },
+    "1536846146": {
+      "topics": [
+        "philosophy",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focuses on philosophy based on content and signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1536981506": {
+      "topics": [
+        "science/chemistry",
+        "news/commentary",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on science based on content and signal.",
+      "display_title": "Always Almost There",
+      "blurb": "Analysis and commentary on all things Goose; co-hosted by Ryan Storm, Neal Landry, and Brian Weber.  Born in early 2022…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1537255778": {
+      "topics": [
+        "math",
+        "kids-family/parenting",
+        "craft/diy-home",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.88
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on math based on content and signal.",
+      "display_title": "Allison Loves Math Podcast",
+      "blurb": "In the Allison Loves Math Podcast, host Allison Dillard invites you along on her journey to learn about how we, as paren…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1537314272": {
+      "topics": [
+        "science/chemistry",
+        "space",
+        "science/physics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on science based on content and signal.",
+      "display_title": "The Goeppert Mayer Gauge",
+      "blurb": "*The* podcast about light-matter interaction!  Jay and Dugan host this monthly podcast about chemistry and physics with…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1537653218": {
+      "topics": [
+        "space",
+        "fiction/comedy",
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "travel",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on space based on content and signal.",
+      "display_title": "Midnight Burger",
+      "blurb": "When Gloria took a waitressing job at a diner outside of Phoenix, she didn't realize she was now an employee of Midnight…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1538052368": {
+      "topics": [
+        "sports/fantasy",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on sports based on content and signal.",
+      "display_title": "Join The Ranks: dynasty fantasy baseball advice",
+      "blurb": "Dynasty Fantasy Baseball rankings news, coverage, and whatever else we feel like talking about.  Let's go win some leagu…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1538204210": {
+      "topics": [
+        "true-crime",
+        "sports",
+        "fiction",
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "travel",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focuses on true-crime based on content and signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1538249198": {
+      "topics": [
+        "society/government"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on society based on content and signal.",
+      "display_title": "بودكاست أريـــكة",
+      "blurb": "Areeka is a visual podcast with a keen eye for social topics, from psychology to common myths.  The podcast is produced…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1538307470": {
+      "topics": [
+        "health/fitness",
+        "personal-journals",
+        "space",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on health based on content and signal.",
+      "display_title": "Make Fit Simple",
+      "blurb": "My name is Andrea and I am a mother of 4 girls under 7, wife to a mountain man, a Personal Trainer, Nutrition Coach and…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1538317928": {
+      "topics": [
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on space.",
+      "display_title": "Black Holes",
+      "blurb": "It's about stuff",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:51:44.966Z"
+    },
+    "1538480510": {
+      "topics": [
+        "health/fitness",
+        "personal-journals",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focuses on health based on content and signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1538684576": {
+      "topics": [
+        "travel",
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on travel based on content and signal.",
+      "display_title": "Retire There with Gil & Gene",
+      "blurb": "Gil and Gene are dreaming of their future.  Ideas of how they will spend their retirement days abound.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1539208868": {
+      "topics": [
+        "religion/spirituality",
+        "computing",
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on religion based on content and signal.",
+      "display_title": "Cutting Carbon",
+      "blurb": "Climate change is the dialogue of our future.  With the “Cutting Carbon” podcast series, GE Vernova joins the conversati…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1539670094": {
+      "topics": [
+        "kids-family/stories",
+        "computing",
+        "fiction",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on kids-family based on content and signal.",
+      "display_title": "The Room Podcast",
+      "blurb": "Welcome to the Room.  A series interviewing your favorite tech founders and funders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1539704420": {
+      "topics": [
+        "science/chemistry",
+        "craft/diy-home",
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on science based on content and signal.",
+      "display_title": "What is graphene?",
+      "blurb": "Graphene is only composed of carbon, like diamond, graphite, and amorphous carbon.  However, graphene is a 2d material w…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
+    },
+    "1539764240": {
+      "topics": [
+        "religion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on religion based on content and signal.",
+      "display_title": "Voice of America",
+      "blurb": "The voice of the Lord to the Church coming from the actual place of the former Voice of America Radio Station (now a par…",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-0a7b742c",
+      "classified_at": "2026-08-04T00:50:58.783Z"
     }
   },
-  "built_at": "2026-08-03T16:50:51.435Z",
+  "built_at": "2026-08-04T00:51:44.966Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-03-b0c3701e",
+    "last_batch_id": "fresh-2026-08-04-0a7b742c",
     "last_batch_tier": 1
   }
 }
