@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-03T16:32:02.488Z",
+  "built_at": "2026-08-04T00:29:50.467Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-03-87e995a7",
+    "last_batch_id": "fresh-2026-08-04-5d7157fa",
     "last_batch_tier": 1
   },
   "entries": {
@@ -84464,18 +84464,47 @@
     },
     "1518292579": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "fiction/comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional improvisational comedy TTRPG series",
+      "display_title": "Dungeons & Drimbus",
+      "blurb": "Comedians playing tabletop RPGs in absurd scenarios.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1518308647": {
       "topics": [
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quiltmaking history, techniques, and maker interviews",
+      "display_title": "Running Stitch - A QSOS Podcast",
+      "blurb": "Interviews with quiltmakers on craft history and innovation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1518315413": {
       "topics": [
@@ -84642,7 +84671,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running, endurance sports interviews and fitness training",
+      "display_title": "Six Minute Mile",
+      "blurb": "Interviews with elite runners and fitness athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1518811931": {
       "topics": [
@@ -84819,10 +84867,30 @@
     },
     "1519299517": {
       "topics": [
-        "culture/performing-arts"
+        "music",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music criticism and deep analysis of classic artists",
+      "display_title": "Jokermen",
+      "blurb": "In-depth music discussions with guest musicians and critics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1519341432": {
       "topics": [
@@ -84863,10 +84931,29 @@
     "1519529995": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition and weight management for midlife health",
+      "display_title": "Whole Health Empowerment Project- healthy eating, weight loss",
+      "blurb": "Practical nutrition and wellness guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1519539023": {
       "topics": [
@@ -84952,10 +85039,30 @@
     },
     "1519708675": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu scripture study and philosophical teachings",
+      "display_title": "Brihadaranyaka Upanishad Archives - Arsha Bodha Center",
+      "blurb": "Teachings and commentary on Hindu sacred texts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1519714875": {
       "topics": [
@@ -84996,11 +85103,25 @@
     },
     "1519867249": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language instruction for beginner learners",
+      "display_title": "Speak French Avec Moi – Learn French Podcast",
+      "blurb": "Beginner-friendly French language lessons.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1519878239": {
       "topics": [
@@ -85036,10 +85157,30 @@
     },
     "1520069029": {
       "topics": [
-        "tv-film/interviews"
+        "education/how-to",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Screenwriting craft, industry advice, story structure",
+      "display_title": "The Successful Screenwriter with Geoffrey D Calhoun: Screenwriting",
+      "blurb": "Screenwriting techniques and industry insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1520079851": {
       "topics": [
@@ -85101,10 +85242,30 @@
     },
     "1520185909": {
       "topics": [
-        "medicine"
+        "education/how-to",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog training methods and behavior guidance",
+      "display_title": "The Cribsiders",
+      "blurb": "Dog training techniques and behavior guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1520189814": {
       "topics": [
@@ -85164,15 +85325,50 @@
       "topics": [
         "culture/books"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified based on genre prior",
+      "display_title": "The First Draft Club",
+      "blurb": "The First Draft Club podcast content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1520335129": {
       "topics": [
+        "business",
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beauty industry business and professional development",
+      "display_title": "Salon Centered Conversations",
+      "blurb": "Conversations for salon and beauty professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1520368162": {
       "topics": [
@@ -85591,10 +85787,30 @@
     },
     "1521544183": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu scripture study and philosophical teachings",
+      "display_title": "Bhagavad Gita - 2011-15 Archives - Arsha Bodha",
+      "blurb": "Teachings and commentary on Hindu sacred texts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1521551570": {
       "topics": [
@@ -85636,10 +85852,30 @@
     },
     "1521632905": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Age-appropriate current events for children",
+      "display_title": "Newsy Pooloozi - The News Pod for Kids",
+      "blurb": "News and current events explained for kids.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1521655911": {
       "topics": [
@@ -85841,10 +86077,30 @@
     },
     "1522122781": {
       "topics": [
-        "craft"
+        "hobbies",
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stationery, paper crafts, and writing supplies",
+      "display_title": "The Stationery Project",
+      "blurb": "Stationery and paper crafts community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1522154152": {
       "topics": [
@@ -85993,10 +86249,30 @@
     },
     "1522412155": {
       "topics": [
-        "kids-family/stories"
+        "religion/islam",
+        "kids-family"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic teachings and stories for children",
+      "display_title": "Once Upon A Crescent: Muslim Kids Podcast",
+      "blurb": "Islamic stories and values for children.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1522424162": {
       "topics": [
@@ -86009,8 +86285,23 @@
       "topics": [
         "nature"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified based on genre prior",
+      "display_title": "Peter und der Wald",
+      "blurb": "Peter und der Wald podcast content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1522512043": {
       "topics": [
@@ -86064,11 +86355,25 @@
     },
     "1522555969": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ambient natural sounds for relaxation",
+      "display_title": "Rain Sounds",
+      "blurb": "Calming rain sounds for sleep and relaxation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1522570191": {
       "topics": [
@@ -86155,8 +86460,23 @@
       "topics": [
         "music"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified based on genre prior",
+      "display_title": "The Twitch and MJ Podcast Podcast",
+      "blurb": "The Twitch and MJ Podcast Podcast podcast content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1522899720": {
       "topics": [
@@ -86234,19 +86554,47 @@
     },
     "1523094649": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and TV reviews with critical analysis",
+      "display_title": "Merschman Seeds Cup of Joe",
+      "blurb": "Film and TV discussion with critical perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1523096077": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and TV reviews with critical analysis",
+      "display_title": "What Are You Watching?",
+      "blurb": "Film and TV discussion with critical perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1523107191": {
       "topics": [
@@ -86260,10 +86608,29 @@
     "1523117197": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition and weight management for midlife health",
+      "display_title": "Healthy Eating For Smart Women",
+      "blurb": "Practical nutrition and wellness guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1523129735": {
       "topics": [
@@ -86314,17 +86681,52 @@
     },
     "1523229361": {
       "topics": [
-        "craft"
+        "nature",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sustainable farming and agricultural practices",
+      "display_title": "The Flying Goat Farm podcast",
+      "blurb": "Farming and sustainable agriculture practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1523253391": {
       "topics": [
         "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified based on genre prior",
+      "display_title": "霸軒廣播電台",
+      "blurb": "霸軒廣播電台 podcast content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1523294942": {
       "topics": [
@@ -86403,10 +86805,30 @@
     },
     "1523342671": {
       "topics": [
-        "craft"
+        "sports/endurance",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running, endurance sports interviews and fitness training",
+      "display_title": "Pattern Shift",
+      "blurb": "Interviews with elite runners and fitness athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1523345346": {
       "topics": [
@@ -86497,10 +86919,30 @@
     },
     "1523577007": {
       "topics": [
+        "sports/endurance",
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running, endurance sports interviews and fitness training",
+      "display_title": "The Body Recomp Podcast | Beyond Fitness",
+      "blurb": "Interviews with elite runners and fitness athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1523584878": {
       "topics": [
@@ -86515,7 +86957,22 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game news, reviews, and industry discussion",
+      "display_title": "Kinda Funny Gamescast: Video Game Podcast",
+      "blurb": "Video game news, reviews, and industry discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1523682676": {
       "topics": [
@@ -86659,10 +87116,30 @@
     },
     "1523916037": {
       "topics": [
-        "aviation"
+        "education/how-to",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog training methods and behavior guidance",
+      "display_title": "corporate flight attendant podcast",
+      "blurb": "Dog training techniques and behavior guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1523921573": {
       "topics": [
@@ -86801,10 +87278,25 @@
     },
     "1524300553": {
       "topics": [
-        "math"
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and historical analysis",
+      "display_title": "Group theory- History",
+      "blurb": "Historical stories and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1524313515": {
       "topics": [
@@ -86825,14 +87317,44 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf instruction, tips, and strategy",
+      "display_title": "No Laying Up: Crash Course",
+      "blurb": "Golf instruction and strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1524367243": {
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified based on genre prior",
+      "display_title": "TAFSIIRKA QURAN KARIIMKA SH. MAXAMED UMAL",
+      "blurb": "TAFSIIRKA QURAN KARIIMKA SH. MAXAMED UMAL podcast content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1524477137": {
       "topics": [
@@ -86951,11 +87473,25 @@
     },
     "1524804967": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and historical analysis",
+      "display_title": "Crossing The Lane Lines",
+      "blurb": "Historical stories and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1524809369": {
       "topics": [
@@ -86974,10 +87510,30 @@
     },
     "1524940951": {
       "topics": [
-        "music"
+        "music",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music criticism and deep analysis of classic artists",
+      "display_title": "Indiecast",
+      "blurb": "In-depth music discussions with guest musicians and critics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1524980018": {
       "topics": [
@@ -87003,11 +87559,30 @@
     },
     "1525009621": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "sports/endurance",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running, endurance sports interviews and fitness training",
+      "display_title": "Holley Fueled Nutrition Podcast",
+      "blurb": "Interviews with elite runners and fitness athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1525013222": {
       "topics": [
@@ -87055,8 +87630,23 @@
       "topics": [
         "religion/spirituality"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified based on genre prior",
+      "display_title": "MA Speaker Tapes",
+      "blurb": "MA Speaker Tapes podcast content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1525099266": {
       "topics": [
@@ -87138,8 +87728,27 @@
         "news",
         "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.5
+        },
+        {
+          "node": "business",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified based on genre prior",
+      "display_title": "プレジデント音声版",
+      "blurb": "プレジデント音声版 podcast content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1525283536": {
       "topics": [
@@ -87154,7 +87763,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and TV reviews with critical analysis",
+      "display_title": "I Ken Not with Kendrick Tucker",
+      "blurb": "Film and TV discussion with critical perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1525311647": {
       "topics": [
@@ -87180,10 +87804,30 @@
     },
     "1525402495": {
       "topics": [
+        "education/how-to",
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog training methods and behavior guidance",
+      "display_title": "Everything Dog Training!",
+      "blurb": "Dog training techniques and behavior guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1525432576": {
       "topics": [
@@ -87343,7 +87987,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf instruction, tips, and strategy",
+      "display_title": "The bunkered Golf Podcast",
+      "blurb": "Golf instruction and strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1525620301": {
       "topics": [
@@ -87384,10 +88043,30 @@
     },
     "1525643497": {
       "topics": [
-        "music"
+        "music",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music criticism and deep analysis of classic artists",
+      "display_title": "Chewing the Gristle with Greg Koch",
+      "blurb": "In-depth music discussions with guest musicians and critics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1525652021": {
       "topics": [
@@ -87399,10 +88078,30 @@
     },
     "1525654825": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu scripture study and philosophical teachings",
+      "display_title": "Geeta Girl: Evolving Through the Bhagavad Geeta",
+      "blurb": "Teachings and commentary on Hindu sacred texts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1525663883": {
       "topics": [
@@ -87416,8 +88115,23 @@
       "topics": [
         "kids-family/stories"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified based on genre prior",
+      "display_title": "水獺媽媽巧巧話｜聽巧慧說故事學台語！",
+      "blurb": "水獺媽媽巧巧話｜聽巧慧說故事學台語！ podcast content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-5d7157fa",
+      "classified_at": "2026-08-04T00:29:50.467Z"
     },
     "1525689066": {
       "topics": [
