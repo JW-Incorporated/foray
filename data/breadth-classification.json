@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-04T00:29:50.467Z",
+  "built_at": "2026-08-04T08:31:41.679Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-04-5d7157fa",
+    "last_batch_id": "fresh-2026-08-04-b4f0e6dc",
     "last_batch_tier": 1
   },
   "entries": {
@@ -88460,7 +88460,22 @@
         "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Chief of Staff Podcast covers careers.",
+      "display_title": "The Chief of Staff Podcast",
+      "blurb": "The Chief of Staff Podcast is hosted by Scott Amenta, Founder of the Chief of Staff Network — a global community of CoS with local chapters across 25+...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1526436522": {
       "topics": [
@@ -88594,21 +88609,66 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pick a Side covers basketball.",
+      "display_title": "Pick a Side",
+      "blurb": "Mainstream sports media is tiring, isn’t it.  Hot takes, bland statements, and generalizations have all worked in combination to ruin the viewing experience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1526671261": {
       "topics": [
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Крупным планом covers film & tv reviews.",
+      "display_title": "Крупным планом",
+      "blurb": "Подкаст Кинопоиска о кинопремьерах и новостях индустрии.  Редактор Кинопоиска Даулет Жанайдаров и киновед Всеволод Коршунов обсуждают новинки проката, анализируют важные кинопроцессы и иногда вспоминают классические фильмы, почему-то ставшие вновь актуальными.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1526678485": {
       "topics": [
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Actors MasterClass covers film interviews.",
+      "display_title": "Actors MasterClass",
+      "blurb": "A study of nearly 2. 5 million screen actors dating back to the 1880s, discovered that just two per cent make a living from the profession and 90...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1526678868": {
       "topics": [
@@ -88629,7 +88689,22 @@
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Homeschool Together Podcast covers education for kids.",
+      "display_title": "Homeschool Together Podcast",
+      "blurb": "A working mom and a stay at home dad help you navigate the complex and dynamic world of secular homeschooling with a focus on early learners and gameschooling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1526697745": {
       "topics": [
@@ -88715,11 +88790,25 @@
     },
     "1526851765": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "fiction/comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Forgive Me! covers comedy fiction.",
+      "display_title": "Forgive Me!",
+      "blurb": "Forgive Me.  tells the story of Father Ben, a try-hard young Catholic priest who was recently reassigned from Binghamton to St.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1526855232": {
       "topics": [
@@ -88730,11 +88819,25 @@
     },
     "1526872639": {
       "topics": [
-        "space",
-        "science"
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Black Holes covers space.",
+      "display_title": "Black Holes",
+      "blurb": "Black Hole - a mystery.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1526878803": {
       "topics": [
@@ -88828,7 +88931,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Homies of Horror covers film & tv reviews.",
+      "display_title": "Homies of Horror",
+      "blurb": "Come laugh, scream, and hangout with the homies as they discuss horror movies.  New episode every Monday.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1527018692": {
       "topics": [
@@ -88896,7 +89014,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Best Soccer Show covers soccer.",
+      "display_title": "The Best Soccer Show",
+      "blurb": "Hosted by the voice of the American fan, Jason Davis (SiriusXM), and the clown prince of soccer, Jared Dubois (JD & The Rod), The Best Soccer Show is...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1527138540": {
       "topics": [
@@ -88996,7 +89129,22 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MHA Chat Space!! covers animation & manga.",
+      "display_title": "MHA Chat Space!!",
+      "blurb": "We talk about My hero Academia (MHA/BMHA).  Ships and drama in the fandom are also discussed.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1527323627": {
       "topics": [
@@ -89039,14 +89187,44 @@
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Creative Agency Account Manager Podcast covers marketing.",
+      "display_title": "Creative Agency Account Manager Podcast",
+      "blurb": "This podcast is for you if you are managing day to day client relationships in a creative agency. The aim of the podcast is to share insights and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1527434899": {
       "topics": [
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Marketing Millennials covers marketing.",
+      "display_title": "The Marketing Millennials",
+      "blurb": "Bored of the same BS Marketing podcasts. With insights from the sharpest minds in the world, Daniel Murray unpacks their playbooks just for you to take into your...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1527442768": {
       "topics": [
@@ -89152,7 +89330,25 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Hangar Z Podcast covers aviation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1527788908": {
       "topics": [
@@ -89340,7 +89536,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Slappin' Glass Podcast covers basketball.",
+      "display_title": "Slappin' Glass Podcast",
+      "blurb": "Exploring basketball's best ideas, strategies, and coaches from around the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1528052306": {
       "topics": [
@@ -89354,7 +89565,25 @@
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Everyday PM: Project Management Principles for Your Everyday Life covers management.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1528164300": {
       "topics": [
@@ -89399,14 +89628,47 @@
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "You Say “Cat Lady” Like It’s A Bad Thing, & Other TNR Adventures covers pets & animals.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1528258939": {
       "topics": [
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Strickland Podcast Network covers basketball.",
+      "display_title": "The Strickland Podcast Network",
+      "blurb": "Welcome to The Strickland Podcast Network, from your friends at The Strickland. On Pod Strickland, join Shwin, Prez, and Stacy as they talk New York Knicks, sometimes, and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1528267426": {
       "topics": [
@@ -89678,11 +89940,25 @@
     },
     "1528918177": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "You Can Do It with JEFF GALLOWAY covers endurance.",
+      "display_title": "You Can Do It with JEFF GALLOWAY",
+      "blurb": "Jeff and Westin Galloway bring you motivation, inspiration, and information through stories and interviews that revolve around the physical and mental benefits of running and walking. - -...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1528922538": {
       "topics": [
@@ -89710,7 +89986,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Severin Films Podcast covers film & tv reviews.",
+      "display_title": "The Severin Films Podcast",
+      "blurb": "A once a month show to act as a companion piece to our new title announcements. Join co-hosts David, Andrew, and Zach who will be going in-depth on...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1529002119": {
       "topics": [
@@ -89931,7 +90222,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ghostfacers: A Supernatural Rewatch covers after shows.",
+      "display_title": "Ghostfacers: A Supernatural Rewatch",
+      "blurb": "Each week hosts Richard & Reid rewatch an episode of The CW’s Supernatural and discuss real-world monster lore and behind-the-scenes details about the show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1529604634": {
       "topics": [
@@ -89969,7 +90275,25 @@
         "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "THE BETTER BELLY PODCAST - Natural Constipation Remedies, Acid Reflux, Hormones, Gut Health, Functional Medicine covers alternative health.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 15w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1529670177": {
       "topics": [
@@ -90034,11 +90358,25 @@
     },
     "1529847511": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tuned Into Tennis covers sports.",
+      "display_title": "Tuned Into Tennis",
+      "blurb": "Keeping up with which tennis player lifted a trophy this week can be a difficult task. Lucky for you, Myles David is here to help you navigate the...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1529887342": {
       "topics": [
@@ -90083,7 +90421,22 @@
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Journeys of Scientists covers physics.",
+      "display_title": "Journeys of Scientists",
+      "blurb": "This podcast is created by WaMPS (Women and Minorities in the Physical Sciences), a graduate student organization at Michigan State University. These are informal conversations with graduate students...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1529951307": {
       "topics": [
@@ -90237,7 +90590,22 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "EdCast - 25 Cents!! covers animation & manga.",
+      "display_title": "EdCast - 25 Cents!!",
+      "blurb": "The ONLY Podcast dedicated to re-watching, analyzing and celebrating Cartoon Network’s beloved underdog and longest running series: Ed Edd n Eddy. Join co-hosts Kevin Lordi and Sally Peck...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1530452748": {
       "topics": [
@@ -90252,7 +90620,22 @@
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fraudology Podcast with Karisse Hendrick covers management.",
+      "display_title": "Fraudology Podcast with Karisse Hendrick",
+      "blurb": "If you work in online fraud prevention, chances are you've caught the \"bug\". The bug that makes you passionate about identifying & preventing cybercriminals from getting away with...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1530467231": {
       "topics": [
@@ -90363,11 +90746,25 @@
     },
     "1530709615": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "跑步不要聽 covers endurance.",
+      "display_title": "跑步不要聽",
+      "blurb": "節目新書《跑出你人生的彩蛋》新書上架！https://www. books.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1530711663": {
       "topics": [
@@ -90421,11 +90818,25 @@
     },
     "1530868231": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Inspired Soles covers endurance.",
+      "display_title": "Inspired Soles",
+      "blurb": "Inspired Soles is a podcast that fuels your passion for running and helps you achieve peak performance with every stride. Host Carolyn Coffin talks with industry experts, coaches,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1530908190": {
       "topics": [
@@ -90484,7 +90895,22 @@
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Old Time Radio Listener covers performing arts.",
+      "display_title": "Old Time Radio Listener",
+      "blurb": "You don't need to sit around the radio any longer to listen to radio programs. Now a days you can put in ear plugs and listen via your...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1531019348": {
       "topics": [
@@ -90528,7 +90954,25 @@
         "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Holidays to Switzerland Travel Podcast - Plan Your Swiss Vacation covers travel & places.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1531104730": {
       "topics": [
@@ -90587,7 +91031,22 @@
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "StyleZeitgeist Podcast covers fashion & beauty.",
+      "display_title": "StyleZeitgeist Podcast",
+      "blurb": "Fashion Counterculture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1531206254": {
       "topics": [
@@ -90608,7 +91067,22 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Dragon Ball Virgin covers animation & manga.",
+      "display_title": "The Dragon Ball Virgin",
+      "blurb": "Follow along as Ray watches Dragon Ball for the very first time.  We'll cover a new arc every week.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1531278198": {
       "topics": [
@@ -90663,7 +91137,22 @@
         "math"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Function Room covers math.",
+      "display_title": "The Function Room",
+      "blurb": "A podcast about the big numbers, the hard sums, the mathematics that defines, runs, shapes, changes, begins, ends, every things our lives and the world around us. Hosted...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1531498635": {
       "topics": [
@@ -90727,11 +91216,25 @@
     },
     "1531582939": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "fiction/comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Absolutely No Adventures covers comedy fiction.",
+      "display_title": "Absolutely No Adventures",
+      "blurb": "Absolutely No Adventures is a fantasy (un)adventure podcast that follows Sig, the owner of Signature Eats bakery, as he aggressively avoids becoming embroiled in any daring quests or...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1531585576": {
       "topics": [
@@ -90857,7 +91360,25 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fly Cool Shit - An Aviation Podcast About Flying Cool Shit covers aviation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1531902278": {
       "topics": [
@@ -90885,14 +91406,44 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "If You Can’t Handle The Heat covers volleyball.",
+      "display_title": "If You Can’t Handle The Heat",
+      "blurb": "BOOYAKASHA.  Welcome to the biggest volleyball podcast in the WORLD.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1532071693": {
       "topics": [
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ROGUE COMMENTARY covers film interviews.",
+      "display_title": "ROGUE COMMENTARY",
+      "blurb": "Brand new audio commentaries for cult and classic movies, by the filmmakers and other interesting people.  Comments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1532102239": {
       "topics": [
@@ -90997,7 +91548,22 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Houseplant Homebody covers diy & home.",
+      "display_title": "Houseplant Homebody",
+      "blurb": "Welcome all plant lovers, plant experts, plant enthusiasts and beginners.  I am so excited to share my adventures with all things plants.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1532282999": {
       "topics": [
@@ -91016,18 +91582,47 @@
     },
     "1532328889": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Optimal Metabolism covers nutrition.",
+      "display_title": "Optimal Metabolism",
+      "blurb": "Struggling with weight gain, cravings, and a stack of medications despite \"healthy\" habits.  It's likely insulin resistance—and this podcast is your way out.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1532415037": {
       "topics": [
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "پادکستِ هرروز covers drama.",
+      "display_title": "پادکستِ هرروز",
+      "blurb": "هرروز می تونی به این فکر کنی که تا هدفت چه قدر فاصله داری ؟چه کار خلاقانه ای از دستت بر میاد؟چه قدر اونجوری که دلت می خواد...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1532435030": {
       "topics": [
@@ -91038,11 +91633,25 @@
     },
     "1532460901": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Uniquely Human: The Podcast covers mental health.",
+      "display_title": "Uniquely Human: The Podcast",
+      "blurb": "Uniquely Human: the Podcast expands the conversation on autism and neurodiversity by amplifying the voices of autistic and neurodivergent individuals and thought leaders in providing insightful, cutting-edge and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1532493678": {
       "topics": [
@@ -91086,11 +91695,25 @@
     },
     "1532610595": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "fiction/comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wayward Guide For The Untrained Eye covers comedy fiction.",
+      "display_title": "Wayward Guide For The Untrained Eye",
+      "blurb": "Wayward Guide is a fictional investigative podcast about the sordid world of local politics, backroom dealings, and werewolves. When an alluring corporate corruption story falls unexpectedly into their...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-b4f0e6dc",
+      "classified_at": "2026-08-04T08:31:41.679Z"
     },
     "1532649035": {
       "topics": [
