@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-04T08:58:01.795Z",
+  "built_at": "2026-08-04T16:56:54.135Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-04-f76f9060",
+    "last_batch_id": "fresh-2026-08-04-f21a2431",
     "last_batch_tier": 1
   },
   "entries": {
@@ -88388,7 +88388,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music interviews and discussion show.",
+      "display_title": "M",
+      "blurb": "Mmm",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1528806866": {
       "topics": [
@@ -91420,7 +91435,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Climate solutions and environmental action discussion.",
+      "display_title": "Climate Curious",
+      "blurb": "Are you Climate Curious",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1534614879": {
       "topics": [
@@ -91439,10 +91473,30 @@
     },
     "1534623875": {
       "topics": [
-        "health/alternative"
+        "health",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Migraine and headache treatment and management.",
+      "display_title": "The Headache Doctor Podcast",
+      "blurb": "Even after trying medication, lifestyle changes, and other “research-backed treatments” for migraine symptoms, does nothing feel like it’s really solving the issue",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1534626425": {
       "topics": [
@@ -91469,10 +91523,34 @@
     "1534628327": {
       "topics": [
         "music",
-        "history"
+        "history",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Joy Division and New Order band history through interviews.",
+      "display_title": "Transmissions",
+      "blurb": "This is Transmissions, the definitive story of New Order and Joy Division",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1534629749": {
       "topics": [
@@ -91480,7 +91558,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation from UK observatory.",
+      "display_title": "Kielder Observatory Podcast",
+      "blurb": "The official monthly podcast from Kielder Observatory in Northumberland UK, situated under some of the darkest skies in the world",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1534638442": {
       "topics": [
@@ -91598,8 +91695,23 @@
       "topics": [
         "comedy/stand-up"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with genre categorization.",
+      "display_title": "Clean AF Comedy Show",
+      "blurb": "Four comedians cracking jokes without fussin’ and cussin’",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1534938368": {
       "topics": [
@@ -91715,7 +91827,22 @@
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion and beauty trends and discussion.",
+      "display_title": "The Beauty Buzz",
+      "blurb": "Two friends obsessed with all things makeup, skincare, and everything beauty in between",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1535269176": {
       "topics": [
@@ -91856,7 +91983,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror film reviews and commentary.",
+      "display_title": "Spooky Tuesday - A Horror Movie Podcast",
+      "blurb": "Spooky Tuesday is a weekly horror movie podcast hosted by three girls who love fake blood, making everything gay, and Matthew Lillard",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1535600217": {
       "topics": [
@@ -91931,7 +92073,22 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical crime stories and investigation.",
+      "display_title": "Crimes of the Centuries",
+      "blurb": "Crime is so commonplace that it takes something particularly shocking to be labelled the “crime of the century",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1535809341": {
       "topics": [
@@ -91957,11 +92114,25 @@
     },
     "1535855327": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition and athletic performance discussion.",
+      "display_title": "Platinum Performance® Podcast",
+      "blurb": "Welcome to It Starts Within, a podcast from Platinum Performance® where we’ll dive deep into the health challenges faced by veterinarians and horse owners alike",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1535879222": {
       "topics": [
@@ -92012,8 +92183,26 @@
       "topics": [
         "culture/design"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Design and fitness studio concepts.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1536169608": {
       "topics": [
@@ -92075,10 +92264,25 @@
     },
     "1536309467": {
       "topics": [
-        "tv-film/reviews"
+        "kids-family/education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content for young listeners.",
+      "display_title": "We Don't Wanna Grow Up",
+      "blurb": "We Don’t Wanna Grow Up is an 80s, 90s, and 2000s nostalgia podcast about movies, TV shows, music, toys, and pop culture",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1536332774": {
       "topics": [
@@ -92120,11 +92324,25 @@
     },
     "1536388799": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swimming instruction and technique discussion.",
+      "display_title": "Open Water Swimming In Morecambe And Lancaster",
+      "blurb": "My unlikely beginnings in outdoor swimming",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1536393630": {
       "topics": [
@@ -92143,11 +92361,25 @@
     },
     "1536473453": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swimming instruction and technique discussion.",
+      "display_title": "Swimmingpod",
+      "blurb": "Swimming in the outdoors - lakes and lidos, rivers and oceans, especially the people that swim in them",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1536487794": {
       "topics": [
@@ -92161,14 +92393,44 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror film reviews and commentary.",
+      "display_title": "The Whorrors!",
+      "blurb": "A horror movie podcast by two washed-up English majors discussing the tropes, the titillating, and everything else surrounding badass women in horror",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1536628319": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content for young listeners.",
+      "display_title": "Don't Break the Rules",
+      "blurb": "Buckle up for Don’t Break the Rules, the hilarious comedy game show where four voice actors transform into brand new characters based on prompts written by kids",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1536632565": {
       "topics": [
@@ -92223,7 +92485,22 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video games discussion and recap.",
+      "display_title": "WULFF DEN Podcast - Weekly Gaming Recap",
+      "blurb": "Video Games news and opinions from WULFF DEN's own Bob Wulff",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1536846146": {
       "topics": [
@@ -92296,7 +92573,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish religious law and observance discussion.",
+      "display_title": "Ten Minute Halacha",
+      "blurb": "10-minute overviews on prevalent Halachic topics from Rabbi Aryeh Lebowitz",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1536981506": {
       "topics": [
@@ -92353,8 +92645,23 @@
       "topics": [
         "kids-family/education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content for young listeners.",
+      "display_title": "ADHD Reading: Reading for Active Kids",
+      "blurb": "The ADHD Reading Podcast is an extension of ADHDReading",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1537245139": {
       "topics": [
@@ -92450,10 +92757,25 @@
     },
     "1537443197": {
       "topics": [
-        "craft/diy-home"
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV series and media review discussion.",
+      "display_title": "From The Stash",
+      "blurb": "Grow talk and then some with your growmies Rob from CLtv, Mr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1537445938": {
       "topics": [
@@ -92507,11 +92829,25 @@
     },
     "1537585079": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swimming instruction and technique discussion.",
+      "display_title": "Swim Whisperers",
+      "blurb": "Co-founders Ailene Tisser and Cindy Freedman are on a mission to create standard practice training for swim instructors teaching special needs swimmers",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1537596556": {
       "topics": [
@@ -92570,7 +92906,22 @@
         "math"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mathematics education and problem-solving.",
+      "display_title": "來杯數學 微糖微冰 A Cup of Math",
+      "blurb": "飲料可以無糖 數學要加點糖 這是一個很不數學的數學節目 ε 邊喝飲料 邊聊數學 無論你喜不喜歡數學 都歡迎加入我們 ε 填寫節目回饋，讓我們更進步： https://forms",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1537777503": {
       "topics": [
@@ -92600,7 +92951,22 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home baking techniques and recipes.",
+      "display_title": "Home Baking",
+      "blurb": "Adventures in home baking through ingredients, culture and history",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1537866697": {
       "topics": [
@@ -92660,10 +93026,25 @@
     },
     "1537935725": {
       "topics": [
-        "sports/baseball"
+        "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video games discussion and recap.",
+      "display_title": "Sunday Golds: A Florida State Baseball Podcast",
+      "blurb": "The first ever FSU baseball podcast is here",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1538014714": {
       "topics": [
@@ -92720,8 +93101,23 @@
       "topics": [
         "fiction/sci-fi"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with genre categorization.",
+      "display_title": "The Oyster",
+      "blurb": "In a not so distant future, due to overwhelming carbon emissions, The Earth is on the brink of becoming uninhabitable",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1538242507": {
       "topics": [
@@ -92770,8 +93166,23 @@
       "topics": [
         "science/physics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with genre categorization.",
+      "display_title": "FAILUROLOGY",
+      "blurb": "A case study on engineering failures",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1538289354": {
       "topics": [
@@ -92965,8 +93376,23 @@
       "topics": [
         "science/chemistry"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with genre categorization.",
+      "display_title": "Podcast De Química E Biologia (Matabolosmo Energético)",
+      "blurb": "Aula sobre a matéria de biologia - metabolismo energético",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1538884003": {
       "topics": [
@@ -92995,7 +93421,25 @@
         "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sailing adventures and coastal cruising.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1539183805": {
       "topics": [
@@ -93104,8 +93548,23 @@
       "topics": [
         "science/chemistry"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with genre categorization.",
+      "display_title": "EL ÁTOMO",
+      "blurb": "Este podcast está lleno de información constructiva acerca del átomo y su descubrimiento",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1539380997": {
       "topics": [
@@ -93348,7 +93807,22 @@
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physics concepts and theory discussion.",
+      "display_title": "Looking Glass",
+      "blurb": "Looking Glass returns for a third series, focusing on the crucial role physics must play if we are to navigate the climate crisis",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1540354740": {
       "topics": [
@@ -93430,8 +93904,23 @@
       "topics": [
         "kids-family/education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content for young listeners.",
+      "display_title": "The SeedPod for Beginners by Starting With Jesus",
+      "blurb": "The SEEDPOD for Beginners is intended for 1 to 5 years old to form a habit of starting their day with Jesus",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1540510485": {
       "topics": [
@@ -93472,17 +93961,50 @@
     },
     "1540606481": {
       "topics": [
-        "tv-film/after-shows"
+        "kids-family/education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Educational content for young listeners.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1540610951": {
       "topics": [
         "math"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with genre categorization.",
+      "display_title": "Two Weird Girls Talking about Integers and Fractions",
+      "blurb": "why you ask because We are being held captive against our will in a thing called \"School\" I know right Please send help",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1540614076": {
       "topics": [
@@ -93503,7 +94025,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College basketball tournament discussion.",
+      "display_title": "The Field of 68: After Dark Podcast",
+      "blurb": "Where college basketball matters",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1540643661": {
       "topics": [
@@ -93569,11 +94106,25 @@
     },
     "1540815869": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "nature/weather"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/weather",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weather science and meteorology discussion.",
+      "display_title": "For the love of weather",
+      "blurb": "Meet Gemma and Aisling",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1540843402": {
       "topics": [
@@ -93666,10 +94217,25 @@
     },
     "1541034575": {
       "topics": [
-        "tv-film/after-shows"
+        "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video games discussion and recap.",
+      "display_title": "MTV's Official Challenge Podcast",
+      "blurb": "\"The Challenge: Vets and New Threats\" is the beginning of a new era, and MTV's Official Challenge Podcast is coming along for the ride",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1541227588": {
       "topics": [
@@ -93792,18 +94358,51 @@
     },
     "1541750537": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition and athletic performance discussion.",
+      "display_title": "Nutrition Made Simple",
+      "blurb": "Nutrition Made Simple will be teaching you how to take one step at a time to become the healthiest version of yourself",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1541770919": {
       "topics": [
-        "culture/performing-arts"
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Historical crime stories and investigation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8",
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1541780308": {
       "topics": [
@@ -93863,19 +94462,50 @@
     },
     "1541860793": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "TV series and media review discussion.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1541865659": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion and beauty trends and discussion.",
+      "display_title": "Menopause Reimagined with Andrea Donsky",
+      "blurb": "Welcome to Morphus We created Morphus to spark change in the conversation around perimenopause and menopause wellness, to bring together women seeking support and information, and to provide research-",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1541907327": {
       "topics": [
@@ -93993,14 +94623,47 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket match analysis and commentary.",
+      "display_title": "On The Front Foot",
+      "blurb": "On The Front Foot is your weekly cricket podcast with Bryan Waddle and Jeremy Coney",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1542290237": {
       "topics": [
         "health/alternative"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Alternative health and wellness topics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1542301310": {
       "topics": [
@@ -94012,10 +94675,25 @@
     },
     "1542312503": {
       "topics": [
-        "culture/art"
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sailing adventures and coastal cruising.",
+      "display_title": "TLDR Comic Book Club",
+      "blurb": "BackCrackah and FryGuy provide the local comic shop feel in podcast form",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1542312567": {
       "topics": [
@@ -94197,7 +94875,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV series and media review discussion.",
+      "display_title": "And Just Like What? GIRLS Rewatch",
+      "blurb": "Sex and the City made co-hosts Meredith and Ricky who they are today, but GIRLS made them second guess it all",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1542882754": {
       "topics": [
@@ -94223,10 +94916,25 @@
     },
     "1542900359": {
       "topics": [
-        "tv-film/animation"
+        "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video games discussion and recap.",
+      "display_title": "The Sonic Podcast",
+      "blurb": "The Sonic Podcast is a cultural exploration of the wildly diverse and expansive history of Sonic the Hedgehog, starting with Archie Comic's rendition of Sonic",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1542906783": {
       "topics": [
@@ -94322,7 +95030,25 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Meditation and Buddhist practice guidance.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 38w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f21a2431",
+      "classified_at": "2026-08-04T16:56:54.135Z"
     },
     "1543265737": {
       "topics": [
