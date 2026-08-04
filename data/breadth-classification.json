@@ -38235,13 +38235,1043 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-04-4a318e9b",
       "classified_at": "2026-08-04T09:00:15.365Z"
+    },
+    "1546917854": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian devotional and faith-based teaching.",
+      "display_title": "365 con Dios",
+      "blurb": "Cada día Dios quiere hablarte, te invito a que me acompañes diariamente en este devocional, donde compartiremos una reflexión inspiradora para cada dí",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1547079068": {
+      "topics": [
+        "religion/buddhism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teachings and meditation practice.",
+      "display_title": "Sutta Meditation Series",
+      "blurb": "How to study the Buddha's Teachings and meditate on the insight pathways from the Theravada suttas. Emphasis on lay practice towards developing the Bu",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1547088092": {
+      "topics": [
+        "psychology",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychology and mental health discussions.",
+      "display_title": "Psychology Unplugged",
+      "blurb": "Weekly discussions and perspectives on all aspects of psychology, neuropsychology, psychopharmacology, and mental health topics. Psychoeducation, info",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1547129174": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and television analysis and reviews.",
+      "display_title": "Secret Handshake",
+      "blurb": "The podcast that covers the movies that help you identify your friends...and maybe make a few more along the way. Every week, Jacob, Cody, and Marten",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1547364686": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Political commentary and current affairs.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1547827376": {
+      "topics": [
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running culture and endurance sports.",
+      "display_title": "DINESH Podcast",
+      "blurb": "Best-selling author and documentarian Dinesh D'Souza provides enlightened conversations about politics, history, philosophy, literature, and much more",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1547857052": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Basketball analysis and NBA commentary.",
+      "display_title": "The Dunker Spot",
+      "blurb": "Nekias Duncan and former NBA video coordinator and assistant coach Steve Jones provide an in-depth, analytical look at the teams, players and stories",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1547887484": {
+      "topics": [
+        "aviation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation industry and pilot perspectives.",
+      "display_title": "Flight Suit Friday",
+      "blurb": "Flight Suit Friday was a created by a group of Coast Guard Aviators to share stories, discuss the art of search and rescue, and most importantly, to r",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1548008150": {
+      "topics": [
+        "business",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business strategy and financial market analysis.",
+      "display_title": "UBS On-Air: House View",
+      "blurb": "House View brings you daily, weekly, and monthly content covering our multi-asset views on economic trends and financial markets from the UBS Chief In",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1548149978": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and television analysis and reviews.",
+      "display_title": "For Real Life Pod - Bluey Podcast",
+      "blurb": "A Bluey inspired podcast. Two mom friends, one a super Bluey fan and another watching the episodes for the 1st time. Together we recap and review the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1548809846": {
+      "topics": [
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running culture and endurance sports.",
+      "display_title": "Beer on the Run Podcast",
+      "blurb": "Stories about beer, running, and sometimes both.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1549026104": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestling retrospectives.",
+      "display_title": "80’s Wrestling The Podcast",
+      "blurb": "80’s Wrestling: The Podcast” is a nostalgic podcast that celebrates the golden era of professional wrestling—the 1980s. It dives deep into the larger-",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1549272440": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political commentary and current affairs.",
+      "display_title": "The Daily Punch",
+      "blurb": "Weekday mornings, The Daily Punch brings you inside Capitol Hill, the White House and Washington for an unfiltered look at the key players and stakes",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1549273184": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and humorous conversations.",
+      "display_title": "We Will NOT Play DnD",
+      "blurb": "Four friends struggle to get through their weekly roleplaying campaigns together.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1549490720": {
+      "topics": [
+        "sports/golf"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf discussions and course analysis.",
+      "display_title": "Fore The People",
+      "blurb": "A podcast of the people, by the people, fore the people. Professional golfers John Peterson and JJ Killeen answer all of your golf and life questions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1549624070": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political commentary and current affairs.",
+      "display_title": "Amarica's Constitution",
+      "blurb": "Professor Akhil Reed Amar, Sterling Professor of Law and Political Science at Yale University and one of the nation's leading authorities on the Const",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1549821782": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hockey analysis and player insights.",
+      "display_title": "The Goalie Mindset Podcast",
+      "blurb": "On The Goalie Mindset Podcast , renowned mental performance coach Pete Fry sits down with NHL, NCAA, Major Junior, and professional goaltenders, coach",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1550188208": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Basketball analysis and NBA commentary.",
+      "display_title": "Big Shot Bob Pod with Robert Horry",
+      "blurb": "Unafraid of the big moment&hellip; unafraid to take the big shot&hellip; and unafraid to ask the big questions. A 7-time NBA champion, Robert Horry pe",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1550478380": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Film and television analysis and reviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1550519726": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classification uncertain; using genre prior.",
+      "display_title": "郭德纲于谦相声精选",
+      "blurb": "德云社郭德纲于谦相声精选 收录所有郭德纲的传统相声和其他经典相声。让开车，休闲，放松，睡觉都能放松心情。开心愉悦。",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1550607776": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic religious content and Quranic recitation.",
+      "display_title": "Beautiful Quranic Verses",
+      "blurb": "Listen to the beautiful teaching of Islam. The word of true Creator Allah Soothing Voice of shykh Noreen recites whole quran",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1550626556": {
+      "topics": [
+        "kids-family/parenting"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting strategies and child development.",
+      "display_title": "Parenting with Ginger Hubbard",
+      "blurb": "The Parenting with Ginger Hubbard podcast encourages and equips parents to reach beyond outward behavior, address the issues of the heart, and point t",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1550794130": {
+      "topics": [
+        "paranormal",
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Paranormal and spiritual exploration.",
+      "display_title": "The Occult Rejects",
+      "blurb": "Occultists, Rejects, and Mystics trying to educate others about magick and occultism so others can figure out who they are and the world around them.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1550885150": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political commentary and current affairs.",
+      "display_title": "Heterodox Out Loud",
+      "blurb": "Heterodox Out Loud, hosted by HxA president, John Tomasi, is an ongoing podcast featuring conversations with people across the academy and beyond. Lis",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1550944310": {
+      "topics": [
+        "kids-family/parenting"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting strategies and child development.",
+      "display_title": "Drift Off - Bedtime Stories for Adults",
+      "blurb": "Drift Off - Bedtime Stories is a soothing bedtime story podcast that welcomes you each week with a soft, melodic voice to help you fall asleep to bedt",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1551576680": {
+      "topics": [
+        "sports/fantasy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy sports strategy and analysis.",
+      "display_title": "On The Wire",
+      "blurb": "Join Adam Howe (@EightyGrade) and Kevin Hasting (@HastingKevin) every Sunday with insights and updates on how to use your fantasy baseball FAAB before",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1551580622": {
+      "topics": [
+        "paranormal",
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Paranormal and spiritual exploration.",
+      "display_title": "Encounters Down Under",
+      "blurb": "G'day and welcome to Encounters Down Under Our Episodes are streamed LIVE through our Youtube channel and Facebook page giving listeners the opportini",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1551586010": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and television analysis and reviews.",
+      "display_title": "Autopsy of a Horror Movie",
+      "blurb": "Horror movie reviews, analyses, kill grades, commentary tracks, and interviews with Shudder filmmakers. Breaking down interesting scenes, kills, chara",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1551634352": {
+      "topics": [
+        "religion"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classification uncertain; using genre prior.",
+      "display_title": "Pastor Ezequiel Molina Rosario",
+      "blurb": "Escuche la exposición clara de la palabra de Dios con el mensaje bíblico que transformara tu vida, en voz del pastor Ezequiel Molina R. Visita nuestro",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1551695402": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Film and television analysis and reviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1551842408": {
+      "topics": [
+        "nature/pets"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classification uncertain; using genre prior.",
+      "display_title": "The Pet Loss Companion",
+      "blurb": "Hosted by family therapists Nancy Saxton-Lopez and Ken Dolan-Del Vecchio, authors of the bestselling book The Pet Loss Companion: Healing Advice from",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1551992078": {
+      "topics": [
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and space exploration.",
+      "display_title": "HUNTR",
+      "blurb": "HUNTR is a community of passionate hunters who live for every part of the year from management to the hunt itself, all wrapped in a story-driven podca",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1552028546": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and humorous conversations.",
+      "display_title": "That's A Gay Ass Podcast",
+      "blurb": "A queer comedy podcast that asks &#34;whose fault is it that you’re gay?&#34; And if you’re straight, why are you so obsessed with us? Comedian Eric W",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1552066046": {
+      "topics": [
+        "engineering"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Engineering and technical innovation.",
+      "display_title": "DGTL Voices with Ed Marx",
+      "blurb": "DGTL Voices is your go-to podcast for all things digital innovation, healthcare technology, and leadership. Hosted by Ed Marx, the show features in-de",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1552471058": {
+      "topics": [
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and space exploration.",
+      "display_title": "Field and Garden with Lisa Mason Ziegler",
+      "blurb": "Join Lisa Mason Ziegler of The Gardener's Workshop on the Field and Garden Podcast talking flower farming, cut-flower gardening, business, and all thi",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1552655948": {
+      "topics": [
+        "business/marketing"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classification uncertain; using genre prior.",
+      "display_title": "強者我朋友 by 志祺七七",
+      "blurb": "Hiho～大家好，我是志祺！你現在收聽的是「強者我朋友 by 志祺七七」！ 在這裡，你將會聽到⋯⋯ 各種人們熱切關注的新聞時事議題，以及社會文化、心理健康、人際關係、環境、科學與科技、政治與法律、兩岸與國際關係等多樣化的主題與觀點 ✨✨ 如果你想要跟上社會時事的資訊、增加多面向的趣味知識觀點，那就趕",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1552689596": {
+      "topics": [
+        "news"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News and current events coverage.",
+      "display_title": "Vanessa G Fitcast",
+      "blurb": "If you’re a woman who thinks \"eating less” is the answer to losing weight, or that you have to choose between donuts and wine or a body you love, then",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1552891472": {
+      "topics": [
+        "paranormal",
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Paranormal and spiritual exploration.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1552918442": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Comedy and humorous conversations.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1553179628": {
+      "topics": [
+        "nature/pets"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classification uncertain; using genre prior.",
+      "display_title": "Ask the Vet",
+      "blurb": "Your favorite radio show about pets is now a podcast! In partnership with Sirius XM, the Schwarzman Animal Medical Center presents ‘Ask the Vet,’ a po",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1553199104": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and humorous conversations.",
+      "display_title": "Two Hot Takes",
+      "blurb": "Join host Morgan Absher and her team of co-hosts as they scavenge Reddit, listener write-ins, and the rest of the internet to give their hot takes on",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1553463740": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and television analysis and reviews.",
+      "display_title": "All '80s Movies Podcast",
+      "blurb": "The movie podcast where we discuss the blockbusters, the flops and everything in between from one of the freshest decades for movies...the 1980's.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1553781662": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic religious content and Quranic recitation.",
+      "display_title": "Digital Islamic Reminder",
+      "blurb": "Introducing Islamic thought and understanding to the masses by the illustrious scholars of our time. We will be hosting thoughtful reminders and lectu",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1553867522": {
+      "topics": [
+        "science/chemistry"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classification uncertain; using genre prior.",
+      "display_title": "Mitos Y Realidades De La Energía Nuclear",
+      "blurb": "Se habla sobre la energía nuclear, sus distintos métodos y lo bueno y lo malo de ella.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1554013364": {
+      "topics": [
+        "personal-journals"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classification uncertain; using genre prior.",
+      "display_title": "Halfsies",
+      "blurb": "Two hosts, two topics, one split-down-the-middle show. On Halfsies, Molly McAleer and Rob Schulte each bring something to the table. A double feature",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-405ff5c1",
+      "classified_at": "2026-08-04T16:51:13.145Z"
     }
   },
-  "built_at": "2026-08-04T09:00:15.365Z",
+  "built_at": "2026-08-04T16:51:13.145Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-04-4a318e9b",
+    "last_batch_id": "fresh-2026-08-04-405ff5c1",
     "last_batch_tier": 1
   }
 }
