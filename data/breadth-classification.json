@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-04T08:31:41.679Z",
+  "built_at": "2026-08-04T16:32:28.631Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-04-b4f0e6dc",
+    "last_batch_id": "fresh-2026-08-04-f269972d",
     "last_batch_tier": 1
   },
   "entries": {
@@ -91724,10 +91724,29 @@
     },
     "1532652997": {
       "topics": [
-        "science/physics"
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rigorous electrical engineering educational content covering power systems, vehicles, theory.",
+      "display_title": "Amogha. A. K. Podcast: Electrical And Electronics Engineering",
+      "blurb": "Educational series on electrical engineering principles: power systems, vehicles, fundamentals.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1532672950": {
       "topics": [
@@ -91933,7 +91952,24 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Direct sutra readings and Buddhist philosophy focused on mind and emotional wellbeing.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1533032812": {
       "topics": [
@@ -92001,17 +92037,45 @@
     },
     "1533351409": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NYC comedian ranting and discussing current events with producer between friends.",
+      "display_title": "Notes Of A Goon",
+      "blurb": "Uncensored comedy from a Brooklyn native: rants, politics, guests, and casual irreverence.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1533388375": {
       "topics": [
-        "comedy/interviews"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese-language casual conversation show mixing comedy, life advice, relationships.",
+      "display_title": "出逃在即",
+      "blurb": "Casual Chinese podcast: relationships, life philosophy, workplace wisdom, humor.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1533428270": {
       "topics": [
@@ -92049,7 +92113,21 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fan-driven SNL retrospective with sketch reviews and industry interviews.",
+      "display_title": "Saturday Night Network | SNL (Saturday Night Live)",
+      "blurb": "Greatest SNL sketches counted down: fan votes, rankings, industry interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1533511422": {
       "topics": [
@@ -92212,11 +92290,24 @@
     },
     "1533706303": {
       "topics": [
-        "space",
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language physics education: quantum mechanics, relativity, particle physics.",
+      "display_title": "Un Océano Cuántico",
+      "blurb": "Spanish physics education: quantum mechanics, relativity, universe mysteries.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1533708975": {
       "topics": [
@@ -92262,7 +92353,21 @@
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Behind-the-scenes Hollywood stories from classic TV and film industry veterans.",
+      "display_title": "That's Classic!",
+      "blurb": "Industry insiders share behind-the-scenes stories from classic television and film.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1533742797": {
       "topics": [
@@ -92273,17 +92378,45 @@
     },
     "1533744703": {
       "topics": [
-        "math"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Geometry lesson series: teaching fundamental concepts for classroom supplement.",
+      "display_title": "The Geometry Lesson",
+      "blurb": "Geometry fundamentals in bite-sized lessons for course review and learning.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:32:28.631Z"
     },
     "1533773809": {
       "topics": [
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic rock interviews with hall-of-famers and legends about music history.",
+      "display_title": "VRP Rocks - Classic Rock Interviews",
+      "blurb": "Classic rock interviews: 30+ hall-of-famers share stories from rock's golden era.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1533780254": {
       "topics": [
@@ -92413,11 +92546,24 @@
     },
     "1534042861": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mexican Spanish instruction through real conversations, grammar, cultural context.",
+      "display_title": "Speak Like a Mexican - Mexican Spanish Podcast",
+      "blurb": "Learn Mexican Spanish through real conversations, grammar lessons, cultural insights.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1534070267": {
       "topics": [
@@ -92438,7 +92584,21 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu scriptures and mantras: Ramayana, Bhagavata, sacred chanting.",
+      "display_title": "Susen Simha",
+      "blurb": "Hindu scriptures and sacred texts: Ramayana, Bhagavata, mantra recitations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1534142827": {
       "topics": [
@@ -92511,7 +92671,21 @@
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual guidance for creatives: archetypes, consciousness, energy practices.",
+      "display_title": "Moonbeaming",
+      "blurb": "Spiritual guidance for creatives and entrepreneurs: consciousness, energy, astrology.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1534240136": {
       "topics": [
@@ -92526,7 +92700,21 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DC Comics New 52 retrospective: chronological review with rotating expert co-hosts.",
+      "display_title": "The New 52 and You!",
+      "blurb": "Chronological DC Comics New 52 review with rotating hosts, diverse perspectives.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1534242111": {
       "topics": [
@@ -92556,7 +92744,21 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports betting and fantasy sports strategy: daily picks, analysis for all major leagues.",
+      "display_title": "OddsShopper",
+      "blurb": "Sports betting picks: daily analysis, strategies for NFL, NBA, MLB, and more.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1534338089": {
       "topics": [
@@ -92653,7 +92855,25 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and fitness interviews: keto, carnivore, fasting, wellness expert guests.",
+      "display_title": "Boundless Body Radio",
+      "blurb": "Health and fitness interviews: nutrition approaches, fasting, wellness strategies.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1534512753": {
       "topics": [
@@ -92748,10 +92968,28 @@
     "1534639387": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "religion/spirituality"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unique blend of spiritual practices with investment and wealth-building philosophy.",
+      "display_title": "The Spiritual Investor",
+      "blurb": "Spirituality meets finance: wealth-building through consciousness and positioning.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1534640362": {
       "topics": [
@@ -92773,7 +93011,21 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "League of Legends educational and motivational content: climbing, strategy, mindset.",
+      "display_title": "Broken By Concept: League of Legends Podcast",
+      "blurb": "League of Legends coaching: mindset, strategy, climbing ranked ladder.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1534676703": {
       "topics": [
@@ -92924,7 +93176,21 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French aviation news and industry interviews featuring aerospace professionals.",
+      "display_title": "Le Podcast de l'Aviation",
+      "blurb": "French aviation news and interviews with aerospace industry professionals.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1535048610": {
       "topics": [
@@ -93085,7 +93351,21 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket coaching and training content: technique, psychology, fitness for players.",
+      "display_title": "Cricket Mandir",
+      "blurb": "Cricket coaching: training, technique, psychology, fitness for competitive players.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1535524824": {
       "topics": [
@@ -93138,7 +93418,21 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball coaching insights and conversations for collegiate and pro coaches.",
+      "display_title": "Coaching Conversations Archives - Coaching Volleyball",
+      "blurb": "Volleyball coaching insights: team building, performance, personnel management.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1535661441": {
       "topics": [
@@ -93197,7 +93491,21 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Starfield video game lore, quests, news, and gameplay tips from fans and creators.",
+      "display_title": "Starfield Lorecast: Video Game Lore, News & More",
+      "blurb": "Starfield lore and gameplay: news, quests, locations, community features.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1535826660": {
       "topics": [
@@ -93257,7 +93565,21 @@
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime stories of relationship cons and abuse: survivor tales, red flags.",
+      "display_title": "Ex-Wives Undercover: Liars, Cheaters & Love Cons",
+      "blurb": "True stories of relationship cons and abuse from survivors: red flags, recovery.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1536158507": {
       "topics": [
@@ -93305,10 +93627,29 @@
     },
     "1536235033": {
       "topics": [
-        "travel"
+        "travel",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel business coaching: scaling advisories, entrepreneurship, industry insights.",
+      "display_title": "Masters in Travel",
+      "blurb": "Travel business coaching: scaling, sales strategies, luxury hospitality insights.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1536256870": {
       "topics": [
@@ -93447,7 +93788,21 @@
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment industry interviews: Emmy races, film/TV talent, awards discussions.",
+      "display_title": "Awards Circuit | Variety",
+      "blurb": "Entertainment industry interviews and awards race coverage for film and TV.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1536668482": {
       "topics": [
@@ -93488,10 +93843,24 @@
     },
     "1536873187": {
       "topics": [
-        "craft"
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Detailed sewing instruction: garment construction, techniques, pattern selection.",
+      "display_title": "Lifting Pins and Needles",
+      "blurb": "Expert sewing instruction: garment construction, patterns, fabrics, techniques.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1536910443": {
       "topics": [
@@ -93554,17 +93923,45 @@
     },
     "1537046809": {
       "topics": [
-        "business/management"
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership interviews with entrepreneurs: resilience, team building, growth mindset.",
+      "display_title": "The EOS Leader",
+      "blurb": "Entrepreneur interviews: leadership, team building, growth strategies, resilience.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1537048501": {
       "topics": [
-        "science/physics"
+        "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tarot card readings by zodiac sign: monthly predictions and spiritual guidance.",
+      "display_title": "Readings By ButtaFly",
+      "blurb": "Tarot readings by zodiac sign: monthly guidance and spiritual insights.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1537049073": {
       "topics": [
@@ -93593,7 +93990,21 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis business coaching: growing coaching programs, player retention, marketing.",
+      "display_title": "The Tennis Business Academy Podcast",
+      "blurb": "Tennis business coaching: growing programs, player retention, marketing strategy.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1537255778": {
       "topics": [
@@ -93630,7 +94041,21 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Narrated horror and sci-fi fiction stories from writers and community submissions.",
+      "display_title": "Dr. Creepen's Dungeon",
+      "blurb": "Narrated horror and sci-fi fiction: creepypasta, original stories, dark tales.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:32:28.631Z"
     },
     "1537314272": {
       "topics": [
@@ -93826,11 +94251,29 @@
     },
     "1537866697": {
       "topics": [
-        "news",
-        "business"
+        "business",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Accounting and tax profession insights: AI, leadership, firm scaling.",
+      "display_title": "CPA Trendlines Podcasts",
+      "blurb": "Accounting profession insights: leadership, AI, firm scaling, industry trends.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1537872672": {
       "topics": [
@@ -93844,7 +94287,21 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian teaching and theology: daily living, faith, biblical instruction.",
+      "display_title": "For the Gospel Podcast",
+      "blurb": "Christian teaching and theology: daily living, faith, biblical instruction.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1537889926": {
       "topics": [
@@ -93932,7 +94389,21 @@
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Influencer interviews on style, wellness, and lifestyle from brand founders.",
+      "display_title": "Life with Marianna",
+      "blurb": "Influencer interviews: fashion, wellness, entrepreneurship, stress management.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1538243298": {
       "topics": [
@@ -93946,7 +94417,21 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Queer horror podcast with cosmic narrator: identity, apocalyptic forest setting.",
+      "display_title": "Hello From The Hallowoods",
+      "blurb": "Queer horror fiction: cosmic storytelling, identity, apocalyptic forest setting.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1538249198": {
       "topics": [
@@ -93989,7 +94474,21 @@
         "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ambitious career conversations: founders, creators, success costs, real challenges.",
+      "display_title": "Dream with Dr Sheen",
+      "blurb": "Career interviews: founders, success stories, real costs of ambition.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1538306196": {
       "topics": [
@@ -94150,7 +94649,24 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Florida real estate expertise: buying, selling, market insights, commissions.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1539012594": {
       "topics": [
@@ -94179,7 +94695,21 @@
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beauty industry discussion: salon professionals, product innovation, trends.",
+      "display_title": "Volume Up by The Tease",
+      "blurb": "Beauty industry news: salon trends, product innovation, professional insights.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1539208868": {
       "topics": [
@@ -94247,7 +94777,21 @@
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal encounters with fairies: listener stories, spiritual experiences.",
+      "display_title": "The Modern Fairy Sightings Podcast",
+      "blurb": "Paranormal stories: fairy encounters, spiritual experiences from listeners.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1539361793": {
       "topics": [
@@ -94362,18 +94906,45 @@
     },
     "1539805981": {
       "topics": [
-        "news",
-        "business"
+        "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ranching and cattle industry news: markets, cowboys, beef production.",
+      "display_title": "Ranch It Up Radio Show & Podcast",
+      "blurb": "Ranching news: cattle markets, industry updates, working ranch lifestyle.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:32:28.631Z"
     },
     "1539810265": {
       "topics": [
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music gear and instrumentation: guitars, amps, effects, musician interviews.",
+      "display_title": "40 Watt Podcast",
+      "blurb": "Music gear and instrumentation: guitars, amps, effects, musician interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1539823196": {
       "topics": [
@@ -94409,7 +94980,21 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chicago daily news roundup: city news, culture, current events.",
+      "display_title": "The Rundown | Chicago News",
+      "blurb": "Chicago news daily: current events, culture, city stories in bite-sized format.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-04-f269972d",
+      "classified_at": "2026-08-04T16:31:28.852Z"
     },
     "1540003023": {
       "topics": [
