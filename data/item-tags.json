@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-04T11:43:38.221Z",
+  "built_at": "2026-08-05T11:46:08.683Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -10541,6 +10541,211 @@
       "album",
       "cole-cuchna",
       "interview"
+    ],
+    "stuff-you-should-know--short-stuff-phone-books": [
+      "history",
+      "technology",
+      "americana",
+      "communication",
+      "infrastructure",
+      "bite-sized"
+    ],
+    "my-brother-my-brother-and-me--mbmbam-825-i-ain-t-fredo": [
+      "comedy",
+      "banter",
+      "humor",
+      "absurdist",
+      "pop-culture",
+      "call-in"
+    ],
+    "within-tolerance--within-tolerance-episode-281-eddie-riddell": [
+      "engineering",
+      "manufacturing",
+      "machining",
+      "entrepreneurship",
+      "new-zealand",
+      "cnc",
+      "craftsmanship",
+      "cad"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3396": [
+      "language",
+      "linguistics",
+      "etymology",
+      "words",
+      "communication",
+      "bite-sized"
+    ],
+    "good-hang-amy-poehler--lena-waithe": [
+      "comedy",
+      "talk-show",
+      "interview",
+      "celebrity",
+      "pop-culture",
+      "television",
+      "hollywood"
+    ],
+    "gastropod--salad-days-a-story-of-science": [
+      "food",
+      "food-history",
+      "sexism",
+      "science",
+      "history",
+      "cooking"
+    ],
+    "ologies-with-alie-ward--hyaenidology-hyenas-with-christine-wilkinson": [
+      "animal-behavior",
+      "animal-cognition",
+      "biology",
+      "ecology",
+      "science-communication",
+      "hyenas",
+      "africa"
+    ],
+    "spycast--smears-fakes-phantoms-cold-war-britain": [
+      "espionage",
+      "cold-war",
+      "propaganda",
+      "intelligence",
+      "britain",
+      "history"
+    ],
+    "main-engine-cut-off--t-337-inversion-space-with-justin": [
+      "space",
+      "rockets",
+      "space-industry",
+      "aerospace",
+      "spacecraft",
+      "logistics",
+      "startups",
+      "entrepreneurship"
+    ],
+    "planet-money--sand-heists-and-property-rights-in": [
+      "economics",
+      "property-rights",
+      "caribbean",
+      "land-use",
+      "history",
+      "policy"
+    ],
+    "freakonomics-radio--does-it-take-a-twisted-mind": [
+      "authors",
+      "writing",
+      "suburbia",
+      "fiction",
+      "thriller",
+      "interview"
+    ],
+    "unexplainable--a-trip-to-the-twilight-reefs": [
+      "ocean",
+      "marine-biology",
+      "deep-sea",
+      "reefs",
+      "science",
+      "ecology"
+    ],
+    "business-wars--gopro-the-billion-dollar-wipeout-crash": [
+      "business",
+      "business-history",
+      "ipo",
+      "cameras",
+      "entrepreneurship",
+      "technology"
+    ],
+    "the-war-on-cars--human-transit-with-jarrett-walker": [
+      "public-transit",
+      "urban-planning",
+      "transit",
+      "buses",
+      "policy",
+      "interview"
+    ],
+    "tiny-matters--from-cow-s-milk-to-blood": [
+      "medicine",
+      "medical-history",
+      "blood",
+      "biology",
+      "history",
+      "science"
+    ],
+    "weather-geeks--measuring-arizona-s-dust-storms": [
+      "weather",
+      "meteorology",
+      "climate",
+      "extreme-weather",
+      "desert",
+      "arizona"
+    ],
+    "physiology-endurance-running--weight-performance-a-case-study-view": [
+      "running",
+      "endurance",
+      "athletic-performance",
+      "sports-science",
+      "training",
+      "health"
+    ],
+    "shipwrecks-and-sea-dogs--pere-marquette-18-a-lake-michigan": [
+      "shipwrecks",
+      "history",
+      "ferries",
+      "great-lakes",
+      "maritime-history",
+      "disasters"
+    ],
+    "ten-percent-happier--resetting-your-nervous-system-when-you": [
+      "nervous-system",
+      "anxiety",
+      "self-improvement",
+      "mental-health",
+      "wellbeing",
+      "trauma"
+    ],
+    "happier-gretchen-rubin--ep-598-spy-on-your-own": [
+      "habits",
+      "self-improvement",
+      "empty-nest",
+      "parenting",
+      "happiness",
+      "productivity"
+    ],
+    "armchair-expert--christopher-whitcomb-on-the-idaho-murders": [
+      "true-crime",
+      "fbi",
+      "interview",
+      "memoir",
+      "crime",
+      "national-security"
+    ],
+    "call-her-daddy--bella-thorne-disney-dating-reclaiming-her": [
+      "celebrity",
+      "interview",
+      "disney",
+      "dating",
+      "memoir",
+      "resilience"
+    ],
+    "astonishing-legends--s2-ep29-the-boy-who-wanted": [
+      "paranormal",
+      "folklore",
+      "storytelling",
+      "mystery",
+      "ghost-stories"
+    ],
+    "dateline--the-day-dee-disappeared": [
+      "true-crime",
+      "missing-persons",
+      "investigation",
+      "cold-case",
+      "journalism"
+    ],
+    "circle-round--summer-camp-the-bird-of-a": [
+      "folktale",
+      "africa",
+      "kids",
+      "storytelling",
+      "fairy-tales",
+      "family",
+      "live-performance"
     ]
   }
 }
