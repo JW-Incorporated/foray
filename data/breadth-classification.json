@@ -16856,6 +16856,28 @@
       "batch_id": "fresh-2026-07-29-b935f5c8",
       "classified_at": "2026-07-29T16:59:48.602Z"
     },
+    "1305878240": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers sports themes.",
+      "display_title": "The Diamond Podcast for Financial Advisors",
+      "blurb": "Launched in 2017 as Mindy Diamond on Independence, the show has taken on a broader perspective beyond the independent space to include to...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
     "1307361758": {
       "topics": [
         "business/marketing",
@@ -41673,13 +41695,801 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-05-a4a35bba",
       "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1565584610": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers sports themes.",
+      "display_title": "Pinstripe Territory: a New York Yankees Podcast",
+      "blurb": "A New York Yankees podcast hosted by Derek Levandowski, including YouTube's #1 most-watched Yankees live postgame show. Part of the Foul ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1565667554": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers sports themes.",
+      "display_title": "GeekVerse Reviews",
+      "blurb": "A spin off of GeekVerse Podcast featuring all their Reviews!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1565881742": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show covers news/politics themes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1565992292": {
+      "topics": [
+        "tv-film/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show covers tv-film/history themes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1566107516": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers education themes.",
+      "display_title": "The Success NP: Clinical Pearls for Nurse Practitioners",
+      "blurb": "The Success NP Podcast is your go-to resource for Nurse Practitioners, hosted by NPs Sandra and Jackie. Every other week, they share clin...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1566200204": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show covers music themes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1566465824": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers education themes.",
+      "display_title": "ADHD for Smart Ass Women with Tracy Otsuka",
+      "blurb": "Want to fall in love with your ADHD brain and make it work for you? Learn more about my patented program, Your ADHD Brain is A-OK Academy...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1566652184": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers sports themes.",
+      "display_title": "Tales And Talk With Siddharth",
+      "blurb": "This podcast is for knowledge sharing about spirituality, religion, Hinduism, Vedic knowledge, Mantras, Pranayama Yoga, Kundalini Shakti....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1566786218": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers sports themes.",
+      "display_title": "Wake Of Corrosion",
+      "blurb": "A UK based audio drama set in a nightmare ridden, apocalyptic world. An unknown horror grips the country, forcing most of the remaining p...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1567098962": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers sports themes.",
+      "display_title": "On Our Watch",
+      "blurb": "When correctional officer Valentino Rodriguez first stepped behind prison walls, he wasn't just starting a job, he was joining a family. ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1567140092": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers sports themes.",
+      "display_title": "Auction Brief with Drew Davenport",
+      "blurb": "The Auction Brief, with host Drew Davenport, is a fantasy football show that will give you a unique perspective found nowhere in the fant...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1567278038": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers sports themes.",
+      "display_title": "Flatirons Syndicate Motorsports Podcast",
+      "blurb": "The team at Flatirons Tuning in Boulder, CO talks about motorsports, Subaru, rally racing, time attack, wheel to wheel racing, the Pikes ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1567580798": {
+      "topics": [
+        "tv-film/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show covers tv-film/history themes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1567626080": {
+      "topics": [
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show covers society/government themes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1568044850": {
+      "topics": [
+        "tv-film/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers tv-film/history themes.",
+      "display_title": "History of L.A. Ska: One On One Sessions",
+      "blurb": "Hosted by veteran radio DJ/emcee/promoter Junor Francis, we celebrate Southern California's ska, rocksteady and vintage reggae scene thro...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1568911820": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers news/politics themes.",
+      "display_title": "Biotech Hangout",
+      "blurb": "A weekly discussion of all things biotech – breaking news, data, deals, and FDA actions – with a community of biotech industry leaders an...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1569104546": {
+      "topics": [
+        "tv-film/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers tv-film/history themes.",
+      "display_title": "Front and Center",
+      "blurb": "Each week, award-winning graphic designer Alex Center and co-host Kevin Batory discuss branding, design, pop culture, and more. New episo...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1569279602": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers sports themes.",
+      "display_title": "Course Record Show",
+      "blurb": "Conversations with the smartest people in the golf business to get the inside stories and strategies driving the business of golf forward...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1569474572": {
+      "topics": [
+        "philosophy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers philosophy themes.",
+      "display_title": "Just Tap In with Emilio Ortiz",
+      "blurb": "Just Tap In is a space to remember your place in the greatest awakening in human history. Gen-Z host, Emilio Ortiz, reveals illuminating ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1569661214": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers education themes.",
+      "display_title": "The Warblers by Birds Canada",
+      "blurb": "This award winning podcast shares Canadian information, insights and inspiration on the world of birds and bird conservation. The lively ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1570036124": {
+      "topics": [
+        "tv-film/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers tv-film/history themes.",
+      "display_title": "Nostalgic Mystery Radio",
+      "blurb": "Old time radio mystery programs brought back to life for today's fan of the great shows of yesteryear. Including the classics such as She...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1570144628": {
+      "topics": [
+        "philosophy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers philosophy themes.",
+      "display_title": "Daily Devotional: GoOD Mornings with CurlyNikki",
+      "blurb": "Daily Devotional: Good Mornings with CurlyNikki is a daily devotional podcast featuring morning meditation, spiritual grounding, mindfuln...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1570204802": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers sports themes.",
+      "display_title": "First Smoke of The Day",
+      "blurb": "Welcome to First Smoke of the Day – The Ultimate Cannabis Industry Podcast! First Smoke of the Day is your go-to podcast for Exclusive in...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1570380458": {
+      "topics": [
+        "tv-film/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers tv-film/history themes.",
+      "display_title": "The Victor Davis Hanson Show",
+      "blurb": "This is the Victor Davis Hanson Show. Victor is the Martin and Illie Anderson Senior Fellow at the Hoover Institution and the Wayne & Mar...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1570709246": {
+      "topics": [
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers religion/spirituality themes.",
+      "display_title": "A Toast To Life Podcast",
+      "blurb": "The most organic most authentic podcast out right now. We are here to share peoples stories on life, business and motivation/inspiration....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1570747490": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers sports themes.",
+      "display_title": "Brian Breaks Character",
+      "blurb": "On the Brian Breaks Character podcast, Brian slays the suffering artist myth so you can attract the right attention, get out of your own ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1570820660": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show covers news/politics themes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1571045210": {
+      "topics": [
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers nature/earth-science themes.",
+      "display_title": "Call To Farms",
+      "blurb": "The Call To Farms podcast is dedicated to the pursuit of self-sufficiency, self reliance, and sustainability. Tim and Sophia Eng are a mi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1571161958": {
+      "topics": [
+        "tv-film/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers tv-film/history themes.",
+      "display_title": "ForneverWorld",
+      "blurb": "Welcome to the official ForneverWorld Podcast – your ultimate one-stop shop for everything ForneverWorld. This is the full rebrand and ma...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1571285630": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers music themes.",
+      "display_title": "The Wellness Cafe",
+      "blurb": "Welcome to The Wellness Cafe Podcast. Your host Trinity Tondeleir who you may know from TikTok, Instagram, or Youtube is serving all thin...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1571373992": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers sports themes.",
+      "display_title": "Nice Jewish Girls",
+      "blurb": "This podcast is not about Nice Jewish Girls. It’s about Jewish girls who are so much more than nice. It’s about journalists and authors, ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1571779250": {
+      "topics": [
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers nature/earth-science themes.",
+      "display_title": "Son of a Boy Dad",
+      "blurb": "Lil Sasquatch recently dropped out of college and is rudderless in this big mean world. To help fill in the gaps on the education he miss...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1572124982": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers education themes.",
+      "display_title": "Monde Numérique (Actualité Tech & IA)",
+      "blurb": "Bienvenue à l'écoute de Monde Numérique, le podcast qui décrypte l'actu tech et les enjeux du numérique, présenté par Jérôme Colombain. J...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1572214694": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers society themes.",
+      "display_title": "لام تا کلام",
+      "blurb": "ناگفته‌های چالش های روزانه ما در روابط واتفاقات زندگی با زبان ساده و عامیانه توسط سولماز برقگیر، روان درمانگر در کانادا، لایف کوچ، استرات...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1572324836": {
+      "topics": [
+        "tv-film/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show covers tv-film/history themes.",
+      "display_title": "Erika de la Vega - En Defensa Propia",
+      "blurb": "En este mundo de hoy pareciera que no hay manera de escapar de la reinvención, sobre todo si eres mujer. La cosa es que nadie nos explica...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-8d3d16b3",
+      "classified_at": "2026-08-05T16:50:24.393Z"
     }
   },
-  "built_at": "2026-08-05T08:51:07.284Z",
+  "built_at": "2026-08-05T16:50:24.393Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-05-a4a35bba",
+    "last_batch_id": "fresh-2026-08-05-8d3d16b3",
     "last_batch_tier": 1
   }
 }
