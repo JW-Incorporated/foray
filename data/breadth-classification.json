@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-05T00:23:44.746Z",
+  "built_at": "2026-08-05T08:24:19.119Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-05-1a5e65ab",
+    "last_batch_id": "fresh-2026-08-05-c18cade6",
     "last_batch_tier": 1
   },
   "entries": {
@@ -98210,14 +98210,44 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serious volleyball community podcast covering techniques, training, gym culture.",
+      "display_title": "Best Volleyball Videos Podcast",
+      "blurb": "Techniques and training for serious volleyball players, from slide attacks to Olympic paths.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1546288185": {
       "topics": [
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Private pilot safety tips, procedures, airspace, and aircraft systems.",
+      "display_title": "Squawk 5353",
+      "blurb": "Aviation safety and training for private pilots, covering procedures and airspace.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1546295087": {
       "topics": [
@@ -98637,10 +98667,30 @@
     },
     "1547222295": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror-fantasy serial drama with religious themes and rural mythology.",
+      "display_title": "The Silt Verses",
+      "blurb": "Horror-fantasy serial following two acolytes' pilgrimage up a dark river, filled with cosmic horror.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1547241479": {
       "topics": [
@@ -98676,7 +98726,22 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Knitting techniques, patterns, interviews with designers and business advice.",
+      "display_title": "Get Knit Done",
+      "blurb": "Knitting techniques, patterns, and community interviews for new and experienced knitters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1547303899": {
       "topics": [
@@ -98754,10 +98819,30 @@
     },
     "1547548443": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reptile hobby and industry podcast covering breeding, conservation, products.",
+      "display_title": "Reptiles With",
+      "blurb": "Reptile hobby and breeding discussed with humor and diverse perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1547549692": {
       "topics": [
@@ -98818,10 +98903,30 @@
     },
     "1547672733": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "nature/earth-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional arborists discuss tree care, diseases, seasonal maintenance, and landscape health.",
+      "display_title": "Talking Trees with Davey Tree",
+      "blurb": "Expert advice on tree care, diseases, arborist favorites, and landscape management.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1547705773": {
       "topics": [
@@ -99057,10 +99162,30 @@
     },
     "1548416919": {
       "topics": [
-        "nature/pets"
+        "health/fitness",
+        "psychology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Feldenkrais movement coach discusses body awareness, mindset, connection with animals.",
+      "display_title": "Easier Movement, Happier Life",
+      "blurb": "Feldenkrais method for horses, dogs, and people seeking easier movement and connection.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1548441108": {
       "topics": [
@@ -99252,10 +99377,30 @@
     },
     "1549388085": {
       "topics": [
+        "culture/pop-culture",
         "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kevin Hart interviews entertainment and business leaders about careers and success.",
+      "display_title": "Gold Minds with Kevin Hart",
+      "blurb": "Conversations with entertainment and business leaders on navigating careers to excellence.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1549389941": {
       "topics": [
@@ -99569,10 +99714,30 @@
     },
     "1550208345": {
       "topics": [
-        "business/marketing"
+        "economics/markets",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Agricultural commodity futures and livestock risk management analysis.",
+      "display_title": "Professional Ag Marketing Podcast",
+      "blurb": "Grain and livestock commodity trading, risk management, and market analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1550243290": {
       "topics": [
@@ -99594,7 +99759,22 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep breakdown of Attack on Titan episodes with detailed plot and character analysis.",
+      "display_title": "Shingeki No Podcast",
+      "blurb": "Episode-by-episode breakdowns of Attack on Titan anime with detailed analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1550347186": {
       "topics": [
@@ -99637,7 +99817,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedy riffing on current events, identity, and personal reflection.",
+      "display_title": "PodGis with Ava Val",
+      "blurb": "Stand-up comedy with riffs, character impressions, and thoughtful personal reflection.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1550519726": {
       "topics": [
@@ -99651,7 +99846,22 @@
         "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Europe travel tips, hidden destinations, authentic local experiences.",
+      "display_title": "Wander Your Way",
+      "blurb": "Off-the-beaten-path European travel advice with practical tips for authentic experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1550576421": {
       "topics": [
@@ -99693,10 +99903,30 @@
     },
     "1550663163": {
       "topics": [
-        "comedy/interviews"
+        "relationships",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unfiltered advice from husband and wife on relationships, sex, money, and life.",
+      "display_title": "Give It To Me Straight",
+      "blurb": "Candid advice on relationships, intimacy, careers, and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1550665912": {
       "topics": [
@@ -99727,7 +99957,26 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese language instruction for beginner-intermediate learners.",
+      "display_title": "Japanese with Shun",
+      "blurb": "Native Japanese instruction for beginners learning grammar and listening skills.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1550747153": {
       "topics": [
@@ -99738,10 +99987,30 @@
     },
     "1550751591": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.87
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news commentary on politics, government, law from New York radio hosts.",
+      "display_title": "Cats & Cosby",
+      "blurb": "Daily news and political commentary from experienced radio journalists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1550756719": {
       "topics": [
@@ -99793,7 +100062,22 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling legend Kurt Angle discusses career matches, feuds, and entertainment.",
+      "display_title": "The Kurt Angle Show",
+      "blurb": "Wrestling legend Kurt Angle reflects on historic matches, feuds, and career moments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1550843344": {
       "topics": [
@@ -99861,10 +100145,40 @@
     },
     "1550932167": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "sports/football",
+        "sports/basketball",
+        "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.65
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.5
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Minnesota sports daily with primary focus on Twins baseball.",
+      "display_title": "StribSports Daily Delivery",
+      "blurb": "Minnesota sports news covering Twins, Vikings, Lynx, Wild, and college teams.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1550944310": {
       "topics": [
@@ -99985,10 +100299,30 @@
     },
     "1551206847": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Legal and political analysis by experienced lawyers on government and law.",
+      "display_title": "#SistersInLaw",
+      "blurb": "Legal and political analysis from expert prosecutors and lawyers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1551228559": {
       "topics": [
@@ -100045,14 +100379,44 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ska music history and culture defended through interviews and stories.",
+      "display_title": "In Defense of Ska",
+      "blurb": "Ska music history and culture through interviews with bands and music figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1551384843": {
       "topics": [
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Boston Bruins game analysis from longtime NHL analyst and former goalie.",
+      "display_title": "Morning Bru with Jaffe & Razor",
+      "blurb": "Bruins game breakdown and analysis from NHL experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1551390088": {
       "topics": [
@@ -100218,10 +100582,25 @@
     },
     "1551795483": {
       "topics": [
-        "music"
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music production and mixing techniques for beginner and early-career producers.",
+      "display_title": "Inside The Mix",
+      "blurb": "Music production and mixing tips for home studio producers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1551820452": {
       "topics": [
@@ -100278,10 +100657,30 @@
     },
     "1551882555": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.92
+        },
+        {
+          "node": "sports/baseball",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy baseball strategy and hitter rankings with league discussion.",
+      "display_title": "Hacks & Jacks",
+      "blurb": "Fantasy baseball strategy and hitter rankings for competitive play.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1551940918": {
       "topics": [
@@ -100362,7 +100761,26 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vintage radio recordings from 50 years ago including country music.",
+      "display_title": "Vintage Country Radio",
+      "blurb": "Vintage country radio and American Top 40 recordings from decades past.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1552059697": {
       "topics": [
@@ -100391,7 +100809,22 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry in daily life from production to consumption.",
+      "display_title": "Chemistry is everywhere",
+      "blurb": "Chemistry concepts explained through everyday phenomena and applications.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1552165236": {
       "topics": [
@@ -100442,14 +100875,53 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.88
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Climate science and adaptation for Southwest US regions.",
+      "display_title": "Come Rain or Shine",
+      "blurb": "Climate science and adaptation strategies for resilient communities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1552285929": {
       "topics": [
-        "medicine"
+        "medicine",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nurse practitioner exam prep and clinical guidance.",
+      "display_title": "Real Deal Nurse Practitioner Club",
+      "blurb": "Nurse practitioner board exam prep and clinical decision-making guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1552331477": {
       "topics": [
@@ -100463,7 +100935,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket podcast with humor, player stories, match analysis.",
+      "display_title": "Zero Ducks Given",
+      "blurb": "Irreverent cricket stories and analysis with dressing room insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1552384675": {
       "topics": [
@@ -100508,7 +100995,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NHL news, trades, and hockey analysis from insiders.",
+      "display_title": "The DFO Rundown",
+      "blurb": "NHL analysis with insider scoops on trades and roster moves.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1552575702": {
       "topics": [
@@ -100551,7 +101053,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Russian stand-up comedy from established and emerging comedians.",
+      "display_title": "Шоу Stand Up на ТНТ",
+      "blurb": "Russian stand-up comedy from top performers and rising talent.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1552655948": {
       "topics": [
@@ -100664,10 +101181,30 @@
     },
     "1552816683": {
       "topics": [
+        "health",
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Evidence-based birth and pregnancy discussion with midwives and doctors.",
+      "display_title": "Birthing Instincts",
+      "blurb": "Evidence-based birth discussion covering pregnancy, complications, and physiological birth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1552821965": {
       "topics": [
@@ -100841,7 +101378,26 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.88
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Retirement planning and long-term investment strategy.",
+      "display_title": "Personal Finance for Long-Term Investors",
+      "blurb": "Retirement planning and tax-efficient investing for long-term wealth building.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1553199104": {
       "topics": [
@@ -100936,10 +101492,35 @@
     },
     "1553345193": {
       "topics": [
-        "sports/football"
+        "sports/football",
+        "sports/baseball",
+        "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/baseball",
+          "confidence": 0.6
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DC-area sports analysis covering Commanders, Nationals, Capitals, Wizards.",
+      "display_title": "The Al Galdi Podcast",
+      "blurb": "Washington DC-area sports analysis and commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1553360997": {
       "topics": [
@@ -100970,10 +101551,30 @@
     },
     "1553382555": {
       "topics": [
-        "food"
+        "food",
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.88
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baking trends, techniques, recipes, and industry gossip.",
+      "display_title": "Knead To Know Baking Entertainment",
+      "blurb": "Baking entertainment covering trends, techniques, and industry news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1553412228": {
       "topics": [
@@ -101064,7 +101665,22 @@
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Contact center operations, customer service, AI integration.",
+      "display_title": "Contact Center Show",
+      "blurb": "Contact center management, customer service excellence, and AI transformation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1553512740": {
       "topics": [
@@ -101079,7 +101695,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket match analysis and preview with team discussion.",
+      "display_title": "THE CRICKET",
+      "blurb": "Cricket match analysis and series previews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1553531413": {
       "topics": [
@@ -101200,18 +101831,52 @@
     },
     "1553805657": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "psychology",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tarot readings and mental health exploration by licensed psychotherapist.",
+      "display_title": "The Tarot Diagnosis",
+      "blurb": "Tarot and psychotherapy exploring behavior patterns and emotional growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1553853591": {
       "topics": [
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy romance book club with deep dive on plot, characters, tropes.",
+      "display_title": "Flights of Fantasy",
+      "blurb": "Fantasy romance book club with character and worldbuilding analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1553858809": {
       "topics": [
@@ -101232,7 +101897,22 @@
         "math"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Advanced mathematics combinatorics course from Fields medalist.",
+      "display_title": "Combinatoire - Timothy Gowers",
+      "blurb": "Advanced combinatorics course covering problem-solving and discrete mathematics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1553952528": {
       "topics": [
@@ -101536,10 +102216,30 @@
     },
     "1554595461": {
       "topics": [
-        "sports/rugby"
+        "sports/rugby",
+        "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.92
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby analysis and Superbru fantasy league commentary.",
+      "display_title": "Rugby Punt-it",
+      "blurb": "Rugby analysis and fantasy league strategy with player insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1554616586": {
       "topics": [
@@ -101562,14 +102262,44 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Detroit Tigers farm system weekly updates and prospects.",
+      "display_title": "The Detroit Tigers Minor League Report Podcast",
+      "blurb": "Detroit Tigers minor league farm system coverage and prospect updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1554657285": {
       "topics": [
         "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scotland travel stories, tips, and conversations with local experts.",
+      "display_title": "Wild for Scotland Podcast",
+      "blurb": "Scotland travel stories, practical tips, and conversations with locals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-c18cade6",
+      "classified_at": "2026-08-05T08:24:19.119Z"
     },
     "1554679929": {
       "topics": [
