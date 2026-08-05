@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-05T08:13:00.952Z",
+  "built_at": "2026-08-05T16:10:48.065Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-05-a8c07155",
+    "last_batch_id": "fresh-2026-08-05-a5b83def",
     "last_batch_tier": 1
   },
   "entries": {
@@ -73542,10 +73542,39 @@
     "1496665566": {
       "topics": [
         "education/language-learning",
-        "linguistics/language"
+        "linguistics/language",
+        "education",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.84
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language/learning podcast; content spans Language.",
+      "display_title": "Charlas Hispanas: Aprende Español | Learn Spanish",
+      "blurb": "Podcast para aprender español y cultura",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1496674902": {
       "topics": [
@@ -94082,17 +94111,107 @@
     },
     "1538249280": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "philosophy/ideas",
+        "business",
+        "business/startups",
+        "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.92
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.92
+        },
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophical podcast; content spans Ideas.",
+      "display_title": "Overthink",
+      "blurb": "The best of all possible podcasts, Leibniz would say. Putting big ideas in dialogue with the everyday, Overthink offers accessible and fresh takes on philosophy from enthusiastic experts. Hosted",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1538283780": {
       "topics": [
-        "relationships"
+        "relationships",
+        "health/mental",
+        "space",
+        "space/rockets",
+        "business",
+        "business/startups",
+        "business/founders",
+        "education",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "space",
+          "confidence": 0.88
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.88
+        },
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        },
+        {
+          "node": "education",
+          "confidence": 0.84
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship/personal podcast; content spans Mental Health.",
+      "display_title": "Self Care and Chill With Maui",
+      "blurb": "A bunch of laughing and finger snapping while we talk about relationships, sex and self",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1538288513": {
       "topics": [
@@ -94103,10 +94222,75 @@
     },
     "1538289354": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "society/law",
+        "news",
+        "news/politics",
+        "news/daily",
+        "food",
+        "food/cooking-science",
+        "music",
+        "music/theory-production",
+        "history",
+        "history/archaeology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.93
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.93
+        },
+        {
+          "node": "news",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.86
+        },
+        {
+          "node": "food",
+          "confidence": 0.86
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.86
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.84
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast; content spans Law.",
+      "display_title": "Murder Sheet",
+      "blurb": "The Murder Sheet is a weekly true crime podcast hosted by journalist Áine Cain and attorney Kevin Greenlee. We take a journalistic approach to covering true crime. We have",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1538291929": {
       "topics": [
@@ -94184,17 +94368,87 @@
     },
     "1538438892": {
       "topics": [
-        "comedy/stand-up"
+        "education/language-learning",
+        "linguistics/language",
+        "relationships",
+        "health/mental",
+        "comedy",
+        "comedy/stand-up",
+        "sports",
+        "education",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.89
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.89
+        },
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "education",
+          "confidence": 0.84
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language/learning podcast; content spans Language.",
+      "display_title": "Another Reason to Drink",
+      "blurb": "Welcome to Another Reason to Drink — the podcast where two guys crack open cold beers, share hilarious stories, and tell jokes that’ll keep you laughing! This is what",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1538450010": {
       "topics": [
         "math"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Math based on description and episodes.",
+      "display_title": "JeggeJeometry",
+      "blurb": "In this podcast, we will dive deeper into different types of math that are less",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1538450955": {
       "topics": [
@@ -94316,18 +94570,167 @@
     },
     "1539012594": {
       "topics": [
-        "craft/diy-home"
+        "education/language-learning",
+        "linguistics/language",
+        "relationships",
+        "health/mental",
+        "sports",
+        "food",
+        "food/cooking-science",
+        "science",
+        "science/physics",
+        "education",
+        "education/how-to",
+        "nature",
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "food",
+          "confidence": 0.86
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.86
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.84
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.84
+        },
+        {
+          "node": "nature",
+          "confidence": 0.83
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.83
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language/learning podcast; content spans Language.",
+      "display_title": "It's All Clutter",
+      "blurb": "Jes Marcy is a Clutter Coach and Advice Columnist who believes that all our clutter is connected (the stuff on the floor, the wonky finances, the difficult relationships) and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1539018378": {
       "topics": [
+        "business",
+        "business/startups",
+        "business/founders",
         "news",
-        "business"
+        "news/politics",
+        "news/daily",
+        "computing",
+        "engineering/ai-robotics",
+        "science",
+        "science/physics",
+        "health",
+        "health/fitness",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        },
+        {
+          "node": "news",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.86
+        },
+        {
+          "node": "computing",
+          "confidence": 0.86
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.86
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science podcast; content spans Startups & deep tech.",
+      "display_title": "The Peak Daily",
+      "blurb": "Fast Canadian business news. Get up-to-speed quick with a fun and smart breakdown of the three biggest Canadian and global business stories in less than 10",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1539101819": {
       "topics": [
@@ -94353,10 +94756,70 @@
     },
     "1539226800": {
       "topics": [
-        "culture/fashion"
+        "true-crime",
+        "society/law",
+        "relationships",
+        "health/mental",
+        "food",
+        "food/cooking-science",
+        "music",
+        "music/theory-production",
+        "health",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.93
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.93
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "food",
+          "confidence": 0.86
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.86
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship/personal podcast; content spans Law.",
+      "display_title": "Wellness Junkies | Beauty & Wellness Tips, Hacks,",
+      "blurb": "Beauty, self-care, and relatable wellness, without the overwhelm. Trying, testing & talking all things to help you feel best. Wellness Junkies is a weekly podcast for women 40+ who",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1539277095": {
       "topics": [
@@ -94394,11 +94857,50 @@
     },
     "1539296304": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "sports",
+        "food",
+        "food/cooking-science",
+        "health",
+        "health/fitness",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "food",
+          "confidence": 0.86
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.86
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports podcast; content spans Food.",
+      "display_title": "Fit + Fueled Life Podcast",
+      "blurb": "Welcome to the Fit + Fueled Life podcast—where health, fitness, and fuel come together for a stronger, healthier, more confident you! I’m Tina Haupert, a Functional Diagnostic Nutrition Practitioner,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1539313607": {
       "topics": [
@@ -94418,10 +94920,85 @@
     },
     "1539343980": {
       "topics": [
-        "relationships"
+        "philosophy",
+        "philosophy/ideas",
+        "relationships",
+        "health/mental",
+        "business",
+        "business/startups",
+        "business/founders",
+        "fiction",
+        "fiction/drama",
+        "computing",
+        "engineering/ai-robotics",
+        "health",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.92
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.92
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.86
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.86
+        },
+        {
+          "node": "computing",
+          "confidence": 0.86
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.86
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Philosophical podcast; content spans Ideas.",
+      "display_title": "To My Sisters",
+      "blurb": "Join your online big sisters C",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1539352369": {
       "topics": [
@@ -94464,8 +95041,23 @@
       "topics": [
         "science/chemistry"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Chemistry based on description and episodes.",
+      "display_title": "Podcast \"El Litio\"",
+      "blurb": "En este podcast te daremos información muy interesante sobre temas relacionados con las baterías y como",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1539670094": {
       "topics": [
@@ -94484,10 +95076,95 @@
     },
     "1539709266": {
       "topics": [
-        "sports/basketball"
+        "sports",
+        "space",
+        "space/rockets",
+        "business",
+        "business/startups",
+        "business/founders",
+        "news",
+        "news/politics",
+        "news/daily",
+        "computing",
+        "engineering/ai-robotics",
+        "science",
+        "science/physics",
+        "music",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "space",
+          "confidence": 0.88
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.88
+        },
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        },
+        {
+          "node": "news",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.86
+        },
+        {
+          "node": "computing",
+          "confidence": 0.86
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.86
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports podcast; content spans Space.",
+      "display_title": "The Crazie Cast: A Duke Basketball Podcast on",
+      "blurb": "The Field of 68 Media Network introduces: The Crazie Cast, a Duke basketball podcast! Hosted by Ryan Lommen, Zion Olojede and Russell Hainline, this podcast is a must-listen for",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1539712341": {
       "topics": [
@@ -94550,10 +95227,35 @@
     },
     "1539884802": {
       "topics": [
-        "science/physics"
+        "relationships",
+        "health/mental",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship/personal podcast; content spans Mental Health.",
+      "display_title": "Black Mogul Society",
+      "blurb": "#BLACKWEALTHMATTERS,#BLACKMINDZMATTER,#BLACKFELONSMATTER,#BLACKCHILDRENMATTER, #BLACKEDUCATIONMATTERS,#BLACKSOULSMATTER,#BLACKLAWYERSMATTER,#BLACKFATHERSMATTTER #BLACKOWNERSHIPMATTERS,#BLACKHOMELESSMATTER,#BLACKTRANSMATTER, THIS IS A PODCAST DEDICATED TO THE MIND,HEART, OR SOUL OF ANYONE THAT MAY ONE DAY HEAR THIS. I NEVER HAD A CHILDHOOD, NEVER REALLY HAD",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1539989825": {
       "topics": [
@@ -94602,10 +95304,40 @@
     },
     "1540069464": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "society/law",
+        "music",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.93
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.93
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast; content spans Law.",
+      "display_title": "Crime World",
+      "blurb": "Hit podcast about criminals, drugs and the sins of the underworld - now with further in-depth investigations and exclusive insights at our new website crimeworld.com. Blood Brothers: Terror, torture",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1540124788": {
       "topics": [
@@ -94673,10 +95405,35 @@
     },
     "1540354740": {
       "topics": [
-        "sports/wrestling"
+        "sports",
+        "history",
+        "history/archaeology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "history",
+          "confidence": 0.84
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports podcast; content spans History.",
+      "display_title": "Etched In Stone",
+      "blurb": "National Wrestling Hall of Fame and USA Wrestling's \"Etched In Stone\" podcasts are the stories of wrestling's legends, told by wrestlers. The series will take you inside the lives",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1540357839": {
       "topics": [
@@ -94737,10 +95494,40 @@
     },
     "1540446330": {
       "topics": [
-        "craft"
+        "true-crime",
+        "society/law",
+        "computing",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.93
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.93
+        },
+        {
+          "node": "computing",
+          "confidence": 0.86
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.86
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast; content spans Law.",
+      "display_title": "The Blue Collar Offroad Podcast",
+      "blurb": "A group of guys from New England discussing offroading, building offroad rigs, shop tech, and the offroading",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1540459611": {
       "topics": [
@@ -94759,12 +95546,105 @@
     },
     "1540463232": {
       "topics": [
-        "medicine/biology",
+        "true-crime",
+        "society/law",
+        "space",
+        "space/rockets",
+        "business",
+        "business/startups",
+        "business/founders",
+        "news",
+        "news/politics",
+        "news/daily",
+        "computing",
+        "engineering/ai-robotics",
         "science",
-        "nature"
+        "science/physics",
+        "health",
+        "health/fitness",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.93
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.93
+        },
+        {
+          "node": "space",
+          "confidence": 0.88
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.88
+        },
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        },
+        {
+          "node": "news",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.86
+        },
+        {
+          "node": "computing",
+          "confidence": 0.86
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.86
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast; content spans Law.",
+      "display_title": "The Life Science Rundown",
+      "blurb": "The Life Science Rundown is a podcast for life science professionals hosted by The FDA Group. We dive deep into topics across the RA/QA/Clinical space, covering news, exploring trends,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1540499099": {
       "topics": [
@@ -94987,11 +95867,65 @@
     },
     "1540903608": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "true-crime",
+        "society/law",
+        "sports",
+        "space",
+        "space/rockets",
+        "science",
+        "science/physics",
+        "education",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.93
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.93
+        },
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "space",
+          "confidence": 0.88
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.88
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.84
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast; content spans Law.",
+      "display_title": "Torpedo Swimtalk Podcast",
+      "blurb": "Join the Torpedo Swimtalk Podcast as we dive into the inspiring stories of adult Masters Swimmers from all corners of the world. From pool to open water champions, some",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1540922938": {
       "topics": [
@@ -95061,10 +95995,45 @@
     },
     "1541366646": {
       "topics": [
-        "fiction/drama"
+        "true-crime",
+        "society/law",
+        "news",
+        "news/politics",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.93
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.93
+        },
+        {
+          "node": "news",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.86
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast; content spans Law.",
+      "display_title": "Philip Marlowe Presented by the Great Detectives of",
+      "blurb": "Gerald Mohr stars as Philip Marlowe in the 1948-51 CBS series with Adam Graham as host. Also featuring the 1947 Van Heflin NBC Series and Lux Radio Theatre",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1541384174": {
       "topics": [
@@ -95094,10 +96063,60 @@
     },
     "1541500266": {
       "topics": [
-        "sports/cricket"
+        "sports",
+        "fiction",
+        "fiction/drama",
+        "news",
+        "news/politics",
+        "news/daily",
+        "music",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.86
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.86
+        },
+        {
+          "node": "news",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.86
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports podcast; content spans Fiction & Audio Drama.",
+      "display_title": "Rain Stopped Play",
+      "blurb": "A weekly cricket podcast with @danielparkerrrr , @6af1s , @HarwoodZac & @SinghWill . Each week, Rain Stopped Play discusses the latest cricket news, drama, and inevitable England batting collapses",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1541514434": {
       "topics": [
@@ -95138,10 +96157,40 @@
     },
     "1541713044": {
       "topics": [
-        "tv-film/reviews"
+        "education/language-learning",
+        "linguistics/language",
+        "music",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.95
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language/learning podcast; content spans Language.",
+      "display_title": "ReviewAnew Podcast",
+      "blurb": "DJ (\"Rap Critic\" on youtube) and his friend Evan go through the filmographies of their favorite movie makers and talk about how they view them as adults from a",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1541750537": {
       "topics": [
@@ -95309,19 +96358,92 @@
     },
     "1542071364": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "education/language-learning",
+        "linguistics/language",
+        "computing",
+        "engineering/ai-robotics",
+        "health",
+        "health/fitness",
+        "health/mental",
+        "education",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.95
+        },
+        {
+          "node": "computing",
+          "confidence": 0.86
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.86
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.84
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language/learning podcast; content spans Language.",
+      "display_title": "SINERGÉTICOS",
+      "blurb": "¡Sinergéticos! Bienvenidos al podcast de todos, un espacio donde invito a expertos, agentes de cambio y personas con excelentes historias. Que te ayudarán a acelerar tu crecimiento sin descuidar",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1542073848": {
       "topics": [
         "news",
         "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.65
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as News & Current Affairs based on description and episodes.",
+      "display_title": "ヤング日経（サクッとわかるビジネスニュース）",
+      "blurb": "「ヤングなら、これだけは知っておこう！」 。明るい未来を目指し、時代の変化を先取りするニュースをお届けします。 ヤング日経Twitter",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1542091472": {
       "topics": [
@@ -95440,10 +96562,70 @@
     },
     "1542478530": {
       "topics": [
-        "relationships"
+        "true-crime",
+        "society/law",
+        "relationships",
+        "health/mental",
+        "science",
+        "science/physics",
+        "music",
+        "music/theory-production",
+        "education",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.93
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.93
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.84
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship/personal podcast; content spans Law.",
+      "display_title": "WHEN DATING HURTS",
+      "blurb": "A \"must-listen-to\" podcast on dating abuse and domestic violence, also known as intimate partner violence. . Hosted by Bill Mitchell, author of the memoir, WHEN DATING HURTS (Amazon), this",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1542487892": {
       "topics": [
@@ -95462,17 +96644,77 @@
     },
     "1542658938": {
       "topics": [
-        "automotive"
+        "fiction",
+        "fiction/drama",
+        "news",
+        "news/politics",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.86
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.86
+        },
+        {
+          "node": "news",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.86
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fictional narrative podcast; content spans Drama.",
+      "display_title": "Sent and Bent",
+      "blurb": "Grind Hard Plumbing Co talks behind the scenes, building crazy contraptions and all sorts of absurd personal",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1542659784": {
       "topics": [
-        "sports/volleyball"
+        "sports",
+        "history",
+        "history/archaeology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "history",
+          "confidence": 0.84
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports podcast; content spans History.",
+      "display_title": "Time To Kill",
+      "blurb": "TJ DeFalco and Luke Pope talk volleyball with friends from the perspective of a young professional volleyball player in the Italian League and a young head coach at Ottawa",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1542669779": {
       "topics": [
@@ -95625,10 +96867,35 @@
     },
     "1543098312": {
       "topics": [
-        "sports/football"
+        "sports",
+        "nature",
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "nature",
+          "confidence": 0.83
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.83
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports podcast; content spans Nature.",
+      "display_title": "The Early Edge: A Daily Sports Betting Podcast",
+      "blurb": "Get your daily bets here FIRST! The No. 1 morning sports betting show and podcast—powered by SportsLine + CBS Sports—delivers the day's best bets in a fast-paced, fun environment,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1543198825": {
       "topics": [
@@ -95779,11 +97046,70 @@
     },
     "1543615866": {
       "topics": [
+        "relationships",
         "health/mental",
-        "psychology"
+        "sports",
+        "news",
+        "news/politics",
+        "news/daily",
+        "health",
+        "health/fitness",
+        "nature",
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "news",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.86
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.83
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.83
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship/personal podcast; content spans Mental Health.",
+      "display_title": "Women & ADHD",
+      "blurb": "A late diagnosis turned her world upside down. Now Katy Weber interviews women who discovered they have ADHD in adulthood, while exploring the topics and life experiences unique to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1543641174": {
       "topics": [
@@ -95822,10 +97148,105 @@
     },
     "1543654440": {
       "topics": [
-        "religion/islam"
+        "philosophy",
+        "philosophy/ideas",
+        "relationships",
+        "health/mental",
+        "comedy",
+        "comedy/stand-up",
+        "business",
+        "business/startups",
+        "business/founders",
+        "computing",
+        "engineering/ai-robotics",
+        "music",
+        "music/theory-production",
+        "health",
+        "health/fitness",
+        "history",
+        "history/archaeology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.92
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.92
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.89
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.89
+        },
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        },
+        {
+          "node": "computing",
+          "confidence": 0.86
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.86
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.84
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophical podcast; content spans Ideas.",
+      "display_title": "Muslims Doing Things",
+      "blurb": "Hi! I am Layla Shaikley (@laylool), I co-founded a tech company and I am also visibly Muslim. So, my identity has been front and center throughout my life and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1543714199": {
       "topics": [
@@ -96002,8 +97423,23 @@
       "topics": [
         "religion/christianity"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Christianity based on description and episodes.",
+      "display_title": "The Liturgy of the Hours: Sing the Hours",
+      "blurb": "Join for morning (Lauds) and evening (Vespers) prayer. All Hymns, Psalms, and Prayer",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1544171101": {
       "topics": [
@@ -96038,17 +97474,102 @@
     },
     "1544357526": {
       "topics": [
-        "culture/performing-arts"
+        "comedy",
+        "comedy/stand-up",
+        "music",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.89
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.89
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast; content spans Stand-Up.",
+      "display_title": "Rarified Heir Podcast",
+      "blurb": "Host Josh Mills brings together a wide variety of adult children of celebrities for a fun, funny, bizarre, jaw-dropping, strange and wonderful look behind celebrity, by the people that",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1544487624": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "philosophy/ideas",
+        "news",
+        "news/politics",
+        "news/daily",
+        "computing",
+        "engineering/ai-robotics",
+        "history",
+        "history/archaeology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.92
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.92
+        },
+        {
+          "node": "news",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.86
+        },
+        {
+          "node": "computing",
+          "confidence": 0.86
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.86
+        },
+        {
+          "node": "history",
+          "confidence": 0.84
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophical podcast; content spans Ideas.",
+      "display_title": "What's Left of Philosophy",
+      "blurb": "In What’s Left of Philosophy Gil Morejón (@gdmorejon), Lillian Cicerchia (@lilcicerch), Owen Glyn-Williams (@oglynwil), and William Paris (@williammparis) discuss philosophy’s radical histories and contemporary political theory. Philosophy isn't dead,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1544492495": {
       "topics": [
@@ -96081,10 +97602,50 @@
     },
     "1544604936": {
       "topics": [
-        "religion/buddhism"
+        "relationships",
+        "health/mental",
+        "history",
+        "history/archaeology",
+        "nature",
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.84
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.84
+        },
+        {
+          "node": "nature",
+          "confidence": 0.83
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.83
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship/personal podcast; content spans Mental Health.",
+      "display_title": "Aro gTér - Wisdom Eccentrics",
+      "blurb": "Rumours of realisation as told by Künzang Dorje Rinpoche with additional tales of the unexpected by Ngak'chang Rinpoche. Read by Ngakma Mé-tsal Wangmo. A rare account of remarkable Lamas",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1544614138": {
       "topics": [
@@ -96149,11 +97710,45 @@
     },
     "1544833260": {
       "topics": [
-        "economics/markets",
-        "business"
+        "business",
+        "business/startups",
+        "business/founders",
+        "computing",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        },
+        {
+          "node": "computing",
+          "confidence": 0.86
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.86
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business podcast; content spans Startups & deep tech.",
+      "display_title": "Ask The Compound",
+      "blurb": "Got money questions? We’ve got answers. Join Ben Carlson, Duncan Hill, and a rotating lineup of financial pros as they break down your biggest questions about investing, markets, and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1544875746": {
       "topics": [
@@ -96187,10 +97782,75 @@
     },
     "1544879640": {
       "topics": [
-        "religion/spirituality"
+        "philosophy",
+        "philosophy/ideas",
+        "relationships",
+        "health/mental",
+        "business",
+        "business/startups",
+        "business/founders",
+        "fiction",
+        "fiction/drama",
+        "history",
+        "history/archaeology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.92
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.92
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.86
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.86
+        },
+        {
+          "node": "history",
+          "confidence": 0.84
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophical podcast; content spans Ideas.",
+      "display_title": "Waking Up Wealthy with Isha Vela",
+      "blurb": "Welcome to Waking Up Wealthy, the podcast for visionaries and rebels who are ready to revolutionize their relationship with money and create powerful collective ripples with the money they",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1544898283": {
       "topics": [
@@ -96236,11 +97896,40 @@
     },
     "1545007332": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports",
+        "business",
+        "business/startups",
+        "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports podcast; content spans Business.",
+      "display_title": "The Joy of Swimming",
+      "blurb": "Apple #1 Swimming Podcast in the UK “The Joy of Swimming” hosted by Pat Kelman. The podcast is a series of conversations with open water and sea swimmers, capturing",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1545011366": {
       "topics": [
@@ -96266,10 +97955,30 @@
     },
     "1545086472": {
       "topics": [
-        "science/physics"
+        "education",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.84
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast; content spans How To.",
+      "display_title": "Simple Machines",
+      "blurb": "Simple machine definitions, examples, complex machines, efficiency equation,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1545090575": {
       "topics": [
@@ -96512,11 +98221,100 @@
     },
     "1546027998": {
       "topics": [
+        "relationships",
+        "health/mental",
+        "business",
         "business/startups",
-        "business/founders"
+        "business/founders",
+        "fiction",
+        "fiction/drama",
+        "news",
+        "news/politics",
+        "news/daily",
+        "computing",
+        "engineering/ai-robotics",
+        "music",
+        "music/theory-production",
+        "history",
+        "history/archaeology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.86
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.86
+        },
+        {
+          "node": "news",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.86
+        },
+        {
+          "node": "computing",
+          "confidence": 0.86
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.86
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.84
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship/personal podcast; content spans Mental Health.",
+      "display_title": "Business Movers",
+      "blurb": "Behind every successful business is a story. It starts with a vision and a leap of faith. Along the way, leaders make bold decisions, ride booms and busts, and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1546132079": {
       "topics": [
@@ -96570,10 +98368,85 @@
     },
     "1546267644": {
       "topics": [
-        "news/daily"
+        "business",
+        "business/startups",
+        "business/founders",
+        "news",
+        "news/politics",
+        "news/daily",
+        "computing",
+        "engineering/ai-robotics",
+        "health",
+        "health/fitness",
+        "health/mental",
+        "history",
+        "history/archaeology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        },
+        {
+          "node": "news",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.86
+        },
+        {
+          "node": "computing",
+          "confidence": 0.86
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.86
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.84
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business podcast; content spans Startups & deep tech.",
+      "display_title": "Morning Announcements",
+      "blurb": "Morning Announcements is your daily news rundown from Betches News--because the world’s a mess, and someone’s gotta explain it. Every morning, Betches co-founder and host Sami Sage cuts through",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1546281292": {
       "topics": [
@@ -96653,10 +98526,55 @@
     },
     "1546509744": {
       "topics": [
-        "business/marketing"
+        "education/language-learning",
+        "linguistics/language",
+        "business",
+        "business/startups",
+        "business/founders",
+        "education",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        },
+        {
+          "node": "education",
+          "confidence": 0.84
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language/learning podcast; content spans Language.",
+      "display_title": "OnlyFans Secrets",
+      "blurb": "Welcome to The Only Fans Secrets Podcast, where you'll learn about Marketing, Branding, Promotion and Best Practices for Only Fans success. Hosted by Richard A. Lewis, owner of the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1546521148": {
       "topics": [
@@ -96699,10 +98617,45 @@
     },
     "1546577526": {
       "topics": [
-        "business/careers"
+        "business",
+        "business/startups",
+        "business/founders",
+        "computing",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        },
+        {
+          "node": "computing",
+          "confidence": 0.86
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.86
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business podcast; content spans Startups & deep tech.",
+      "display_title": "How I Lawyer Podcast with Jonah Perlin",
+      "blurb": "In this podcast Professor Jonah Perlin (Georgetown Law) interviews lawyers from across the profession about what they do, why they do it, and how they do it",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1546585075": {
       "topics": [
@@ -96846,11 +98799,45 @@
     },
     "1547053698": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "business",
+        "business/startups",
+        "business/founders",
+        "music",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.87
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.87
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business podcast; content spans Startups & deep tech.",
+      "display_title": "A Year In Horror",
+      "blurb": "Your host Paul Waller (not Weller) is a horror movie addict. During 2020 the workload for his band and music management job slowed right down. At this same time",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1547067959": {
       "topics": [
@@ -96929,10 +98916,30 @@
     },
     "1547165172": {
       "topics": [
-        "science/physics"
+        "space",
+        "space/rockets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.88
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Space/astronomy podcast; content spans Rockets.",
+      "display_title": "Podcasty z Matfyzu",
+      "blurb": "Kanál plný podcastů popisujících život na pražském Matfyzu, neboli Matematicko-fyzikální fakultě Univerzity",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1547177627": {
       "topics": [
@@ -96981,10 +98988,50 @@
     },
     "1547241660": {
       "topics": [
-        "business/careers"
+        "sports",
+        "computing",
+        "engineering/ai-robotics",
+        "health",
+        "health/fitness",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "computing",
+          "confidence": 0.86
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.86
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports podcast; content spans Computing.",
+      "display_title": "The Elite Recruiter Podcast",
+      "blurb": "The Elite Recruiter Podcast is where top recruiters go to get better. Hosted by executive recruiter Benjamin Mena , this show dives deep into the stories, strategies, and mindsets",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1547258705": {
       "topics": [
@@ -97045,10 +99092,95 @@
     },
     "1547367594": {
       "topics": [
-        "comedy/interviews"
+        "education/language-learning",
+        "linguistics/language",
+        "relationships",
+        "health/mental",
+        "comedy",
+        "comedy/stand-up",
+        "fiction",
+        "fiction/drama",
+        "news",
+        "news/politics",
+        "news/daily",
+        "science",
+        "science/physics",
+        "education",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.89
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.89
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.86
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.86
+        },
+        {
+          "node": "news",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.86
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.86
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.84
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language/learning podcast; content spans Language.",
+      "display_title": "Yannis Pappas Hour",
+      "blurb": "As the world burns, a noble Greek rises from the ashes to defend what's left. Join us every Saturday for your weekly news served hot and fresh off a",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a5b83def",
+      "classified_at": "2026-08-05T16:10:48.065Z"
     },
     "1547404042": {
       "topics": [
