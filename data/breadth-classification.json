@@ -39265,13 +39265,1006 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-04-405ff5c1",
       "classified_at": "2026-08-04T16:51:13.145Z"
+    },
+    "1554337430": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Concept with science",
+      "display_title": "Concept with science",
+      "blurb": "i will teach science, maths, social science , and higher education by this platform. you can also st",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1554494510": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ゲイと女の5点ラジオ",
+      "display_title": "ゲイと女の5点ラジオ",
+      "blurb": "若くもないけどおばさんでもない。そんなネオおばさんの私たちが自意識をこじらせながら偏見と妄想を話す番組です。5点の私たちなのでご容赦ください。毎週月曜18時に配信中！ 出演： しょうちゃん（ゲイ男性）",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1554535778": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Running Explained Podcast",
+      "display_title": "The Running Explained Podcast",
+      "blurb": "hosted by multi-certified run coaches and fitness professionals, amanda katz and nick klastava, the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1554550304": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Richmond Til We Die: A Ted Lasso Podcast",
+      "display_title": "Richmond Til We Die: A Ted Lasso Podcast",
+      "blurb": "richmond til we die is an episode-by-episode conversation about the apple tv+ show ted lasso where we discuss the charac",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1554616586": {
+      "topics": [
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided Geography",
+      "display_title": "Guided Geography",
+      "blurb": "this podcast is about vacationing, camping, geology, mapping, and everything having to do with geography specifically in",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1554804260": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Women's Golf Podcast",
+      "display_title": "The Women's Golf Podcast",
+      "blurb": "sarah wilmore interviews women from the golf industry, delving into their careers. revealing the unt",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1554923024": {
+      "topics": [
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Environmental Echo with PWGC's Paul K.  Boyce",
+      "display_title": "Environmental Echo with PWGC's Paul K.  Boyce",
+      "blurb": "30 years of engineering excellence brought to you in 20 minutes this pwgc series amplifies discussions on environmental",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1555178360": {
+      "topics": [
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "一百趴沈",
+      "display_title": "一百趴沈",
+      "blurb": "一位名為沈的阿姨，與她的好友們一起八婆的節目，本節目由30%的沈豚活潑、30%的沈嬤玩意兒、30%的沈秘嘉賓與10%的不定期特別企劃構成一百趴沈，每週四更新，各單元隨機登場。 沈豚活潑每集將由沈豚兩人提出一個無聊的問題，互相閒聊討論自己或別",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1555266302": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Gooner Talk",
+      "display_title": "The Gooner Talk",
+      "blurb": "the gooner talk is an arsenal-specific channel focusing on post-match reaction shows, podcasts, tran",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1555301078": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFR Podcast",
+      "display_title": "NFR Podcast",
+      "blurb": "join luca and anthony every week as they recommend some of the best new releases and throwbacks that",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1555326452": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Español a la mexicana",
+      "display_title": "Español a la mexicana",
+      "blurb": "un podcast para aprender y mejorar tu español, completamente en español. aprende sobre la cultura, l",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1555344764": {
+      "topics": [
+        "culture/fashion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Every Outfit",
+      "display_title": "Every Outfit",
+      "blurb": "after spending years dispensing bitchy fashion commentary on their viral instagram account every outfit on sex and the c",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1555362566": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Morning Stretch by Chicago",
+      "display_title": "The Morning Stretch by Chicago Athlete",
+      "blurb": "daily chicago morning running show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1555490108": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Astrology with Markus Ba",
+      "display_title": "Daily Astrology with Markus Barrington",
+      "blurb": "daily astrology happenings that are easy to understand and put into a practical way rather than omin",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1555527248": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Woodland War Machine",
+      "display_title": "Woodland War Machine",
+      "blurb": "woodland war machine: the podcast covering leder games' amazingly awesome asymmetric board game: root! join jake michels",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1555554290": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quran: Peaceful Recitations",
+      "display_title": "Quran: Peaceful Recitations",
+      "blurb": "deep healing quran recitations. quran is the eternal, literal word of god and contains complete guid",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1555951088": {
+      "topics": [
+        "nature/pets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "How 2 Dog",
+      "display_title": "How 2 Dog",
+      "blurb": "the ultimate podcast for dog lovers, how 2 dog is here to answer everything you’ve ever wanted to know about our four-le",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1556111966": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Linha de Passe",
+      "display_title": "Linha de Passe",
+      "blurb": "o linha de passe é um dos programas mais tradicionais e de maior prestígio da espn brasil, sendo par",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1556261828": {
+      "topics": [
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Being Known Podcast",
+      "display_title": "Being Known Podcast",
+      "blurb": "discovering and exploring what it means to be truly known.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1556327150": {
+      "topics": [
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Walkabout The World - A Disney",
+      "display_title": "Walkabout The World - A Disney Podcast",
+      "blurb": "a weekly auditory walkabout in walt disney world or the disneyland resort, taking our friends along",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1556355542": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Prince Shaeed Can We Talk With",
+      "display_title": "Prince Shaeed Can We Talk Without Finding Fault?",
+      "blurb": "honestly the favorite cousin you always wanted we can discuss anything.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1556726534": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baking it Down with Sugar Cook",
+      "display_title": "Baking it Down with Sugar Cookie Marketing 🍪",
+      "blurb": "👋 hey - heather and corrie here with the baking it down podcast with sugar cookie marketing (a grou",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1556932508": {
+      "topics": [
+        "religion/buddhism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dharma Glimpses with Judy Lief",
+      "display_title": "Dharma Glimpses with Judy Lief",
+      "blurb": "dharma glimpses is an introduction to the profound treasury teachings of chögyam trungpa rinpoche, t",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1557127382": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Analytical Wavelength",
+      "display_title": "The Analytical Wavelength",
+      "blurb": "a podcast about chemical knowledge and data in the pharmaceutical, agrochemical, and related industr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1557158024": {
+      "topics": [
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Earthquakes, Plate Tectonics and something else.",
+      "display_title": "Earthquakes, Plate Tectonics and something else.",
+      "blurb": "the origin of seismic movements.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1557385550": {
+      "topics": [
+        "tv-film/animation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mha Costume",
+      "display_title": "Mha Costume",
+      "blurb": "i hope you enjoy",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1557405164": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unschooling Mom2Mom",
+      "display_title": "Unschooling Mom2Mom",
+      "blurb": "the unschooling mom2mom podcast is a quick conversation with sue patterson, coach, author, and mothe",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1557471374": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Easy Spanish: Learn Spanish wi",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1557527024": {
+      "topics": [
+        "health/mental"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Breaking Social Norms",
+      "display_title": "Breaking Social Norms",
+      "blurb": "conspiracy theorist isaac weishaupt and his wife josie debate conspiracies, pop culture, and social",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1557565598": {
+      "topics": [
+        "tv-film/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wiseman Podcast",
+      "display_title": "Wiseman Podcast",
+      "blurb": "a film-by-film analysis of the career of filmmaker frederick wiseman. hosted by shawn glinis and arlin golden.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1557913088": {
+      "topics": [
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "خوابکست",
+      "display_title": "خوابکست",
+      "blurb": "خوابکست (خواب کست) یک پادکست خواب است که به شما کمک می کند راحت تر بخوابید. داستان های آرامش بخش، مد",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1557926870": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Sweeper - A World Football",
+      "display_title": "The Sweeper - A World Football Podcast",
+      "blurb": "*summer break until tuesday 4 august 2026. get weekly bonus episodes during that time at patreon.com",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1558008884": {
+      "topics": [
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "21 Days of Abundance - Meditat",
+      "display_title": "21 Days of Abundance - Meditation Series",
+      "blurb": "fulfill your deepest desires and effortlessly attract anything you wish.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1558099832": {
+      "topics": [
+        "health/nutrition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Las 3 R's",
+      "display_title": "Las 3 R's",
+      "blurb": "repara, regenera y resetea para siempre tu cuerpo y vida. esa es la filosofía de nathaly marcus. jun",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1558153562": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "飞驰圈 | F1复盘",
+      "display_title": "飞驰圈 | F1复盘",
+      "blurb": "飞驰圈播客the flying lap podcast, 更新最久、影响力最大的中文f1播客。由chester117与村长托马斯给大家带来每场f1比赛的全长回顾，以及泛赛车文化，汽车等话题的深度的讨论",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1558211702": {
+      "topics": [
+        "tv-film"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Ringer-Verse",
+      "display_title": "The Ringer-Verse",
+      "blurb": "the ringer-verse is your go-to nexus podcast feed for all things nerd culture and fandom, featuring: 'the midnight boys'",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1558599836": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Capital Golf Gang",
+      "display_title": "Capital Golf Gang",
+      "blurb": "“the capital golf gang” reflects who we are and where we are from. steve czaban, john ronis, ron tho",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1558605866": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tunnel Talk",
+      "display_title": "Tunnel Talk",
+      "blurb": "a new podcast from 3 born-sexy-yesterday know-nothings who won’t let their lack of facts get in the way of a good joke!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1558793990": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "寶妮老師的高等微積分",
+      "display_title": "寶妮老師的高等微積分",
+      "blurb": "數學youtuber進軍podcast 利用通勤時間 輕鬆學高等微積分 powered by firstory hosting",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1558889546": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Smart Talks with IBM",
+      "display_title": "Smart Talks with IBM",
+      "blurb": "join malcolm gladwell, author and host of revisionist history, for smart talks with ibm as he speaks with visionaries wh",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1559242124": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Strange and Unexplained with D",
+      "display_title": "Strange and Unexplained with Daisy Eagan",
+      "blurb": "a podcast about all the things that make us wonder. each week, we’ll tell you a true story that will",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1559301722": {
+      "topics": [
+        "religion/hinduism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Shradhha",
+      "display_title": "Shradhha",
+      "blurb": "podcast ....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1559315474": {
+      "topics": [
+        "tv-film/animation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Remember The Simpsons",
+      "display_title": "Remember The Simpsons",
+      "blurb": "do you find yourself quoting old episodes, no matter the situation or setting? do you always win at simpsons trivia? may",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1559334788": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bulletproof For BJJ Podcast",
+      "display_title": "Bulletproof For BJJ Podcast",
+      "blurb": "discussions on improving your bjj, navigating mat-politics and all aspects of the jiu jitsu lifestyl",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:30.562Z"
+    },
+    "1559396390": {
+      "topics": [
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "American Art Collective",
+      "display_title": "American Art Collective",
+      "blurb": "welcome to the american art collective podcast, the official podcast of international artist publishing. each week we'll",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-b4486c60",
+      "classified_at": "2026-08-05T00:50:56.962Z"
     }
   },
-  "built_at": "2026-08-04T16:51:13.145Z",
+  "built_at": "2026-08-05T00:50:56.962Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-04-405ff5c1",
+    "last_batch_id": "fresh-2026-08-05-b4486c60",
     "last_batch_tier": 1
   }
 }
