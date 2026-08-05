@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-04T16:56:54.135Z",
+  "built_at": "2026-08-05T00:58:11.142Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-04-f21a2431",
+    "last_batch_id": "fresh-2026-08-05-60b8cf4c",
     "last_batch_tier": 1
   },
   "entries": {
@@ -95062,8 +95062,23 @@
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about islam; content-driven classification based on episode titles.",
+      "display_title": "تلاوات نادرة",
+      "blurb": "بودكاست لنشر التلاوات القديمة لكبار القراء",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1543330611": {
       "topics": [
@@ -95263,10 +95278,30 @@
     },
     "1543832585": {
       "topics": [
-        "music"
+        "tv-film/history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": "SongTown on Songwriting | Mastering the Art of",
+      "blurb": "Clay Mills & Marty Dodson present SongTown on Songwriting — a celebration of great songs, real songwriters, and the craft that ties it all together. Tune in for expert songwriting",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1543842894": {
       "topics": [
@@ -95309,17 +95344,62 @@
     },
     "1544011433": {
       "topics": [
-        "business/marketing"
+        "economics/markets",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about markets and startups; content-driven classification based on episode titles.",
+      "display_title": "Modern Direct Seller Podcast",
+      "blurb": "The Modern Direct Seller Podcast provides strategy, training and systems to empower modern direct sellers to reach big goals and find success in direct sales. Whether you are new to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1544012009": {
       "topics": [
-        "sports/volleyball"
+        "personal-journals",
+        "relationships",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about personal-journals and relationships; content-driven classification based on episode titles.",
+      "display_title": "The Grass Volleyball Podcast",
+      "blurb": "Ned Bacheson, Founder of Pittsburgh Grass Volleyball (Pittsburgh, PA) talks all things volleyball with people making a special impact in the volleyball community",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1544044377": {
       "topics": [
@@ -95437,10 +95517,25 @@
     },
     "1544492495": {
       "topics": [
-        "sports/cricket"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about sports; content-driven classification based on episode titles.",
+      "display_title": "The Murali End",
+      "blurb": "A Podcast all about Sri Lankan Cricket",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1544492743": {
       "topics": [
@@ -95497,10 +95592,30 @@
     },
     "1544640203": {
       "topics": [
-        "sports/soccer"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "The Soccer Sharps - a soccer betting podcast",
+      "blurb": "Looking for entertainment along with soccer betting tips? The Soccer Sharps podcast is the show for you. Enjoyable hosts and expert soccer handicappers, Devin and Jordan, deliver weekly soccer gambling",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1544667313": {
       "topics": [
@@ -95511,10 +95626,25 @@
     },
     "1544672735": {
       "topics": [
-        "aviation"
+        "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about gaming; content-driven classification based on episode titles.",
+      "display_title": "Forever on the Fly",
+      "blurb": "Welcome to your biweekly dose of aviation inspiration, education, and entertainment. Diane Dollar and Jose Hernandez, both dual rated pilots and US Veterans, host this energetic podcast that will nurture",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1544699521": {
       "topics": [
@@ -95600,10 +95730,30 @@
     },
     "1544980241": {
       "topics": [
-        "aviation"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "The Way I Taught It",
+      "blurb": "https://www.buzzsprout.com/1370203/subscribe An aviation Podcast for those pursuing engaging topics in preparation for their FAA Practical Exam. These podcasts are not flight or ground instruction towards any certificate or rating, they",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1545007332": {
       "topics": [
@@ -95630,10 +95780,30 @@
     },
     "1545057353": {
       "topics": [
-        "kids-family/education"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Animal of the Day Podcast",
+      "blurb": "A short, kid-friendly, kid-narrated podcast all about animals! A new animal each episode.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1545086472": {
       "topics": [
@@ -95646,8 +95816,23 @@
       "topics": [
         "science/chemistry"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about chemistry; content-driven classification based on episode titles.",
+      "display_title": "The Modern Extractor",
+      "blurb": "The Modern Extractor is a podcast about the processes, equipment, and science found inside a cannabis extraction laboratory. Season one focuses on the process of ethanol extraction and post processing",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1545180286": {
       "topics": [
@@ -95687,10 +95872,30 @@
     },
     "1545293447": {
       "topics": [
-        "sports/hockey"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Hockey Mountain High Podcast",
+      "blurb": "Griffin Youngs and Christian Bolle bring you the latest news on your Colorado Avalanche as only a couple of die hard fans could. Sometimes serious, sometimes humorous … but always",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1545433056": {
       "topics": [
@@ -95702,10 +95907,30 @@
     },
     "1545437195": {
       "topics": [
-        "sports/volleyball"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Coach Your Brains Out Archives",
+      "blurb": "Collecting older episodes of the volleyball coaching podcast hosted by Billy Allen and John Mayer. For the latest episodes, subscribe to Coach Your Brains Out.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1545439016": {
       "topics": [
@@ -95740,17 +95965,57 @@
     },
     "1545586439": {
       "topics": [
-        "food"
+        "hobbies",
+        "adventure"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about hobbies and adventure; content-driven classification based on episode titles.",
+      "display_title": "Food Network Obsessed",
+      "blurb": "Each week on Food Network Obsessed, host Jaymee Sire sits down with your favorite chefs, food influencers and Food Network personalities to dish on all things delicious in the food",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1545646307": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/baseball",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about fantasy and baseball; content-driven classification based on episode titles.",
+      "display_title": "Beat the Shift",
+      "blurb": "A fantasy baseball podcast focused on strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1545647129": {
       "topics": [
@@ -95875,7 +96140,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about judaism; content-driven classification based on episode titles.",
+      "display_title": "Mikvah.org",
+      "blurb": "Mikvah.org is a non-profit organization dedicated to educating globally on the inspirational Mitzvah of Mikvah and Jewish Family Life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1546144335": {
       "topics": [
@@ -95901,17 +96181,57 @@
     },
     "1546190819": {
       "topics": [
-        "craft/diy-home"
+        "culture/fashion",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about fashion and health; content-driven classification based on episode titles.",
+      "display_title": "Mike The Gardener - Gardening Podcast",
+      "blurb": "Join professional gardener, podcaster, broadcaster and garden writer, Mike Palmer, for lively discussions with gardening personalities and experts from the fantastic world of gardening. Look out for Mike's 'Plant Specials'",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1546237745": {
       "topics": [
-        "religion/islam"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Ismail Annuri",
+      "blurb": "Ismail Annuri (also spelled Ismail Nouri) is a Quran reciter from Indonesia. He primarily recites in the Hafs &#8216;an Asim narration. Digital Qur&#8217;anic archives feature numerous recordings of his individual",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1546256912": {
       "topics": [
@@ -96183,24 +96503,84 @@
     },
     "1546731125": {
       "topics": [
-        "music"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "No Skips",
+      "blurb": "A habitual song-skipper and her music-fiend husband casually listen to and discuss some of the most iconic albums of all time. New episodes released weekly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1546738319": {
       "topics": [
-        "sports/fantasy"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Fantasy Wrestling Podcasts",
+      "blurb": "Several different Fantasy Wrestling Podcast covering news in the fantasy wrestling world!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1546761809": {
       "topics": [
-        "craft/diy-home"
+        "nature",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about nature and hobbies; content-driven classification based on episode titles.",
+      "display_title": "My Magical Cottagecore Life",
+      "blurb": "Magic, festivals, teachings, life. Oh, and we also talk a lot about life, Detroit, plants, nature, and kindness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1546869022": {
       "topics": [
@@ -96242,10 +96622,30 @@
     },
     "1547067959": {
       "topics": [
-        "science/chemistry"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Les Dessous de la Cosmétique",
+      "blurb": "Les Dessous de la Cosmétique c'est votre podcast qui vous dévoile et vous explique le monde de la cosmétique. Julie Magand Castel, chimiste, biologiste et cosmétologue spécialisée en cosmétique naturelle",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1547078080": {
       "topics": [
@@ -96297,8 +96697,23 @@
       "topics": [
         "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about craft; content-driven classification based on episode titles.",
+      "display_title": "First Class Leathercraft",
+      "blurb": "When we look at crafted product we usually only see the product. Who is the craftsman behind their product and what is their story. Joseph is a leather craftsman and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1547118856": {
       "topics": [
@@ -96324,10 +96739,30 @@
     },
     "1547177627": {
       "topics": [
-        "sports/cricket"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Once Upon a Time in the Ashes",
+      "blurb": "Once Upon a Time in the Ashes is the podcast that focuses on those English and Australian cricketers who played in just one Ashes test. They may have played in",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1547179456": {
       "topics": [
@@ -96390,10 +96825,30 @@
     },
     "1547258705": {
       "topics": [
-        "craft/diy-home"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "DIY House Medic",
+      "blurb": "Contractor John shares with you everything about taking care of your home, from regular maintenance, to remodeling projects, even building a new home. Contractor John also shares real life examples",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1547263306": {
       "topics": [
@@ -96515,10 +96970,30 @@
     },
     "1547669099": {
       "topics": [
-        "kids-family/stories"
+        "tv-film/history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": "Live from Mount Olympus",
+      "blurb": "A dramatic adventure for tweens and listeners of all ages, Live from Mount Olympus weaves timeless Greek myths with the artistry of foremost contemporary theater-makers. Hermes, god of storytellers, travelers,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1547670966": {
       "topics": [
@@ -96553,10 +97028,29 @@
     "1547740313": {
       "topics": [
         "economics/markets",
-        "business"
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about markets and startups; content-driven classification based on episode titles.",
+      "display_title": "Patrick Boyle On Finance",
+      "blurb": "This podcast is all about quantitative finance and financial history. Subscribe to hear about financial markets, derivatives, and how investors use quantitative tools from statistics and corporate finance theory. Included",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1547827376": {
       "topics": [
@@ -96567,10 +97061,30 @@
     },
     "1547832809": {
       "topics": [
-        "culture/design"
+        "tv-film/history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": "Honest UX Talks",
+      "blurb": "Honest weekly conversations about UX design career, challenges, portfolios, mental health, and all things UX. Ioana and Anfisa together have 20 years of experience in the UX field and trying",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1547856712": {
       "topics": [
@@ -96723,10 +97237,30 @@
     },
     "1548231263": {
       "topics": [
-        "music"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Bluegrass Unlimited's Podcast",
+      "blurb": "In this weekly podcast Bluegrass Unlimited Magazine editor, Dan Miller, interviews bluegrass musicians. Both the new up-and-coming artists and the bluegrass legends are featured.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1548247324": {
       "topics": [
@@ -96811,17 +97345,52 @@
     },
     "1548560507": {
       "topics": [
-        "automotive"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "NASCAR Weekly Podcast",
+      "blurb": "The NASCAR Weekly Podcast features YouTubers Eric Estepp, Danny B, Jaret Lundberg, and Black Flags Matter every week talking about the top stories and issues in stock car racing. The",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1548596327": {
       "topics": [
-        "music"
+        "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about judaism; content-driven classification based on episode titles.",
+      "display_title": "Object Of Sound",
+      "blurb": "Object Of Sound brings you in tune with the music shaping our culture today. Hosted by poet and critic Hanif Abdurraqib, each episode blends the eclectic curation of freeform radio",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1548604447": {
       "topics": [
@@ -96872,18 +97441,57 @@
     },
     "1548818141": {
       "topics": [
-        "sports",
-        "news"
+        "sports/golf",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about golf and hobbies; content-driven classification based on episode titles.",
+      "display_title": "Sporticast",
+      "blurb": "'Sporticast' is a new podcast hosted by business journalists Scott Soshnick and Eben Novy-Williams from Sportico that will deliver the inside scoop on the intersection of money and sports. From",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1548862943": {
       "topics": [
-        "tv-film/reviews"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Crowning Around",
+      "blurb": "Sam Cheung, Carlyn Greenwald, and Ivan Vukovic are three American peasants who know nothing of royal life, but through weekly recaps of the critically acclaimed Netflix series The Crown maybe,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1548946506": {
       "topics": [
@@ -96902,11 +97510,30 @@
     },
     "1548990173": {
       "topics": [
-        "space",
-        "science"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Made of Stars",
+      "blurb": "Made of Stars is a look at everything in space exploration from programs and vehicles on Earth to discoveries made just out of our atmosphere and into deep space. Space",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1549026104": {
       "topics": [
@@ -96933,8 +97560,23 @@
       "topics": [
         "sports/cricket"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about cricket; content-driven classification based on episode titles.",
+      "display_title": "Hola",
+      "blurb": "Hola",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1549132201": {
       "topics": [
@@ -97003,10 +97645,30 @@
     },
     "1549475555": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about fashion and health; content-driven classification based on episode titles.",
+      "display_title": "Listen To Sassy: Life In The 90s",
+      "blurb": "From 1988-1994, Sassy was the coolest magazine going for Gen-X teens. Celebrate that golden time by joining Tara Ariano, Pamela Ribon and David T. Cole for a into every one",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1549487521": {
       "topics": [
@@ -97033,8 +97695,23 @@
       "topics": [
         "business/marketing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about marketing; content-driven classification based on episode titles.",
+      "display_title": "The Landing Pad",
+      "blurb": "Welcome to The Landing Pad. With the help of The Branch Manager, Easton Bunker and the COO Garth Massey, this podcast dives deep into the minds and psyches of the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1549502623": {
       "topics": [
@@ -97113,10 +97790,30 @@
     },
     "1549723343": {
       "topics": [
-        "sports/basketball"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "You Know Ball: A (Mostly) NBA Podcast",
+      "blurb": "An NBA podcast hosted by Twitter users @TrillBroDude and @NBABabySecret where they discuss THIS LEAGUE!! Topics include their favorite teams, the Sixers and Celtics, NBA trade and free agency rumors",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1549741129": {
       "topics": [
@@ -97135,10 +97832,30 @@
     },
     "1549791113": {
       "topics": [
+        "health/sexuality",
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about sexuality and relationships; content-driven classification based on episode titles.",
+      "display_title": "The Family Captain",
+      "blurb": "Lead your family with strength and love. Become the greatest man they've ever known. Have incredible sex with your wife.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1549793611": {
       "topics": [
@@ -97203,10 +97920,30 @@
     },
     "1550035505": {
       "topics": [
-        "culture/books"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "The Strike & Ellacott Files",
+      "blurb": "An unofficial podcast by three women who love all things relating to Robert Galbraith's Cormoran Strike and Robin Ellacott series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1550075437": {
       "topics": [
@@ -97226,10 +97963,30 @@
     },
     "1550147837": {
       "topics": [
-        "sports/cricket"
+        "tv-film/history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about history and culture; content-driven classification based on episode titles.",
+      "display_title": "Not Just Cricket with Mark Nicholas",
+      "blurb": "Mark Nicholas invites cricketing heroes, fans and vanguards from across the globe to share how their passion for the sport has shaped their lives. Using the prism of cricket to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1550150550": {
       "topics": [
@@ -97412,8 +98169,23 @@
       "topics": [
         "news/daily"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about daily; content-driven classification based on episode titles.",
+      "display_title": "הכותרת",
+      "blurb": "במציאות המורכבת של היום צריך להקשיב בין המילים. בכל בוקר כתבי ynet ומומחים נוספים בוחנים את הכותרת המרכזית שעל סדר היום.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1550751591": {
       "topics": [
@@ -97432,17 +98204,57 @@
     },
     "1550764907": {
       "topics": [
-        "craft/diy-home"
+        "nature",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about nature and hobbies; content-driven classification based on episode titles.",
+      "display_title": "grow, cook, eat, arrange with Sarah Raven &",
+      "blurb": "Welcome to grow, cook, eat, arrange, the weekly podcast from gardener, writer, teacher,and cook, Sarah Raven. Over the last two decades, Sarah has led the way by introducing a new",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1550775545": {
       "topics": [
-        "sports/rugby"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "VMTV Rugby Pod",
+      "blurb": "Tune in each week as Stuart McAvoy is joined by Alan Quinlan and Matt Williams along with some special guests to discuss all the major talking points in rugby union.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1550781253": {
       "topics": [
@@ -97483,10 +98295,30 @@
     },
     "1550850047": {
       "topics": [
-        "tv-film/after-shows"
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about ai-robotics and startups; content-driven classification based on episode titles.",
+      "display_title": "Muppeturgy: A \"The Muppet Show\" Rewatch Podcast",
+      "blurb": "A “The Muppet Show” rewatch podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1550859179": {
       "topics": [
@@ -97578,10 +98410,30 @@
     },
     "1551005663": {
       "topics": [
+        "health/sexuality",
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about sexuality and relationships; content-driven classification based on episode titles.",
+      "display_title": "Excuse My Grandma",
+      "blurb": "Grandma Gail is full of wisdom... even if Kim doesn't always take it to heart. Every week, the granddaughter/grandmother duo share stories, chat about their lives, discuss pop culture, and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1551009162": {
       "topics": [
@@ -97669,11 +98521,30 @@
     },
     "1551366197": {
       "topics": [
-        "space",
-        "science"
+        "health",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about health and psychology; content-driven classification based on episode titles.",
+      "display_title": "Astro Ben Podcast",
+      "blurb": "Whether you work in the Space industry or dreamed about becoming an astronaut as a kid, we all have some sort of a connection to Space. Space enthusiast, Ben Gamble,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-60b8cf4c",
+      "classified_at": "2026-08-05T00:58:11.142Z"
     },
     "1551371673": {
       "topics": [
