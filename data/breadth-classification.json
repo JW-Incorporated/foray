@@ -40258,13 +40258,1428 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-05-b4486c60",
       "classified_at": "2026-08-05T00:50:56.962Z"
+    },
+    "1559405048": {
+      "topics": [
+        "health/fitness",
+        "culture/performing-arts",
+        "comedy/stand-up",
+        "adventure/exploration",
+        "comedy/casual-hangs",
+        "medicine/biology",
+        "psychology/decision-making",
+        "sports",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Feisty Women's Performance covers Fitness with science-backed expertise and guest interviews.",
+      "display_title": "Feisty Women's Performance",
+      "blurb": "Tired of fads, quick fixes, and performance advice that wasn’t designed for you? So are we.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1559430818": {
+      "topics": [
+        "relationships",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Apollyon covers Relationships with science-backed expertise and guest interviews.",
+      "display_title": "Apollyon",
+      "blurb": "In the early 22nd century, the Apollyon virus wiped out 75% of the world’s population, and now most of the world is governed by the International Cong.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1559480972": {
+      "topics": [
+        "comedy/interviews",
+        "relationships",
+        "education/how-to",
+        "music/theory-production",
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Get Obsessed : With Living Your Best Life covers Comedy Interviews with science-backed expertise and guest interviews.",
+      "display_title": "Get Obsessed : With Living Your Best Life",
+      "blurb": "What happens when two women who refuse to play small sit down with the people actually changing the world — and the ones brave enough to tell the stor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1559723564": {
+      "topics": [
+        "nature/earth-science",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mysteries of Science covers Earth Science with science-backed expertise and guest interviews.",
+      "display_title": "Mysteries of Science",
+      "blurb": "The team behind The Week Junior's Science+Nature magazine investigate unexplained phenomenon with the help of expert guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1559799362": {
+      "topics": [
+        "news/commentary",
+        "economics/markets",
+        "news/daily",
+        "tv-film/interviews",
+        "culture/art",
+        "comedy/casual-hangs",
+        "education/how-to",
+        "music/theory-production"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Rob Carson Show covers News Commentary with science-backed expertise and guest interviews.",
+      "display_title": "The Rob Carson Show",
+      "blurb": "Live broadcast of Newsmax Radio's nationally syndicated \"Rob Carson Show\" on talk radio.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1559966912": {
+      "topics": [
+        "health/fitness",
+        "economics/markets",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Moody's Talks - Inside Economics covers Fitness with science-backed expertise and guest interviews.",
+      "display_title": "Moody's Talks - Inside Economics",
+      "blurb": "Join Chief Economist Mark Zandi, Marisa DiNatale and Cristian deRitis as they discuss key indicators and other aspects of the global economy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1560027068": {
+      "topics": [
+        "sports/baseball",
+        "economics/markets",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Just Baseball Show covers Baseball with science-backed expertise and guest interviews.",
+      "display_title": "The Just Baseball Show",
+      "blurb": "The Flagship Podcast for Justbaseball.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1560068756": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Featured Shiurim covers Judaism with science-backed expertise and guest interviews.",
+      "display_title": "Featured Shiurim",
+      "blurb": "This podcast will post all the shiurim of R&#8217; Aaron Lopiansky that are not part of a regular series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1560558452": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.5
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Guadeloupe covers Endurance with science-backed expertise and guest interviews.",
+      "display_title": "Guadeloupe",
+      "blurb": "A podcast. Features episodes on Guadeloupe.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1560607712": {
+      "topics": [
+        "tv-film/interviews",
+        "culture/art",
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MTV's Teen Wolf ReHowl covers Film Interviews with science-backed expertise and guest interviews.",
+      "display_title": "MTV's Teen Wolf ReHowl",
+      "blurb": "Teen Wolf ReHowl is a rewatch and commentary podcast about the hit MTV show, Teen Wolf.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1560931292": {
+      "topics": [
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Soul Vibes: Spiritual Discussions covers Spirituality with science-backed expertise and guest interviews.",
+      "display_title": "Soul Vibes: Spiritual Discussions",
+      "blurb": "Soul Vibes: Podcast Channel from Sant Nirankari Mission to discuss spiritual and social matters in English language.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1561001114": {
+      "topics": [
+        "automotive/racing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Motos and Friends from Ultimate Motorcycle magazine covers Racing with science-backed expertise and guest interviews.",
+      "display_title": "Motos and Friends from Ultimate Motorcycle magazine",
+      "blurb": "A weekly podcast from the Editorial team at Ultimate Motorcycling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1561001132": {
+      "topics": [
+        "sports/football",
+        "comedy/stand-up",
+        "health/fitness",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "JT the Brick covers Football with science-backed expertise and guest interviews.",
+      "display_title": "JT the Brick",
+      "blurb": "No one understands Raider Nation quite like JT the Brick.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1561051940": {
+      "topics": [
+        "sports/football",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "New York Giants Football Talk covers Football with science-backed expertise and guest interviews.",
+      "display_title": "New York Giants Football Talk",
+      "blurb": "A passionate New York Giants fan speaks on his opinions and perspectives of decisions made by the organization.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1561056830": {
+      "topics": [
+        "health/fitness",
+        "news/daily",
+        "culture/art",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Block Club Chicago Podcast covers Fitness with science-backed expertise and guest interviews.",
+      "display_title": "The Block Club Chicago Podcast",
+      "blurb": "The important, emotional, inspiring stories affecting Chicagoans.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1561400750": {
+      "topics": [
+        "religion/hinduism",
+        "tv-film/animation",
+        "tv-film/interviews",
+        "relationships",
+        "religion/spirituality",
+        "comedy/casual-hangs",
+        "music/theory-production"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nectar Talks covers Hinduism with science-backed expertise and guest interviews.",
+      "display_title": "Nectar Talks",
+      "blurb": "From the heart of the largest Hare Krishna community in North America and the home of thousands of Bhakti practitioners, our Podcast digs deep into th.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1561429994": {
+      "topics": [
+        "culture/performing-arts",
+        "relationships",
+        "comedy/casual-hangs",
+        "music/theory-production"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Play On Podcasts covers Performing Arts with science-backed expertise and guest interviews.",
+      "display_title": "Play On Podcasts",
+      "blurb": "Play On Podcasts are epic audio adventures reimagining timeless tales, featuring original music composition and the voices of extraordinarily gifted a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1561549976": {
+      "topics": [
+        "comedy/stand-up",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Trailer Tales covers Stand-Up with science-backed expertise and guest interviews.",
+      "display_title": "Trailer Tales",
+      "blurb": "It's Trailer Tales y'all! Dave, Tammy, and Crystal get into heated debates, but nothing will ever destroy the pact of their friendship!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1561650998": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "High School Tennis Coaches Podcast covers Tennis with science-backed expertise and guest interviews.",
+      "display_title": "High School Tennis Coaches Podcast",
+      "blurb": "This podcast was developed by the Intercollegiate Tennis Association to assist high school tennis coaches in today's tennis ecosystem.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1561687904": {
+      "topics": [
+        "tv-film/reviews",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sloppy Horror Podcast covers Film & TV Reviews with science-backed expertise and guest interviews.",
+      "display_title": "Sloppy Horror Podcast",
+      "blurb": "Welcome to Sloppy Horror Podcast! The show where we discuss anything and everything Horror.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1561696430": {
+      "topics": [
+        "math"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Let’s Talk covers Math with science-backed expertise and guest interviews.",
+      "display_title": "Let’s Talk",
+      "blurb": "Welcome to the Let's Talk podcast with the host Michalis Michael.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1561818422": {
+      "topics": [
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Hack The Movies covers Film Interviews with science-backed expertise and guest interviews.",
+      "display_title": "Hack The Movies",
+      "blurb": "Join Tony and the Hack The Movies crew twice a week as they talk about tapes or discuss newer movies and film topics!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1561874960": {
+      "topics": [
+        "craft/diy-home",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mighty House Podcast covers DIY & home with science-backed expertise and guest interviews.",
+      "display_title": "Mighty House Podcast",
+      "blurb": "Mighty House Home Improvement Show podcasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1561967744": {
+      "topics": [
+        "education/courses",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "T'as qui en Histoire ? covers Courses with science-backed expertise and guest interviews.",
+      "display_title": "T'as qui en Histoire ?",
+      "blurb": "\"T'as qui en Histoire ?\" 🏛 Un podcast d'Histoire : ▶️ Pour apprendre, découvrir, se remettre à niveau et réviser ses connaissances en Histoire avec d.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1562233088": {
+      "topics": [
+        "adventure/exploration",
+        "tv-film/interviews",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MERCER-The Awkwardly Honest Fishing Podcast covers Exploration with science-backed expertise and guest interviews.",
+      "display_title": "MERCER-The Awkwardly Honest Fishing Podcast",
+      "blurb": "A true insiders, behind-the-scenes look at the sport of pro fishing .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1562411078": {
+      "topics": [
+        "comedy/stand-up",
+        "news/daily",
+        "relationships",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "De Facto Leaders covers Stand-Up with science-backed expertise and guest interviews.",
+      "display_title": "De Facto Leaders",
+      "blurb": "On the De Facto Leaders podcast, host Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1562433086": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.5
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Aprendiendo Un Poco De Historia De La Natación Y a Nadar De Una Manera Fácil Y Divertida covers Endurance with science-b",
+      "display_title": "Aprendiendo Un Poco De Historia De La Natación",
+      "blurb": "En este podcast encontrarás una breve historia de la Natacion y aprender lo más básico para poder nadar.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1562600150": {
+      "topics": [
+        "craft/diy-home",
+        "adventure/exploration",
+        "relationships",
+        "culture/art",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Measure Twice, Cut Once covers DIY & home with science-backed expertise and guest interviews.",
+      "display_title": "Measure Twice, Cut Once",
+      "blurb": ". Features episodes on Why I Created the Free Motion Quilting Masterclass. Meet Blair Stocker of Wise Craft Handmade.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1562704664": {
+      "topics": [
+        "nature/earth-science",
+        "news/daily",
+        "culture/art",
+        "education/how-to",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Earthquake! covers Earth Science with science-backed expertise and guest interviews.",
+      "display_title": "Earthquake!",
+      "blurb": "Are you curious about what causes the earth to shake? Do you know how to stay safe? Join us to learn about earthquake science, safety, and history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1562880446": {
+      "topics": [
+        "religion/hinduism"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mahabharatam Adi Parvam covers Hinduism with science-backed expertise and guest interviews.",
+      "display_title": "Mahabharatam Adi Parvam",
+      "blurb": "By Chaganti Koteshwara Rao Garu.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1562897672": {
+      "topics": [
+        "comedy/stand-up"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand Up covers Stand-Up with science-backed expertise and guest interviews.",
+      "display_title": "Stand Up",
+      "blurb": "Stand Up para maiores de 18. Features episodes on Especial da temporada 2- Émerson Ceará. (TP:2/EP:11) os três passos- Émerson Ceará.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1563083072": {
+      "topics": [
+        "religion/spirituality",
+        "comedy/casual-hangs",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Awake Space with Laurie Rivers Podcast covers Spirituality with science-backed expertise and guest interviews.",
+      "display_title": "The Awake Space with Laurie Rivers Podcast",
+      "blurb": "Astrology you can use every single day with astrologer and creator of The Framework, Laurie Rivers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1563085598": {
+      "topics": [
+        "health/fitness",
+        "relationships",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dear Chelsea covers Fitness with science-backed expertise and guest interviews.",
+      "display_title": "Dear Chelsea",
+      "blurb": "On this weekly advice show, comedian & author Chelsea Handler answers listener questions with the hilarious edge you know her for.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1563185930": {
+      "topics": [
+        "tv-film/interviews",
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Ya Yo Talk Show covers Film Interviews with science-backed expertise and guest interviews.",
+      "display_title": "Ya Yo Talk Show",
+      "blurb": "Join Molly Flood, Kdin Jenzen, Al McClelland and Mark Donica for the most chaotic One Piece Podcast on the Grand Line! Support the show on our new Sto.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1563469910": {
+      "topics": [
+        "news/daily",
+        "relationships",
+        "culture/art",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Honeymoon for One covers Daily News with science-backed expertise and guest interviews.",
+      "display_title": "Honeymoon for One",
+      "blurb": "The very first story from RomComPods! Meet Claire, a 28-year old Chicagoan who seemingly has her life totally and completely together.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1563490772": {
+      "topics": [
+        "tv-film/after-shows",
+        "tv-film/interviews",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality Alert : Love Is Blind / The Ultimatum / Perfect Match covers After Shows with science-backed expertise and guest",
+      "display_title": "Reality Alert : Love Is Blind / The",
+      "blurb": "Comedian Max Gieser recaps reality TV shows like Love Is Blind, Perfect Match, The Ultimatum, Temptation Island, Netflix’s The Circle, and more!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1564058678": {
+      "topics": [
+        "tv-film/reviews",
+        "education/how-to",
+        "music/theory-production"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Oh! Brother covers Film & TV Reviews with science-backed expertise and guest interviews.",
+      "display_title": "Oh! Brother",
+      "blurb": "Tales from one of Britain's most influential post-punk bands, The Fall.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1564113746": {
+      "topics": [
+        "news/commentary",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gone Medieval covers News Commentary with science-backed expertise and guest interviews.",
+      "display_title": "Gone Medieval",
+      "blurb": "From long-lost Viking ships to kings buried in unexpected places; from murders and power politics, to myths, religion, the lives of ordinary people: G.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1564124144": {
+      "topics": [
+        "religion"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "La minute liturgique | les mots de la messe covers Religion & Spirituality with science-backed expertise and guest inter",
+      "display_title": "La minute liturgique | les mots de la",
+      "blurb": "Tous les dimanches, un nouveau mot de la messe catholique à redécouvrir.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1564530722": {
+      "topics": [
+        "comedy/stand-up",
+        "health/fitness",
+        "relationships",
+        "culture/art",
+        "comedy/casual-hangs",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "We Can Do Hard Things covers Stand-Up with science-backed expertise and guest interviews.",
+      "display_title": "We Can Do Hard Things",
+      "blurb": "Come do life with Glennon Doyle, Abby Wambach, and Amanda Doyle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1564536686": {
+      "topics": [
+        "culture/art"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "乖，你聽畫｜藝術的故事 covers Art with science-backed expertise and guest interviews.",
+      "display_title": "乖，你聽畫｜藝術的故事",
+      "blurb": "廣播金鐘獎Podcast藝術文化節目入圍。 只要聽懂故事，就能看懂名畫， 適合藝術初心者的不專業分析。 【S1希臘神話｜S2聖經故事｜S3北歐神話】 每集1則故事+1幅名畫， 分享藝術中的神話傳說＆民間故事， 從故事源頭破解欣賞藝術的關鍵線索。 【S4博物館經典館藏】 每集1件經典館藏品， 帶你暢遊.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1565165456": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daf Yomi with Rabbi Elefant - Cycle 14 covers Judaism with science-backed expertise and guest interviews.",
+      "display_title": "Daf Yomi with Rabbi Elefant - Cycle 14",
+      "blurb": "Rabbi Elefant's new Cycle 14 Daf Yomi shiur is available on the AllDaf Daf Yomi Platform and OUTorah.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1565359634": {
+      "topics": [
+        "health/fitness",
+        "adventure/exploration",
+        "medicine/biology",
+        "psychology/decision-making",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Adverse Reactions covers Fitness with science-backed expertise and guest interviews.",
+      "display_title": "Adverse Reactions",
+      "blurb": "An interview podcast bringing you the people and stories behind the science of how biological, physical, and chemical agents may cause adverse reactio.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1565431622": {
+      "topics": [
+        "tv-film/animation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Haikyuu Cheers! covers Animation & Manga with science-backed expertise and guest interviews.",
+      "display_title": "Haikyuu Cheers!",
+      "blurb": "This podcast if for the people who searched for the cheers for like 1 hour anyways enjoy luv 🏐💖.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
+    },
+    "1565550524": {
+      "topics": [
+        "relationships",
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Teen girls talk covers Relationships with science-backed expertise and guest interviews.",
+      "display_title": "Teen girls talk",
+      "blurb": "Hey I’m a big sister who wants to help you out! I know being a teenage girl is hard, but I’m here to help y’all out! I will gladly answer",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-05-a4a35bba",
+      "classified_at": "2026-08-05T08:51:07.284Z"
     }
   },
-  "built_at": "2026-08-05T00:50:56.962Z",
+  "built_at": "2026-08-05T08:51:07.284Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-05-b4486c60",
+    "last_batch_id": "fresh-2026-08-05-a4a35bba",
     "last_batch_tier": 1
   }
 }
