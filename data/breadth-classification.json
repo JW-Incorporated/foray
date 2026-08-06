@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-05T16:10:48.065Z",
+  "built_at": "2026-08-06T00:13:26.541Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-05-a5b83def",
+    "last_batch_id": "fresh-2026-08-06-b4ac8e4c",
     "last_batch_tier": 1
   },
   "entries": {
@@ -99341,7 +99341,26 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.95
+        },
+        {
+          "node": "food",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition-focused podcast on intermittent fasting; expert guidance from a naturopathic doctor.",
+      "display_title": "Intermittent Fasting",
+      "blurb": "Dr. Cabral breaks down intermittent fasting timing and impacts on weight loss, anti-aging, and metabolic health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1547861287": {
       "topics": [
@@ -99401,10 +99420,33 @@
     },
     "1547987784": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/casual-hangs",
+        "paranormal"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Taiwanese conversational podcast blending paranormal stories and urban legends with casual banter.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1547990488": {
       "topics": [
@@ -99427,21 +99469,69 @@
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Marriage and intimacy coaching show focused on emotional connection and physical intimacy.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1548082398": {
       "topics": [
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf instruction and performance analysis using biomechanics and data-driven coaching.",
+      "display_title": "The Measured Golf Podcast",
+      "blurb": "Golf instruction using biomechanics, Ground Reaction Forces, and measurement to help players reach their potential.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1548086514": {
       "topics": [
-        "news/politics"
+        "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Orthodox Christian theological reflections and Sunday homilies, not politics despite genre tag.",
+      "display_title": "The Arena",
+      "blurb": "Fr. Josiah Trenham delivers weekly Orthodox Christian homilies on theology, Scripture, and spiritual life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1548149978": {
       "topics": [
@@ -99452,11 +99542,30 @@
     },
     "1548154746": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "fiction",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Narrated classic literature and audiobooks designed as bedtime stories for sleep.",
+      "display_title": "Down To Sleep",
+      "blurb": "Softly narrated audiobooks including classics like Anne of Green Gables and The Odyssey for relaxation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1548212425": {
       "topics": [
@@ -99521,7 +99630,22 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "US pickup truck and SUV market coverage, reviews, and consumer reliability analysis.",
+      "display_title": "Pickup Truck +SUV Talk",
+      "blurb": "Expert reviews of pickup trucks and SUVs covering reliability, reliability rankings, and buyer concerns.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1548326665": {
       "topics": [
@@ -99540,10 +99664,30 @@
     },
     "1548404874": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lecture series on Advaita Vedanta philosophy and nonduality from Hindu tradition.",
+      "display_title": "Advaita Makaranda Archives",
+      "blurb": "Swami Tadatmananda teaches Lakshmidhara's Advaita Makaranda, exploring nondual philosophy and consciousness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1548409212": {
       "topics": [
@@ -99576,17 +99720,57 @@
     },
     "1548441108": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News and politics commentary from Jewish perspectives on Israel, diaspora, and global affairs.",
+      "display_title": "Unholy: Two Jews on the News",
+      "blurb": "Yonit Levi and Jonathan Freedland debate current events affecting Israel, Jewish communities, and global politics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1548498564": {
       "topics": [
-        "sports/wrestling"
+        "sports/wrestling",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment podcast where hosts 'book' wrestling action figures and debate kayfabe strategy.",
+      "display_title": "FWF: Figure Wrestling Federation",
+      "blurb": "Brian Myers and Matt Cardona draft and book action figures, simulating wrestling entertainment and competition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1548554104": {
       "topics": [
@@ -99673,10 +99857,30 @@
     },
     "1548946506": {
       "topics": [
-        "fiction/drama"
+        "fiction/drama",
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal cold case told through blended drama and documentary about 1950s British poltergeist.",
+      "display_title": "The Battersea Poltergeist",
+      "blurb": "Dramatized investigation into the true story of a 1956 poltergeist haunting in South London.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1548979818": {
       "topics": [
@@ -100029,10 +100233,29 @@
     "1550150550": {
       "topics": [
         "health/nutrition",
-        "food"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wellness coaching breaking down scientific research on nutrition, circadian health, and hormone balance.",
+      "display_title": "The Evolving Wellness Podcast",
+      "blurb": "Sarah Kleiner covers circadian health, hormone balance, and nutrition through scientific research and coaching.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1550188208": {
       "topics": [
@@ -100087,10 +100310,30 @@
     },
     "1550405418": {
       "topics": [
+        "sports/baseball",
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Local Milwaukee sports commentary covering Brewers, Packers, Bucks from ESPN and local perspectives.",
+      "display_title": "Jen, Gabe & Chewy",
+      "blurb": "ESPN Milwaukee crew covers Brewers, Packers, and local sports with raw, direct analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1550408245": {
       "topics": [
@@ -100158,12 +100401,30 @@
     },
     "1550649018": {
       "topics": [
-        "medicine/biology",
         "science",
-        "nature"
+        "medicine/neuroscience"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Research podcast on neuroscience of language; interviews with leading language scientists.",
+      "display_title": "The Language Neuroscience Podcast",
+      "blurb": "Neuroscientist Stephen Wilson interviews researchers on how the brain processes and learns language.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1550663163": {
       "topics": [
@@ -100372,7 +100633,22 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gardening instruction covering organic, regenerative, and sustainable practices from local nursery experts.",
+      "display_title": "Green Acres Garden Podcast",
+      "blurb": "Gardeners Kevin and Austin teach ecological and sustainable growing techniques from Green Acres Nursery.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1550998864": {
       "topics": [
@@ -100398,11 +100674,35 @@
     },
     "1551009162": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "craft",
+        "nature",
+        "sports/endurance"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.65
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Dog training and duck hunting discussed by professional retrievers; sits at craft/outdoor intersection.",
+      "display_title": "THE DOG HOUSE with Adam & Jimmy",
+      "blurb": "Professional retriever trainers Adam Campbell and Jimmy Rodgers discuss dog training and duck hunting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1551010519": {
       "topics": [
@@ -100595,7 +100895,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Album reviews and band dissections from music obsessors with industry guests.",
+      "display_title": "Verse Chorus Verse",
+      "blurb": "dl, Evil Jimmi, and Rachel Pollio dissect albums and interview musicians across the industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1551634352": {
       "topics": [
@@ -100676,7 +100991,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official Bridgerton Season 4 after-show with cast and creative team interviews.",
+      "display_title": "Bridgerton: The Official Podcast",
+      "blurb": "Alison Hammond hosts cast and crew from Netflix's Bridgerton Season 4 discussing episodes and characters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1551825415": {
       "topics": [
@@ -100714,7 +101044,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parks and Recreation rewatch podcast with deep research, guest interviews, and cast discussions.",
+      "display_title": "Park Pals: Parks and Recreation Podcast",
+      "blurb": "Holly Constant and Madi Hockaday rewatch Parks and Rec with research, guest stars, and tangents.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1551860812": {
       "topics": [
@@ -100827,7 +101172,22 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily guided Rosary prayer from Bruce Downes Catholic Ministries.",
+      "display_title": "Rosary Daily with Bruce Downes",
+      "blurb": "Bruce Downes guides listeners through daily Rosary prayers with spiritual reflection.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1552235284": {
       "topics": [
@@ -100922,10 +101282,30 @@
     },
     "1552575702": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.9
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports betting education covering prediction markets, sharp betting, and financial strategy.",
+      "display_title": "Circles Off - Sports Betting",
+      "blurb": "Rob Pizzola breaks down sports betting strategy, prediction markets, and sharp betting practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1552579027": {
       "topics": [
@@ -100954,7 +101334,22 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physical therapy podcast focused on proximal hamstring tendinopathy recovery and rehabilitation.",
+      "display_title": "Overcoming Proximal Hamstring Tendinopathy",
+      "blurb": "Physiotherapist Brodie Sharpe offers evidence-based guidance on recovering from hamstring tendon injury.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1552621233": {
       "topics": [
@@ -101116,10 +101511,30 @@
     },
     "1552828896": {
       "topics": [
-        "comedy/stand-up"
+        "history",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese history and politics discussion, mislabeled as stand-up; covers CCP history and political figures.",
+      "display_title": "dangshibeifen",
+      "blurb": "Chinese political history podcast covering CCP figures and internal power dynamics over decades.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1552856507": {
       "topics": [
@@ -101151,18 +101566,52 @@
     },
     "1552904790": {
       "topics": [
-        "economics/markets",
-        "business"
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.95
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese business and economics analysis; covers commercial history, market trends, and corporate strategy.",
+      "display_title": "商业就是这样",
+      "blurb": "Breaking down Chinese business phenomena and economic trends through accessible storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1552916982": {
       "topics": [
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bible study and reading podcast covering Old Testament books with discussion and reflection.",
+      "display_title": "Bible Book Club",
+      "blurb": "Heather Rubio and Susan Merrill read and discuss every word of the Bible by book.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1552917994": {
       "topics": [
@@ -101305,10 +101754,30 @@
     },
     "1553330298": {
       "topics": [
-        "sports/volleyball"
+        "sports/volleyball",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "High school student's personal podcast about volleyball, school life, and life lessons.",
+      "display_title": "Marissa's Volleyball Podcast",
+      "blurb": "High school volleyball player and student Marissa shares her experiences, challenges, and growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1553334816": {
       "topics": [
@@ -101396,17 +101865,57 @@
     },
     "1553413866": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Socialist political commentary on left politics, labor, and working-class issues.",
+      "display_title": "Left Reckoning",
+      "blurb": "Matt Lech and David Griscom cover working-class socialist politics and international struggle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1553425788": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu yoga philosophy lectures on Patanjali's Yoga Sutras and spiritual practice.",
+      "display_title": "Psychology of the Yoga Sutras",
+      "blurb": "Swami Tadatmananda teaches Patanjali's Yoga Sutras exploring mind, emotion, and spiritual realization.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1553429497": {
       "topics": [
@@ -101459,11 +101968,30 @@
     },
     "1553512740": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business/founders",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.95
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship podcast balancing business growth with health, faith, and relationships.",
+      "display_title": "Wealthy Way",
+      "blurb": "Ryan Pineda interviews entrepreneurs on building wealth while maintaining family, faith, and health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1553525859": {
       "topics": [
@@ -101619,7 +102147,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Urdu-language Quran commentary by Dr. Israr Ahmed with theological interpretation and hadith.",
+      "display_title": "Urdu Tafsir of the Holy Qur'an",
+      "blurb": "Dr. Israr Ahmed's comprehensive Urdu Quran commentary with detailed theological analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1553805657": {
       "topics": [
@@ -101660,10 +102203,29 @@
     "1553952528": {
       "topics": [
         "health/nutrition",
-        "food"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Metabolic science podcast on how bodies use energy; covers nutrition, hormones, weight loss.",
+      "display_title": "The Metabolic Classroom",
+      "blurb": "Dr. Ben Bikman teaches metabolism, insulin resistance, and nutrition science for practical health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1553953565": {
       "topics": [
@@ -101681,10 +102243,30 @@
     },
     "1553970330": {
       "topics": [
+        "medicine",
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Radiation oncology and medical physics interviews covering cancer care technology and research.",
+      "display_title": "Out of the Gray (Gy)",
+      "blurb": "Standard Imaging interviews medical physics professionals on radiation oncology innovation and research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1553970735": {
       "topics": [
@@ -101777,7 +102359,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Southern hemisphere rugby coverage and analysis from ESPN Australia.",
+      "display_title": "ESPN Scrum Reset",
+      "blurb": "Sam Bruce and Christy Doran discuss rugby storylines and performance from the southern hemisphere.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1554227650": {
       "topics": [
@@ -101873,7 +102470,22 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Catholic Rosary prayer guide with Bishop Robert Barron's spiritual reflections.",
+      "display_title": "The Rosary with Bishop Robert Barron",
+      "blurb": "Bishop Barron guides listeners through the Rosary with reflections on Christian mysteries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1554533911": {
       "topics": [
@@ -102030,22 +102642,90 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Internet culture and modern adulthood podcast with humor about relationships and mental health.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1554794952": {
       "topics": [
-        "religion/spirituality"
+        "religion/spirituality",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Spirituality and consciousness podcast balancing mysticism with pragmatic skepticism.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1554802518": {
       "topics": [
+        "science",
         "space",
-        "science"
+        "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.95
+        },
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Vatican Observatory podcast on astronomy, science, and faith; hosted by Vatican astronomers.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1554804260": {
       "topics": [
@@ -102073,7 +102753,22 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindi-language religious audiobooks from Sant Nirankari Mission.",
+      "display_title": "SNM Hindi Audio Books",
+      "blurb": "Hindi religious audiobooks from Sant Nirankari Mission exploring spiritual texts and teachings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1554911182": {
       "topics": [
@@ -102172,11 +102867,30 @@
     },
     "1555180446": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "adventure/exploration",
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Surfing stories from everyday surfers at all levels; blends sport, travel, and personal narrative.",
+      "display_title": "My Wave Podcast",
+      "blurb": "Everyday surfers share their most memorable wave and how surfing connects to their life story.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1555183897": {
       "topics": [
@@ -102264,7 +102978,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Movie review podcast where guests choose films; covers all genres and eras.",
+      "display_title": "Moviestruck",
+      "blurb": "Sophia Ricciardi and rotating guests discuss movies, from Sky High to Shakespeare adaptations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1555362566": {
       "topics": [
@@ -102325,7 +103054,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MLB player interviews from former Intentional Talk host Chris Rose.",
+      "display_title": "Dugout Discussions with Chris Rose",
+      "blurb": "Chris Rose interviews MLB players inside the stadium discussing their careers and experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1555544221": {
       "topics": [
@@ -102346,7 +103090,25 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Polish-language conversational comedy podcast blending humor, memory, and analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1555674609": {
       "topics": [
@@ -102613,11 +103375,33 @@
     },
     "1556286270": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Money and career discussion covering financial strategy, investing, and entrepreneurship.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1556296355": {
       "topics": [
@@ -102681,10 +103465,30 @@
     },
     "1556479134": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political and cultural commentary show with interviews on news and current affairs.",
+      "display_title": "The Big Ben Show",
+      "blurb": "Ben Domenech breaks down political news, foreign policy, and cultural trends with expert guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1556506588": {
       "topics": [
@@ -102730,7 +103534,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bluegrass and string band music interviews with musicians, makers, and industry figures.",
+      "display_title": "Bluegrass Jam Along",
+      "blurb": "IBMA Award-winning podcast featuring bluegrass musicians, instrument makers, and string band artists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-b4ac8e4c",
+      "classified_at": "2026-08-06T00:13:26.541Z"
     },
     "1556698709": {
       "topics": [
