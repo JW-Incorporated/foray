@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-06T00:13:26.541Z",
+  "built_at": "2026-08-06T08:12:23.694Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-06-b4ac8e4c",
+    "last_batch_id": "fresh-2026-08-06-13f0563c",
     "last_batch_tier": 1
   },
   "entries": {
@@ -103813,18 +103813,57 @@
     },
     "1557798162": {
       "topics": [
-        "news/daily"
+        "news/daily",
+        "cities/urbanism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        },
+        {
+          "node": "cities/urbanism",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news podcast covering Denver politics, culture, and urban development.",
+      "display_title": "City Cast Denver",
+      "blurb": "Weekday news and cultural insights for Denver residents covering local politics and community issues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1557803544": {
       "topics": [
         "health/mental",
-        "psychology"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental health interviews with comedians and entertainers discussing depression and anxiety.",
+      "display_title": "Depresh Mode with John Moe",
+      "blurb": "Honest conversations about depression and mental health with comedians, musicians, and public figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1557807373": {
       "topics": [
@@ -104062,10 +104101,30 @@
     },
     "1558288032": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep-dive podcast about Old School RuneScape gameplay, strategy, and community.",
+      "display_title": "XP Waste Podcast",
+      "blurb": "Two passionate gamers discuss Old School RuneScape tactics, updates, and community culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1558358559": {
       "topics": [
@@ -104076,10 +104135,30 @@
     },
     "1558410138": {
       "topics": [
-        "news/daily"
+        "news/daily",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily international and Taiwan news podcast in Mandarin Chinese.",
+      "display_title": "☀️ 全球串連早安新聞｜Morning Taiwan Glocal News",
+      "blurb": "Morning news show covering Taiwan and global current events in Mandarin.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1558441087": {
       "topics": [
@@ -104105,11 +104184,30 @@
     },
     "1558510104": {
       "topics": [
-        "health/mental",
+        "education/self-improvement",
         "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly motivation and self-improvement guidance for personal development.",
+      "display_title": "Mindset & Motivation",
+      "blurb": "Inspirational podcast providing weekly motivation and guidance for personal growth and achievement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1558558881": {
       "topics": [
@@ -104357,8 +104455,23 @@
       "topics": [
         "sports/volleyball"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about sports volleyball.",
+      "display_title": "The Volleyball Source Podcast",
+      "blurb": "The Volleyball Source Podcast brings you news and notes from the volleyball world!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1559315474": {
       "topics": [
@@ -104407,8 +104520,27 @@
         "news/tech",
         "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.6
+        },
+        {
+          "node": "computing",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about news tech.",
+      "display_title": "TechLinked",
+      "blurb": "A thrice-weekly news show about tech + gaming culture",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1559405048": {
       "topics": [
@@ -104429,7 +104561,22 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast about gaming.",
+      "display_title": "Sae Bae Cast",
+      "blurb": "Become a Paid Subscriber and unlock ALL exclusive episodes! Sae Bae Merch Support this podcast on Patreon A weekly podcast that s deep into the roots of OSRS",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1559468560": {
       "topics": [
@@ -104493,8 +104640,23 @@
       "topics": [
         "science/physics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about science physics.",
+      "display_title": "Entropy - Das Universum als Podcast",
+      "blurb": "Entropy - Der wissenschaftliche Podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1559647174": {
       "topics": [
@@ -104722,8 +104884,23 @@
       "topics": [
         "sports/cricket"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about sports cricket.",
+      "display_title": "How to play cricket",
+      "blurb": "Cricket is an excellent game,originated in India",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1560099904": {
       "topics": [
@@ -104758,8 +104935,23 @@
       "topics": [
         "religion/buddhism"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about religion buddhism.",
+      "display_title": "僧伽林頻道_法藏法師",
+      "blurb": "上法下藏和尚 台灣楠西萬佛寺住持 傳持天台第四十六代沙門 台灣宗教聯合會執行長 ◎相關線上弘法連結如下: 【僧伽林僧團 粉絲團 Facebook】 http://www",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1560380199": {
       "topics": [
@@ -104788,8 +104980,27 @@
         "fiction/comedy",
         "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.6
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about fiction comedy.",
+      "display_title": "Quantum Kickflip",
+      "blurb": "A Slugblaster actual play podcast, hosted by The Debutantes",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1560501268": {
       "topics": [
@@ -104937,8 +105148,23 @@
       "topics": [
         "culture/books"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about culture books.",
+      "display_title": "Booknotes+",
+      "blurb": "Taking the concept from Brian Lamb's long running Booknotes TV program, the podcast offers listeners more books and authors",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1560891688": {
       "topics": [
@@ -105015,8 +105241,23 @@
       "topics": [
         "food"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about food.",
+      "display_title": "Ancestral Kitchen",
+      "blurb": "The Ancestral Kitchen is a twice-monthly podcast hosted by Alison, a European town-dweller and Andrea, living on a family farm in northwest Washington state",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1560991579": {
       "topics": [
@@ -105099,8 +105340,27 @@
         "sports/endurance",
         "health/fitness"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.6
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about sports endurance.",
+      "display_title": "Off the Deck",
+      "blurb": "Off the Deck is hosted by Chris Plumb, the Head Coach and CEO of Carmel Swim Club and the Head Coach of Carmel High School",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1561053735": {
       "topics": [
@@ -105142,8 +105402,23 @@
       "topics": [
         "culture/design"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about culture design.",
+      "display_title": "The Jewelry Podcast",
+      "blurb": "A podcast for you who dream about creating your own personal, fine jewelry collection",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1561207757": {
       "topics": [
@@ -105212,8 +105487,23 @@
       "topics": [
         "culture/performing-arts"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about culture performing-arts.",
+      "display_title": "Choice Classic Radio Drama & Horror | Old",
+      "blurb": "Choice Classic Radio brings to you old time radio tales sure to keep you on the edge of your seat! Tune in for the most thrilling mystery, suspense, drama and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1561279836": {
       "topics": [
@@ -105246,8 +105536,23 @@
       "topics": [
         "news/commentary"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about news commentary.",
+      "display_title": "Will Cain Country",
+      "blurb": "Join Will Cain as he tackles the latest headlines from his unique perspective along with thought-provoking long-form interviews with leading figures and live calls from viewers and listeners",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1561400750": {
       "topics": [
@@ -105330,8 +105635,23 @@
       "topics": [
         "sports/wrestling"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about sports wrestling.",
+      "display_title": "MMA Gambling Podcast",
+      "blurb": "The MMA Gambling podcast on the Sports Gambling Podcast Network is your home for MMA betting advice combined with maximum entertainment",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1561650998": {
       "topics": [
@@ -105421,8 +105741,27 @@
         "business/startups",
         "business/founders"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about business startups.",
+      "display_title": "eBay the Right Way",
+      "blurb": "Learn how to sell on eBay the right way",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1561861786": {
       "topics": [
@@ -105528,8 +105867,23 @@
       "topics": [
         "tv-film/reviews"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about tv-film reviews.",
+      "display_title": "No More Late Fees",
+      "blurb": "Ready to rewind to a simpler time? Flashback to the late '90s & early 2000s with Jackie and Danielle, the BFF duo behind the No More Late Fees podcast! Fueled...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1562182641": {
       "topics": [
@@ -105641,8 +105995,23 @@
       "topics": [
         "science/physics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about science physics.",
+      "display_title": "Física",
+      "blurb": "Relación de la Física con otras ciencias",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1562554427": {
       "topics": [
@@ -105655,8 +106024,23 @@
       "topics": [
         "nature/pets"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about nature pets.",
+      "display_title": "Frog of the Week",
+      "blurb": "Every week we'll choose and highlight one frog to be the frog of the week! Doesn't that sound fun?",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1562581853": {
       "topics": [
@@ -105784,15 +106168,45 @@
       "topics": [
         "tv-film/animation"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about tv-film animation.",
+      "display_title": "Sword Art Online Novel Readings",
+      "blurb": "Listen to readings from Sword Art Online, a series by Reki Kawahara",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1562827200": {
       "topics": [
         "kids-family/education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about kids-family education.",
+      "display_title": "Веснушка и Кипятоша. Новые приключения",
+      "blurb": "Веснушка – весёлая и любознательная девочка с рыжими волосами",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1562849542": {
       "topics": [
@@ -105803,11 +106217,25 @@
     },
     "1562879046": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about health mental.",
+      "display_title": "Joy Lab |  navigate depression, anxiety, &",
+      "blurb": "Joy Lab isn't your typical happiness podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1562880446": {
       "topics": [
@@ -105907,8 +106335,23 @@
       "topics": [
         "relationships"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about relationships.",
+      "display_title": "Modern Anarchy",
+      "blurb": "Modern Anarchy is your weekly invitation to reclaim pleasure, sex, and desire as radical acts of collective liberation",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1563242381": {
       "topics": [
@@ -105928,8 +106371,23 @@
       "topics": [
         "science/physics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about science physics.",
+      "display_title": "Psicología-Inseguridades",
+      "blurb": "Causas de las inseguridades psicológicas, consecuencias de estas en nuestra vida y tips para mejorarla",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1563260117": {
       "topics": [
@@ -106269,8 +106727,27 @@
         "health/nutrition",
         "food"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.6
+        },
+        {
+          "node": "food",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about health nutrition.",
+      "display_title": "Fuel for the Sole",
+      "blurb": "Fuel for the Sole is a podcast hosted by Believe in the Run and sports dietitian, Meghann Featherstun",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1564682548": {
       "topics": [
@@ -106447,15 +106924,45 @@
       "topics": [
         "kids-family/parenting"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast about kids-family parenting.",
+      "display_title": "Adoption",
+      "blurb": "Two adult adoptees, Sarah Reinhardt and Louise Browne,  into all things adoption - from their perspectives as adult adoptees",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1565409450": {
       "topics": [
         "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about craft.",
+      "display_title": "Knit A Spell",
+      "blurb": "Magical Maker Katie Rempe as together we knit together the symbiotic relationship between crafting and The Craft! Check out full video episodes of Knit A Spell on the Light From...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1565409987": {
       "topics": [
@@ -106470,7 +106977,22 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about news daily.",
+      "display_title": "The Decibel",
+      "blurb": "Context is everything",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1565431622": {
       "topics": [
@@ -106562,8 +107084,23 @@
       "topics": [
         "automotive"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about automotive.",
+      "display_title": "The Underpowered Hour",
+      "blurb": "From Pangolin4x4 and The Beres Collection it’s The Underpowered Hour, a podcast about the Best 4x4xFar, the Land Rover",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1565621595": {
       "topics": [
@@ -106742,7 +107279,22 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about news daily.",
+      "display_title": "Quick Start",
+      "blurb": "The Quick Start Podcast provides top news headlines from a Christian perspective",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1566200204": {
       "topics": [
@@ -106900,8 +107452,27 @@
         "health/nutrition",
         "food"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.6
+        },
+        {
+          "node": "food",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about health nutrition.",
+      "display_title": "Live Purely with Elizabeth",
+      "blurb": "Host Elizabeth Stein is the founder of Purely Elizabeth, a leading health food company with clean, wholesome products",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1566699313": {
       "topics": [
@@ -106983,8 +107554,23 @@
       "topics": [
         "science/physics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about science physics.",
+      "display_title": "Newfound Black Hole May Be The Closest To",
+      "blurb": "Dubbed the \"unicorn\", the odd object is also among the smallest black hole ever found, and it may solve an enduring mystery in astrophysics",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1566812749": {
       "topics": [
@@ -107013,15 +107599,49 @@
         "economics/markets",
         "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.6
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about economics markets.",
+      "display_title": "Wealthion - Be Financially Resilient",
+      "blurb": "Official Wealthion Podcast Feed",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1566895530": {
       "topics": [
         "relationships"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about relationships.",
+      "display_title": "The Covert Narcissism Podcast",
+      "blurb": "Covert narcissistic abuse crushes one’s soul",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1566900306": {
       "topics": [
@@ -107287,8 +107907,27 @@
         "space",
         "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.6
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about space.",
+      "display_title": "Stephen Hawking: genialidade e superação",
+      "blurb": "Teorias de Hawking",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1567429912": {
       "topics": [
@@ -107308,8 +107947,23 @@
       "topics": [
         "food"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about food.",
+      "display_title": "Food with Mark Bittman",
+      "blurb": "Former New York Times food journalist and #1 bestselling author Mark Bittman ( How to Cook Everything; VB6; Animal, Vegetable, Junk ) is joined by co-host (and daughter) Kate to...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1567515589": {
       "topics": [
@@ -107381,15 +108035,45 @@
       "topics": [
         "kids-family/education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about kids-family education.",
+      "display_title": "NER Kids X 兒童雙語 on Air",
+      "blurb": "專為兒童打造的雙語節目，秉持「英語放輕鬆 5分鐘馬上通」讓孩子打開耳朵自然而然學習，節目匯集瘋英語、小小世界通、你說我說大家說和麻吉同學會不會等系列，透過簡單實用的生活句型、各地文化風情、國際禮儀、自然科學及學校趣事等，用雙語輕鬆有趣的解析，強化孩子英語聽說的能力。【每週六日固定更新】 Powered by Firstory Hosting",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1567770864": {
       "topics": [
         "news/commentary"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about news commentary.",
+      "display_title": "Rational Boomer Podcast",
+      "blurb": "Rational Boomer is a contrast to what people believe Baby Boomers to be",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1567851735": {
       "topics": [
@@ -107496,8 +108180,23 @@
       "topics": [
         "religion/christianity"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about religion christianity.",
+      "display_title": "Battle Plan with Steve Hemphill & Charli Caraway",
+      "blurb": "Battle Plan focuses on spiritual warfare in daily living",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1568124853": {
       "topics": [
@@ -107710,8 +108409,23 @@
       "topics": [
         "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about craft.",
+      "display_title": "Fluff On! A podcast about all things yarn",
+      "blurb": "Fluff On! Will feature a wide range of content related to yarn and all its glorious usage",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-13f0563c",
+      "classified_at": "2026-08-06T08:12:23.694Z"
     },
     "1568927074": {
       "topics": [
