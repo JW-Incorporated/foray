@@ -41718,6 +41718,28 @@
       "batch_id": "fresh-2026-08-05-8d3d16b3",
       "classified_at": "2026-08-05T16:50:24.393Z"
     },
+    "1565589494": {
+      "topics": [
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's mystery adventure series with narrative focus on problem-solving.",
+      "display_title": "Opal Watson: Private Eye",
+      "blurb": "Young detective Opal uncovers clues and solves neighborhood mysteries in this award-winning series for kids.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
     "1565667554": {
       "topics": [
         "sports"
@@ -41925,6 +41947,60 @@
       "batch_id": "fresh-2026-08-05-8d3d16b3",
       "classified_at": "2026-08-05T16:50:24.393Z"
     },
+    "1567105160": {
+      "topics": [
+        "engineering",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Petroleum engineering career interviews, not chemistry per se.",
+      "display_title": "SPE Podcasts",
+      "blurb": "Career interviews with petroleum engineers and industry professionals sharing success stories and field experience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1567108964": {
+      "topics": [
+        "news/tech",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI-generated daily news briefing covering tech, business, and economic topics.",
+      "display_title": "NewsPicks Daily Briefing",
+      "blurb": "AI-narrated daily business and tech news from diverse commentary perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
     "1567140092": {
       "topics": [
         "sports"
@@ -42041,6 +42117,82 @@
       "batch_id": "fresh-2026-08-05-8d3d16b3",
       "classified_at": "2026-08-05T16:50:24.393Z"
     },
+    "1568061950": {
+      "topics": [
+        "sports/biomechanics"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Minimal signal, single episode on taekwondo practice and its significance.",
+      "display_title": "Taekwondo",
+      "blurb": "Content about taekwondo martial arts discipline.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1568217392": {
+      "topics": [
+        "computing",
+        "culture/pop-culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host opinions on tech, crypto, and cryptocurrency investment.",
+      "display_title": "Lenny's Podcast",
+      "blurb": "Casual opinions covering tech, cryptocurrency, and entertainment topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1568217866": {
+      "topics": [
+        "science/chemistry",
+        "engineering/energy-grid"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Applied chemistry research center interviews on polymers, materials, and advanced technologies.",
+      "display_title": "CIQA",
+      "blurb": "Research interviews on applied chemistry, polymers, materials science, and biotechnology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
     "1568911820": {
       "topics": [
         "news/politics"
@@ -42150,6 +42302,28 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-05-8d3d16b3",
       "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1569748106": {
+      "topics": [
+        "religion/buddhism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teachings and dharma talks by Thanissaro Bhikkhu.",
+      "display_title": "Dhammatalks Podcast",
+      "blurb": "Short daily Buddhist teachings and dharma talks on practice and spiritual development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
     },
     "1570036124": {
       "topics": [
@@ -42396,6 +42570,33 @@
       "batch_id": "fresh-2026-08-05-8d3d16b3",
       "classified_at": "2026-08-05T16:50:24.393Z"
     },
+    "1571467172": {
+      "topics": [
+        "science/chemistry",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast on the periodic table and chemistry fundamentals.",
+      "display_title": "Chemistry Podcast",
+      "blurb": "In-depth exploration of the periodic table and Mendeleev's foundational chemistry discovery.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
     "1571779250": {
       "topics": [
         "nature/earth-science"
@@ -42417,6 +42618,28 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-05-8d3d16b3",
       "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1572006362": {
+      "topics": [
+        "nature/pets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content about guinea pig biology and care.",
+      "display_title": "All About Guinea Pigs",
+      "blurb": "Guide to guinea pig biology, characteristics, diet, and care.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
     },
     "1572124982": {
       "topics": [
@@ -42483,13 +42706,933 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-05-8d3d16b3",
       "classified_at": "2026-08-05T16:50:24.393Z"
+    },
+    "1572495128": {
+      "topics": [
+        "nature/ocean-science",
+        "adventure/exploration"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Solutions-focused environmental conversations with pioneers addressing planet challenges.",
+      "display_title": "Planet Visionaries",
+      "blurb": "Conversations with environmental leaders on ocean conservation, rewilding, and sustainability solutions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1572546872": {
+      "topics": [
+        "business/careers",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interview show with entrepreneurs and business leaders discussing careers and leadership.",
+      "display_title": "Straight Talk with Mark Bouris",
+      "blurb": "Honest conversations with business leaders, entrepreneurs, and experts on careers and success.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1572848558": {
+      "topics": [
+        "religion/hinduism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Complete recitation of the Ramayana, Hindu sacred text.",
+      "display_title": "Sampoorna Ramayanam",
+      "blurb": "Full recitation of the Ramayana Hindu epic scripture in traditional format.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1572936296": {
+      "topics": [
+        "craft/diy-home",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hosts discussing modern homemaking, gardening, cooking, and home life.",
+      "display_title": "The Art of Homemaking",
+      "blurb": "Conversations on modern homemaking, gardening, cooking, and creating nurturing home environments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1573028666": {
+      "topics": [
+        "economics/markets",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial planning and investment advice from chief investment officer.",
+      "display_title": "The Long Term Investor",
+      "blurb": "Personal finance and investment strategy for long-term wealth building.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1573038290": {
+      "topics": [
+        "religion/spirituality",
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host explores UFO experiences, paranormal phenomena, and spiritual teachings.",
+      "display_title": "Bledsoe Said So",
+      "blurb": "Spiritual and paranormal discussions on UFOs, consciousness, and unexplained phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1573094468": {
+      "topics": [
+        "religion/hinduism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu Advaita Vedanta philosophy and non-duality teachings.",
+      "display_title": "The Bearded Mystic Podcast",
+      "blurb": "Hindu philosophy teachings on Advaita Vedanta, the Upanishads, and non-duality.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1573109972": {
+      "topics": [
+        "health/sexuality",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast by erotic author discussing male masturbation experiences and issues.",
+      "display_title": "The Better Bator Podcast",
+      "blurb": "Discussions and interviews exploring male sexuality and masturbation practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1573116128": {
+      "topics": [
+        "science/chemistry",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host exploring chemical engineering and personal experiences in the field.",
+      "display_title": "DoCHEng",
+      "blurb": "Personal reflections on chemical engineering career and quantum computing hackathons.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1573180748": {
+      "topics": [
+        "space",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Non-technical astronomy lectures from Silicon Valley Astronomy Lectures series.",
+      "display_title": "Silicon Valley Astronomy Lectures",
+      "blurb": "Accessible astronomy talks on space exploration, exoplanets, and cosmic discoveries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1573243226": {
+      "topics": [
+        "economics/markets",
+        "news/tech"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Commentary on disruptive technology stocks and investment theses.",
+      "display_title": "Ticker Symbol: YOU",
+      "blurb": "Investment analysis of growth stocks and disruptive technology companies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1573483082": {
+      "topics": [
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual teachings on consciousness, ego, and non-dual awareness.",
+      "display_title": "Michael Singer Podcast",
+      "blurb": "Teachings on spiritual growth, consciousness, and transcending the ego.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1573596386": {
+      "topics": [
+        "culture/design",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth interviews with hospitality design and industry leaders.",
+      "display_title": "Defining Hospitality",
+      "blurb": "Industry interviews on hospitality design, hotel development, and service excellence.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1573623902": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Narrated classic literature adapted for sleep and relaxation.",
+      "display_title": "The Sleepy Bookshelf",
+      "blurb": "Narrated classic fiction stories designed for bedtime listening and relaxation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1574219306": {
+      "topics": [
+        "business/careers",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussions on balancing ambition, work, family, and personal fulfillment.",
+      "display_title": "Ambition 2.0",
+      "blurb": "Conversations with accomplished women on career, ambition, and life balance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1574247740": {
+      "topics": [
+        "business/management",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with handyman business owners on operations and growth strategies.",
+      "display_title": "Handyman Success Podcast",
+      "blurb": "Business interviews with contractors and handymen sharing success tactics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1574477306": {
+      "topics": [
+        "relationships",
+        "society/law"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family law expert and guests discussing separation, divorce, and recovery.",
+      "display_title": "Divorce and Separation",
+      "blurb": "Guidance on separation, divorce, family law, and rebuilding after marriage breakdown.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1574821838": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Anglican prayer services using Book of Common Prayer.",
+      "display_title": "The Daily Office Podcast",
+      "blurb": "Daily Anglican morning and evening prayer services from the Book of Common Prayer.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1575421652": {
+      "topics": [
+        "business/non-profit",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert interviews on fundraising, leadership, and nonprofit management.",
+      "display_title": "What the Fundraising",
+      "blurb": "Nonprofit fundraising strategies and organizational leadership from expert guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1575781850": {
+      "topics": [
+        "paranormal",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host explores UFO/UAP phenomena and alien-related stories.",
+      "display_title": "UAP Podcast",
+      "blurb": "Investigations of unidentified aerial phenomena and UFO-related government records.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1575962330": {
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hosts discuss productivity, work practices, and collaborative execution.",
+      "display_title": "Conduit",
+      "blurb": "Conversations on productivity, collaboration, and making ideas happen.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1576467002": {
+      "topics": [
+        "culture/art",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Author discussing art career building, sales, and creative business.",
+      "display_title": "Art Money Success",
+      "blurb": "Guide to building a sustainable art career and selling artwork.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1576720874": {
+      "topics": [
+        "religion/spirituality",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual teachings and conversations for conscious leaders and seekers.",
+      "display_title": "Truth & Transcendence",
+      "blurb": "Spiritual teachings and conversations on consciousness, resilience, and human development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1576862228": {
+      "topics": [
+        "tv-film/animation",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nerd culture podcast covering anime, video games, and fantasy media.",
+      "display_title": "IMNerd Podcast",
+      "blurb": "Discussions of anime, video games, trading card games, and nerd culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1577162822": {
+      "topics": [
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tips and resources for world language teaching and student proficiency.",
+      "display_title": "World Language Classroom",
+      "blurb": "Teaching strategies for language instruction and student proficiency development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1577258582": {
+      "topics": [
+        "health/alternative",
+        "health/nutrition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host Dr. Tyna discusses health, wellness, and alternative medicine approaches.",
+      "display_title": "The Dr. Tyna Show",
+      "blurb": "Alternative health perspectives on wellness, nutrition, and holistic medicine.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1577421794": {
+      "topics": [
+        "nature/animal-cognition",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Holistic horse health, nutrition, and energy medicine for equine care.",
+      "display_title": "Equine Energy Medicine",
+      "blurb": "Holistic approaches to horse health, nutrition, and non-invasive wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1577436830": {
+      "topics": [
+        "religion/spirituality",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Modern witchcraft, astrology, and spirituality for practical life application.",
+      "display_title": "That Witch Podcast",
+      "blurb": "Witchcraft, astrology, and spirituality applied to career, relationships, and growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1577480720": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep house, techno, and electronic dance music playlist podcast.",
+      "display_title": "Summer Mix Ibiza",
+      "blurb": "Deep house and techno dance music mixes for summer relaxation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1577493956": {
+      "topics": [
+        "culture/art",
+        "craft/photography"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with professional landscape photographers on technique and inspiration.",
+      "display_title": "Landscape Photography World",
+      "blurb": "Interviews with landscape photographers on composition, technique, and creative vision.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1577849126": {
+      "topics": [
+        "food",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep dives into British food history, recipes, and culinary traditions.",
+      "display_title": "The British Food History Podcast",
+      "blurb": "Exploration of British culinary traditions, historical recipes, and food heritage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1578045494": {
+      "topics": [
+        "culture/fashion",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sneaker collector discussing releases, purchases, and sneaker culture.",
+      "display_title": "Actual Fan of Sneakers",
+      "blurb": "Sneaker culture commentary on releases, collecting, and sneaker lifestyle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1578590306": {
+      "topics": [
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bedtime stories for children featuring magical and heartwarming tales.",
+      "display_title": "Story Train",
+      "blurb": "Whimsical bedtime stories for children from around the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1578667268": {
+      "topics": [
+        "sports/golf"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf expert panel previewing major tournaments with betting tips.",
+      "display_title": "The Sweet Spot",
+      "blurb": "Golf tournament previews and analysis from expert analysts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1578976532": {
+      "topics": [
+        "culture/pop-culture",
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity interviews with music and entertainment industry figures.",
+      "display_title": "Holdin' Court Podcast",
+      "blurb": "Unfiltered interviews with music, entertainment, and sports celebrities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
+    },
+    "1579040306": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Series covering historical events and remarkable figures from various eras.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-33207f85",
+      "classified_at": "2026-08-06T00:50:39.187Z"
     }
   },
-  "built_at": "2026-08-05T16:50:24.393Z",
+  "built_at": "2026-08-06T00:50:39.187Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-05-8d3d16b3",
+    "last_batch_id": "fresh-2026-08-06-33207f85",
     "last_batch_tier": 1
   }
 }
