@@ -44666,13 +44666,1120 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-06-5fff973c",
       "classified_at": "2026-08-06T08:50:54.283Z"
+    },
+    "1586749286": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brazilian tennis podcast covering professional player careers, tournaments, and technical training.",
+      "display_title": "Podcast TenisBrasil",
+      "blurb": "Covers Brazilian tennis professionals, career development, and analysis of major tournaments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1586992412": {
+      "topics": [
+        "food",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philadelphia-focused food and restaurant podcast with local chef interviews and culinary trends.",
+      "display_title": "Delicious City Philly",
+      "blurb": "Three food-focused hosts discuss Philadelphia restaurants, chefs, and regional cuisine.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1587184784": {
+      "topics": [
+        "society/government",
+        "history/technology"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official USPS podcast exploring postal history, infrastructure, automation, and service innovations.",
+      "display_title": "Mailin' It! - The Official USPS Podcast",
+      "blurb": "Official podcast covering USPS history, behind-the-scenes operations, and technological advances.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1587212660": {
+      "topics": [
+        "health/nutrition",
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cardiac surgeon discussing metabolic health, nutrition science, and reversing chronic disease.",
+      "display_title": "Stay Off My Operating Table",
+      "blurb": "Heart surgeon shares science-based approach to weight loss and metabolic health without conventional dieting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1587273284": {
+      "topics": [
+        "science/physics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Structured guide to particle physics covering subatomic particles, interactions, and fundamental concepts.",
+      "display_title": "The Field Guide to Particle Physics",
+      "blurb": "Informal exploration of particle species, their properties, and interactions in the subatomic ecosystem.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1587508622": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Elite runners discuss competitive running, training strategies, supplements, and personal development.",
+      "display_title": "COFFEE CLUB: a running podcast",
+      "blurb": "Professional distance runners share insights on training methods, racing tactics, and the sport.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1587781970": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Full-production horror fiction anthology series with original scary stories and atmospheric narration.",
+      "display_title": "Drew Blood's Dark Tales",
+      "blurb": "Veteran voice actor presents immersive horror fiction anthology with creature horror and suspense.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1588419386": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Clinical psychologist discussing love, intimacy, family dynamics, and relational self-awareness.",
+      "display_title": "Reimagining Love with Dr. Alexandra Solomon",
+      "blurb": "Clinical psychologist guides conversations on healthy relationships, intimacy, and healing from past patterns.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1588487126": {
+      "topics": [
+        "education/self-improvement",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Conversations on masculinity, male development, and redefining healthy ideals of manhood.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1588624088": {
+      "topics": [
+        "nature/pets",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly live talk show featuring reef aquarium hobbyists, vendors, and marine conservation experts.",
+      "display_title": "Rappin' With ReefBum",
+      "blurb": "Live discussion with reef-keeping community members covering hobby, business, and conservation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1588784036": {
+      "topics": [
+        "health/sexuality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized explicit intimate fiction stories covering relationships and sexuality.",
+      "display_title": "SteamyStories",
+      "blurb": "Serialized explicit stories about intimacy and passion with text included.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1588924574": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly discussion and recaps of reality dating shows Married at First Sight and Love is Blind.",
+      "display_title": "Love at First Sight",
+      "blurb": "Three hosts recap episodes of Married at First Sight and Love is Blind with humor and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1590370238": {
+      "topics": [
+        "philosophy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational exploration of Stoic philosophy applied to modern life challenges.",
+      "display_title": "The What Is Stoicism? Podcast",
+      "blurb": "Stoic philosophy guide teaching practical lessons from ancient thinkers for living well today.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1590384824": {
+      "topics": [
+        "sports/cricket"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly women's cricket news, discussion, and tournament coverage.",
+      "display_title": "The CRICKETher Weekly",
+      "blurb": "Women's cricket news and analysis with hosts Raf Nicholson and Syd Egan.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1590618794": {
+      "topics": [
+        "fiction/drama",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classic radio mystery detective stories from 1940s-1950s reproduced for modern audiences.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1591077032": {
+      "topics": [
+        "culture/performing-arts",
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Darkly comic podcast musical featuring original songs and celebrity cast.",
+      "display_title": "Anthem: Homunculus",
+      "blurb": "Podcast musical from Hedwig creator featuring original songs and performances by Broadway stars.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1591313876": {
+      "topics": [
+        "food",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical meal planning, grocery shopping, and cooking strategies for home cooks.",
+      "display_title": "The Plan to Eat Podcast",
+      "blurb": "Hosts share meal planning strategies, grocery-saving tips, and reduced food waste approaches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1591499942": {
+      "topics": [
+        "health/alternative",
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cardiologist discussing alternative approaches to heart health, microbiome, and disease prevention.",
+      "display_title": "Defiant Health Radio with Dr. William Davis",
+      "blurb": "Cardiologist shares alternative perspectives on heart health, microbiome, and metabolic disease.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1591565078": {
+      "topics": [
+        "tv-film/after-shows"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "After-show analysis of Ted Lasso characters and their romantic connection.",
+      "display_title": "They're Soulmates: A Ted Lasso Podcast",
+      "blurb": "Podcast dissecting Ted Lasso character relationships and romantic dynamics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1591620548": {
+      "topics": [
+        "culture/art",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Webcomic creators discussing craft, storytelling, audience building, and sustainability.",
+      "display_title": "Screen Tones: A Webcomic Podcast",
+      "blurb": "Webcomic creators discuss storytelling, art development, and sustainable creative practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1591622408": {
+      "topics": [
+        "food",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Holiday meal preparation with celebrity chefs sharing recipes and culinary stories.",
+      "display_title": "Cooking Up a Storm with Al Roker",
+      "blurb": "Al Roker guides complete holiday meals with celebrity chefs sharing dishes and food stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1591654628": {
+      "topics": [
+        "music",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized documentary on Guns N' Roses' origin story and early performances.",
+      "display_title": "THE FIRST 50 GIGS: Guns N' Roses",
+      "blurb": "Serialized origin story of Guns N' Roses from 1980s Hollywood through their early performances.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1591730336": {
+      "topics": [
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese-language strength training and fitness podcast addressing training questions.",
+      "display_title": "怪獸訓練電台",
+      "blurb": "Strength and fitness training podcast answering listener questions on weightlifting and exercise.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1591841978": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth discussion of classic and art cinema with personal observations.",
+      "display_title": "One F*cking Hour",
+      "blurb": "Three hosts discuss classic cinema covering themes, direction, and personal viewing experience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1592144900": {
+      "topics": [
+        "hobbies",
+        "gaming/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Competitive Warhammer 40k strategy analysis and player interviews.",
+      "display_title": "Art of War - Competitive 40k Network",
+      "blurb": "Interviews with top Warhammer 40k competitive players and detailed army list analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1592778002": {
+      "topics": [
+        "business/startups",
+        "education/how-to"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reselling business advice and tactics for flea markets, Facebook Marketplace, and eBay.",
+      "display_title": "The Pro Flipper Show",
+      "blurb": "Hosts share reselling tactics and high-value finds across flea markets and online platforms.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1592888750": {
+      "topics": [
+        "tv-film/interviews",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with screenwriters, directors, cinematographers on film and TV creative processes.",
+      "display_title": "Film & TV, The Creative Process",
+      "blurb": "Interviews with film and TV creatives discussing craft, careers, and artistic practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1592929028": {
+      "topics": [
+        "food"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Married couple tasting and reviewing reasonably-priced wines with honest opinions.",
+      "display_title": "The Wine Pair Podcast",
+      "blurb": "Husband and wife taste affordable wines and describe them in humorous, practical terms.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1592932862": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Extreme metal musicians discussing careers, deathcore scene, and genre history.",
+      "display_title": "BRUTALITY PODCAST",
+      "blurb": "In-depth conversations with extreme metal and deathcore musicians on scene history and craft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1592938106": {
+      "topics": [
+        "kids-family/education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese children's podcast answering kids' questions with simple, educational explanations.",
+      "display_title": "こどもそうだんしつ",
+      "blurb": "Children ask questions; adult experts explain concepts in accessible, engaging ways.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1593726950": {
+      "topics": [
+        "news/politics",
+        "news/daily"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political reporter discussing New York politics, current events, and policy.",
+      "display_title": "The Dominic Carter Show",
+      "blurb": "Political reporter discusses New York politics, current affairs, and policy issues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1593731024": {
+      "topics": [
+        "food",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two hosts discuss food industry, restaurants, and trends with humor and storytelling.",
+      "display_title": "Dudes Behind the Foods",
+      "blurb": "Two food-focused hosts share restaurant insights, trends, and hilarious personal food stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1593883196": {
+      "topics": [
+        "health/nutrition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based intermittent fasting podcast with expert hosts answering listener questions.",
+      "display_title": "The Fasting Method Podcast",
+      "blurb": "Fasting experts provide science on intermittent fasting and answer listener questions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1594861856": {
+      "topics": [
+        "craft",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Clinical psychologist exploring therapeutic benefits of knitting for mental wellbeing.",
+      "display_title": "Why I Knit",
+      "blurb": "Clinical psychologist interviews knitters about mental health benefits of the craft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1595160782": {
+      "topics": [
+        "history",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cultural and social history of Gilded Age America, Belle Epoque France, and Victorian England.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1595575940": {
+      "topics": [
+        "sports/baseball",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Eclectic sports and culture discussion ostensibly about baseball but ranging widely.",
+      "display_title": "The PosCast with Joe Posnanski & Michael Schur",
+      "blurb": "Hosts discuss baseball, sports culture, and miscellaneous topics with humor and debate.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1595635550": {
+      "topics": [
+        "tv-film/interviews",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with screenwriters about craft, career paths, and industry navigation.",
+      "display_title": "The Social Screenwriters Podcast",
+      "blurb": "Host interviews screenwriters about their creative processes and navigating the industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1595963324": {
+      "topics": [
+        "health/nutrition",
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition science for backcountry athletes, hunters, and endurance outdoor enthusiasts.",
+      "display_title": "Valley to Peak Nutrition Podcast",
+      "blurb": "Nutrition strategies for outdoor athletes, hunters, and backcountry preparation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1595963582": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast examining murders in small-town America with real accounts.",
+      "display_title": "Nightmare Next Door",
+      "blurb": "Real murder stories from small-town America examining secrets behind peaceful facades.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1596171716": {
+      "topics": [
+        "health/alternative",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wellness and wellness spirituality podcast with personal development and philosophy themes.",
+      "display_title": "for the healthy hoes.",
+      "blurb": "Wellness podcast exploring spirituality, sovereignty, and personal transformation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1597139402": {
+      "topics": [
+        "news/politics",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political philosophy and cultural commentary with conservative political perspective.",
+      "display_title": "CutJibNewsletter Speaks!",
+      "blurb": "Political philosophy and culture commentary discussing policy and current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1597385678": {
+      "topics": [
+        "education/how-to",
+        "business/startups"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Regenerative grass-based livestock farming education and expert interviews.",
+      "display_title": "The Stockman Grassfarmer Podcast",
+      "blurb": "Grass farming education covering sustainable ranching, profitability, and regeneration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1598887622": {
+      "topics": [
+        "health/nutrition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ketogenic diet science and implementation with medical expert and guest interviews.",
+      "display_title": "Keto Made Simple",
+      "blurb": "Doctor explains ketogenic diet science and interviews experts on metabolic health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
+    },
+    "1599001766": {
+      "topics": [
+        "kids-family/education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Award-winning daily affirmations for children on confidence, emotions, and self-care.",
+      "display_title": "Charm Words: Daily Affirmations for Kids",
+      "blurb": "Daily affirmations podcast helping children build confidence and emotional resilience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-506f5b84",
+      "classified_at": "2026-08-06T16:54:04.197Z"
     }
   },
-  "built_at": "2026-08-06T08:51:18.223Z",
+  "built_at": "2026-08-06T16:54:04.197Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-06-5fff973c",
+    "last_batch_id": "fresh-2026-08-06-506f5b84",
     "last_batch_tier": 1
   }
 }
