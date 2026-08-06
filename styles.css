@@ -149,6 +149,27 @@ body.view-home { overflow: hidden; }
   cursor: pointer;
 }
 
+.intro {
+  position: relative;
+  flex: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 34px 12px 12px;
+}
+.intro-tag { margin: 0 0 4px; font-size: 0.88rem; font-weight: 700; color: var(--text); }
+.intro-body { margin: 0; font-size: 0.8rem; color: var(--text-dim); line-height: 1.4; }
+.intro-close {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 24px; height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
 .cards4 {
   flex: 1;
   min-height: 0;
@@ -187,7 +208,7 @@ body.view-home { overflow: hidden; }
   object-fit: cover;
 }
 .mc-info { flex: 1; min-width: 0; }
-.mc-show { margin: 0; font-size: 0.72rem; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-kicker { margin: 0; font-size: 0.72rem; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mc-stretch {
   display: inline-block;
   margin-right: 6px;
@@ -202,7 +223,8 @@ body.view-home { overflow: hidden; }
 }
 .mc-info h3 {
   margin: 1px 0;
-  font-size: 0.95rem;
+  font-size: 1.1rem;
+  font-weight: 700;
   line-height: 1.25;
   display: -webkit-box;
   -webkit-line-clamp: 1;
