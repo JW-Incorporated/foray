@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-06T08:12:23.694Z",
+  "built_at": "2026-08-06T16:14:38.453Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-06-13f0563c",
+    "last_batch_id": "fresh-2026-08-06-4bb91b95",
     "last_batch_tier": 1
   },
   "entries": {
@@ -107499,10 +107499,30 @@
     },
     "1566716790": {
       "topics": [
-        "culture/design"
+        "culture/art",
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese toy design and artist interviews; focuses on pop culture collectibles.",
+      "display_title": "POP TOY RADIO",
+      "blurb": "Weekly interviews with toy designers and artists exploring collectible culture and creative practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1566724413": {
       "topics": [
@@ -108438,10 +108458,29 @@
     "1568930682": {
       "topics": [
         "sports/endurance",
-        "health/fitness"
+        "adventure"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with ultra-runners and endurance athletes; personal stories about long-distance running.",
+      "display_title": "The Run Shoe Diaries",
+      "blurb": "Stories from runners of all abilities, from 5Ks to ultramarathons, on grit and resilience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1568978603": {
       "topics": [
@@ -108464,7 +108503,26 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese Mandarin pop music history and cultural evolution.",
+      "display_title": "Feng Yin Yue",
+      "blurb": "Exploring the history and cultural significance of Mandarin pop music.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1569049585": {
       "topics": [
@@ -108516,7 +108574,22 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Agilent-Imperial College partnership; discusses analytical chemistry methods.",
+      "display_title": "Exploring Analytical Science",
+      "blurb": "Chemistry research and analytical science from Imperial College London.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1569130932": {
       "topics": [
@@ -108593,10 +108666,25 @@
     },
     "1569259206": {
       "topics": [
-        "tv-film/animation"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two brothers discussing anime series, plot, characters, and creative decisions.",
+      "display_title": "Anime Alchemists",
+      "blurb": "Thoughtful discussion and debate about anime stories, characters, and creative direction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1569279148": {
       "topics": [
@@ -108616,10 +108704,25 @@
     },
     "1569382140": {
       "topics": [
-        "sports/fantasy"
+        "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football strategy, player rankings, and league management for dynasty format.",
+      "display_title": "Lab 52: Dynasty Football",
+      "blurb": "Dynasty fantasy football strategy, draft tactics, and roster management tips.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1569401963": {
       "topics": [
@@ -108740,10 +108843,25 @@
     },
     "1569846126": {
       "topics": [
-        "sports/fantasy"
+        "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football advice; player rankings, draft strategies, NFL scheme analysis.",
+      "display_title": "The Fantasy Football Fellas",
+      "blurb": "Fantasy football rankings, draft strategy, and NFL offensive scheme analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1569859569": {
       "topics": [
@@ -108885,17 +109003,47 @@
     },
     "1570440204": {
       "topics": [
-        "religion/islam"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Quran recitation audio; religious/educational content.",
+      "display_title": "Islam Sobhi",
+      "blurb": "Contemporary Quran recitations from Egyptian reciter Islam Sobhi.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1570538358": {
       "topics": [
-        "religion/judaism"
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish wisdom, current affairs, and community topics.",
+      "display_title": "J-TV Podcasts",
+      "blurb": "Jewish wisdom, current affairs, and cultural entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1570550741": {
       "topics": [
@@ -108929,17 +109077,52 @@
     },
     "1570695066": {
       "topics": [
-        "comedy/interviews"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two comedians having candid conversations about pop culture and personal topics.",
+      "display_title": "Trash Tuesday",
+      "blurb": "Two comedians trading unfiltered stories and hot takes on pop culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1570703502": {
       "topics": [
-        "tv-film/interviews"
+        "culture/art",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nostalgia-driven pop culture interviews; autism and fandom perspective.",
+      "display_title": "Hyperfixated",
+      "blurb": "Pop culture interviews blending autism, fandom, and nostalgia.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1570709246": {
       "topics": [
@@ -108950,10 +109133,25 @@
     },
     "1570727604": {
       "topics": [
-        "culture/books"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relaxing audio readings of Jane Austen novels for bedtime.",
+      "display_title": "Jane Austen Bedtime Stories",
+      "blurb": "Soothing readings of Jane Austen novels perfect for falling asleep.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1570737028": {
       "topics": [
@@ -109016,10 +109214,30 @@
     },
     "1570844592": {
       "topics": [
-        "science/physics"
+        "science",
+        "science/materials"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "science/materials",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Short physics episodes covering everyday science, math, sports, and space.",
+      "display_title": "Friendly Physics",
+      "blurb": "Accessible 10-minute physics lessons on everyday science and nature.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1570846618": {
       "topics": [
@@ -109045,17 +109263,47 @@
     },
     "1570958622": {
       "topics": [
-        "tv-film/animation"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode-by-episode discussion of Haikyuu anime series; spoiler-free format.",
+      "display_title": "The Haikyuu Summit",
+      "blurb": "Spoiler-free episode recaps and discussion of the Haikyuu anime series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1571002086": {
       "topics": [
-        "fiction/sci-fi"
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fictional mystery set at Amundsen-Scott Antarctic research station.",
+      "display_title": "90 Degrees South",
+      "blurb": "Audio mystery series set at an Antarctic research station.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1571011377": {
       "topics": [
@@ -109150,10 +109398,25 @@
     },
     "1571197500": {
       "topics": [
-        "religion/hinduism"
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu spiritual teachings and Krishna devotion lectures.",
+      "display_title": "Chinmaya Vrindavan Lectures",
+      "blurb": "Hindu spiritual teachings focusing on Krishna consciousness and Vedantic philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1571275084": {
       "topics": [
@@ -109189,10 +109452,30 @@
     },
     "1571418006": {
       "topics": [
-        "science/physics"
+        "science",
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physicists discuss their research, career paths, and scientific work.",
+      "display_title": "My Journey as a Physicist",
+      "blurb": "Career stories from physicists working in research and academia.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1571428223": {
       "topics": [
@@ -109290,11 +109573,25 @@
     },
     "1571990652": {
       "topics": [
-        "fiction/comedy",
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedic fiction about a department managing supernatural incidents.",
+      "display_title": "The Denial Project",
+      "blurb": "Comedic audio fiction about covering up supernatural incidents.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1572006362": {
       "topics": [
@@ -109381,10 +109678,25 @@
     },
     "1572264828": {
       "topics": [
-        "news/daily"
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language daily news podcast from EL MUNDO newspaper.",
+      "display_title": "EL MUNDO al día",
+      "blurb": "Daily news and analysis from the EL MUNDO newspaper.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1572302975": {
       "topics": [
@@ -109437,7 +109749,22 @@
         "math"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual discussion about famous mathematicians and their contributions.",
+      "display_title": "Radical Mathematicians",
+      "blurb": "Conversational exploration of mathematicians, their lives, and ideas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1572479062": {
       "topics": [
@@ -109465,18 +109792,50 @@
     },
     "1572511098": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1572533694": {
       "topics": [
-        "religion/judaism"
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish wisdom, current affairs, and community topics.",
+      "display_title": "J-TV Podcasts",
+      "blurb": "Jewish wisdom, current affairs, and cultural entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1572546872": {
       "topics": [
@@ -109501,17 +109860,47 @@
     },
     "1572650298": {
       "topics": [
-        "food"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "Fabulously Delicious: The French Food Podcast",
+      "blurb": "Fabulously Delicious: The French Food Podcast is your ultimate guide to the world of French cuisine,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1572674760": {
       "topics": [
-        "science/physics"
+        "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "The Qubit Guy's Podcast",
+      "blurb": "The Qubit Guy (Yuval Boger) hosts thought leaders in quantum computing and other quantum technologie...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1572696544": {
       "topics": [
@@ -109582,15 +109971,48 @@
       "topics": [
         "music"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "ASOT | A State of Trance Podcast",
+      "blurb": "In this official A State of Trance Podcast Ruben de Ronde discusses recent ASOT projects, developmen...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1572857724": {
       "topics": [
-        "sports/hockey"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1572864957": {
       "topics": [
@@ -109739,10 +110161,25 @@
     },
     "1573187340": {
       "topics": [
-        "sports/tennis"
+        "sports/endurance"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "Tennis Culture",
+      "blurb": "Presented by Nelson Parker and Reza Tompsett of Get Set Tennis. Tennis Culture talks about more than...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1573189055": {
       "topics": [
@@ -109784,11 +110221,25 @@
     },
     "1573398072": {
       "topics": [
-        "news/tech",
-        "computing"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "ASHRAE Journal Podcast",
+      "blurb": "Tune into conversations among leading experts as they discuss the topics and issues that are impacti...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1573416339": {
       "topics": [
@@ -109876,10 +110327,25 @@
     },
     "1573646688": {
       "topics": [
-        "nature/pets"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "Farm Dog",
+      "blurb": "The podcast about the working dogs of farming, ranching, homesteading, and rural living. Presented b...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1573677895": {
       "topics": [
@@ -109934,8 +110400,26 @@
       "topics": [
         "music"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1573786577": {
       "topics": [
@@ -109953,10 +110437,25 @@
     },
     "1573808070": {
       "topics": [
-        "philosophy"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "The Nietzsche Podcast",
+      "blurb": "A podcast about Nietzsche's ideas, his influences, and those he influenced. Philosophy and cultural ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1573812448": {
       "topics": [
@@ -109974,10 +110473,25 @@
     },
     "1573819944": {
       "topics": [
-        "sports/fantasy"
+        "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football strategy, player rankings, and league management for dynasty format.",
+      "display_title": "Lab 52: Dynasty Football",
+      "blurb": "Dynasty fantasy football strategy, draft tactics, and roster management tips.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1573874032": {
       "topics": [
@@ -110024,18 +110538,52 @@
     },
     "1574162442": {
       "topics": [
-        "kids-family/stories"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "Lei’s Little Golden Books",
+      "blurb": "Stories for children (or nostalgic adults) with timeless Little Golden Books that include literary, ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1574177142": {
       "topics": [
-        "sports",
-        "news"
+        "sports/endurance",
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "Le podcast BasketSession",
+      "blurb": "Les journalistes de l'équipe BasketSession.com et du Mook REVERSE décortiquent pour vous toute l'act...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1574184333": {
       "topics": [
@@ -110046,10 +110594,28 @@
     },
     "1574194686": {
       "topics": [
-        "travel"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1574197282": {
       "topics": [
@@ -110097,18 +110663,52 @@
     },
     "1574361588": {
       "topics": [
-        "medicine"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "WarDocs - The Military Medicine Podcast",
+      "blurb": "Welcome to WarDocs! This is a podcast developed and hosted by 3 Army surgeons, Doug, Wayne and Kevin...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1574375094": {
       "topics": [
-        "sports",
-        "news"
+        "sports/endurance",
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "SEC Football Unfiltered",
+      "blurb": "SEC Football Unfiltered features hosts Blake Toppmeyer and John Adams of the USA TODAY Network servi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1574379971": {
       "topics": [
@@ -110257,11 +110857,25 @@
     },
     "1574755368": {
       "topics": [
-        "news/tech",
-        "computing"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "The Analytics Engineering Podcast",
+      "blurb": "The Analytics Engineering Podcast goes deep with the practitioners and builders leading the shift in...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1574802514": {
       "topics": [
@@ -110288,10 +110902,25 @@
     },
     "1574884368": {
       "topics": [
-        "religion/hinduism"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "Sri Chaganti - Pravachanamulu",
+      "blurb": "Pravachana Chakravarthy Brahma Sri Chaganti Koteshwara Rao Gari Pravachanamulu...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1575049948": {
       "topics": [
@@ -110384,10 +111013,25 @@
     },
     "1575422580": {
       "topics": [
-        "fiction/drama"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "Give Me Away",
+      "blurb": "From the writer of The Message, Life/After, and Steal the Stars. They call the crashed spaceship “Th...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1575434935": {
       "topics": [
@@ -110459,10 +111103,30 @@
     },
     "1575729786": {
       "topics": [
-        "tv-film/reviews"
+        "music",
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "Shortcomings",
+      "blurb": "It's June 6, 1998. The number one movie in the United States is 'The Truman Show.' NBC ruled televis...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1575753383": {
       "topics": [
@@ -110595,26 +111259,69 @@
     },
     "1576407828": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "Movie Night Extravaganza",
+      "blurb": "Movie Night Extravaganza is an irreverent, quick moving show about movies. Hosted by Forrest Miller,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1576423248": {
       "topics": [
-        "business/marketing"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "On Your Terms®",
+      "blurb": "A podcast for online business owners who refuse to choose between revenue and a real life. Most busi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1576433178": {
       "topics": [
-        "economics/markets",
-        "business"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "The Short Term Show",
+      "blurb": "The Short Term Show is your home for all things short term rental (Airbnb) investing and management....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1576467002": {
       "topics": [
@@ -110662,10 +111369,25 @@
     },
     "1576494612": {
       "topics": [
-        "craft/diy-home"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Requires manual review.",
+      "display_title": "Grow Weed at Home",
+      "blurb": "Welcome to Grow Weed at Home, now hosted by Parker Curtis — the next evolution of the ultimate podca...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-4bb91b95",
+      "classified_at": "2026-08-06T16:14:38.453Z"
     },
     "1576496602": {
       "topics": [
