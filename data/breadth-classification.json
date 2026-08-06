@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-06T00:31:41.037Z",
+  "built_at": "2026-08-06T08:33:39.137Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-06-f0fb7a85",
+    "last_batch_id": "fresh-2026-08-06-34324953",
     "last_batch_tier": 1
   },
   "entries": {
@@ -108419,10 +108419,25 @@
     },
     "1571534725": {
       "topics": [
-        "sports/golf"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about professional and amateur golf with tournament coverage and player interviews.",
+      "display_title": "Good Good Podcast",
+      "blurb": "Features golfers playing courses and discussing professional golf events and lifestyle.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1571545639": {
       "topics": [
@@ -108460,10 +108475,25 @@
     },
     "1571737243": {
       "topics": [
-        "travel"
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Italy travel guide with cultural and historical site descriptions by locals.",
+      "display_title": "The Italy Travel Podcast",
+      "blurb": "Local guides share travel tips and cultural insights across Italian destinations.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1571779250": {
       "topics": [
@@ -108493,18 +108523,52 @@
     },
     "1571795203": {
       "topics": [
-        "music",
-        "history"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Limited series on indie rock band Modest Mouse and their discography.",
+      "display_title": "The Waydown",
+      "blurb": "Series exploring the discography and career of indie rock band Modest Mouse.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1571852005": {
       "topics": [
-        "math"
+        "math",
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Seminar on mathematical computer science with academic presentations and discussions.",
+      "display_title": "Boston Computation Club",
+      "blurb": "Mathematical computer science seminar with algorithm and AI safety talks.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1571882607": {
       "topics": [
@@ -108556,10 +108620,25 @@
     },
     "1572129553": {
       "topics": [
-        "science/chemistry"
+        "science/materials"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/materials",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content explaining isotopes and their role in nuclear science.",
+      "display_title": "What Are Isotopes?",
+      "blurb": "Explains isotope chemistry and radioactivity fundamentals.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1572182022": {
       "topics": [
@@ -108701,10 +108780,25 @@
     },
     "1572579247": {
       "topics": [
-        "religion/hinduism"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu spiritual teachings with devotional stories and philosophy.",
+      "display_title": "Shri Rudra Mahima",
+      "blurb": "Devotional podcast exploring Hindu philosophy through stories and spiritual teachings.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1572650298": {
       "topics": [
@@ -108730,10 +108824,33 @@
     },
     "1572709915": {
       "topics": [
-        "science/physics"
+        "medicine",
+        "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Spanish-language content on applied physics in physical therapy contexts.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1572718049": {
       "topics": [
@@ -108836,10 +108953,25 @@
     },
     "1572909667": {
       "topics": [
-        "health/fitness"
+        "sports/biomechanics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal trainer education on fitness science and injury prevention.",
+      "display_title": "The NASM-CPT Podcast",
+      "blurb": "Personal training insights on wearables, strength training, and injury prevention.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1572928547": {
       "topics": [
@@ -108859,11 +108991,25 @@
     },
     "1572954979": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly sports news and commentary covering various sports across multiple disciplines.",
+      "display_title": "Sports For Dummies",
+      "blurb": "Sports news and explanations for fans and beginners with humor.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1572971297": {
       "topics": [
@@ -108991,14 +109137,47 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Florida natural history covering wildlife, ecosystems, and conservation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1573283443": {
       "topics": [
-        "tv-film/after-shows"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Reality TV recap and analysis from marginalized perspectives.",
+      "display_title": "The Reality Kingdom",
+      "blurb": "Reality TV recaps and discussion with BIPOC and LGBTQ+ focus.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1573299076": {
       "topics": [
@@ -109049,17 +109228,47 @@
     },
     "1573530457": {
       "topics": [
-        "sports/fantasy"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NASCAR fantasy sports, betting analysis, and race coverage.",
+      "display_title": "Stacking Dennys",
+      "blurb": "NASCAR racing coverage with fantasy sports and betting analysis.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1573560247": {
       "topics": [
-        "true-crime"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime journalism investigating cases and systemic corruption.",
+      "display_title": "True Sunlight",
+      "blurb": "Investigative true crime journalism with accuracy and victim focus.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1573578729": {
       "topics": [
@@ -109109,10 +109318,25 @@
     },
     "1573677895": {
       "topics": [
-        "sports/cricket"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live cricket sports commentary and broadcasting.",
+      "display_title": "Live Cricket Commentary",
+      "blurb": "Live cricket sports commentary and coverage.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1573710078": {
       "topics": [
@@ -109125,18 +109349,47 @@
     },
     "1573719139": {
       "topics": [
-        "fiction/comedy",
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Humorous narrated adaptation of science fiction literature.",
+      "display_title": "The Bearded Wit",
+      "blurb": "Comedic narrator reads sci-fi literature with humorous performance.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1573767685": {
       "topics": [
-        "nature/pets"
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Veterinary emergency and critical care education.",
+      "display_title": "Vet Rounds",
+      "blurb": "Veterinary emergency medicine discussions and expert interviews.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1573770204": {
       "topics": [
@@ -109374,10 +109627,25 @@
     },
     "1574510281": {
       "topics": [
-        "comedy/interviews"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedy performances in Spanish from Comedy Central.",
+      "display_title": "Comedy Central Stand-Up",
+      "blurb": "Stand-up comedy performances from established Spanish comedians.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1574542251": {
       "topics": [
@@ -109389,10 +109657,25 @@
     },
     "1574561959": {
       "topics": [
-        "true-crime"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "True crime interviews with criminal background perspectives; confidence moderate.",
+      "display_title": "Matthew Cox | Inside True Crime",
+      "blurb": "True crime stories told by someone with criminal justice experience.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1574565430": {
       "topics": [
@@ -109597,10 +109880,25 @@
     },
     "1575628807": {
       "topics": [
-        "nature"
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wildlife biology focused on human-animal conflict and attacks.",
+      "display_title": "Get Out Alive",
+      "blurb": "Animal attacks and wildlife conflict stories from forensic biologist.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1575636370": {
       "topics": [
@@ -109666,11 +109964,25 @@
     },
     "1575946033": {
       "topics": [
-        "fiction/comedy",
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improvisational sci-fi comedy mixing Star Trek and Douglas Adams.",
+      "display_title": "Oh These, Those Stars of Space!",
+      "blurb": "Improvised sci-fi comedy at intersection of Trek and absurdist humor.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1575957255": {
       "topics": [
@@ -109696,10 +110008,25 @@
     },
     "1576211467": {
       "topics": [
-        "philosophy"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian Bible teaching methodology and preaching education.",
+      "display_title": "The Bible Teacher's Podcast",
+      "blurb": "Bible teaching methodology and preaching craft guidance for pastors.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1576214626": {
       "topics": [
@@ -109853,10 +110180,25 @@
     },
     "1576702609": {
       "topics": [
-        "comedy/stand-up"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hebrew-language stand-up comedy monologues.",
+      "display_title": "צעקות",
+      "blurb": "Hebrew-language stand-up comedy performances.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1576720874": {
       "topics": [
@@ -109918,10 +110260,25 @@
     },
     "1577079217": {
       "topics": [
-        "comedy/interviews"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese-language comedy podcast with interviews and live recording.",
+      "display_title": "喜番调频｜笑个不停",
+      "blurb": "Chinese comedy podcast with comedians and guest interviews.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1577093580": {
       "topics": [
@@ -110060,10 +110417,25 @@
     },
     "1577591053": {
       "topics": [
-        "news/commentary"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News journalism and expert interviews on major current events.",
+      "display_title": "Apple News In Conversation",
+      "blurb": "Journalist interviews with experts on major current events.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1577608559": {
       "topics": [
@@ -110166,11 +110538,25 @@
     },
     "1577927995": {
       "topics": [
-        "space",
-        "science"
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astrophysics education in quick-format episodes.",
+      "display_title": "The Astrophysics Academy",
+      "blurb": "Astrophysics concepts explained in short educational episodes.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1578045494": {
       "topics": [
@@ -110189,10 +110575,25 @@
     },
     "1578096373": {
       "topics": [
-        "sports/rugby"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby sports news and podcast discussions.",
+      "display_title": "The Scrum of the Earth",
+      "blurb": "Rugby sports news and discussion podcast.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1578114413": {
       "topics": [
@@ -110203,10 +110604,25 @@
     },
     "1578135529": {
       "topics": [
-        "religion/islam"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quran recitation in Arabic by Amer Al-Kadhmi.",
+      "display_title": "القران الكريم",
+      "blurb": "Quran recitation in Arabic.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1578168978": {
       "topics": [
@@ -110226,18 +110642,50 @@
     },
     "1578217405": {
       "topics": [
-        "nature"
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Marine biology focused on shark science and ocean life.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1578265009": {
       "topics": [
-        "news",
-        "business"
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cybersecurity news and technology security topics.",
+      "display_title": "Security This Week",
+      "blurb": "Weekly cybersecurity news and technology security analysis.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1578319619": {
       "topics": [
@@ -110263,10 +110711,25 @@
     },
     "1578411799": {
       "topics": [
-        "relationships"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Practical divorce guidance; confidence moderate.",
+      "display_title": "How Not To Suck At Divorce",
+      "blurb": "Practical guidance on navigating divorce proceedings.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1578479107": {
       "topics": [
@@ -110730,10 +111193,25 @@
     },
     "1580081881": {
       "topics": [
-        "culture/fashion"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Family and community discussions; insufficient specific signal.",
+      "display_title": "It Takes A Village",
+      "blurb": "Family and community-focused podcast.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1580103374": {
       "topics": [
@@ -110824,10 +111302,25 @@
     },
     "1580328403": {
       "topics": [
-        "tv-film/after-shows"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Entertainment podcast; generic title limits confidence.",
+      "display_title": "Team Binge Podcast",
+      "blurb": "Entertainment and binge-watching discussions.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1580334416": {
       "topics": [
@@ -110877,11 +111370,25 @@
     },
     "1580594077": {
       "topics": [
-        "education/language-learning",
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics/language",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning podcast for intermediate learners.",
+      "display_title": "LanguaTalk Slow French",
+      "blurb": "Slow French podcast for A2-B1 language learners.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1580605564": {
       "topics": [
@@ -110944,7 +111451,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tribute series celebrating musician Tom Petty.",
+      "display_title": "The Tom Petty Project",
+      "blurb": "Celebrates music and career of musician Tom Petty.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1580792946": {
       "topics": [
@@ -111183,10 +111705,25 @@
     },
     "1581983587": {
       "topics": [
-        "kids-family/parenting"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family-oriented Christian spiritual guidance.",
+      "display_title": "The Family Discipleship Podcast",
+      "blurb": "Christian spiritual guidance for families.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1582022771": {
       "topics": [
@@ -111197,11 +111734,28 @@
     },
     "1582045099": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Psychology focused on narcissistic personality patterns.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-34324953",
+      "classified_at": "2026-08-06T08:33:39.137Z"
     },
     "1582109164": {
       "topics": [
