@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-05T16:40:20.477Z",
+  "built_at": "2026-08-06T00:31:41.037Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-05-8ce295cf",
+    "last_batch_id": "fresh-2026-08-06-f0fb7a85",
     "last_batch_tier": 1
   },
   "entries": {
@@ -105409,10 +105409,29 @@
     },
     "1564104451": {
       "topics": [
-        "music"
+        "comedy/casual-hangs",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chicago morning radio talk show blending humor, current events, and pop culture.",
+      "display_title": "Brian & Kenzie Podcast",
+      "blurb": "Chicago morning radio hosts discussing current events, relationships, and pop culture with humor.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1564113746": {
       "topics": [
@@ -105436,7 +105455,21 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert parenting advice covering infant sleep, toddler discipline, feeding, and development.",
+      "display_title": "Moms on Call",
+      "blurb": "Expert parenting advice for infants and toddlers covering sleep, feeding, development, and behavior.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1564124144": {
       "topics": [
@@ -105477,10 +105510,24 @@
     },
     "1564186813": {
       "topics": [
-        "sports/rugby"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "USA Rugby athletes discuss professional sports, finances, mental health, and Olympic experiences.",
+      "display_title": "Leo's Den",
+      "blurb": "USA Rugby players discuss professional athletics, finances, social media, and athletic life.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1564527899": {
       "topics": [
@@ -105591,10 +105638,29 @@
     },
     "1564939147": {
       "topics": [
-        "science/physics"
+        "science",
+        "science/storytelling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational physics explained through accessible narratives covering forces, motion, and gravity.",
+      "display_title": "Science People!",
+      "blurb": "Science educator explains fundamental physics concepts including gravity, motion, and forces.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1564949057": {
       "topics": [
@@ -105759,18 +105825,45 @@
     },
     "1565446303": {
       "topics": [
-        "sports/tennis"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tennis analysis covering match recaps, player statistics, and grand slam predictions.",
+      "display_title": "Tennis and Bagels",
+      "blurb": "Daily tennis match analysis, predictions, and player statistics covering WTA and ATP tours.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1565484763": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swimming coaching tips and technique instruction for competitive and recreational swimmers.",
+      "display_title": "Swim Swim Swim",
+      "blurb": "Swimming techniques and coaching tips for improving stroke efficiency and teaching methodology.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1565508093": {
       "topics": [
@@ -105805,14 +105898,42 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized sci-fi adventure for kids about discovering dream-realm powers and magic.",
+      "display_title": "Dream Breachers",
+      "blurb": "Serialized sci-fi mystery for kids about a boy discovering he can breach between dreams and reality.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1565581033": {
       "topics": [
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Phonics-based alphabet learning through songs and adventures for preschoolers ages 3-5.",
+      "display_title": "Quentin and Alfie's ABC Adventures",
+      "blurb": "Phonics-based alphabet adventures for ages 3–5 featuring letter sounds and sing-alongs.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1565584610": {
       "topics": [
@@ -105868,17 +105989,50 @@
     },
     "1565758957": {
       "topics": [
-        "tv-film/reviews"
+        "craft/filmmaking",
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.7
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast analyzing classic Gothic television series Dark Shadows through interviews and pop culture.",
+      "display_title": "Terror at Collinwood",
+      "blurb": "Podcast exploring Dark Shadows, a classic Gothic TV series, through interviews and cultural analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1565761825": {
       "topics": [
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Modern witchcraft practices covering spells, rituals, potions, numerology, and magical traditions.",
+      "display_title": "C3: Crystals, Cauldrons & Cocktails",
+      "blurb": "Witchcraft, spells, and mystical practices for modern practitioners exploring magic and ritual.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1565833096": {
       "topics": [
@@ -105906,11 +106060,32 @@
     },
     "1565949685": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "history",
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Analysis of Italian B-movie genres and cinematic history spanning decades of cult films.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1565976964": {
       "topics": [
@@ -106059,10 +106234,29 @@
     },
     "1566207871": {
       "topics": [
-        "comedy/interviews"
+        "comedy/casual-hangs",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Portuguese comedy interviews covering diverse topics from politics to religion to personal growth.",
+      "display_title": "Inteligência Ltda.",
+      "blurb": "Portuguese-language comedy interviews with guests discussing diverse topics from politics to spirituality.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1566225807": {
       "topics": [
@@ -106198,10 +106392,29 @@
     },
     "1566648901": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Clinical psychologist offers evidence-based parenting advice for tweens and teens.",
+      "display_title": "Ask Lisa",
+      "blurb": "Child psychologist offers parenting advice on emotional health, social development, and family dynamics.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1566652184": {
       "topics": [
@@ -106301,7 +106514,21 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic teachings through Seerah biography of Prophet Muhammad covering life, practices, family.",
+      "display_title": "Qalam Seerah",
+      "blurb": "Islamic teachings through biography of Prophet Muhammad covering his life, practices, and family.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1566814253": {
       "topics": [
@@ -106370,10 +106597,29 @@
     },
     "1566966691": {
       "topics": [
-        "true-crime"
+        "history",
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Documentary series on cult indoctrination, abuse, and escape told through survivor testimonies.",
+      "display_title": "The Turning",
+      "blurb": "Documentary series exploring cult indoctrination, abuse, and escape featuring survivor testimonies.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1567029088": {
       "topics": [
@@ -106530,10 +106776,29 @@
     },
     "1567330861": {
       "topics": [
-        "tv-film/animation"
+        "craft/filmmaking",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast rewatching and critiquing episodes of animated Pokémon series.",
+      "display_title": "Out of the Drying Pan",
+      "blurb": "Comedy podcast rewatching and critiquing episodes of the Pokémon animated series.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1567336024": {
       "topics": [
@@ -106590,10 +106855,24 @@
     },
     "1567455403": {
       "topics": [
-        "culture/art"
+        "craft/photography"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guide to building a part-time photography business covering equipment, marketing, and sales.",
+      "display_title": "Photography Side Hustle",
+      "blurb": "Practical advice for photographers building a part-time business, from gear to client management.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1567511802": {
       "topics": [
@@ -106604,10 +106883,29 @@
     },
     "1567515589": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language educational stories about historical figures for children and families.",
+      "display_title": "Déjame Contarte la Historia",
+      "blurb": "Spanish-language educational stories about historical figures for children and families.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1567580798": {
       "topics": [
@@ -106651,7 +106949,21 @@
         "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily political and current events commentary from conservative perspective.",
+      "display_title": "The Liz Wheeler Show",
+      "blurb": "Daily political and current events commentary from a conservative perspective.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1567718103": {
       "topics": [
@@ -106663,10 +106975,24 @@
     },
     "1567737559": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese stand-up comedy performance based on traditional storytelling narratives.",
+      "display_title": "郭德纲济公传",
+      "blurb": "Chinese stand-up comedy series featuring traditional stories and performance.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1567737582": {
       "topics": [
@@ -106795,7 +107121,21 @@
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fun facts and hidden secrets about Disneyland attractions for young visitors.",
+      "display_title": "Secrets of Disneyland",
+      "blurb": "Fun facts and secrets about Disneyland attractions and hidden details for visitors.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1568136588": {
       "topics": [
@@ -106829,10 +107169,29 @@
     },
     "1568286373": {
       "topics": [
+        "kids-family/stories",
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Campfire storytelling blending paranormal tales and life lessons for children.",
+      "display_title": "Camp Adventure",
+      "blurb": "Immersive storytelling and life lessons for kids through campfire-style narratives.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1568287960": {
       "topics": [
@@ -106883,7 +107242,21 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with chemists exploring drug discovery, materials science, and chemistry careers.",
+      "display_title": "Let's Talk Chemistry",
+      "blurb": "Interviews with chemists exploring drug discovery, materials science, and chemistry careers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1568471572": {
       "topics": [
@@ -106941,17 +107314,50 @@
     },
     "1568794225": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pharmaceutical industry experts discuss drug formulation, manufacturing, and innovation.",
+      "display_title": "The Pharma Lab Show",
+      "blurb": "Expert interviews on pharmaceutical innovations including drug formulation and manufacturing technologies.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1568866573": {
       "topics": [
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book recommendation podcast covering new releases, literature trends, and reading culture.",
+      "display_title": "Book Talk, Etc.",
+      "blurb": "Book recommendations and literary discussions covering new releases and reading trends.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1568911820": {
       "topics": [
@@ -107109,24 +107515,69 @@
       "topics": [
         "math"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Student-created podcast about the experience of math class with minimal episode descriptions.",
+      "display_title": "Math",
+      "blurb": "Student podcast exploring the chaotic reality of high school mathematics class.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1569193933": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast for PhD students and researchers discussing academic productivity, culture, and research tools.",
+      "display_title": "The Struggling Scientists",
+      "blurb": "Podcast for PhD students and early-career researchers on academic productivity and research culture.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1569216829": {
       "topics": [
-        "religion/judaism"
+        "religion/spirituality",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Weekly Torah teachings and Jewish ethical lessons; Judaism category absent from current taxonomy.",
+      "display_title": "Weekly Inspire",
+      "blurb": "Weekly Torah teachings and ethical lessons exploring Jewish wisdom and personal growth.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1569219771": {
       "topics": [
@@ -107234,14 +107685,46 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Ohio agriculture market news and farming updates for agricultural professionals.",
+      "display_title": "Morning Farm Show",
+      "blurb": "Daily Ohio agriculture market news and farming updates for agricultural professionals.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1569660547": {
       "topics": [
-        "tv-film/interviews"
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with cult film directors, writers, and actors about independent cinema.",
+      "display_title": "Walter Paisley Movie House",
+      "blurb": "Interviews with cult film directors, writers, and actors discussing independent cinema.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1569661214": {
       "topics": [
@@ -107270,7 +107753,21 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teachings and meditation guidance from traditional Thai Forest monastery.",
+      "display_title": "Dhammatalks Evening Talks",
+      "blurb": "Buddhist teachings and meditation guidance from a traditional Thai Forest monastery.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1569748106": {
       "topics": [
@@ -107300,7 +107797,25 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "R&B music playlist spanning decades, connecting songs to cultural and historical context.",
+      "display_title": "Old School Throwdown",
+      "blurb": "R&B music playlist spanning decades, connecting songs to cultural and historical context.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1570004719": {
       "topics": [
@@ -107363,10 +107878,29 @@
     },
     "1570076803": {
       "topics": [
+        "engineering",
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.9
+        },
+        {
+          "node": "science/chemistry",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemical engineers discussing sustainable process innovations in waste, energy, and materials.",
+      "display_title": "The NPT Podcast",
+      "blurb": "Chemical engineers discussing sustainable process innovations in waste, energy, and materials.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1570076914": {
       "topics": [
@@ -107409,10 +107943,24 @@
     },
     "1570352899": {
       "topics": [
-        "sports/baseball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily MLB betting analysis, picks, and player prop predictions from industry experts.",
+      "display_title": "MLB Gambling Podcast",
+      "blurb": "Daily MLB betting analysis, picks, and player prop predictions from industry experts.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1570368735": {
       "topics": [
@@ -107467,10 +108015,29 @@
     },
     "1570551691": {
       "topics": [
-        "health/alternative"
+        "nature",
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medicinal herbs and natural remedies focusing on seasonal plant wisdom and healing.",
+      "display_title": "Herbs with Rosalee",
+      "blurb": "Medicinal herbs and natural remedies for health, focusing on seasonal plant wisdom.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1570644971": {
       "topics": [
@@ -107542,7 +108109,21 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Student-led chemistry podcast covering medicinal and environmental chemistry applications.",
+      "display_title": "ChemLife",
+      "blurb": "Student-led chemistry podcast covering topics in medicinal and environmental chemistry.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1570787219": {
       "topics": [
@@ -107600,8 +108181,22 @@
       "topics": [
         "science/chemistry"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Student science project on element magnesium with minimal podcast content or structure.",
+      "display_title": "Magnesium",
+      "blurb": "Student science project exploring properties and applications of the element magnesium.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1570958622": {
       "topics": [
@@ -107692,10 +108287,29 @@
     },
     "1571136925": {
       "topics": [
-        "travel"
+        "nature",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Documentary stories about America's national parks covering ecology, history, and conservation.",
+      "display_title": "Secret Lives of Parks",
+      "blurb": "Documentary stories about America's national parks covering ecology, history, and conservation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1571149613": {
       "topics": [
@@ -107764,7 +108378,21 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "German-language interviews with craft artists and artisans about their creative practices.",
+      "display_title": "Ausstellung im Inter",
+      "blurb": "German-language interviews with craft artists and artisans about their creative practices.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-06-f0fb7a85",
+      "classified_at": "2026-08-06T00:31:41.037Z"
     },
     "1571418006": {
       "topics": [
