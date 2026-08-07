@@ -47395,6 +47395,33 @@
       "batch_id": "fresh-2026-08-07-2db801c7",
       "classified_at": "2026-08-07T08:52:16.498Z"
     },
+    "1611903710": {
+      "topics": [
+        "sports/soccer",
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports/soccer",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "On the Cincy PostCast, hosts Kevin Wallace, Grayson and The Chief offer their hot to lukew...",
+      "display_title": "Cincy PostCast - An ”FC Cincinnati” Podcast",
+      "blurb": "On the Cincy PostCast, hosts Kevin Wallace, Grayson and The Chief offer their hot to lukewarm takes on everything FC Cincinnati, anything around the The FC, and Beyond (and we...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
     "1611961208": {
       "topics": [
         "medicine",
@@ -48017,13 +48044,1037 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-07-2db801c7",
       "classified_at": "2026-08-07T08:52:16.498Z"
+    },
+    "1615134944": {
+      "topics": [
+        "tv-film/reviews",
+        "music/theory-production"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Disc Connected is a podcast dedicated to all things Boutique Physical Media.",
+      "display_title": "The Disc Connected",
+      "blurb": "The Disc Connected is a podcast dedicated to all things Boutique Physical Media. There are weekly live shows discussing announcements from that week, occasional interviews with industry professionals, and bonus...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1615422152": {
+      "topics": [
+        "news/daily"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "City Cast Las Vegas is an an award-winning daily podcast and newsletter created by and for...",
+      "display_title": "City Cast Las Vegas",
+      "blurb": "City Cast Las Vegas is an an award-winning daily podcast and newsletter created by and for locals (and locals-at-heart) that’ll challenge the easy narratives about our city … and, okay,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1615426118": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to the GOHUNT podcast.",
+      "display_title": "Big Hunt Guys",
+      "blurb": "Welcome to the GOHUNT podcast. Kick back with your favorite beverage of choice and hear some tips, tactics, and strategies, and a bit of randomness from Lorenzo Sartini, Brady Miller,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1615579340": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to the Lost Genre podcast.",
+      "display_title": "Lost Genre Reddit Stories",
+      "blurb": "Welcome to the Lost Genre podcast.  Here you'll be able to enjoy all my stories in the audio version",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1615588712": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Get Mike Francesa's unequaled takes on sports with The Mike Francesa Podcast.",
+      "display_title": "The Mike Francesa Podcast",
+      "blurb": "Get Mike Francesa's unequaled takes on sports with The Mike Francesa Podcast.  Listen to Mike's instant reactions to the biggest games and unbiased sports talk each week",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1615662974": {
+      "topics": [
+        "fiction/comedy",
+        "music/theory-production"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Liminal Criminals is a fictionalized true crime podcast detailing the bizarre, egregious, ...",
+      "display_title": "Liminal Criminals: A Fake Crime Podcast",
+      "blurb": "Liminal Criminals is a fictionalized true crime podcast detailing the bizarre, egregious, and completely fake exploits of the world's most notorious, and most nonexistent, people.  It updates",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1615788860": {
+      "topics": [
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "If you've tried all the fad diets and are sick and tired of not achieving your health and ...",
+      "display_title": "The Unf*ck Your Fitness Podcast",
+      "blurb": "If you've tried all the fad diets and are sick and tired of not achieving your health and fitness goals long-term, you've come to the right place. Welcome to the...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1616179448": {
+      "topics": [
+        "craft",
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "This podcast is for craft and textile enthusiasts all around the world.",
+      "display_title": "Textile Talk",
+      "blurb": "This podcast is for craft and textile enthusiasts all around the world. We're constantly adding great interviews with textile artists, tutors and retailers plus a little advice on our own...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1616386196": {
+      "topics": [
+        "kids-family/education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "给刚刚3岁的女儿花花录的科普读物，希望花花能一直保持好奇心和不断探索的勇气。本免费专辑仅供练习之用。【固定每周五周六晚上7点左右更新，周中会随缘加更。】 【小耳朵们，如果喜欢本专辑...",
+      "display_title": "3-6岁儿童科学百科故事|睡前科普故事",
+      "blurb": "给刚刚3岁的女儿花花录的科普读物，希望花花能一直保持好奇心和不断探索的勇气。本免费专辑仅供练习之用。【固定每周五周六晚上7点左右更新，周中会随缘加更。】 【小耳朵们，如果喜欢本专辑的话欢迎订阅关注哦，这样就可以第一时间收到更新提醒啦！】",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1616425412": {
+      "topics": [
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lace up your sneakers, grab your favorite headband, and toe the starting line.",
+      "display_title": "Back of the Pack Podcast",
+      "blurb": "Lace up your sneakers, grab your favorite headband, and toe the starting line.  The signal has fired and the “Back of the Pack Podcast” is up and running",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1616675498": {
+      "topics": [
+        "travel",
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Supernatural Japan explores the dark, mysterious, and unexplained side of Japan.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1616691866": {
+      "topics": [
+        "fiction/comedy",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Squirrel Girl has taken down Thanos and Doctor Doom – but now she faces something far more...",
+      "display_title": "Marvel’s Squirrel Girl: The Unbeatable Radio Show!",
+      "blurb": "Squirrel Girl has taken down Thanos and Doctor Doom – but now she faces something far more terrifying… living authentically. Empire State University college student, Doreen Green, has recently been...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1616882162": {
+      "topics": [
+        "sports/endurance",
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The podcast where I talk to epic people doing epic stuff outside.",
+      "display_title": "From The Backcountry",
+      "blurb": "The podcast where I talk to epic people doing epic stuff outside",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1616941130": {
+      "topics": [
+        "religion/buddhism",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A Podcast About Zen, Buddhism and Mindfulness.",
+      "display_title": "Simplicity Zen Podcast",
+      "blurb": "A Podcast About Zen, Buddhism and Mindfulness.  Episodes of this podcast will focus on Zen practitioner interviews, Buddhist and Zen history and investigations of the intersection between Zen and science",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1617334814": {
+      "topics": [
+        "religion/judaism",
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Into the Verse is dedicated to bringing you Torah that is timely and relevant to your life.",
+      "display_title": "Into the Verse - A Parsha Podcast",
+      "blurb": "Into the Verse is dedicated to bringing you Torah that is timely and relevant to your life. Using the parsha and the Jewish calendar as inspiration, this podcast is filled...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1617534728": {
+      "topics": [
+        "fiction/sci-fi",
+        "music/theory-production"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Agents Evan Wexler and V spend their nights conducting one paranormal investigation after ...",
+      "display_title": "The 100 Handed: A Paranormal Urban Fantasy Podcast",
+      "blurb": "Agents Evan Wexler and V spend their nights conducting one paranormal investigation after another. In the Gloom-haunted Texas, shadow work is more than facing your inner darkness, and monster energy...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1617844496": {
+      "topics": [
+        "culture/fashion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to The Debrief, a new weekly podcast from The Business of Fashion, where we go bey...",
+      "display_title": "The Debrief",
+      "blurb": "Welcome to The Debrief, a new weekly podcast from The Business of Fashion, where we go beyond the glossy veneer and unpack our most popular BoF Professional stories. Hosted by...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1618050230": {
+      "topics": [
+        "true-crime",
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports/soccer",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kendall Rae is a true-crime content creator on YouTube who has used her platform to spread...",
+      "display_title": "True Crime with Kendall Rae",
+      "blurb": "Kendall Rae is a true-crime content creator on YouTube who has used her platform to spread awareness for victims and their families. Now she is bringing episodes of her YouTube...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1618211540": {
+      "topics": [
+        "culture/design",
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to ‘Create Great’.",
+      "display_title": "Create great.",
+      "blurb": "Welcome to ‘Create Great’.  This podcast series features conversations with creative people from different backgrounds, from different disciplines and different schools of thought",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1618515146": {
+      "topics": [
+        "business/careers",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Delivering curiosity-inducing content every single week.",
+      "display_title": "Curiosity Chronicle",
+      "blurb": "Delivering curiosity-inducing content every single week.  This is the audio version of my newsletter",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1618650164": {
+      "topics": [
+        "music",
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Iconic artists.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1619028254": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The #1 Jewish podcast for real inspiration.",
+      "display_title": "Inspiration for the Nation with Yaakov Langer",
+      "blurb": "The #1 Jewish podcast for real inspiration.  Powerful conversations rooted in Judaism, Jewish identity, and faith",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1619071982": {
+      "topics": [
+        "religion/buddhism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soy monje budista, instructor de meditación y compasión.",
+      "display_title": "Karma Tenpa Podcast",
+      "blurb": "Soy monje budista, instructor de meditación y compasión.  También participo como formador en el voluntariado para el acompañamiento en el final de vida",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1619155154": {
+      "topics": [
+        "health/mental",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Doze off to the calming and unusual bedtime stories from Sleep With Me.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1619185268": {
+      "topics": [
+        "tv-film"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to The Breakroom.",
+      "display_title": "The Breakroom",
+      "blurb": "Welcome to The Breakroom. Staff and friends of the New Rockstars Network dive into the latest news and releases from Marvel, Star Wars, DC, and the other nerdy film, TV,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1619236094": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Your One and Only Source is the unapologetically chaotic Gossip Girl podcast that does mor...",
+      "display_title": "Your One And Only Source",
+      "blurb": "Your One and Only Source is the unapologetically chaotic Gossip Girl podcast that does more than just rewatch. Every Thursday, sisters Caroline and Phoebe break down a new Gossip Girl...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1619498174": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly injury analysis from @NRLPhysio and a physio who loves NRL.",
+      "display_title": "Magic Sponge - with NRL Physio",
+      "blurb": "Weekly injury analysis from @NRLPhysio and a physio who loves NRL",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1619774102": {
+      "topics": [
+        "tv-film"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Do you love juicy secrets.",
+      "display_title": "Mess Magnets: Pop Culture RHAP-up",
+      "blurb": "Do you love juicy secrets.  Got any hot goss",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1620108374": {
+      "topics": [
+        "news/daily",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Fresh Tracks crew, led by Marcus Hockett, keeps you in the know about what's happening...",
+      "display_title": "Fresh Tracks Weekly",
+      "blurb": "The Fresh Tracks crew, led by Marcus Hockett, keeps you in the know about what's happening in conservation.  The good, the bad, and the ugly",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1620281360": {
+      "topics": [
+        "aviation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation has many paths to net zero, and few are straightforward.",
+      "display_title": "Sustainability In The Air",
+      "blurb": "Aviation has many paths to net zero, and few are straightforward. Sustainability in the Air cuts through the noise with clear, expert-led conversations on what’s actually advancing a more sustainable...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1620287138": {
+      "topics": [
+        "math"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Join hosts Peter Littig and Noah King as they discuss and explain mathematical topics with...",
+      "display_title": "The Math Club",
+      "blurb": "Join hosts Peter Littig and Noah King as they discuss and explain mathematical topics with their own unique style. Full of information that will interest and entertain math lovers as...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1620410114": {
+      "topics": [
+        "society",
+        "true-crime"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to the show.",
+      "display_title": "Cosmic Peach",
+      "blurb": "Welcome to the show .  🍑 On Cosmic Peach podcast, Julia brings a unique perspective to all things that go bump in the night",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1620729590": {
+      "topics": [
+        "religion",
+        "music/theory-production"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.65
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Readings of the Writings and Lives of Orthodox Christian Saints.",
+      "display_title": "Orthodox Wisdom",
+      "blurb": "Readings of the Writings and Lives of Orthodox Christian Saints.  These recordings are free to download and share",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1620876956": {
+      "topics": [
+        "religion/islam",
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "This podcast is an opportunity for you to join me in conversation with inspirational peopl...",
+      "display_title": "Yasmine Mohammed Podcast",
+      "blurb": "This podcast is an opportunity for you to join me in conversation with inspirational people from restrictive religious backgrounds who have fought and who have overcome. You know some names...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1620908192": {
+      "topics": [
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Join Mary O'Carroll as she sits down with General Counsel, Chief Legal Officers, and indus...",
+      "display_title": "Pearls On, Gloves Off: The Legal Innovation Podcast",
+      "blurb": "Join Mary O'Carroll as she sits down with General Counsel, Chief Legal Officers, and industry pioneers to tackle the debates reshaping legal services and technology.  Presented by Workday",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1620917042": {
+      "topics": [
+        "religion/spirituality",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "How are we all connected through the universal cosmic web.",
+      "display_title": "Gaia Consciousness",
+      "blurb": "How are we all connected through the universal cosmic web. Unlock the powers of your own consciousness and learn the secrets of existence by following the golden thread and joining...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1621352294": {
+      "topics": [
+        "music",
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "HardLore Podcast • Hosted by Colin Young (Twitching Tongues, God’s Hate), featuring in-dep...",
+      "display_title": "HardLore",
+      "blurb": "HardLore Podcast • Hosted by Colin Young (Twitching Tongues, God’s Hate), featuring in-depth, biographical interviews with our favorite musicians from the worlds of hardcore/punk/metal & beyond",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1621946084": {
+      "topics": [
+        "kids-family/parenting",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "You've built a full life.",
+      "display_title": "High Capacity – Nervous System Regulation, Stress",
+      "blurb": "You've built a full life.  The career, the family, the responsibilities, the goals — all of it",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1622371412": {
+      "topics": [
+        "health/fitness",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Join the Burn Boot Camp Podcast as we present the real deal on fitness and nutrition, expl...",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1622649470": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A review of the infectious diseases literature from the previous two weeks.",
+      "display_title": "Infectious Disease Puscast",
+      "blurb": "A review of the infectious diseases literature from the previous two weeks",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1623132242": {
+      "topics": [
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "FP&A Today is the podcast for Financial Planning and Analysis.",
+      "display_title": "FP&A Today",
+      "blurb": "FP&A Today is the podcast for Financial Planning and Analysis. The weekly show dives into the challenges and opportunities within the world of FP&A, interviewing FP&A leaders, CFOs and other...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-47ba0aee",
+      "classified_at": "2026-08-07T16:50:43.873Z"
     }
   },
-  "built_at": "2026-08-07T08:52:16.498Z",
+  "built_at": "2026-08-07T16:50:43.873Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-07-2db801c7",
+    "last_batch_id": "fresh-2026-08-07-47ba0aee",
     "last_batch_tier": 1
   }
 }
