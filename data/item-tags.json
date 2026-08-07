@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-05T11:46:08.683Z",
+  "built_at": "2026-08-07T11:44:41.966Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -10746,6 +10746,179 @@
       "fairy-tales",
       "family",
       "live-performance"
+    ],
+    "catalyst-shayle-kann--the-electrician-shortage-slowing-the-ai": [
+      "data-centers",
+      "electricians",
+      "labor-shortage",
+      "energy-infrastructure",
+      "ai-infrastructure",
+      "construction",
+      "engineering",
+      "energy"
+    ],
+    "business-of-machining--463-vibe-coding-fun": [
+      "machining",
+      "cnc",
+      "metrology",
+      "shop-talk",
+      "engineering",
+      "vibe-coding",
+      "software-development",
+      "manufacturing"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1612": [
+      "history",
+      "historiography",
+      "war",
+      "storytelling",
+      "engineering",
+      "technology"
+    ],
+    "gardenfork-radio--best-time-in-portugal-odor-eliminators": [
+      "gardening",
+      "home-improvement",
+      "travel",
+      "portugal",
+      "pets",
+      "cleaning",
+      "diy",
+      "household-tips"
+    ],
+    "just-fly-performance-podcast--527-josh-bray-on-the-hidden": [
+      "athletic-development",
+      "coaching",
+      "youth-sports",
+      "biomechanics",
+      "training",
+      "sports-science",
+      "play",
+      "endurance"
+    ],
+    "99-percent-invisible--100-objects-12-negro-cloth": [
+      "textiles",
+      "slavery",
+      "american-history",
+      "manufacturing",
+      "labor-history",
+      "new-england",
+      "atlantic-slave-trade",
+      "design-history"
+    ],
+    "off-nominal--251-yada-yada-yada-with-dan": [
+      "spaceflight",
+      "starship",
+      "rockets",
+      "heat-shield",
+      "aerospace-engineering",
+      "spacex",
+      "space",
+      "reusability"
+    ],
+    "camera-shake-photography-podcast--are-better-cameras-making-photography-worse": [
+      "photography",
+      "cameras",
+      "computational-photography",
+      "mirrorless",
+      "smartphones",
+      "video",
+      "gear",
+      "craft"
+    ],
+    "history-of-wwii-podcast--episode-644-hold-the-line": [
+      "world-war-ii",
+      "guadalcanal",
+      "pacific-theater",
+      "marines",
+      "military-history",
+      "history",
+      "battle"
+    ],
+    "craft-beer-and-brewing-magazine-podcast--episode-497-todd-malloy-and-robin": [
+      "craft-beer",
+      "brewing",
+      "lager",
+      "beer-competition",
+      "small-batch",
+      "pub-brewing",
+      "beer",
+      "fermentation"
+    ],
+    "fast-talk--435-sodium-update-and-are-we": [
+      "endurance-sports",
+      "cycling",
+      "nutrition",
+      "sodium",
+      "fitness-trackers",
+      "biohacking",
+      "training",
+      "sports-science"
+    ],
+    "ten-percent-happier--self-help-without-other-people-is": [
+      "self-help",
+      "relationships",
+      "psychology",
+      "mental-health",
+      "meditation",
+      "mindfulness",
+      "wellbeing",
+      "interview"
+    ],
+    "zoe-science-nutrition--the-evolutionary-science-behind-why-you": [
+      "nutrition",
+      "evolutionary-biology",
+      "diet",
+      "weight-loss",
+      "nutrition-science",
+      "metabolism",
+      "health",
+      "biology"
+    ],
+    "armchair-expert--armchair-anonymous-hotel-ii": [
+      "comedy",
+      "listener-stories",
+      "hotels",
+      "travel-stories",
+      "interviews",
+      "armchair-expert",
+      "storytelling"
+    ],
+    "how-did-this-get-made--last-looks-fall-w-eliot-glazer": [
+      "comedy",
+      "movies",
+      "film-criticism",
+      "pop-culture",
+      "bad-movies",
+      "interviews",
+      "book"
+    ],
+    "kill-tony--kt-behind-the-tape-ep-779": [
+      "comedy",
+      "stand-up-comedy",
+      "behind-the-scenes",
+      "live-comedy",
+      "kill-tony",
+      "improv",
+      "podcast-production"
+    ],
+    "morbid--bonus-episode-breaking-dawn-part-2": [
+      "true-crime",
+      "pop-culture-recap",
+      "movies",
+      "twilight",
+      "comedy",
+      "recap",
+      "bonus-episode"
+    ],
+    "dateline--onlyfans-model-accused-of-murder-tupac": [
+      "true-crime",
+      "murder-trial",
+      "celebrity-crime",
+      "tupac",
+      "courtroom",
+      "investigation",
+      "society-law",
+      "news"
     ]
   }
 }
