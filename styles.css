@@ -81,37 +81,49 @@ body.view-home { overflow: hidden; }
   width: min(78vw, 300px);
   background: var(--surface);
   border-right: 1px solid var(--line);
+  box-shadow: var(--shadow);
   z-index: 31;
-  padding: calc(env(safe-area-inset-top) + 14px) 0 14px;
+  padding: calc(env(safe-area-inset-top) + 14px) 10px 14px;
   overflow-y: auto;
 }
+/* Top-level destinations (Home/Playlists) read as real nav items — serif,
+   normal case, same family as card/page headlines — distinct from
+   .drawer-section-label below, which is a small-caps section divider, not
+   a link. The two looked identical before (both bold uppercase caps),
+   with no way to tell "tap this" from "this just labels a group." */
 .drawer-section {
   display: block;
-  padding: 14px 18px 8px;
-  font-size: 0.8rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  margin: 2px 0;
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-family: var(--serif);
+  font-size: 1.02rem;
+  font-weight: 700;
   color: var(--text);
   text-decoration: none;
 }
+.drawer-section:active { background: var(--surface-2); }
 .drawer-item {
   display: block;
-  padding: 12px 18px 12px 26px;
+  margin: 1px 0;
+  padding: 10px 14px 10px 22px;
+  border-radius: 8px;
   color: var(--text-dim);
   text-decoration: none;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .drawer-item:active { background: var(--surface-2); }
-.drawer-empty { padding: 8px 26px; color: var(--text-dim); font-size: 0.85rem; }
+.drawer-empty { padding: 6px 14px 6px 22px; color: var(--text-dim); font-size: 0.85rem; }
 .drawer-section-label {
-  padding: 20px 18px 8px;
-  font-size: 0.8rem;
-  font-weight: 800;
+  margin-top: 12px;
+  padding: 12px 14px 6px;
+  border-top: 1px solid var(--line);
+  font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--text);
+  color: var(--text-dim);
 }
 .drawer-item.as-btn {
   display: block;
