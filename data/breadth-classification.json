@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-06T16:14:38.453Z",
+  "built_at": "2026-08-07T00:12:36.273Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-06-4bb91b95",
+    "last_batch_id": "fresh-2026-08-07-18d26c80",
     "last_batch_tier": 1
   },
   "entries": {
@@ -111415,10 +111415,30 @@
     },
     "1576578372": {
       "topics": [
-        "nature"
+        "nature",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cryptozoology podcast featuring eyewitness accounts of Sasquatch sightings.",
+      "display_title": "Bigfoot Eyewitness Radio",
+      "blurb": "They're known by many names; Bigfoot, Sasquatch, Yowie, Yeti, Almas and the list goes on.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1576594336": {
       "topics": [
@@ -111474,10 +111494,30 @@
     },
     "1576804884": {
       "topics": [
-        "sports/hockey"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Weekly Seattle Kraken NHL analysis and team updates.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8",
+        "display_title: banned /deep[\\s-]dive/i",
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1576862228": {
       "topics": [
@@ -111488,10 +111528,25 @@
     },
     "1576873158": {
       "topics": [
-        "news/commentary"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Commentary and discussion podcast covering news and politics.",
+      "display_title": "The Scott Jennings Podcast",
+      "blurb": "He&rsquo;s not just the conservative voice at CNN &mdash; he&rsquo;s the last man standing athwart the liberal mob.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1576880098": {
       "topics": [
@@ -111509,10 +111564,25 @@
     },
     "1576949850": {
       "topics": [
-        "kids-family/stories"
+        "adventure"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror and scary stories for entertainment.",
+      "display_title": "Scary Stories For Creepy Kids",
+      "blurb": "Short and spooky with a side of silly, stories for kids by kids.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1577079217": {
       "topics": [
@@ -111523,11 +111593,30 @@
     },
     "1577093580": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "science",
+        "science/storytelling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Explores brain science related to climate understanding.",
+      "display_title": "Your Brain On Climate",
+      "blurb": "A show about climate change and climate psychology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1577143204": {
       "topics": [
@@ -111577,25 +111666,69 @@
     },
     "1577286672": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swimming podcast with athlete interviews and competitive swimming analysis.",
+      "display_title": "Goggles On",
+      "blurb": "Hosts Griffin Hadley and Will Plumb dive into the sport of swimming from the athlete's perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:36.273Z"
     },
     "1577293662": {
       "topics": [
-        "tv-film/reviews"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interview and conversation podcast with focus on women speakers.",
+      "display_title": "She's Speaking with Emily Hanks",
+      "blurb": "Emily is a connoisseur of the finest reality television, an appreciator of exceptional scripted shows, and who doesn't love True Crime? If you missed ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1577382534": {
       "topics": [
-        "relationships"
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship advice and psychology podcast.",
+      "display_title": "Unf*ck Your Relationships",
+      "blurb": "Welcome to Unf*ck Your Relationships Podcast! I'm your host Michelle Panning - intimacy alchemist AKA your love, sex, and relationship bestie, trigger...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1577408673": {
       "topics": [
@@ -111835,10 +111968,25 @@
     },
     "1578216084": {
       "topics": [
-        "religion/spirituality"
+        "psychology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided meditation and mindfulness audio content.",
+      "display_title": "Meditation Podcast",
+      "blurb": "Different types of Meditation and Breathwork so you can listen any time of the day.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1578217405": {
       "topics": [
@@ -111942,7 +112090,22 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast featuring makers and craftspeople discussing their work.",
+      "display_title": "Three Northern Makers",
+      "blurb": "A maker podcast about woodworking, making things and basically having a good laugh.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1578918377": {
       "topics": [
@@ -111954,10 +112117,25 @@
     },
     "1578946278": {
       "topics": [
-        "relationships"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family-focused podcast about parenting and relationships.",
+      "display_title": "The Just Enough Family",
+      "blurb": "Staggering success, unexpected loss, over-the-top parties, shocking betrayals, and profound intimacy are woven together into a high-profile family-therapy session.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1578971025": {
       "topics": [
@@ -111998,10 +112176,25 @@
     },
     "1579061364": {
       "topics": [
-        "news/politics"
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Workplace and professional development podcast.",
+      "display_title": "Head in the Office",
+      "blurb": "On Head in the Office, two big-time political gurus, Jeremy & Gage, dissect the weekly news and offer a leftist point of view on recent events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1579074055": {
       "topics": [
@@ -112095,11 +112288,25 @@
     },
     "1579335762": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "adventure/exploration"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Explores unusual places and strange phenomena.",
+      "display_title": "Strange Zones",
+      "blurb": "There are weird zones on Earth that are rarely discussed.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1579342799": {
       "topics": [
@@ -112161,10 +112368,28 @@
     },
     "1579548228": {
       "topics": [
-        "gaming"
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Reviews and discussion of films and TV shows.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1579565966": {
       "topics": [
@@ -112215,7 +112440,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Drone piloting, aerial photography, and UAV industry for women professionals.",
+      "display_title": "Women Who Drone",
+      "blurb": "Women Who Drone is an online community for female drone pilots, enthusiasts and aerial content creators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:36.273Z"
     },
     "1579817804": {
       "topics": [
@@ -112280,10 +112520,25 @@
     },
     "1579977660": {
       "topics": [
-        "nature/pets"
+        "nature/animal-cognition"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pet care, training, and animal behavior podcast.",
+      "display_title": "The Pet Parenting Reset",
+      "blurb": "Question Everything.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1580036852": {
       "topics": [
@@ -112372,10 +112627,25 @@
     },
     "1580240316": {
       "topics": [
-        "music"
+        "psychology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Meditation, relaxation and sleep audio content.",
+      "display_title": "深度睡眠|解压|冥想|疗愈养生|艺术疗愈|白噪音|助眠音乐|轻音乐|苏阳阳频道",
+      "blurb": "听ta.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1580324667": {
       "topics": [
@@ -112472,10 +112742,25 @@
     },
     "1580655264": {
       "topics": [
-        "sports/cricket"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket-focused sports podcast.",
+      "display_title": "The Japan Cricket Podcast",
+      "blurb": "Conversations with some of the biggest characters involved with cricket in Japan.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1580660636": {
       "topics": [
@@ -112493,10 +112778,25 @@
     },
     "1580792946": {
       "topics": [
-        "tv-film/reviews"
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reviews and discussion of films and TV shows.",
+      "display_title": "Splat Attack Podcast",
+      "blurb": "Welcome to Splat Attack, the podcast celebrating the slime-filled world of '90s Nickelodeon! Each episode features cast reunions, exclusive interviews...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1580815514": {
       "topics": [
@@ -112539,10 +112839,25 @@
     },
     "1581028782": {
       "topics": [
-        "science/physics"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quantum physics explained for general audiences.",
+      "display_title": "Clear as Quantum",
+      "blurb": "Clear as Quantum is an EQUS podcast about quantum science and the exciting technologies that are getting ready to unleash a quantum revolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1581058922": {
       "topics": [
@@ -112694,10 +113009,25 @@
     },
     "1581848478": {
       "topics": [
-        "business/marketing"
+        "business/startups"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "E-commerce and small business podcast about selling online.",
+      "display_title": "How to Sell Your Stuff on Etsy",
+      "blurb": "If you want to launch, grow, pivot, or scale your Etsy shop--- or you've always wanted to develop the mindset and skills to run your own business--- then this podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1581853115": {
       "topics": [
@@ -112783,10 +113113,28 @@
     },
     "1582585314": {
       "topics": [
-        "tv-film/after-shows"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Family-focused podcast about parenting and relationships.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1582612615": {
       "topics": [
@@ -112818,10 +113166,25 @@
     },
     "1582634160": {
       "topics": [
-        "business/marketing"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family-focused podcast about parenting and relationships.",
+      "display_title": "Build That Business",
+      "blurb": "What if the most important investment you ever made in your business had nothing to do with your business? Build That Business is the podcast for the entrepreneur who is.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1582647825": {
       "topics": [
@@ -112840,10 +113203,25 @@
     },
     "1582654902": {
       "topics": [
-        "culture/performing-arts"
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tabletop RPG and role-playing game discussion.",
+      "display_title": "The Apocalypse Players",
+      "blurb": "A Call of Cthulhu actual play podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1582667621": {
       "topics": [
@@ -112946,10 +113324,25 @@
     },
     "1582923534": {
       "topics": [
-        "science/chemistry"
+        "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Water science and environmental podcast.",
+      "display_title": "ÁguaCast",
+      "blurb": "Um podcast sobre temas variados seja sobre músicas, jogos, animes e mangás e trabalhos da faculdade e também falar muita água.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1582931618": {
       "topics": [
@@ -112997,10 +113390,25 @@
     },
     "1583090106": {
       "topics": [
-        "kids-family/stories"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family-focused podcast about parenting and relationships.",
+      "display_title": "Melon's House Party",
+      "blurb": "Welcome to Melon’s House Party! Did you know that the objects in your house sing and speak all day long? They just do so in a key only dogs can.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1583114801": {
       "topics": [
@@ -113054,10 +113462,30 @@
     },
     "1583597508": {
       "topics": [
-        "culture/performing-arts"
+        "music",
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vocal technique and singing instruction for performers.",
+      "display_title": "Sing Confidently, Live Creatively",
+      "blurb": "Hi performers! Welcome to the Sing Confidently, Live Creatively podcast, a show for professional and pre-professional performing artists who want to b...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1583620661": {
       "topics": [
@@ -113083,10 +113511,25 @@
     },
     "1583638968": {
       "topics": [
-        "aviation"
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reviews and discussion of films and TV shows.",
+      "display_title": "To nemôže padnúť!",
+      "blurb": "Každ&yacute; veľk&yacute; finančn&yacute; fail sa zač&iacute;na rovnako.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1583654148": {
       "topics": [
@@ -113146,11 +113589,25 @@
     },
     "1583840832": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family-focused podcast about parenting and relationships.",
+      "display_title": "The Buildout",
+      "blurb": "Every great bar has a story.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1583856111": {
       "topics": [
@@ -113257,10 +113714,25 @@
     },
     "1584348990": {
       "topics": [
-        "culture/art"
+        "psychology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided meditation and mindfulness audio content.",
+      "display_title": "Art of History",
+      "blurb": "Episodes from history, viewed through great works of art.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1584396671": {
       "topics": [
@@ -113552,11 +114024,25 @@
     },
     "1585234644": {
       "topics": [
-        "news",
-        "business"
+        "nature/animal-cognition"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pet care, training, and animal behavior podcast.",
+      "display_title": "La Estrategia del Día México",
+      "blurb": "El podcast de Bloomberg Línea sobre economía y finanzas que necesitas para conocer a diario las noticias de negocios del momento; voces, datos, accion...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1585243541": {
       "topics": [
@@ -113595,10 +114081,25 @@
     },
     "1585427364": {
       "topics": [
-        "news/daily"
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Workplace and professional development podcast.",
+      "display_title": "Kansas City Today",
+      "blurb": "Kansas City Today is a daily news podcast from KCUR Studios bringing you all things Kansas City, wrapped up in 15 minutes or less.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1585464112": {
       "topics": [
@@ -113647,11 +114148,28 @@
     },
     "1585679664": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Workplace and professional development podcast.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1585680868": {
       "topics": [
@@ -113678,10 +114196,25 @@
     },
     "1585689264": {
       "topics": [
-        "fiction/drama"
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business building and entrepreneurship podcast.",
+      "display_title": "Karma Stories",
+      "blurb": "Rob from Karma Stories bringing you quality Reddit Narrations and commentary! We have the best of ProRevenge, NuclearRevenge, Entitled Parents and more!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1585703147": {
       "topics": [
@@ -113700,10 +114233,28 @@
     },
     "1585748850": {
       "topics": [
-        "tv-film/reviews"
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Soap opera podcast recap and discussion.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1585759882": {
       "topics": [
@@ -113768,11 +114319,25 @@
     },
     "1586023908": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family-focused podcast about parenting and relationships.",
+      "display_title": "Troutbitten",
+      "blurb": "Life on the water.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1586027993": {
       "topics": [
@@ -113887,10 +114452,25 @@
     },
     "1586380272": {
       "topics": [
-        "comedy/interviews"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual conversation and comedy podcast.",
+      "display_title": "Syd & Olivia Talk Sh*t",
+      "blurb": "The world is a garbage fire, so join your two favorite cockroaches: best friends and comedians Syd Heller and Olivia DeLaurentis (Syd & Olivia) as the...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1586390793": {
       "topics": [
@@ -113909,10 +114489,25 @@
     },
     "1586423406": {
       "topics": [
-        "news/politics"
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical events and storytelling podcast.",
+      "display_title": "The Focus Group Podcast",
+      "blurb": "Unfiltered, uncompromising, unexpected—The Focus Group is a look into what the average voter thinks about politics, policy, and current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1586428379": {
       "topics": [
@@ -113958,11 +114553,25 @@
     },
     "1586478792": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family-focused podcast about parenting and relationships.",
+      "display_title": "500 Ironic Stories",
+      "blurb": "500 Ironic Stories is your go-to podcast for original funny short stories about modern life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1586539502": {
       "topics": [
@@ -114024,10 +114633,25 @@
     },
     "1586699460": {
       "topics": [
-        "sports/hockey"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Seattle Kraken NHL analysis and team updates.",
+      "display_title": "The Chris Johnston Show",
+      "blurb": "Leading NHL insider, Chris Johnston, is joined by The Athletic’s Julian McKenzie to discuss the biggest stories from around the hockey world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1586749286": {
       "topics": [
@@ -114198,10 +114822,25 @@
     },
     "1587247902": {
       "topics": [
-        "nature"
+        "psychology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided meditation and mindfulness audio content.",
+      "display_title": "Sound Healing / Sound Bath",
+      "blurb": "Hello, This is The sound from Tibetan singing bowls.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1587273284": {
       "topics": [
@@ -114219,11 +114858,25 @@
     },
     "1587364692": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Seattle Kraken NHL analysis and team updates.",
+      "display_title": "The Sports Media Podcast",
+      "blurb": "The hottest headlines, network deals, ratings, trends and everything else you need to know inside sports media.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1587369865": {
       "topics": [
@@ -114250,10 +114903,25 @@
     },
     "1587512106": {
       "topics": [
-        "science/physics"
+        "medicine"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Alternative medicine and wellness podcast.",
+      "display_title": "Medical Intuitive Miracle Show",
+      "blurb": "Medical Intuitive Miracle Show on KCAA.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1587518345": {
       "topics": [
@@ -114296,10 +114964,28 @@
     },
     "1587763116": {
       "topics": [
-        "true-crime"
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Family-focused podcast about parenting and relationships.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1587781970": {
       "topics": [
@@ -114317,10 +115003,25 @@
     },
     "1587808452": {
       "topics": [
-        "news/daily"
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language news and current events.",
+      "display_title": "Noticias Univision",
+      "blurb": "Mantente informado de las últimas noticias a continuación, en el podcast de Noticias Univision.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-18d26c80",
+      "classified_at": "2026-08-07T00:12:05.673Z"
     },
     "1587816694": {
       "topics": [
