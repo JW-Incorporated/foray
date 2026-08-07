@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-06T16:58:16.232Z",
+  "built_at": "2026-08-07T00:58:38.999Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-06-e68d8e5f",
+    "last_batch_id": "fresh-2026-08-07-68875a21",
     "last_batch_tier": 1
   },
   "entries": {
@@ -118179,7 +118179,25 @@
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy D&D campaign following adventurers in a dark fantasy world.",
+      "display_title": "Rotgrind - Narrative Declaration",
+      "blurb": "A comedic TTRPG campaign following five adventurers surviving in the grim-dark world of Tyne.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1607574926": {
       "topics": [
@@ -118201,7 +118219,21 @@
         "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical education flashcards for clinical exams and board certifications.",
+      "display_title": "Physician Assistant in a Flash",
+      "blurb": "Flashcard-style medical education for PA exams and clinical rotations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1607601974": {
       "topics": [
@@ -118220,10 +118252,29 @@
     },
     "1607681771": {
       "topics": [
-        "health/alternative"
+        "health/alternative",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Holistic fertility coaching and pregnancy preparation for women in their thirties.",
+      "display_title": "The Ultimate Pregnancy Prep Podcast",
+      "blurb": "Holistic pregnancy preparation through nutrition, stress management, and fertility coaching.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:38.999Z"
     },
     "1607712294": {
       "topics": [
@@ -118261,7 +118312,21 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly sermons from Bethel Church on Christian theology and spiritual practice.",
+      "display_title": "Bethel Redding Sermon of the Week",
+      "blurb": "Weekly sermons from Bethel Church on faith, spirituality, and Christian practice.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1607852520": {
       "topics": [
@@ -118340,10 +118405,29 @@
     },
     "1608021563": {
       "topics": [
-        "culture/fashion"
+        "culture/design",
+        "kids-family"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.7
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Millennial nostalgia podcast about American Girl dolls, cultural memory, and fandom.",
+      "display_title": "American Girl Women",
+      "blurb": "Millennial retrospective on American Girl dolls and childhood memories.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1608038538": {
       "topics": [
@@ -118476,10 +118560,28 @@
     "1608626153": {
       "topics": [
         "fiction/comedy",
-        "comedy"
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio thriller following a paranoid protagonist escaping a mysterious psychiatric institute.",
+      "display_title": "Classified",
+      "blurb": "A quick-witted mystery about a smooth talker trapped in a suspicious psychiatric facility.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:38.999Z"
     },
     "1608628778": {
       "topics": [
@@ -118512,10 +118614,29 @@
     },
     "1608707465": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Empty nest parenting advice for mothers navigating life with adult children.",
+      "display_title": "The Midlife Momma Podcast",
+      "blurb": "Practical guidance for empty-nest mothers navigating parenting adult children and personal growth.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1608708031": {
       "topics": [
@@ -118683,10 +118804,29 @@
     },
     "1609262975": {
       "topics": [
-        "nature"
+        "nature",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wildlife rehabilitation techniques and veterinary care for injured animals.",
+      "display_title": "Wildlife Rehabilitation: From Rescue to Release",
+      "blurb": "Expert guidance on wildlife rescue, rehabilitation, and release practices.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1609272361": {
       "topics": [
@@ -118730,7 +118870,21 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Custom car building community with shop insights, industry news, and muscle car culture.",
+      "display_title": "Oil and Whiskey with Roadster Shop",
+      "blurb": "Custom car building from the Roadster Shop team with industry insights.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1609298302": {
       "topics": [
@@ -118742,10 +118896,29 @@
     },
     "1609364099": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Popular Krishna devotional songs (bhajans) sung by trained vocalist.",
+      "display_title": "Popular Krishan Bhajan",
+      "blurb": "Krishna devotional songs beautifully performed for Janmashtami and year-round practice.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:38.999Z"
     },
     "1609462487": {
       "topics": [
@@ -118753,7 +118926,25 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling and sports entertainment news with coverage of AEW, WWE, and MMA.",
+      "display_title": "Fightful Overbooked",
+      "blurb": "Professional wrestling and sports news with insider updates and analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1609468507": {
       "topics": [
@@ -118766,18 +118957,49 @@
     "1609481075": {
       "topics": [
         "tv-film/history",
-        "history"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual critique of art-house horror films from film history and culture.",
+      "display_title": "BLOODHAUS",
+      "blurb": "Art-house horror film analysis balancing snob-free criticism with cinema appreciation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1609482311": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mixed martial arts and UFC coverage with predictions and fight analysis.",
+      "display_title": "Sherdog Podcast Network",
+      "blurb": "UFC and mixed martial arts coverage with fight previews, odds, and expert analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1609483534": {
       "topics": [
@@ -118906,7 +119128,21 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quranic reflection and spiritual guidance in French for personal heart reconnection.",
+      "display_title": "Coran de Ton coeur",
+      "blurb": "Quranic reflection and spiritual practice in French with weekly guidance.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1609990023": {
       "topics": [
@@ -118952,7 +119188,21 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Detroit Pistons team news, analysis, and NBA coverage from beat writers.",
+      "display_title": "The Pistons Pulse",
+      "blurb": "Detroit Pistons news and analysis from team beat writers and former coaches.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1610221160": {
       "topics": [
@@ -119192,7 +119442,25 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Retirement income planning and portfolio strategies for pre and post-retirees.",
+      "display_title": "Retire With Style",
+      "blurb": "Retirement planning focused on income strategies, asset allocation, and lifestyle design.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1611097600": {
       "topics": [
@@ -119250,24 +119518,76 @@
     },
     "1611237647": {
       "topics": [
-        "news/daily"
+        "news/daily",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Nashville local news and cultural reporting on politics, music, and community.",
+      "display_title": "This Is Nashville",
+      "blurb": "Nashville community news covering local politics, culture, and civic issues.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:38.999Z"
     },
     "1611246833": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist and contemplative spiritual teaching blended with scientific perspectives.",
+      "display_title": "Edge of Mind Podcast",
+      "blurb": "Buddhist wisdom and contemplative practice explored through conversations with spiritual teachers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1611335819": {
       "topics": [
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Firewood industry discussion covering stacking, production, and small business.",
+      "display_title": "The Wood Hounds",
+      "blurb": "Firewood industry experts discuss production, sales, and entrepreneurship.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1611352831": {
       "topics": [
@@ -119348,7 +119668,21 @@
         "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical board exam preparation with clinical case-based learning approaches.",
+      "display_title": "Ninja Nerd",
+      "blurb": "Medical education using high-yield case-based learning for board exams.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1611593504": {
       "topics": [
@@ -119406,7 +119740,21 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep-dive Tolkien lore analysis covering Middle Earth history and mythology.",
+      "display_title": "Lord of the Rings Lorecast",
+      "blurb": "Comprehensive Tolkien lore analysis from Middle Earth's creation through the One Ring's destruction.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1611816729": {
       "topics": [
@@ -119437,7 +119785,21 @@
         "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional interior design for Christian homeowners blending aesthetics with faith values.",
+      "display_title": "Beautiful Home Interior Design",
+      "blurb": "Professional interior design guidance for creating beautiful, functional, faith-centered homes.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1611903710": {
       "topics": [
@@ -119538,10 +119900,29 @@
     },
     "1612299917": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's book read-alouds with educational themes and imagination-building storytelling.",
+      "display_title": "Henry's Library",
+      "blurb": "Children's books read aloud with magical adventures promoting literacy and learning.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1612304048": {
       "topics": [
@@ -119581,11 +119962,29 @@
     },
     "1612309007": {
       "topics": [
-        "news",
-        "business"
+        "business",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Legal analysis of emerging business issues including SPACs, NFTs, and litigation finance.",
+      "display_title": "Law, disrupted",
+      "blurb": "Legal analysis of emerging business challenges from cutting-edge innovation sectors.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1612330583": {
       "topics": [
@@ -119593,14 +119992,46 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amateur astronomy education covering constellations, space weather, and observations.",
+      "display_title": "The Backyard Astronomer Podcast",
+      "blurb": "Amateur astronomy guidance for observing stars, planets, and celestial phenomena.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1612352609": {
       "topics": [
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DIY lawn care education for homeowners seeking practical landscaping techniques.",
+      "display_title": "The Grass Guys",
+      "blurb": "Practical lawn care guidance for homeowners wanting healthy grass without complexity.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1612362715": {
       "topics": [
@@ -119718,10 +120149,29 @@
     },
     "1612872251": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pulp fiction anthology with horror, crime, and sci-fi themes from various genres.",
+      "display_title": "Fever Dreams: A Pulp Collection",
+      "blurb": "Anthology audio drama with edgy sci-fi, horror, and crime pulp stories.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:38.999Z"
     },
     "1612947636": {
       "topics": [
@@ -119812,10 +120262,29 @@
     },
     "1613154587": {
       "topics": [
-        "relationships"
+        "relationships",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese podcast on relationships, thinking frameworks, and personal philosophy.",
+      "display_title": "思維槓桿",
+      "blurb": "Casual Chinese conversations on relationships, thinking patterns, and life philosophy.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1613159457": {
       "topics": [
@@ -119829,7 +120298,21 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket coverage with humorous English focus on matches, teams, and analysis.",
+      "display_title": "It's Just Not Cricket",
+      "blurb": "Cricket analysis and news with humor, focused primarily on England cricket.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1613242360": {
       "topics": [
@@ -119872,7 +120355,21 @@
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official Downton Abbey podcast with cast and creator reflections on the series.",
+      "display_title": "Downton Abbey: The Official Podcast",
+      "blurb": "Behind-the-scenes stories from the Downton Abbey cast and creative team.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1613459129": {
       "topics": [
@@ -120093,7 +120590,21 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Recorded teaching sessions on Buddhist practice and supramundane dharma.",
+      "display_title": "Dhammarato Dhamma",
+      "blurb": "Buddhist teaching discussions and recordings on dharma practice and liberation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1614161907": {
       "topics": [
@@ -120115,7 +120626,21 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golden Age radio westerns and frontier adventure stories from classic broadcasts.",
+      "display_title": "Cowboy Classics: Old Time Radio Westerns",
+      "blurb": "Classic Western radio dramas from the Golden Age featuring iconic cowboy characters.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1614177663": {
       "topics": [
@@ -120247,7 +120772,21 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's book read-alouds by K covering classic and contemporary children's literature.",
+      "display_title": "Storytime with K",
+      "blurb": "Children's books read aloud daily to support reading development and bedtime routines.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1614435903": {
       "topics": [
@@ -120311,7 +120850,25 @@
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adult D&D comedy with cast banter and explicit humor throughout campaigns.",
+      "display_title": "The Encounter Table",
+      "blurb": "Comedy TTRPG podcast featuring adult cast improvisation and off-season hangouts.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1614649540": {
       "topics": [
@@ -120340,7 +120897,21 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Strength coaching, training philosophy, and fitness entrepreneurship from gym founder.",
+      "display_title": "Joe DeFranco's Industrial Strength Show",
+      "blurb": "Strength conditioning, training strategies, and fitness entrepreneurship from a world-renowned coach.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1614690223": {
       "topics": [
@@ -120479,15 +121050,42 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language pool chemistry education for maintenance technicians and homeowners.",
+      "display_title": "Controlando la Piscina",
+      "blurb": "Pool chemistry education in Spanish covering water quality and chemical management.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1615300415": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language teaching for complete beginners with short listening exercises.",
+      "display_title": "Spanish from Zero",
+      "blurb": "Beginner Spanish listening practice covering essential grammar and vocabulary.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1615338195": {
       "topics": [
@@ -120501,7 +121099,21 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sanskrit-to-Tamil translation of Narayaneeyam devotional poetry with word-by-word breakdown.",
+      "display_title": "Narayaneeyam: Learn to Recite and Enjoy",
+      "blurb": "Tamil-language instruction on Sanskrit poetry recitation with verse-by-verse translation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1615422152": {
       "topics": [
@@ -120555,10 +121167,29 @@
     },
     "1615593491": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Market research, consumer insights, and analytics trends from industry experts.",
+      "display_title": "Greenbook Podcast",
+      "blurb": "Market research and consumer insights conversations with innovative industry practitioners.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1615596808": {
       "topics": [
@@ -120639,17 +121270,49 @@
     "1615939013": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese business and entrepreneurship stories covering historic merchant traditions.",
+      "display_title": "半拿铁 | 商业沉浮录",
+      "blurb": "Chinese-language business history covering merchant traditions and entrepreneurship.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1615947119": {
       "topics": [
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French-language chemistry education and career discussion from chemical engineers.",
+      "display_title": "La Fédération Gay-Lussac",
+      "blurb": "French-language chemistry education covering sustainability and scientific careers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1616159115": {
       "topics": [
@@ -120688,11 +121351,29 @@
     },
     "1616415539": {
       "topics": [
-        "nature/earth-science",
+        "education",
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Geography analysis of global issues including migration, inequality, and urban planning.",
+      "display_title": "The Geography of Everything",
+      "blurb": "Geography analysis exploring interconnected global phenomena from migration to infrastructure.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1616425412": {
       "topics": [
@@ -120715,7 +121396,21 @@
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional development using strengths assessment to optimize team performance.",
+      "display_title": "Powered by Instinct",
+      "blurb": "Team leadership and professional development using personality assessment and strengths alignment.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1616541733": {
       "topics": [
@@ -120801,10 +121496,29 @@
     },
     "1616730755": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Humorous youth ministry stories from church leaders and speakers worldwide.",
+      "display_title": "Youth Group Chronicles",
+      "blurb": "Hilarious and shocking stories from youth ministry shared by pastors and speakers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-68875a21",
+      "classified_at": "2026-08-07T00:58:10.011Z"
     },
     "1616730798": {
       "topics": [
