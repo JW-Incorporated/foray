@@ -1,7 +1,7 @@
 {
   "name": "Foray",
   "short_name": "Foray",
-  "description": "Your commute session: four curated podcast picks.",
+  "description": "Four topic queues, picked for you every day — one is deliberately different.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#0d1117",

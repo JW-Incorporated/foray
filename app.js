@@ -599,21 +599,41 @@ function bannerHtml() {
   </a>`;
 }
 
+/* What actually connects the episodes in a subject queue is one fact: they
+   share a taxonomy branch. Say that plainly via the real shows involved,
+   rather than implying a curatorial narrative ("the fusion reactor tour")
+   the grouping doesn't actually have. */
+function subjectBlurb(slot) {
+  const shows = [...new Set(slot.items.map(it => it.show))];
+  if (shows.length === 1) return `All from ${shows[0]}.`;
+  if (shows.length === 2) return `From ${shows[0]} and ${shows[1]}.`;
+  return `From ${shows[0]}, ${shows[1]}, and ${shows.length - 2} more.`;
+}
+
 function miniCard(slot) {
   const item = slot.item;
-  const why = whyFor(item.id, item);
   const totalMin = slot.items.reduce((s, it) => s + (it.duration_min || 0), 0);
-  const stretchTag = slot.role === "stretch" ? `<span class="mc-stretch">Stretch</span>` : "";
+  const stretchTag = slot.role === "stretch"
+    ? `<span class="mc-stretch" title="Outside your usual topics, on purpose">Stretch</span>` : "";
   return `<a class="mini-card" data-branch="${esc(slot.branch)}"
       href="#/subject/${esc(slot.branch)}">
     ${item.artwork_url ? `<img src="${esc(safeUrl(item.artwork_url))}" alt="" loading="lazy">` : `<div class="art-ph"></div>`}
     <div class="mc-info">
-      <p class="mc-show">${stretchTag}${esc(subjectLabel(slot.branch))} · ${slot.items.length} episode${slot.items.length === 1 ? "" : "s"}${totalMin ? ` · ${fmtDur(totalMin)}` : ""}</p>
-      <h3>${esc(item.title)}</h3>
-      <p class="mc-hook">${esc(why)}</p>
+      <p class="mc-kicker">${stretchTag}${slot.items.length} episode${slot.items.length === 1 ? "" : "s"}${totalMin ? ` · ${fmtDur(totalMin)}` : ""}</p>
+      <h3>${esc(subjectLabel(slot.branch))}</h3>
+      <p class="mc-hook">${esc(subjectBlurb(slot))} Starts with "${esc(item.title)}."</p>
     </div>
     ${starBtn(item.id)}
   </a>`;
+}
+
+function introHtml() {
+  if (lsGet("cp_intro_dismissed", false)) return "";
+  return `<div class="intro" id="home-intro">
+    <button class="intro-close" id="intro-close" aria-label="Dismiss">✕</button>
+    <p class="intro-tag">Foray picks podcast episodes for you, grouped into 4 topic queues below — not one long feed to scroll.</p>
+    <p class="intro-body">Three queues are topics you're already into. One is deliberately something else, on purpose. Tap a card to open its queue and see what's in it.</p>
+  </div>`;
 }
 
 function renderHome() {
@@ -622,6 +642,7 @@ function renderHome() {
   $("#view").innerHTML = `
     <div class="home">
       <div id="banner-slot">${bannerHtml()}</div>
+      ${introHtml()}
       <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
       <form id="pl-form" autocomplete="off">
         <input id="pl-input" type="text" maxlength="120" placeholder="build me a playlist…">
@@ -629,6 +650,11 @@ function renderHome() {
       </form>
       <p id="pl-note" class="note" hidden></p>
     </div>`;
+
+  $("#intro-close")?.addEventListener("click", () => {
+    lsSet("cp_intro_dismissed", true);
+    $("#home-intro").remove();
+  });
 
   const done = $("#banner-done");
   if (done) {
