@@ -631,8 +631,8 @@ function introHtml() {
   if (lsGet("cp_intro_dismissed", false)) return "";
   return `<div class="intro" id="home-intro">
     <button class="intro-close" id="intro-close" aria-label="Dismiss">✕</button>
-    <p class="intro-tag">Four things to listen to today, grouped by topic — not a feed to scroll.</p>
-    <p class="intro-body">Three queues come from what you're already into. One is deliberately something else, on purpose — tap a card to see why it's grouped and what's in it.</p>
+    <p class="intro-tag">Foray picks podcast episodes for you, grouped into 4 topic queues below — not one long feed to scroll.</p>
+    <p class="intro-body">Three queues are topics you're already into. One is deliberately something else, on purpose. Tap a card to open its queue and see what's in it.</p>
   </div>`;
 }
 
