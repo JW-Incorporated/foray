@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-07T00:58:38.999Z",
+  "built_at": "2026-08-07T08:59:24.684Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-07-68875a21",
+    "last_batch_id": "fresh-2026-08-07-95798e8a",
     "last_batch_tier": 1
   },
   "entries": {
@@ -121630,7 +121630,21 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly fan podcast exclusively covering Glamorgan County Cricket Club matches and news.",
+      "display_title": "Oh Glammy, Glammy! Podcast",
+      "blurb": "Fan podcast covering Glamorgan County Cricket Club's T20 and Championship seasons.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1617319253": {
       "topics": [
@@ -121685,17 +121699,50 @@
     },
     "1617481013": {
       "topics": [
-        "food"
+        "food",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wine industry insider show featuring interviews with winery owners, entrepreneurs, and wine professionals.",
+      "display_title": "Wine Talks with Paul K.",
+      "blurb": "Industry conversations with wine business figures covering production, entrepreneurship.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1617511439": {
       "topics": [
-        "tv-film/animation"
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Animated storytelling show featuring narrative-driven stories with relationship drama and horror elements.",
+      "display_title": "Animated Adventures",
+      "blurb": "Animated stories exploring personal dramas, relationships, and horror narratives.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1617534728": {
       "topics": [
@@ -121716,7 +121763,21 @@
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interview series with leading theoretical and experimental physicists discussing fundamental research.",
+      "display_title": "Conversations at the Perimeter",
+      "blurb": "Interviews with leading physicists on quantum physics, cosmology, and research.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1617744045": {
       "topics": [
@@ -121782,7 +121843,21 @@
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brand strategy and consumer trend analysis hosted by Suzy founder with industry leaders.",
+      "display_title": "The Speed of Culture Podcast",
+      "blurb": "Brand strategy conversations on evolving consumer trends and cultural shifts.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1617974770": {
       "topics": [
@@ -121928,7 +122003,21 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live weekly prank call comedy show with improvised humor and unfiltered banter.",
+      "display_title": "Take Your Pants Off Prank Call Podcast",
+      "blurb": "Weekly live prank call comedy show featuring improvised humor and casual conversation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1618807513": {
       "topics": [
@@ -122012,7 +122101,21 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Denver comedians discussing personal stories and comedy with occasional guest comedians.",
+      "display_title": "Cobos Patrick Podcast",
+      "blurb": "Comedy podcast from Denver comedians with personal stories and guests.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1619213596": {
       "topics": [
@@ -122108,7 +122211,21 @@
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly theatre podcast covering West End productions, musicals, plays, and interviews with performers.",
+      "display_title": "The WhatsOnStage Podcast",
+      "blurb": "Weekly theatre news and reviews covering musicals, plays, and West End productions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1619774102": {
       "topics": [
@@ -122139,7 +122256,25 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technical podcast exploring geochemistry research, mineral exploration, and earth science methods.",
+      "display_title": "GeOCHemISTea",
+      "blurb": "Geochemistry discussions with experts on mineral exploration and research.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1619806720": {
       "topics": [
@@ -122243,7 +122378,21 @@
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese-language podcast discussing relationships, lifestyle, life choices and culture.",
+      "display_title": "燕外之意",
+      "blurb": "Chinese podcast exploring relationships, lifestyle, and cultural observations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1620132105": {
       "topics": [
@@ -122255,10 +122404,29 @@
     },
     "1620180371": {
       "topics": [
-        "sports/volleyball"
+        "sports",
+        "education/how-to"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show featuring coaches across multiple sports discussing coaching philosophy and mentorship.",
+      "display_title": "Coaching, Caffeine & Comedy",
+      "blurb": "Conversations with sports coaches and mentors discussing coaching philosophy.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1620223164": {
       "topics": [
@@ -122272,7 +122440,21 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Advanced ATP Tour analysis and betting picks with sharp tennis expertise.",
+      "display_title": "Match Point #9: A Tennis Bets Podcast",
+      "blurb": "In-depth ATP Tour analysis and betting strategy for professional tennis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1620249469": {
       "topics": [
@@ -122446,7 +122628,21 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Developmental guidance from speech-language pathologist addressing toddler behavior and communication.",
+      "display_title": "Talking Toddlers",
+      "blurb": "Parenting guidance on toddler development, behavior, and communication.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1620971837": {
       "topics": [
@@ -122538,10 +122734,24 @@
     },
     "1621523741": {
       "topics": [
-        "science/chemistry"
+        "architecture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "architecture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert discussions on glass interlayer technology for building design, acoustics, and climate control.",
+      "display_title": "Advanced interlayers",
+      "blurb": "Technical podcast on glass interlayer design and architecture applications.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1621583098": {
       "topics": [
@@ -122587,14 +122797,42 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Sailor Moon anime review podcast with celebrity voice actor interviews.",
+      "display_title": "Moon Star: A Sailor Moon Podcast",
+      "blurb": "Sailor Moon anime review with voice actor interviews and 90s retrospectives.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1621915721": {
       "topics": [
         "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unfiltered comedy interviews with recurring segments on conspiracy theories and personal stories.",
+      "display_title": "The Shane Dawson Podcast",
+      "blurb": "Comedy interviews and personal stories with conspiracy theory discussions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1621940371": {
       "topics": [
@@ -122639,7 +122877,21 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scottish comedians discussing comedy, culture, and guests from the comedy world.",
+      "display_title": "Some Laugh",
+      "blurb": "Scottish comedians discussing comedy, culture, and interviewing guests.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1622204364": {
       "topics": [
@@ -122654,15 +122906,42 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horticulture experts discussing gardening, landscaping, native plants, and yard maintenance.",
+      "display_title": "Garden Variety",
+      "blurb": "Gardening and horticulture advice from Iowa State Extension experts.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1622289239": {
       "topics": [
-        "news/tech",
-        "computing"
+        "news/tech"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tech news and product discussions with minimal description available.",
+      "display_title": "Ben talks Tech",
+      "blurb": "Technology news and product reviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1622316426": {
       "topics": [
@@ -122808,11 +123087,29 @@
     },
     "1623197303": {
       "topics": [
-        "news",
-        "business"
+        "economics/markets",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily cryptocurrency market news and industry analysis from Bloomberg reporters.",
+      "display_title": "Bloomberg Crypto",
+      "blurb": "Daily cryptocurrency news covering regulation, markets, and developments.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1623209128": {
       "topics": [
@@ -122894,10 +123191,28 @@
     "1623447851": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.88
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition and lifestyle coaching show discussing nutrition, fitness, mindset, and healthy living.",
+      "display_title": "Other Side Lifestyle",
+      "blurb": "Nutrition and lifestyle coaching discussions on diet, fitness, and mindset.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1623474277": {
       "topics": [
@@ -122933,7 +123248,21 @@
         "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with CEOs and industry leaders discussing success, strategy, and business leadership.",
+      "display_title": "Leaders with Francine Lacqua",
+      "blurb": "CEO interviews exploring leadership philosophy and business strategy.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1623739161": {
       "topics": [
@@ -122944,11 +123273,24 @@
     },
     "1623821867": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "fiction/comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French audio comedy-drama about a woman entering the phone sex industry.",
+      "display_title": "1 euro la minute",
+      "blurb": "French audio comedy drama following a woman's unconventional career transition.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1623825652": {
       "topics": [
@@ -122989,10 +123331,24 @@
     },
     "1624139141": {
       "topics": [
-        "gaming"
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.82
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Nintendo gaming podcast discussing game releases, design, and industry news.",
+      "display_title": "Nontendo Podcast",
+      "blurb": "Nintendo gaming news and discussion with focus on game design and releases.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1624156714": {
       "topics": [
@@ -123023,7 +123379,21 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode-by-episode spoiler-free analysis of TV shows focusing on themes and storytelling.",
+      "display_title": "Investigating",
+      "blurb": "Spoiler-free TV analysis examining themes, characters, and storytelling in detail.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1624329226": {
       "topics": [
@@ -123038,7 +123408,25 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live sports coverage and discussion of Hawaii athletics and high school sports.",
+      "display_title": "ESPN Honolulu",
+      "blurb": "Hawaii sports coverage including University of Hawaii athletics and high school.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1624492509": {
       "topics": [
@@ -123067,10 +123455,29 @@
     },
     "1624564535": {
       "topics": [
+        "food",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Foraging podcast exploring wild edible plants and mushrooms with global experts.",
+      "display_title": "Wild Edible World: A Foraging Podcast",
+      "blurb": "Foraging adventures exploring wild edible plants and mushrooms worldwide.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1624571790": {
       "topics": [
@@ -123335,7 +123742,21 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marvel audio drama starring Robert Patrick as Wolverine in alternate universe storyline.",
+      "display_title": "Marvel's Wastelanders: Wolverine",
+      "blurb": "Marvel audio drama with Wolverine in an alternate dystopian future setting.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1625920072": {
       "topics": [
@@ -123466,7 +123887,24 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Collection of classic Sam Spade detective stories from old time radio era.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1626876180": {
       "topics": [
@@ -123514,11 +123952,29 @@
     },
     "1627066829": {
       "topics": [
-        "news",
-        "business"
+        "business",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Risk management interviews with financial institution leaders and industry experts.",
+      "display_title": "Credibly Challenged",
+      "blurb": "Risk management interviews with financial services executives and leaders.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1627069896": {
       "topics": [
@@ -123548,7 +124004,24 @@
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Film and TV filmmaker interviews discussing craft, storytelling, and creative process.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1627427933": {
       "topics": [
@@ -123582,7 +124055,21 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling history and commentary from former professional wrestler and historian.",
+      "display_title": "Greg Klein's Old School Rasslin Talk",
+      "blurb": "Professional wrestling history and analysis from an industry veteran.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1627503268": {
       "topics": [
@@ -123866,11 +124353,29 @@
     },
     "1628871245": {
       "topics": [
-        "news",
-        "business"
+        "economics/markets",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Spanish-language Argentine business and market news from Bloomberg.",
+      "display_title": "La Estrategia del Día Argentina",
+      "blurb": "Argentine business news and market analysis in Spanish.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1628914491": {
       "topics": [
@@ -123931,7 +124436,21 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Anime podcast with in-depth seasonal reviews and discussions from experienced fans.",
+      "display_title": "The Weeb Crew Anime Podcast",
+      "blurb": "In-depth anime discussion covering current seasons and classic series.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1629368076": {
       "topics": [
@@ -123950,11 +124469,24 @@
     },
     "1629447269": {
       "topics": [
-        "news/tech",
-        "computing"
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biotech and life sciences news featuring industry experts and company leaders.",
+      "display_title": "Beyond Biotech - the podcast from Labiotech",
+      "blurb": "Biotech and life sciences industry news with expert interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1629455317": {
       "topics": [
@@ -123965,10 +124497,24 @@
     },
     "1629532859": {
       "topics": [
-        "sports/cricket"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Broad sports podcast covering NRL, AFL, cricket, and international sports.",
+      "display_title": "2 Sporting Muppets Podcast",
+      "blurb": "Sports discussion covering multiple leagues and international competitions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1629534719": {
       "topics": [
@@ -124153,7 +124699,21 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedians discussing art, culture, and their comedy careers.",
+      "display_title": "Attempted Delivery",
+      "blurb": "Comedians discussing their comedy journey, art, and cultural observations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1630280227": {
       "topics": [
@@ -124200,7 +124760,25 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.88
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Female runner interviews discussing running journeys, coaching, and inclusivity.",
+      "display_title": "Runner's Round Table",
+      "blurb": "Female running stories and coaching conversations promoting inclusive running.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1630654503": {
       "topics": [
@@ -124287,7 +124865,21 @@
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science history podcast providing historical context for physics breakthroughs.",
+      "display_title": "A Bit of Historical Context",
+      "blurb": "Science history exploring the context behind physics discoveries.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1631178384": {
       "topics": [
@@ -124309,7 +124901,21 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live raw podcast with varied interviews covering hip-hop, culture, and current topics.",
+      "display_title": "The Danza Project",
+      "blurb": "Raw interviews covering hip-hop, culture, and current events.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1631208632": {
       "topics": [
@@ -124340,7 +124946,24 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Collection of classic detective radio dramas from golden age of old time radio.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1631381118": {
       "topics": [
@@ -124417,10 +125040,24 @@
     },
     "1631734493": {
       "topics": [
-        "culture/performing-arts"
+        "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kids' spooky and campfire stories performed by young actors as audio dramatizations.",
+      "display_title": "Campfire Stories 4 Kidz",
+      "blurb": "Audio dramatized campfire stories for kids featuring spooky tales.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1631738803": {
       "topics": [
@@ -124458,7 +125095,21 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home building and renovation planning podcast with practical decision-making advice.",
+      "display_title": "The Before You Build Podcast",
+      "blurb": "Planning advice for custom home building and renovation projects.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1631910772": {
       "topics": [
@@ -124569,7 +125220,21 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Candy review podcast exploring history and taste of different candies.",
+      "display_title": "Candy Is Dandy: The Candy Review Podcast",
+      "blurb": "Candy reviews with history and tastings of classic and modern confections.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-95798e8a",
+      "classified_at": "2026-08-07T08:59:24.684Z"
     },
     "1632163984": {
       "topics": [
