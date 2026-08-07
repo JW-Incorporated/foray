@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-07T00:31:21.423Z",
+  "built_at": "2026-08-07T08:30:44.642Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-07-f5019feb",
+    "last_batch_id": "fresh-2026-08-07-9582f9e8",
     "last_batch_tier": 1
   },
   "entries": {
@@ -118173,10 +118173,30 @@
     },
     "1605545539": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily political talk covering current events, elections, and policy analysis.",
+      "display_title": "In the Litter Box",
+      "blurb": "Political commentary and news discussion featuring hosts Jewels and Catturd covering US and international current events, elections, and policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1605628278": {
       "topics": [
@@ -118212,10 +118232,37 @@
     "1605684301": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "business/founders",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Faith-based entrepreneurship podcast on leadership, discipline, and personal proximity.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1605807621": {
       "topics": [
@@ -118226,10 +118273,30 @@
     },
     "1605819337": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.95
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design systems practitioners discuss adoption, automation, community, and design leadership.",
+      "display_title": "Design System Office Hours",
+      "blurb": "Davy and PJ, design system experts, tackle governance, automation, and community building in modern product design.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1605836092": {
       "topics": [
@@ -118316,10 +118383,35 @@
     },
     "1606204561": {
       "topics": [
-        "culture/design"
+        "architecture/infrastructure",
+        "culture/design",
+        "engineering/disasters"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "architecture/infrastructure",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/disasters",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Architects and engineers share stories of building design challenges and innovative construction solutions.",
+      "display_title": "Detailed",
+      "blurb": "RDH Building Science host Cherise Lakeside interviews architects and engineers on complex building conditions and design problem-solving.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1606228194": {
       "topics": [
@@ -118337,10 +118429,35 @@
     },
     "1606242229": {
       "topics": [
-        "craft"
+        "craft",
+        "craft/diy-home",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Makers Tegan and Kate discuss crochet, yarn, patterns, and the craft community.",
+      "display_title": "Hard Rock Crochet",
+      "blurb": "Tegan and Kate celebrate crochet and yarn crafts through community conversations about patterns, products, and fellow makers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1606258773": {
       "topics": [
@@ -118359,10 +118476,30 @@
     },
     "1606311397": {
       "topics": [
-        "tv-film/interviews"
+        "culture/pop-culture",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Personal conversation stories and interviews celebrating inspiration and cultural change.",
+      "display_title": "Bhuchung Kata",
+      "blurb": "Aha! Moments features conversations with inspiring individuals sharing personal stories and ideas across culture and art.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1606314974": {
       "topics": [
@@ -118374,10 +118511,30 @@
     },
     "1606438861": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two midwest friends recap and discuss Bob's Burgers episodes season by season.",
+      "display_title": "Bob's Burgers: Reheated",
+      "blurb": "Two childhood friends from the Midwest recap Bob's Burgers episodes, discussing the Belcher family's antics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1606449047": {
       "topics": [
@@ -118673,10 +118830,30 @@
     },
     "1607196019": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beauty industry professionals discuss entrepreneurship, service skills, and business in cosmetics.",
+      "display_title": "Beauty with a Twist",
+      "blurb": "Dede hosts conversations about life and entrepreneurship in the beauty and service industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1607203323": {
       "topics": [
@@ -118755,10 +118932,30 @@
     },
     "1607436421": {
       "topics": [
-        "travel"
+        "travel",
+        "history/archaeology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.95
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert travel guide Tracy Collins shares UK travel tips, itineraries, and culture.",
+      "display_title": "UK Travel Planning",
+      "blurb": "Travel expert Tracy Collins provides practical tips and inspiration for planning UK trips to England, Scotland, Wales.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1607474150": {
       "topics": [
@@ -118815,10 +119012,30 @@
     },
     "1607621413": {
       "topics": [
-        "tv-film/animation"
+        "tv-film/animation",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.95
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese hosts discuss anime, animation, and pop culture entertainment in Mandarin.",
+      "display_title": "火象三傻妙妙屋",
+      "blurb": "Three astrology-themed hosts discuss anime, animation, movies, and pop culture entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1607681771": {
       "topics": [
@@ -118878,7 +119095,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kentucky geologists discuss geology, earth processes, and scientific research.",
+      "display_title": "The Big Blue Rock Pod",
+      "blurb": "Kentucky Geological Survey hosts discuss geology, earth science, and Kentucky-focused geological research and topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1607898757": {
       "topics": [
@@ -118904,10 +119140,30 @@
     },
     "1607943103": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian homeschool mom Leigh offers practical support and mindset guidance for homeschooling families.",
+      "display_title": "Little by Little Homeschool",
+      "blurb": "Leigh provides tactical advice and mindset shifts to help homeschool moms feel confident and peaceful.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1607949880": {
       "topics": [
@@ -118927,10 +119183,30 @@
     },
     "1607991139": {
       "topics": [
-        "sports/volleyball"
+        "sports/volleyball",
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional volleyball player Taylor Averill discusses pro sports life and athlete experiences.",
+      "display_title": "Tallest Podcast on Earth",
+      "blurb": "Team USA volleyball player Taylor Averill shares insider perspectives on professional volleyball, training, and athlete wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1607998460": {
       "topics": [
@@ -118997,7 +119273,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "New Zealand rugby experts debate and discuss Super Rugby, Wallabies, and international rugby.",
+      "display_title": "Breakdown The Pod",
+      "blurb": "Sky Sports Rugby experts Jeff Wilson and guests debate New Zealand rugby, Super Rugby, and the Wallabies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:44.642Z"
     },
     "1608109038": {
       "topics": [
@@ -119027,7 +119318,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "German hosts discuss Bundesliga, Champions League, and international football daily.",
+      "display_title": "Stammplatz",
+      "blurb": "André, Noah, and Niklas deliver daily German football coverage of Bundesliga, Champions League, and international soccer.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:44.642Z"
     },
     "1608211048": {
       "topics": [
@@ -119083,17 +119389,52 @@
     },
     "1608291997": {
       "topics": [
-        "sports/soccer"
+        "sports/soccer",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Arabic hosts analyze Saudi and world football with technical and numeric perspectives.",
+      "display_title": "مرتدة",
+      "blurb": "Saudi football podcast featuring technical and data-driven analysis of Saudi and international soccer.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1608401587": {
       "topics": [
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby Paper editor Ben Jaycock covers Premiership, URC, and international rugby weekly.",
+      "display_title": "The Rugby Paper Podcast",
+      "blurb": "Rugby Paper's Ben Jaycock brings weekly stories and insights from Premiership, URC, and women's rugby.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:44.642Z"
     },
     "1608427479": {
       "topics": [
@@ -119163,10 +119504,38 @@
     },
     "1608708031": {
       "topics": [
-        "philosophy"
+        "paranormal",
+        "philosophy",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Conspiracy theory exploration blending psychology, paranormal, and unexplained phenomena.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1608727305": {
       "topics": [
@@ -119239,17 +119608,57 @@
     },
     "1608826987": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/baseball",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pitcher List staff provide daily fantasy baseball analysis and starting pitcher guidance.",
+      "display_title": "Pitcher List Fantasy Baseball",
+      "blurb": "Award-winning Pitcher List staff deliver daily fantasy baseball analysis and player recommendations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1608830383": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu philosophy and spirituality covering yoga, meditation, and life philosophy.",
+      "display_title": "Spirituality 108",
+      "blurb": "Discussions on yoga, meditation, and spirituality at the intersection of life, death, and philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1608942579": {
       "topics": [
@@ -119297,10 +119706,30 @@
     },
     "1609007461": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "FTN hosts provide expert fantasy football strategies, analysis, and weekly lineup guidance.",
+      "display_title": "FTN Fantasy Football Podcast",
+      "blurb": "Fantasy football experts Laquan and Matt deliver strategies, analysis, and weekly lineup advice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1609014394": {
       "topics": [
@@ -119349,10 +119778,30 @@
     },
     "1609272361": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/after-shows",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chris and Terri recap Degrassi: TNG episodes, exploring the show's worst moments.",
+      "display_title": "Below The Dot: A Degrassi Podcast",
+      "blurb": "Chris and Terri recap Degrassi: The Next Generation episodes from the infamous Degrassi Black Hole.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1609279985": {
       "topics": [
@@ -119449,17 +119898,57 @@
     },
     "1609511101": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Emily and Allie guide animal caregivers on enrichment, wellness, and caregiver self-care.",
+      "display_title": "Enrichment for the Real World",
+      "blurb": "Emily and Allie help animal caregivers understand enrichment needs and prevent caregiver burnout.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1609640413": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.95
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Local's Ben McPartland discusses major French news, politics, and current affairs.",
+      "display_title": "Talking France",
+      "blurb": "The Local's team discusses major French news stories, politics, and cultural issues weekly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1609648238": {
       "topics": [
@@ -119644,10 +120133,30 @@
     },
     "1610389381": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DodgerBlue.com credentialed reporters provide live Dodgers analysis and news coverage.",
+      "display_title": "DodgerHeads",
+      "blurb": "DodgerBlue.com reporters deliver live coverage and analysis of Los Angeles Dodgers games and news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1610390463": {
       "topics": [
@@ -119780,7 +120289,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Australian rugby experts Christy and Matt debate Super Rugby and Wallabies performance.",
+      "display_title": "The Roar Rugby Podcast",
+      "blurb": "The Roar's Christy Doran and Matt Toomua debate Australian rugby, Super Rugby, and the Wallabies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:44.642Z"
     },
     "1610909049": {
       "topics": [
@@ -119817,10 +120341,34 @@
     "1611064963": {
       "topics": [
         "nature/earth-science",
-        "science"
+        "science",
+        "society/government"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Helen Fisher interviews scientists and leaders on climate solutions and regenerative practices.",
+      "display_title": "We Are Carbon",
+      "blurb": "Helen Fisher interviews voices from science and agriculture on climate solutions and regenerative living.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1611066147": {
       "topics": [
@@ -119872,10 +120420,30 @@
     },
     "1611118279": {
       "topics": [
-        "religion/spirituality"
+        "religion/spirituality",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gen-Z host Emilio explores consciousness, spirituality, and human evolution through thought leader interviews.",
+      "display_title": "Just Tap In with Emilio Ortiz",
+      "blurb": "Emilio Ortiz invites thought leaders to discuss consciousness, spirituality, and humanity's evolution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1611134496": {
       "topics": [
@@ -119939,10 +120507,30 @@
     },
     "1611352831": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video essayists analyze individual films, exploring storytelling, technique, and cinematic meaning.",
+      "display_title": "Cinema of Meaning",
+      "blurb": "Tom van der Linden and Thomas Flight analyze individual films, exploring storytelling and cinematic depth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1611370672": {
       "topics": [
@@ -119961,10 +120549,30 @@
     },
     "1611378253": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Josh, Melissa, and Amanda recap Apple TV's Severance, discussing psychological themes and theories.",
+      "display_title": "We Know Severance",
+      "blurb": "Josh Wigler, Melissa Woodward, and Amanda Rabinowitz break down Severance episodes and theories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1611379582": {
       "topics": [
@@ -120042,10 +120650,30 @@
     },
     "1611690133": {
       "topics": [
-        "sports/cricket"
+        "sports/cricket",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pakistan cricket podcast featuring journalists, players, and historians discussing Pakistani cricket.",
+      "display_title": "Pakistan Cricket Podcast",
+      "blurb": "Samee Siddiqui hosts conversations with cricket journalists, players, and historians on Pakistan cricket.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1611767434": {
       "topics": [
@@ -120073,11 +120701,29 @@
     "1611831109": {
       "topics": [
         "medicine/biology",
-        "science",
-        "nature"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Journal editors summarize JACI: In Practice issues on clinical immunology and allergic diseases.",
+      "display_title": "JACI: In Practice Issue Highlights",
+      "blurb": "JACI editors summarize monthly journal issues on allergic diseases, immunology, and precision therapy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1611848190": {
       "topics": [
@@ -120109,10 +120755,30 @@
     },
     "1611945643": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/interviews",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marc Preston interviews actors, storytellers, and creatives on their careers and craft.",
+      "display_title": "Story and Craft with Marc Preston",
+      "blurb": "Marc Preston sits down with actors and creatives to discuss their careers, craft, and personal stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1611961208": {
       "topics": [
@@ -120191,10 +120857,33 @@
     },
     "1612165471": {
       "topics": [
-        "travel"
+        "travel",
+        "history/archaeology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/archaeology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tour guides Jeffrey and Sarah explore Salem's history, culture, and natural wonders.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1612281974": {
       "topics": [
@@ -120258,10 +120947,30 @@
     },
     "1612362715": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Shanthi and Ross teach makeup techniques, trends, and industry knowledge.",
+      "display_title": "Makeup School",
+      "blurb": "Shanthi Murugan and Ross Andrewartha guide makeup routines, trends, and techniques.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1612424182": {
       "topics": [
@@ -120295,17 +121004,57 @@
     },
     "1612469077": {
       "topics": [
-        "culture/art"
+        "craft/woodworking",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Eric, Zac, and Deric discuss woodworking, building, and tool recommendations.",
+      "display_title": "Off the Cut Podcast",
+      "blurb": "Eric, Zac, and Deric discuss woodworking, building, and maker culture with humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1612506139": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/interviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christy Carlson Romano and Will Friedle interview voice actors behind animated characters.",
+      "display_title": "I Hear Voices",
+      "blurb": "Christy and Will celebrate voice actors behind animation, games, and anime characters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1612528051": {
       "topics": [
@@ -120313,7 +121062,29 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Expert guests discuss deer behavior, hunting tactics, and wildlife management.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1612529390": {
       "topics": [
@@ -120430,10 +121201,38 @@
     },
     "1612975483": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "paranormal",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.75
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Wayne explores ancient technocracy, occult history, and conspiracy themes with esoteric analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1612980448": {
       "topics": [
@@ -120586,7 +121385,26 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Seek One hunting team discusses hunts, deer, and wildlife conservation strategies.",
+      "display_title": "The Seek One Podcast",
+      "blurb": "Seek One team breaks down hunts, wildlife management, and hunting stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-9582f9e8",
+      "classified_at": "2026-08-07T08:30:28.477Z"
     },
     "1613598927": {
       "topics": [
