@@ -52,13 +52,37 @@ body.view-home { overflow: hidden; }
 }
 .topbar h1 {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.topbar h1 a {
+  flex: none;
   font-family: var(--serif);
   font-size: 1.2rem;
   font-weight: 700;
-  margin: 0;
   letter-spacing: 0.01em;
+  color: var(--text);
+  text-decoration: none;
 }
-.topbar h1 a { color: var(--text); text-decoration: none; }
+/* The one place that survives dismissing the home-page intro block — a
+   first-time visitor who skips the intro (or a returning one who dismissed
+   it days ago) should still have something on screen saying what kind of
+   app this is, permanently, not just once. */
+.topbar-tag {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+@media (max-width: 360px) {
+  .topbar-tag { display: none; }
+}
 .topbar button {
   width: 42px; height: 42px;
   border: none; border-radius: 10px;
