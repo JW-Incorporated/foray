@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-06T16:42:21.602Z",
+  "built_at": "2026-08-07T00:36:57.080Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-06-a7d34a06",
+    "last_batch_id": "fresh-2026-08-07-d75529bd",
     "last_batch_tier": 1
   },
   "entries": {
@@ -130961,10 +130961,45 @@
     },
     "1648307374": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "fiction",
+        "engineering/ai-robotics",
+        "culture/art",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Original science fiction podcast with cinematic universe episodes and film pitches.",
+      "display_title": "The Pod Universe with Dylan & Dalton",
+      "blurb": "Writers Dalton Deschain and Dylan Roth first joined together to create Are You Afraid of the Dark Universe.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1648315417": {
       "topics": [
@@ -131028,10 +131063,40 @@
     },
     "1648557034": {
       "topics": [
-        "sports/golf"
+        "sports/golf",
+        "education",
+        "travel",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guide to international golf travel and course reviews across UK and Ireland.",
+      "display_title": "Golf and the Good Life - Your Guide",
+      "blurb": "Your guide for golf trips to the great courses of Scotland, Ireland, England, and Beyond.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1648560956": {
       "topics": [
@@ -131287,11 +131352,55 @@
     },
     "1649399956": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "space",
+        "news/daily",
+        "nature/weather",
+        "science",
+        "culture/art",
+        "tv-film",
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/weather",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and space exploration interviews with scientists and astronauts.",
+      "display_title": "The Dr. Sky Experience",
+      "blurb": "Join Radio/TV personality, Steve Kates / Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1649461178": {
       "topics": [
@@ -131363,10 +131472,40 @@
     },
     "1649611804": {
       "topics": [
-        "kids-family/parenting"
+        "engineering/ai-robotics",
+        "health/mental",
+        "science",
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on ai robotics.",
+      "display_title": "The Child Psych Podcast",
+      "blurb": "The ChildPsych Podcast brings to you the top parenting & mental health experts in the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1649630933": {
       "topics": [
@@ -131409,10 +131548,35 @@
     },
     "1649696002": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction",
+        "engineering/ai-robotics",
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on fiction & audio drama.",
+      "display_title": "Ghost Wax",
+      "blurb": "Ghost Wax is a horror fiction podcast following the work of the last “reclaimer”, investigating a series of unnatural killings by raising the dead and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1649697243": {
       "topics": [
@@ -131466,10 +131630,50 @@
     },
     "1649863672": {
       "topics": [
-        "sports/hockey"
+        "news/daily",
+        "engineering/ai-robotics",
+        "travel",
+        "gaming",
+        "culture/art",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and current events coverage with expert interviews.",
+      "display_title": "Locked On NHL Prospects",
+      "blurb": "Locked On NHL Prospects podcast is the daily podcast that drops the puck and keeps you ahead of the game and the first to know.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1649915558": {
       "topics": [
@@ -131511,10 +131715,40 @@
     },
     "1650145162": {
       "topics": [
-        "culture/design"
+        "education",
+        "travel",
+        "business",
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content covering learning, skills, and personal growth.",
+      "display_title": "The Professional Creative",
+      "blurb": "Have you ever dreamed of having a mentor with years of success to guide you through your creative business journey.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1650159608": {
       "topics": [
@@ -131548,11 +131782,40 @@
     },
     "1650262252": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "engineering/ai-robotics",
+        "travel",
+        "science",
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on ai robotics.",
+      "display_title": "Hello Menopause!",
+      "blurb": "Menopause.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1650278022": {
       "topics": [
@@ -131753,10 +132016,45 @@
     },
     "1651151200": {
       "topics": [
-        "philosophy"
+        "culture/books",
+        "travel",
+        "culture/art",
+        "philosophy",
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.65
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on books.",
+      "display_title": "The Stoic Question: Philosophy and Psychology",
+      "blurb": "Donald Robertson, author of How to Think Like a Roman Emperor and How to Think Like Socrates, the meeting point of Stoicism, philosophy, psychology,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1651166557": {
       "topics": [
@@ -131812,10 +132110,40 @@
     },
     "1651395166": {
       "topics": [
-        "religion/judaism"
+        "news/daily",
+        "culture/books",
+        "culture/art",
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        },
+        {
+          "node": "religion",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and current events coverage with expert interviews.",
+      "display_title": "The Tanakh Podcast",
+      "blurb": "Study Tanakh with Rav Alex Israel.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1651428503": {
       "topics": [
@@ -131827,10 +132155,40 @@
     },
     "1651429066": {
       "topics": [
-        "gaming"
+        "music",
+        "gaming",
+        "tv-film",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music criticism and discussion featuring musicians and industry experts.",
+      "display_title": "The Insert Credit Show",
+      "blurb": "A relentlessly on topic smorgasbord of hard hitting video game questions as addressed by a panel of experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1651447753": {
       "topics": [
@@ -131842,10 +132200,30 @@
     },
     "1651494382": {
       "topics": [
-        "tv-film/reviews"
+        "culture/books",
+        "tv-film"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on books.",
+      "display_title": "those F%#KING fangirls",
+      "blurb": "Christine Riccio & Natasha Polis are chatting all things nerdy pop culture and how fandom factors into adult life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1651587879": {
       "topics": [
@@ -131928,18 +132306,57 @@
     },
     "1651978072": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "gaming",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on gaming.",
+      "display_title": "Trap Talk From The Back Fence",
+      "blurb": "Listen in as Zach Nannini & Richard Marshall Jr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1652036104": {
       "topics": [
-        "sports/cricket"
+        "engineering/ai-robotics",
+        "culture/books"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on ai robotics.",
+      "display_title": "The Edges & Sledges Cricket Podcast",
+      "blurb": "Edges & Sledges is India’s favourite cricket podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1652046044": {
       "topics": [
@@ -131979,10 +132396,25 @@
     },
     "1652098792": {
       "topics": [
-        "religion/hinduism"
+        "engineering/ai-robotics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on ai robotics.",
+      "display_title": "திருப்புகழ் (Thiruppugazh)",
+      "blurb": "This podcast has a simple mission: to make it easy to learn and spread Thiruppugazh, a great set of Tamil poems that sing the praise of Lord Murugan.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1652102240": {
       "topics": [
@@ -132038,10 +132470,60 @@
     },
     "1652255830": {
       "topics": [
-        "kids-family/stories"
+        "fiction/sci-fi",
+        "space",
+        "fiction",
+        "business/startups",
+        "engineering/ai-robotics",
+        "travel",
+        "science",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Original science fiction podcast with cinematic universe episodes and film pitches.",
+      "display_title": "Dad’s Bedtime Stories",
+      "blurb": "Dad’s Bedtime Stories is the family-friendly podcast that turns listener ideas into immersive bedtime adventures kids (and parents) can enjoy together..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1652260827": {
       "topics": [
@@ -132186,10 +132668,25 @@
     },
     "1652915254": {
       "topics": [
-        "relationships"
+        "travel"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on travel & places.",
+      "display_title": "Celebrate Recovery Official",
+      "blurb": "This is a podcast that shares life change stories, courage, hope and leadership wisdom, centered around the Celebrate Recovery principles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1652941051": {
       "topics": [
@@ -132267,10 +132764,35 @@
     },
     "1653340966": {
       "topics": [
-        "medicine"
+        "engineering/ai-robotics",
+        "science",
+        "health"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on ai robotics.",
+      "display_title": "Oncology Brothers: Practice-Changing Cancer Discussions",
+      "blurb": "The Oncology Brothers Podcast, led by Drs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1653398819": {
       "topics": [
@@ -132320,10 +132842,40 @@
     },
     "1653691858": {
       "topics": [
-        "religion/buddhism"
+        "education",
+        "culture/books",
+        "travel",
+        "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content covering learning, skills, and personal growth.",
+      "display_title": "Effortless Mindfulness with Loch Kelly",
+      "blurb": "Welcome to Effortless Mindfulness with Loch Kelly, where awakening is explored as the next natural stage of human development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1653709307": {
       "topics": [
@@ -132377,10 +132929,30 @@
     },
     "1653955726": {
       "topics": [
-        "tv-film/interviews"
+        "engineering/ai-robotics",
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on ai robotics.",
+      "display_title": "Mi vida en películas",
+      "blurb": "¿Qué delirante momento compartió Paco León con Nicolas Cage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1653958627": {
       "topics": [
@@ -132394,7 +132966,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on baseball.",
+      "display_title": "Marine Layer Podcast",
+      "blurb": "The Marine Layer Podcast is just a couple of guys spinning their thoughts about the Seattle Mariners, Major League Baseball, banning the bunt, and whatever.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1654006346": {
       "topics": [
@@ -132428,10 +133015,50 @@
     },
     "1654059310": {
       "topics": [
-        "comedy/interviews"
+        "fiction",
+        "comedy",
+        "engineering/ai-robotics",
+        "music",
+        "fiction/comedy",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.65
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on fiction & audio drama.",
+      "display_title": "Where There's A Will, There's A Wake",
+      "blurb": "Join Mel Giedroyc every week as she laughs in the face of death with all your favourite funny celebrities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1654061097": {
       "topics": [
@@ -132450,10 +133077,30 @@
     },
     "1654095166": {
       "topics": [
-        "news/commentary"
+        "engineering/ai-robotics",
+        "culture/books"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on ai robotics.",
+      "display_title": "The Debrief",
+      "blurb": "How to support: 🤜🏽🤛🏽$1 OSS: https://joinoss.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1654162813": {
       "topics": [
@@ -132480,17 +133127,72 @@
     },
     "1654250902": {
       "topics": [
-        "health/fitness"
+        "engineering/ai-robotics",
+        "tv-film"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on ai robotics.",
+      "display_title": "New Techniques In Modern Practical Close Combat",
+      "blurb": "From the creator of the Amazon tv series Patriot Steven Conrad comes the complete edition of John Tavner's most formative training manual.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1654260586": {
       "topics": [
-        "medicine"
+        "engineering/ai-robotics",
+        "medicine/biology",
+        "culture/art",
+        "tv-film",
+        "health"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on ai robotics.",
+      "display_title": "The Dr. Francavilla Show",
+      "blurb": "Carolynn Francavilla, MD is Board Certified in Family Medicine and a Diplomate of the American Board of Obesity Medicine.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1654266515": {
       "topics": [
@@ -132539,10 +133241,30 @@
     },
     "1654438018": {
       "topics": [
-        "sports/wrestling"
+        "travel",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on travel & places.",
+      "display_title": "1-800-BJJ-HELP",
+      "blurb": "Brand new White Belt Josh Lu calls on Jake Luigi, BJJ Youtuber from \"Less Impressed More Involved BJJ\", and other guests for help on the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1654480107": {
       "topics": [
@@ -132644,8 +133366,23 @@
       "topics": [
         "gaming"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on gaming.",
+      "display_title": "Gaming illuminaughty",
+      "blurb": "The premier WEEKLY gaming podcast since 2013 | We bring fun & the facts to the conversation | Hosted by @TheBlackHokage , @Utxjgthedon , @Ms5000Watts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1654924910": {
       "topics": [
@@ -132664,10 +133401,39 @@
     "1654988944": {
       "topics": [
         "space",
-        "science"
+        "business/startups",
+        "engineering/ai-robotics",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and space exploration interviews with scientists and astronauts.",
+      "display_title": "Sky-Watcher What’s Up? Podcast",
+      "blurb": "Putting YOU at the center of our universe.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1655003886": {
       "topics": [
@@ -132715,11 +133481,30 @@
     },
     "1655136634": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "fiction",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on fiction & audio drama.",
+      "display_title": "Run Your Story Podcast",
+      "blurb": "Where Every Story Needs to be Heard.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1655193297": {
       "topics": [
@@ -132810,10 +133595,25 @@
     },
     "1655607544": {
       "topics": [
-        "business/careers"
+        "engineering/ai-robotics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on ai robotics.",
+      "display_title": "United We Scan",
+      "blurb": "Rural Carriers discuss the trials and tribulations of being a rural carrier today.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1655711728": {
       "topics": [
@@ -132905,10 +133705,45 @@
     },
     "1656058786": {
       "topics": [
-        "science/chemistry"
+        "space",
+        "engineering/ai-robotics",
+        "education",
+        "travel",
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and space exploration interviews with scientists and astronauts.",
+      "display_title": "Apparently invisible. Chemistry in ceramics.",
+      "blurb": "Aware of how complex the problems related to the world of chemistry applied to ceramic production processes can be, we want to share our knowledge.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1656086331": {
       "topics": [
@@ -132979,10 +133814,30 @@
     },
     "1656631018": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "health"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.7
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on pets & animals.",
+      "display_title": "Life with Pets",
+      "blurb": "Real pet stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1656703836": {
       "topics": [
@@ -133048,10 +133903,35 @@
     },
     "1656999196": {
       "topics": [
-        "math"
+        "science",
+        "culture/art",
+        "health"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on science.",
+      "display_title": "Statistics with Crayons",
+      "blurb": "Welcome to Statistics with Crayons, a podcast where we talk about statistics, oral health, and everything in between.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1657033152": {
       "topics": [
@@ -133084,10 +133964,30 @@
     },
     "1657304008": {
       "topics": [
-        "news/commentary"
+        "news/daily",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and current events coverage with expert interviews.",
+      "display_title": "China Insider",
+      "blurb": "China Insider is a weekly podcast project from Hudson Institute's China Center, hosted by Miles Yu, who provides weekly news that mainstream American outlets often.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1657397371": {
       "topics": [
@@ -133113,10 +134013,35 @@
     },
     "1657504348": {
       "topics": [
-        "automotive"
+        "business",
+        "tv-film",
+        "health"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews and discussions about entrepreneurship and business strategies.",
+      "display_title": "Wrench Turners Podcast",
+      "blurb": "Content for Mechanics to live a happier, healthier, more productive life as a Mechanic.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1657505018": {
       "topics": [
@@ -133127,11 +134052,30 @@
     },
     "1657669984": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "food",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Culinary content exploring food, cooking, and food science.",
+      "display_title": "Live Unrestricted - The Intuitive Eating & Food",
+      "blurb": "Are you tired of feeling obsessed with food and your weight.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1657740206": {
       "topics": [
@@ -133201,10 +134145,40 @@
     },
     "1657940794": {
       "topics": [
-        "sports/basketball"
+        "sports/basketball",
+        "news/daily",
+        "culture/art",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on basketball.",
+      "display_title": "The Deep 3 Podcast",
+      "blurb": "The show that will keep you up to speed on all things NBA news and analysis, while also being incredibly unserious along the way.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1657957516": {
       "topics": [
@@ -133527,10 +134501,45 @@
     },
     "1659732106": {
       "topics": [
-        "craft"
+        "engineering/ai-robotics",
+        "travel",
+        "culture/art",
+        "tv-film",
+        "tv-film/interviews"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on ai robotics.",
+      "display_title": "Yarn Talk",
+      "blurb": "Knitters love to talk about knitting, and we're no exception.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1659770189": {
       "topics": [
@@ -133616,10 +134625,40 @@
     },
     "1660600360": {
       "topics": [
-        "religion/christianity"
+        "news/daily",
+        "engineering/ai-robotics",
+        "culture/books",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and current events coverage with expert interviews.",
+      "display_title": "Daily Strength: A 365-Day Devotional for Men",
+      "blurb": "Daily Strength is a year-long devotional podcast that walks Christian men through Scripture passages that speak to their most pressing issues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1660605216": {
       "topics": [
@@ -133639,10 +134678,50 @@
     },
     "1660638172": {
       "topics": [
-        "kids-family/stories"
+        "fiction",
+        "business/startups",
+        "travel",
+        "culture/art",
+        "tv-film",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on fiction & audio drama.",
+      "display_title": "Bedtime Stories with Mr Jim",
+      "blurb": "Welcome to \"Bedtime Stories,\" the enchanting podcast where Mr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1660639121": {
       "topics": [
@@ -133705,11 +134784,40 @@
     },
     "1660811056": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "food",
+        "engineering/ai-robotics",
+        "health/fitness",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Culinary content exploring food, cooking, and food science.",
+      "display_title": "The Fuel Run Recover Podcast",
+      "blurb": "New episodes weekly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1660820255": {
       "topics": [
@@ -133794,25 +134902,89 @@
     },
     "1661235034": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on tv & film.",
+      "display_title": "Hallmark Cafe",
+      "blurb": "Welcome to the Hallmark Cafe where Michael and Dianne Killen discuss their favorite Hallmark movies and speak with the talented people who make them.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1661275966": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "fiction",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content focused on fiction & audio drama.",
+      "display_title": "Learn German with Micro Stories",
+      "blurb": "Learn German with Micro Stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1661327326": {
       "topics": [
-        "business/marketing"
+        "business",
+        "culture/art",
+        "tv-film",
+        "tv-film/interviews"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews and discussions about entrepreneurship and business strategies.",
+      "display_title": "Social Media Magic | Make Money With Social",
+      "blurb": "Learn what it really takes to make money with social media.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-07-d75529bd",
+      "classified_at": "2026-08-07T00:36:57.080Z"
     },
     "1661329711": {
       "topics": [
