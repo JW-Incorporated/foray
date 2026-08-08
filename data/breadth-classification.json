@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-07T16:39:53.453Z",
+  "built_at": "2026-08-08T00:36:14.605Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-07-a9a16d8b",
+    "last_batch_id": "fresh-2026-08-08-180d4df0",
     "last_batch_tier": 1
   },
   "entries": {
@@ -142840,11 +142840,30 @@
     },
     "1689003442": {
       "topics": [
-        "music",
-        "history"
+        "culture/pop-culture",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "9/11: Michael Jackson’s Compas...",
+      "display_title": "Humanitarian - The Real Michael Jackson",
+      "blurb": "In the year 2000, Michael Jackson was listed into the Guinness book of world records for breaking th",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1689006106": {
       "topics": [
@@ -142852,7 +142871,26 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Demis Hassabis on AGI by 2030,...",
+      "display_title": "Rowan's Notes",
+      "blurb": "Rowan's Notes is a podcast where The Rundown's founder, Rowan Cheung, interviews the people shaping ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1689097415": {
       "topics": [
@@ -142873,7 +142911,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "\"Nightcrawler\" - The Darkest S...",
+      "display_title": "CRWN Cinema Podcast",
+      "blurb": "Just dudes that make movies, breaking down movies, live on a podcast. Hosted by Kade Harvey and Gray",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1689202300": {
       "topics": [
@@ -143085,14 +143138,49 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rally Points 31 - Jason Ronan ...",
+      "display_title": "Rally Points Podcast",
+      "blurb": "Rally Points is a tennis-oriented podcast, presented in a relaxed and lighthearted approach. The vas",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1689903946": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "More Winter Light...",
+      "display_title": "PK360 Audio",
+      "blurb": "Welcome to PK360 Audio , and thank you for joining us. If you've been with us for a while, you may r",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1689907695": {
       "topics": [
@@ -143173,18 +143261,57 @@
     },
     "1690214260": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MAGA gets UNCOVERED with Repub...",
+      "display_title": "UNCOVERED",
+      "blurb": "Former Federal Prosecutor Ron Filipkowski and British journalist Anthony Davis expose the MAGA propa",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1690222864": {
       "topics": [
         "tv-film/history",
-        "history"
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode 185: PreHysteria! 2 / ...",
+      "display_title": "Puppet Masters / Castle Freaks",
+      "blurb": "This is the definitive Full Moon Features podcast! Each week, we’re going to watch a different film ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1690260745": {
       "topics": [
@@ -143203,10 +143330,30 @@
     },
     "1690384336": {
       "topics": [
-        "food"
+        "food",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Encore: Vikas Khanna and the B...",
+      "display_title": "Tinfoil Swans",
+      "blurb": "Food & Wine has led the conversation around food, drinks, and hospitality in America and around the ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1690409639": {
       "topics": [
@@ -143407,10 +143554,30 @@
     },
     "1690962274": {
       "topics": [
-        "news/daily"
+        "news/daily",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "EP 796: Detienen a exgobernado...",
+      "display_title": "El Noti",
+      "blurb": "Si te quieres acercar a las noticias de una forma rápida, precisa y divertida, El Noti es el lugar. ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1690995338": {
       "topics": [
@@ -143502,10 +143669,30 @@
     },
     "1691301856": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "California Governor Gavin News...",
+      "display_title": "The Circuit with Emily Chang",
+      "blurb": "Bloomberg journalist Emily Chang sits down for intimate interviews with the biggest names at the int",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1691341435": {
       "topics": [
@@ -143569,7 +143756,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Introducing your new F1 podcas...",
+      "display_title": "Legends of the Ashes",
+      "blurb": "It’s more than just a sporting contest. It’s the pride of two nations, where victory couldn’t be swe",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1691758551": {
       "topics": [
@@ -143580,10 +143782,30 @@
     },
     "1691773354": {
       "topics": [
-        "tv-film/reviews"
+        "news/daily",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Big Brother 28 Week 4 Live Evi...",
+      "display_title": "The CUP",
+      "blurb": "Serving a fresh cup of opinions every week, it's The CUP, where we put the Real and the Tea in Reali",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1691800319": {
       "topics": [
@@ -143675,7 +143897,22 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode 151: Trade Deadline + ...",
+      "display_title": "Dynasty Baseball Pickups",
+      "blurb": "Dynasty fantasy baseball pickups for medium to deep 12-15 tm dynasty leagues (200-500 prospects). Sl",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1692042597": {
       "topics": [
@@ -143722,11 +143959,30 @@
     },
     "1692163444": {
       "topics": [
-        "news/tech",
-        "computing"
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jira for ADHD, Solo Admin Hack...",
+      "display_title": "The Jira Life",
+      "blurb": "From the guys behind \"Apetech Tech Tutorials\" YouTube channel and \"The Jira Guy\" blog, comes a podca",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1692238236": {
       "topics": [
@@ -143773,7 +144029,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Was Suryavanshi's IPL Ton the ...",
+      "display_title": "Club Prairie Fire",
+      "blurb": "Join the least exclusive tequila based cricket club in the world! Podcast show founded by Gilly, Vau",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1692483828": {
       "topics": [
@@ -143801,7 +144072,22 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "LOST LAMBS by Madeline Cash >>...",
+      "display_title": "The Foxed Page",
+      "blurb": "If you love to read, The Foxed...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1692806415": {
       "topics": [
@@ -143839,7 +144125,22 @@
         "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "What Can 100,000 Points REALLY...",
+      "display_title": "Takeoff: A Points and Miles Podcast by 10xTravel",
+      "blurb": "Takeoff is a podcast that will teach you how to save money and travel better. Join Travis, Emily, an",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1693000250": {
       "topics": [
@@ -143850,17 +144151,52 @@
     },
     "1693009540": {
       "topics": [
-        "science/physics"
+        "philosophy",
+        "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "اطلاعیه: معرفی پادکست‌های جدید...",
+      "display_title": "FillCast | فیل کست",
+      "blurb": "داستان فیل در تاریکی مولوی را احتمالا شنیده باشید. داستان فیلی که توی یه اتاق تاریک ایستاده و مردمی ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1693014910": {
       "topics": [
-        "relationships"
+        "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Big BrotherMess LIVE - 8/6/26...",
+      "display_title": "Togethermess",
+      "blurb": "Husband and wife, Jeff Schroeder and Jordan Lloyd are no strangers to Reality TV. From Big Brother t",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1693038734": {
       "topics": [
@@ -143940,7 +144276,22 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MVP MMA's keys to success and ...",
+      "display_title": "The Craic with Petesy Carroll",
+      "blurb": "Irish MMA journalist Petesy Carroll talks to the biggest names in UFC, PFL, Bellator, Cage Warriors,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1693275402": {
       "topics": [
@@ -143988,10 +144339,25 @@
     },
     "1693475686": {
       "topics": [
-        "tv-film/after-shows"
+        "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "S2 E11 ft Tricia Helfer - Batt...",
+      "display_title": "Battlestar React-ica: Katee Sackhoff's First Watch of BSG",
+      "blurb": "Actress Katee Sackhoff (aka Starbuck) returns to Battlestar Galactica -- not just to discuss it afte",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1693543423": {
       "topics": [
@@ -144020,14 +144386,47 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "#163: Liquid Burn Float...",
+      "display_title": "The Word Association",
+      "blurb": "Improvisers Adal Rifai, Brett Lyons and Rob White are The Word Association. Every episode, they each",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1693620436": {
       "topics": [
         "culture/fashion"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fragraphilia & Friends - Rache...",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1693633111": {
       "topics": [
@@ -144159,8 +144558,23 @@
       "topics": [
         "business/management"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reviews After 10 Years...",
+      "display_title": "Short Term Rental Management",
+      "blurb": "Welcome to Short Term Rental Management. The show about managing your short term rental from anywher",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1694388433": {
       "topics": [
@@ -144182,8 +144596,30 @@
         "education/language-learning",
         "linguistics/language"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.7
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "159 - Chi è De André? Personag...",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1694522910": {
       "topics": [
@@ -144262,8 +144698,23 @@
       "topics": [
         "music"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Favorite Moments on Foreign To...",
+      "display_title": "Hang Fire: A Rolling Stones Podcast",
+      "blurb": "A podcast about The Rolling Stones--yes I like it, I like it--yes I do! Join your host Justin Sosa o",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1694875405": {
       "topics": [
@@ -144276,8 +144727,23 @@
       "topics": [
         "automotive"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode 98: Chris Forsberg...",
+      "display_title": "Off-Road Racer Podcast",
+      "blurb": "The Off-Road Racer Podcast covers the world of off-road racing including it's events, personalities,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1695008453": {
       "topics": [
@@ -144290,8 +144756,23 @@
       "topics": [
         "sports/golf"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Can AI Transform Your Golf Gam...",
+      "display_title": "The VIP Golf Show",
+      "blurb": "Welcome to the home of The V.I.P. Golf Show presented by Ardent Roof Systems! Join hosts Murray McCo",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1695183540": {
       "topics": [
@@ -144362,8 +144843,27 @@
         "business/startups",
         "business/founders"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pivoting Hoop Dreams To Busine...",
+      "display_title": "Run The Play Show with Justin Owens",
+      "blurb": "Welcome! Justin Owens presents Run The Play to bring you exciting and mind-shifting conversations br",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1695617234": {
       "topics": [
@@ -144400,8 +144900,23 @@
       "topics": [
         "sports/hockey"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Dead of Summer...",
+      "display_title": "Devils' Advocates",
+      "blurb": "Join hosts JP Gambatese and Jake McDonald to talk shop about anything and everything New Jersey Devi",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1695772146": {
       "topics": [
@@ -144490,8 +145005,23 @@
       "topics": [
         "sports/baseball"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "1972 - Baseball Clip - Finleys...",
+      "display_title": "Retro Sports Radio: Classic Games from History",
+      "blurb": "Classic radio broadcasts of baseball and football games and interviews from the past 100 years in sp",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1696121285": {
       "topics": [
@@ -144567,8 +145097,27 @@
         "news",
         "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Who Gets the Tariff Refund Che...",
+      "display_title": "Furniture Industry News",
+      "blurb": "Welcome to Furniture Industry News the premier podcast dedicated to executives navigating the ever-e",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1696200085": {
       "topics": [
@@ -144590,8 +145139,23 @@
       "topics": [
         "news/politics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "EUROPE IS ON FIRE...",
+      "display_title": "HasanAbi",
+      "blurb": "The Revolution Will Not be Televised",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1696314834": {
       "topics": [
@@ -144712,10 +145276,30 @@
     },
     "1696843366": {
       "topics": [
-        "travel"
+        "food",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Flushing Queens Food Scene: Ex...",
+      "display_title": "Better Together Here: Exploring NYC",
+      "blurb": "Your starting point for the perfect NYC trip or exploration—neighborhood guides, things to do, resta",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1696889970": {
       "topics": [
@@ -144810,10 +145394,33 @@
     },
     "1697162428": {
       "topics": [
-        "comedy/interviews"
+        "food",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Final Episode | Not Today,...",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1697193398": {
       "topics": [
@@ -144903,7 +145510,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "2019 World Cup: When For Once ...",
+      "display_title": "Rewind",
+      "blurb": "Just before the much-anticipated Cricket World Cup 2023 kicks off, get ready to fuel your excitement",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1697653759": {
       "topics": [
@@ -144967,10 +145589,30 @@
     },
     "1697794816": {
       "topics": [
-        "comedy/interviews"
+        "food",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Oliver Tree \"I'm a pretty chil...",
+      "display_title": "The Really Good Podcast with Bobbi Althoff",
+      "blurb": "The shows are back, sharper than ever, with brand-new episodes! They're elevated, higher stakes, and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1697865705": {
       "topics": [
@@ -145080,8 +145722,27 @@
         "nature/earth-science",
         "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode 11 - The Law of the Ma...",
+      "display_title": "The Soil Sessions: A Kinsey Ag Podcast",
+      "blurb": "Follow along with Neal Kinsey and Kyle Long as they strive to teach the basics and importance of soi",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1698305199": {
       "topics": [
@@ -145312,7 +145973,22 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Summer Reads 2026 and Receipts...",
+      "display_title": "Sara & Cariad's Weirdos Book Club",
+      "blurb": "Join comedians and authors Sara Pascoe and Cariad Lloyd in their Weirdos Book Club - a space for the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1699442321": {
       "topics": [
@@ -145516,10 +146192,25 @@
     },
     "1700282740": {
       "topics": [
-        "religion/christianity"
+        "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Can Evangelicalism Be Repaired...",
+      "display_title": "Truth Unites",
+      "blurb": "Truth Unites promotes gospel assurance through theological depth. Gavin Ortlund (PhD, Fuller Theolog",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1700357503": {
       "topics": [
@@ -145870,11 +146561,30 @@
     },
     "1701300490": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "food",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spend Your Holy Hour With Fult...",
+      "display_title": "Made Good",
+      "blurb": "You were made good. What could it look like to live like it? Welcome to the Made Good Podcast, where",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1701353628": {
       "topics": [
@@ -145895,8 +146605,23 @@
       "topics": [
         "culture/fashion"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "S03 E22: What’s For Dinner?...",
+      "display_title": "Drinks On Us",
+      "blurb": "Drinks On Us with @rosemcmahonn & @sincerely.ryleigh. Rose and Ry have been best friends for over 22",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1701367231": {
       "topics": [
@@ -145981,8 +146706,27 @@
         "news",
         "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Todd & Oz Show 7-29-26...",
+      "display_title": "The Todd and Oz Show",
+      "blurb": "Todd Jeffries and Patrick Osborn are the dynamic duo behind a popular morning news radio show that k",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1701659420": {
       "topics": [
@@ -145995,8 +146739,23 @@
       "topics": [
         "true-crime"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "146: The Missing Women of Pine...",
+      "display_title": "She Goes by Jane: A True Crime Podcast",
+      "blurb": "She Goes by Jane is a true crime podcast that focuses on the stories of missing women and unidentifi",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1701685139": {
       "topics": [
@@ -146138,7 +146897,22 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode 20 - Joe Lo Truglio (S...",
+      "display_title": "Business Trips Podcast",
+      "blurb": "Dive into the uproarious world of business travel with Trey (Mike O'Brien) and Goldie (Brad Morris) ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1702241936": {
       "topics": [
@@ -146181,8 +146955,23 @@
       "topics": [
         "sports/baseball"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Phillies Trade Deadline Proble...",
+      "display_title": "PHLY Philadelphia Phillies Podcast",
+      "blurb": "The PHLY Phillies Podcast, presented by bet365, is your weekly home for Philadelphia Phillies baseba",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-180d4df0",
+      "classified_at": "2026-08-08T00:36:14.605Z"
     },
     "1702627653": {
       "topics": [
