@@ -51153,13 +51153,1060 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-08-368fa7c1",
       "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1643061986": {
+      "topics": [
+        "sports",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "WNBA betting analysis and game picks from sports betting experts.",
+      "display_title": "BUCKETS WNBA",
+      "blurb": "Expert WNBA betting picks and sports gambling analysis from Action Network's team.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1643489000": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Archive series of classic mystery and macabre radio dramas with E.G. Marshall.",
+      "display_title": "CBS Radio Mystery Theater",
+      "blurb": "Archived classic radio drama series featuring mystery and horror tales.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1643758706": {
+      "topics": [
+        "engineering",
+        "automotive/racing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motorcycle engineering physics and riding technique from racer-engineer and professional coach.",
+      "display_title": "CanyonChasers: The Braking Zone",
+      "blurb": "Motorcycle physics and riding technique from an engineer and professional coach.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1643941016": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Television show reviews and episode recaps, currently covering Mad Men and new series.",
+      "display_title": "Crying Laughing",
+      "blurb": "TV reviews and episode recaps focusing on character-driven dramas and current series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1644147062": {
+      "topics": [
+        "business/startups",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Celebrity career interviews across entertainment, sports, and business—spans multiple domains.",
+      "display_title": "Celebrity Jobber with Jeff Zito",
+      "blurb": "Celebrity interviews exploring pre-fame careers and early struggles across entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1644164120": {
+      "topics": [
+        "nature/earth-science",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Agronomy and crop management from Iowa, discussing nitrogen, weeds, and field research.",
+      "display_title": "A Penney For Your Thoughts",
+      "blurb": "Agronomy and crop management insights from research scientists and university experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1644204782": {
+      "topics": [
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "My Little Pony themed podcast with music and life lessons for children.",
+      "display_title": "My Little Pony: The Podcast",
+      "blurb": "Music and life lessons from Pony characters with guest appearances and fan stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1644726146": {
+      "topics": [
+        "business/founders",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship and financial strategies from experts in real estate, taxes, capital raising.",
+      "display_title": "Extraordinary America",
+      "blurb": "Entrepreneur interviews on real estate, taxes, and capital-raising strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1644904850": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly television and film reviews and box office analysis from multiple hosts.",
+      "display_title": "The TV Show",
+      "blurb": "Weekly TV and film reviews with host commentary and guest critics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1645352624": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "RPG module and adventure reviews from tabletop gaming product reviewers.",
+      "display_title": "Between Two Cairns",
+      "blurb": "Reviews of tabletop RPG modules and adventures from experienced game masters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1645453880": {
+      "topics": [
+        "relationships",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.95
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dating advice and relationship coaching for singles navigating modern romance.",
+      "display_title": "Dating Intentionally",
+      "blurb": "Dating strategy and relationship coaching for singles seeking purposeful connections.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1645900688": {
+      "topics": [
+        "medicine/biology",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Proteomics research intersecting with genomics, disease biomarkers, and drug discovery.",
+      "display_title": "Proteomics in Proximity",
+      "blurb": "Protein science research and biomarker discovery from Olink company scientists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1646154626": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Original horror fiction anthology set in fictional town with paranormal creatures.",
+      "display_title": "Mayfair Watchers Society",
+      "blurb": "Original horror anthology series set in fictional Mayfair town with paranormal creatures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1646535788": {
+      "topics": [
+        "kids-family/parenting"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Early childhood education and intentional parenting for emotional intelligence development.",
+      "display_title": "Transforming the Toddler Years",
+      "blurb": "Early childhood education and intentional parenting for raising emotionally intelligent kids.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1646542496": {
+      "topics": [
+        "travel",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French culture, history, cuisine, and travel destinations from travel writer.",
+      "display_title": "The Good Life France",
+      "blurb": "French culture, cuisine, and travel from award-winning travel writer Janine Marsh.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1646568584": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic teachings on major sins and spiritual guidance from religious scholars.",
+      "display_title": "The Major Sins",
+      "blurb": "Islamic religious teachings on major sins and spiritual avoidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1646743796": {
+      "topics": [
+        "relationships",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship dynamics and codependency recovery from therapist Kate.",
+      "display_title": "Class with Kate",
+      "blurb": "Relationship recovery and codependency coaching from therapist Kate Hamill.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1647611444": {
+      "topics": [
+        "philosophy/ideas",
+        "psychology"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.5
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "True accounts of paranormal and unexplainable experiences—difficult to categorize.",
+      "display_title": "Otherworld",
+      "blurb": "True listener stories of paranormal encounters and unexplained phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1647991952": {
+      "topics": [
+        "education/language-learning",
+        "linguistics/language"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English language learning through everyday conversations with bi-national couple.",
+      "display_title": "Easy English",
+      "blurb": "English learning through everyday conversations with a UK-based couple.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1648081856": {
+      "topics": [
+        "tv-film/animation",
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.95
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family discussion of Bluey animated series episodes and life lessons.",
+      "display_title": "Dinner with the Heelers",
+      "blurb": "Family discussion of Bluey episodes and life lessons from the series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1648228034": {
+      "topics": [
+        "business/startups",
+        "engineering"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology trends and their impact on humanity from futurist entrepreneur.",
+      "display_title": "Moonshots with Peter Diamandis",
+      "blurb": "Technology innovation and humanity's future from futurist Peter Diamandis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1648560956": {
+      "topics": [
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conservative political news commentary and analysis from Grant Stinchfield.",
+      "display_title": "Stinchfield",
+      "blurb": "Conservative political news and commentary from host Grant Stinchfield.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1648949780": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Catholic Catechism instruction over 365 episodes from Fr. Mike Schmitz.",
+      "display_title": "The Catechism in a Year",
+      "blurb": "Daily Catholic Catechism instruction from Fr. Mike Schmitz over 365 episodes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1648984850": {
+      "topics": [
+        "health/sexuality",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Porn addiction recovery combining neuroscience, Buddhist practices, and coaching.",
+      "display_title": "Unhooked",
+      "blurb": "Addiction recovery strategies combining neuroscience, Buddhist wisdom, and coaching.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1649461178": {
+      "topics": [
+        "culture/design",
+        "business"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chinese-language product management and user research—minimal signal in English description.",
+      "display_title": "产品思维",
+      "blurb": "Product management fundamentals for professionals (Chinese-language podcast).",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1649560976": {
+      "topics": [
+        "sports",
+        "craft/diy-home"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Police and military working dog training and handler interviews.",
+      "display_title": "The Working Dog Depot",
+      "blurb": "Police and military working dog training techniques and handler interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1649561552": {
+      "topics": [
+        "health/fitness",
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's health, fitness, and aging advice from physical therapist.",
+      "display_title": "Meet Your Body",
+      "blurb": "Women's health, fitness, and menopause guidance from physical therapist Jessica Valant.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1649646224": {
+      "topics": [
+        "food",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Comedic reviews of chain restaurants with historical context and comparison.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1649775416": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "League of Legends esports analysis and competitive scene commentary.",
+      "display_title": "Power Spike",
+      "blurb": "League of Legends esports analysis and competitive scene commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1649915558": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running culture and endurance athletics from French-speaking hosts.",
+      "display_title": "On Your Marks",
+      "blurb": "Running culture, endurance racing, and runner interviews (French-language).",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1650159608": {
+      "topics": [
+        "fiction/sci-fi",
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sci-fi horror anthology blending original stories and adapted classic weird fiction.",
+      "display_title": "Gray Matter",
+      "blurb": "Sci-fi horror anthology with original stories and adapted classic weird fiction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1650261086": {
+      "topics": [
+        "health/sexuality",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sexuality and tantra exploration with practical techniques and expert guests.",
+      "display_title": "Sex Reimagined",
+      "blurb": "Sexuality and intimate relationships with tantra practices and expert guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1650291518": {
+      "topics": [
+        "sports/fantasy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly NFL and fantasy football strategy, rankings, and league analysis.",
+      "display_title": "Bran Coverage",
+      "blurb": "Weekly NFL and fantasy football strategy and rankings from hosts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1650419102": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian living and theology for navigating modern faith challenges.",
+      "display_title": "Saved Not Soft",
+      "blurb": "Christian theology and life guidance for modern faith from host Emy Moore.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1650442034": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hallmark movie reviews from Gen X best friends with weekly discussion.",
+      "display_title": "Girls Gone Hallmark",
+      "blurb": "Hallmark movie reviews and commentary from Gen X best friends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1650468812": {
+      "topics": [
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Imaginative adventure stories with positive values and lessons for children.",
+      "display_title": "Lively Lewis Stories",
+      "blurb": "Adventure stories with positive lessons from siblings Levi and Ivy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1650834032": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Post-game reactions and analysis after every Toronto Maple Leafs game.",
+      "display_title": "LFR",
+      "blurb": "Post-game reactions and analysis from every Toronto Maple Leafs game.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1651235114": {
+      "topics": [
+        "economics/markets",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Market analysis and investment strategy from Carson Group strategists.",
+      "display_title": "Facts vs Feelings",
+      "blurb": "Market analysis and investment strategy from Carson Group strategists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1651861448": {
+      "topics": [
+        "society",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Social work practice, child protection systems, and policy challenges.",
+      "display_title": "Messy Social Work",
+      "blurb": "Social work practice and child protection system challenges from experienced hosts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1652051282": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly WWE and professional wrestling discussion from longtime fans.",
+      "display_title": "That's Freakin' Wrestling",
+      "blurb": "Weekly WWE and pro wrestling discussion from longtime fan couple.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1652102240": {
+      "topics": [
+        "news/daily"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news headlines and analysis from CNN anchor Audie Cornish.",
+      "display_title": "CNN This Morning",
+      "blurb": "Daily news headlines and analysis hosted by CNN anchor Audie Cornish.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1652237240": {
+      "topics": [
+        "philosophy/ideas",
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.5
+        },
+        {
+          "node": "science",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "UFO discussion and government disclosure—speculative content about unexplained phenomena.",
+      "display_title": "It's a Very Exciting Time",
+      "blurb": "UFO and unidentified phenomena discussion from UFO researcher and skeptical friend.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-ed1596e7",
+      "classified_at": "2026-08-08T16:51:02.415Z"
     }
   },
-  "built_at": "2026-08-08T08:54:21.646Z",
+  "built_at": "2026-08-08T16:51:02.415Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-08-368fa7c1",
+    "last_batch_id": "fresh-2026-08-08-ed1596e7",
     "last_batch_tier": 1
   }
 }
