@@ -50008,13 +50008,1158 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-08-2a36b7b5",
       "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1634897726": {
+      "topics": [
+        "education/how-to",
+        "education",
+        "kids-family/parenting"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Special education curriculum guidance for managing classrooms and writing individualized education plans.",
+      "display_title": "Stepping Into Special Education",
+      "blurb": "Practical strategies for special education teachers on IEP writing, behavior management, and classroom best practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1634902202": {
+      "topics": [
+        "health/alternative",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.95
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided meditations and ambient sounds for relaxation, sleep, focus, and baby soothing.",
+      "display_title": "Meditation Sounds",
+      "blurb": "Serene nature sounds and guided meditations for sleep, relaxation, and concentration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1635003422": {
+      "topics": [
+        "religion/spirituality",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual life guidance through soul contracts, numerology, and intuitive readings.",
+      "display_title": "Soul Contracts with Gellyahnah Aakhen",
+      "blurb": "Spiritual readings and teachings on soul connections, karma, and navigating life transitions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1635012536": {
+      "topics": [
+        "craft/diy-home",
+        "nature/pets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.95
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three plant enthusiasts discuss growing and caring for Hoya houseplants.",
+      "display_title": "Let's Talk Hoya",
+      "blurb": "Casual conversations between plant lovers about cultivating Hoya species.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1635211340": {
+      "topics": [
+        "music",
+        "culture/pop-culture",
+        "music/theory-production"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Analysis of influential songs and artists from 1990s and 2000s pop culture.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1635371540": {
+      "topics": [
+        "religion/christianity",
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Catholic priest shares personal accounts of demonic possession cases and exorcism experiences.",
+      "display_title": "The Exorcist Files",
+      "blurb": "True stories from a Catholic priest handling possession cases and spiritual encounters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1635582800": {
+      "topics": [
+        "business/marketing",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Behind-the-scenes industry analysis, DTC brand strategy, and founder insights on ecommerce.",
+      "display_title": "Limited Supply",
+      "blurb": "Founder discusses direct-to-consumer brand strategies and marketing challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1635988112": {
+      "topics": [
+        "food",
+        "food/cooking-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beer industry conversations covering brewing, styles, and craft brewery operations.",
+      "display_title": "All About Beer",
+      "blurb": "Interviews with brewers about beer styles and craft brewing techniques.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1636196864": {
+      "topics": [
+        "tv-film/reviews",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pop culture recap and fashion analysis of reality dating shows like 90 Day Fiancé.",
+      "display_title": "Vanity Farah with Chris Farah",
+      "blurb": "Sassy recaps of reality TV with emphasis on aesthetics and human storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1636469402": {
+      "topics": [
+        "philosophy/ideas",
+        "science",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations on logic, mathematics, physics, economics, and philosophy with academic guests.",
+      "display_title": "Robinson's Podcast",
+      "blurb": "Interviews exploring ideas across philosophy, science, and economics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1636683710": {
+      "topics": [
+        "religion/spirituality",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychic development teachings, mediumship training, and interviews with spiritual practitioners.",
+      "display_title": "Opening The Door",
+      "blurb": "Interviews and teachings on developing psychic abilities and spiritual practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1636718576": {
+      "topics": [
+        "sports/basketball",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA players and athletes discuss career journeys, perseverance, and staying in professional sports.",
+      "display_title": "Run Your Race",
+      "blurb": "Basketball players share stories of perseverance and building NBA careers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1636744910": {
+      "topics": [
+        "music",
+        "music/theory-production"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with rock musicians and legends, recorded on tour bus during concert travel.",
+      "display_title": "Get On The Bus",
+      "blurb": "Intimate interviews with rock musicians recorded on a tour bus between shows.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1637013374": {
+      "topics": [
+        "automotive/racing",
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.9
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two racing enthusiasts discuss racing events, autocross, and the psychology of performance.",
+      "display_title": "Lizard Brains: Driving Drivers",
+      "blurb": "Racing conversations on autocross and performance driving psychology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1637088572": {
+      "topics": [
+        "science",
+        "nature"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Horticultural science interviews on crop breeding, plant techniques, and agricultural research.",
+      "display_title": "Plants, People, Science",
+      "blurb": "Horticultural science research on plant breeding and crop innovation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1637246828": {
+      "topics": [
+        "craft",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Laser shop business strategy, equipment, and crafting techniques for makers and entrepreneurs.",
+      "display_title": "The Laser Lounge Podcast at Pate Ranch",
+      "blurb": "Business guidance for laser shop owners on equipment, marketing, and shop growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1637354258": {
+      "topics": [
+        "nature",
+        "adventure"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wildland firefighting, outdoor recreation, Montana life, and personal resilience stories.",
+      "display_title": "The Lookout Podcast",
+      "blurb": "Conversations on wildland firefighting and outdoor recreation resilience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1637438384": {
+      "topics": [
+        "espionage",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "espionage",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intelligence practitioners discuss espionage, SIGINT, OSINT, and clandestine operations tradecraft.",
+      "display_title": "Grey Dynamics",
+      "blurb": "Intelligence professionals discuss spycraft and covert operations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1637503076": {
+      "topics": [
+        "comedy/interviews",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedian and producer friends discuss daily life, relationships, and parenting challenges.",
+      "display_title": "All Good Things with Jason Nash",
+      "blurb": "Casual conversations about life, family, and relationships with a comedian.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1637507756": {
+      "topics": [
+        "nature/pets",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual conversations about pets, fictional animals, and animal companions that provide comfort.",
+      "display_title": "Comfort Creatures",
+      "blurb": "Conversations about beloved pets and animals that bring comfort.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1637739194": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language tennis podcast with three friends discussing professional matches and rankings.",
+      "display_title": "Tennis Piochas",
+      "blurb": "Spanish tennis enthusiasts discuss professional matches and player rankings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1638001340": {
+      "topics": [
+        "tv-film/after-shows",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official Love Island USA after-show hosted by cast member with episode recaps and guest interviews.",
+      "display_title": "Previously On... Love Island USA",
+      "blurb": "Official Love Island USA after-show recaps and interviews with cast members.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1638287768": {
+      "topics": [
+        "comedy/casual-hangs",
+        "comedy/stand-up"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two Miami-based comedians discuss comedy, growing up in Florida, and life experiences.",
+      "display_title": "The Mermen",
+      "blurb": "Two comedians from Miami share stories about comedy and growing up.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1638636560": {
+      "topics": [
+        "gaming",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth discussion on Blizzard's Diablo ARPG franchise with community members.",
+      "display_title": "The Diablo Podcast",
+      "blurb": "In-depth discussions on Diablo game seasons, expansions, and community topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1639391360": {
+      "topics": [
+        "paranormal",
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spirit medium shares true ghost stories, paranormal encounters, and spiritual teachings.",
+      "display_title": "I Talk To Ghosts",
+      "blurb": "Ghost stories and paranormal accounts from a professional spirit medium.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1639540256": {
+      "topics": [
+        "kids-family/stories",
+        "fiction/comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedic mystery podcast for kids featuring dog detectives solving crimes.",
+      "display_title": "Snoop and Sniffy: Dog Detective Stories",
+      "blurb": "Comedic mystery stories for kids featuring dog detectives solving crimes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1639688984": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coach and biokineticist discuss training, racing, and building distance runners.",
+      "display_title": "Making A Runner",
+      "blurb": "Training advice for distance runners covering technique, injury, and performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1639838828": {
+      "topics": [
+        "culture/design",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career guidance for aspiring interior designers covering business and design skills.",
+      "display_title": "Design Curious Interior Design Career",
+      "blurb": "Career guidance for interior design covering business skills and design practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1639927520": {
+      "topics": [
+        "food",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hosts share entertaining and meal hosting tips with recipes and kitchen advice.",
+      "display_title": "Come Over for Dinner!",
+      "blurb": "Hosts share recipes and entertaining tips for hosting dinner parties.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1639961270": {
+      "topics": [
+        "education/courses",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Free audio course for medical students preparing for Family Medicine shelf exam.",
+      "display_title": "High Yield Family Medicine",
+      "blurb": "Audio course for medical students on family medicine board exam topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1639990844": {
+      "topics": [
+        "tv-film/interviews",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment research expert interviews filmmakers and Hollywood executives about careers.",
+      "display_title": "Don't Kill the Messenger with Movie Strategist",
+      "blurb": "Interviews with filmmakers and executives on building successful movie careers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1640311112": {
+      "topics": [
+        "news/politics",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family members discuss political topics and current events from different perspectives.",
+      "display_title": "The Necessary Conversation",
+      "blurb": "Conversations on politics and current events from differing family perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1640555666": {
+      "topics": [
+        "science",
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dramatized scenarios and expert interviews on first contact with alien life.",
+      "display_title": "Alien Encounters",
+      "blurb": "Dramatized sci-fi scenarios from Science Channel on first contact and aliens.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1640672186": {
+      "topics": [
+        "sports/cricket"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tamil-language podcast featuring biography and life story of cricket legend M.S. Dhoni.",
+      "display_title": "M.S.Dhoni - Hello Vikatan",
+      "blurb": "Biographical audio series on Indian cricket legend Mahendra Singh Dhoni.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1640918120": {
+      "topics": [
+        "fiction/comedy",
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Satirical comedic fiction podcast featuring socialite detective solving mysteries.",
+      "display_title": "Mansfield Mysteries",
+      "blurb": "Satirical comedic mysteries featuring a socialite solving murders in affluent town.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1640998760": {
+      "topics": [
+        "culture/fashion",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Influencer shares personal insights on fashion, wellness, relationships, and life lessons.",
+      "display_title": "Confessions by Anastazia",
+      "blurb": "Personal insights on fashion, wellness, and relationships from an influencer.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1641383288": {
+      "topics": [
+        "history/military-modern",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historians and military experts discuss Pacific War battles, tactics, and strategy.",
+      "display_title": "The Unauthorized History Pacific War",
+      "blurb": "In-depth analysis of Pacific War battles and military strategy with historians.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1641978062": {
+      "topics": [
+        "fiction/drama",
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dark drama series about child abductions by an ice cream truck driver in 1988.",
+      "display_title": "ICE-CREAM",
+      "blurb": "Dark drama series about a teen investigating mysterious child abductions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1642369862": {
+      "topics": [
+        "food",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chef José Andrés discusses food, culture, and interviews with creators and artists.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1642471340": {
+      "topics": [
+        "science/physics",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Materials and nanoscience research interviews with cutting-edge innovation stories.",
+      "display_title": "Under the Microscope",
+      "blurb": "Materials science and nanoscience research interviews and innovations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1642809578": {
+      "topics": [
+        "sports/volleyball",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coaches and players discuss volleyball coaching, recruitment, and development.",
+      "display_title": "VOLLEYBALLOGY UNcensored",
+      "blurb": "Volleyball coaches discuss coaching, recruitment, and player development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
+    },
+    "1643024276": {
+      "topics": [
+        "tv-film/after-shows",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Original Charmed cast members discuss episodes and behind-the-scenes production stories.",
+      "display_title": "The House of Halliwell Charmed Rewatch",
+      "blurb": "Original Charmed cast members discuss episodes and behind-the-scenes stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-368fa7c1",
+      "classified_at": "2026-08-08T08:54:21.646Z"
     }
   },
-  "built_at": "2026-08-08T00:54:44.650Z",
+  "built_at": "2026-08-08T08:54:21.646Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-08-2a36b7b5",
+    "last_batch_id": "fresh-2026-08-08-368fa7c1",
     "last_batch_tier": 1
   }
 }
