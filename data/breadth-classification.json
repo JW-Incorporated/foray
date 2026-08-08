@@ -49068,13 +49068,953 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-07-47ba0aee",
       "classified_at": "2026-08-07T16:50:43.873Z"
+    },
+    "1623350222": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "New Zealand NRL rugby league team discussion and match analysis.",
+      "display_title": "Warriors Waffle",
+      "blurb": "Weekly rugby league commentary on the New Zealand Warriors with game recaps and match previews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:53:34.298Z"
+    },
+    "1624265228": {
+      "topics": [
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Investigative journalism on politics and policy from The Lever newsroom.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:53:34.298Z"
+    },
+    "1625331872": {
+      "topics": [
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Short mystery stories for children based on American Girl historical fiction.",
+      "display_title": "American Girl 10 Minute Mysteries",
+      "blurb": "Ten-minute mystery stories for kids narrated by actress Maggie Lawson.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:53:34.298Z"
+    },
+    "1625332172": {
+      "topics": [
+        "kids-family/education",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Advice for tweens and teens on mental health, friendships, and growing up.",
+      "display_title": "American Girl: The Smart Girl's Podcast",
+      "blurb": "Advice show for teens on mental health, friendship, and self-discovery with celebrity guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:53:34.298Z"
+    },
+    "1625392928": {
+      "topics": [
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Disneyland Resort travel tips, updates, and discussions for Disney enthusiasts.",
+      "display_title": "Disneyland 4-Ever",
+      "blurb": "Travel tips and commentary on Disneyland attractions, events, and visitor strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:53:34.298Z"
+    },
+    "1625676674": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home organization using KonMari Method with decluttering and minimalism advice.",
+      "display_title": "Living Clutter Free Forever",
+      "blurb": "Home organization and decluttering using the KonMari Method for minimalist living.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:53:34.298Z"
+    },
+    "1625866118": {
+      "topics": [
+        "religion/hinduism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu devotional songs and bhajans dedicated to Lord Krishna.",
+      "display_title": "Krishan Bhajan",
+      "blurb": "Krishna devotional hymns and bhajans for Hindu spiritual and meditative practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:53:34.298Z"
+    },
+    "1626752846": {
+      "topics": [
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bible stories told engagingly for children in animated format.",
+      "display_title": "Hey-O Stories Of The Bible",
+      "blurb": "Bible stories for children from Saddleback Church covering Old and New Testament narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:53:34.298Z"
+    },
+    "1628369888": {
+      "topics": [
+        "culture",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Martha Stewart interviews with celebrities and entrepreneurs; lifestyle and business focus unclear.",
+      "display_title": "The Martha Stewart Podcast",
+      "blurb": "Conversations with celebrities, entrepreneurs, and cultural figures on business and lifestyle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:53:34.298Z"
+    },
+    "1628692976": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language group conversation comedy podcast with guest interviews and rotating topics.",
+      "display_title": "Café con Leche y Piquete",
+      "blurb": "Latino humor and casual conversations on culture, food, relationships, and everyday life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:53:34.298Z"
+    },
+    "1628862794": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music industry interviews with musicians, producers, and business professionals.",
+      "display_title": "The Talk Music Podcast",
+      "blurb": "Interviews with musicians and music industry experts on artistry and music business.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:53:34.298Z"
+    },
+    "1629027704": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestling commentary, history, and anecdotes from veteran wrestler.",
+      "display_title": "Story Time with Dutch Mantell",
+      "blurb": "Wrestling stories and commentary from pro wrestler Dutch Mantell on history and current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:53:34.298Z"
+    },
+    "1629115184": {
+      "topics": [
+        "math"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mathematics and statistics podcast exploring real-world applications through storytelling.",
+      "display_title": "Carry the Two",
+      "blurb": "Math and statistics through stories showing how mathematical thinking shapes the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:53:34.298Z"
+    },
+    "1629665360": {
+      "topics": [
+        "kids-family/education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "High school focused podcast for girls; specific subject areas and topics unclear.",
+      "display_title": "The High School Girl Podcast",
+      "blurb": "Podcast for high school girls covering education and coming-of-age topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1630372322": {
+      "topics": [
+        "culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Japanese language podcast titled 'Life Dances'; limited description for full classification.",
+      "display_title": "ジェーン・スー　生活は踊る",
+      "blurb": "Japanese language podcast about life and cultural perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1630852952": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Video game discussion podcast; specific focus and audience not fully clear.",
+      "display_title": "Clownfish TV Podcasts",
+      "blurb": "Video game discussion and commentary on gaming news and industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:44.650Z"
+    },
+    "1630993550": {
+      "topics": [
+        "history/technology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/technology",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physics history podcast exploring scientific discoveries and historical context.",
+      "display_title": "Initial Conditions: A Physics History Podcast",
+      "blurb": "Physics history exploring scientific discoveries and how understanding evolved.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1631195738": {
+      "topics": [
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy podcast focused on space and cosmic science topics.",
+      "display_title": "Cosmic Latte",
+      "blurb": "Astronomy and space science podcast exploring cosmic phenomena and discoveries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1631208632": {
+      "topics": [
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental health and sobriety podcast for mothers dealing with recovery and parenting.",
+      "display_title": "The Sober Mom Life",
+      "blurb": "Mental health and recovery support for mothers navigating sobriety and parenting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1631411924": {
+      "topics": [
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel and shark encounter discussion podcast from tropical destinations.",
+      "display_title": "Shark Attacks in Paradise",
+      "blurb": "Travel discussion and shark encounter stories from tropical island destinations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1631431106": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling analysis and commentary podcast from legendary wrestler Kevin Nash.",
+      "display_title": "Kliq This: The Kevin Nash Podcast",
+      "blurb": "Wrestling commentary and analysis from legendary pro wrestler Kevin Nash.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1631585216": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Management and business leadership podcast; specific focus areas not fully clear.",
+      "display_title": "View From The Top",
+      "blurb": "Business leadership and management perspectives from industry experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1631666318": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Television review podcast focused on TV show analysis and criticism.",
+      "display_title": "The Labours Of Hercule",
+      "blurb": "Television show reviews and analysis examining storytelling and characters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:44.650Z"
+    },
+    "1631788262": {
+      "topics": [
+        "health/sexuality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sex education and sexuality podcast hosted by educator Marcela Alonso.",
+      "display_title": "Get Schooled Podcast with Marcela Alonso",
+      "blurb": "Sex education and sexuality discussions providing inclusive information for youth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1631848388": {
+      "topics": [
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family-friendly storytelling podcast with parents reading to children.",
+      "display_title": "Holtzem Family Reads",
+      "blurb": "Family storytelling with parents reading books and stories for children.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1631928158": {
+      "topics": [
+        "nature/animal-cognition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Life sciences podcast; specific focus on animal behavior or natural science unclear.",
+      "display_title": "Tommy Cullum's Let's Get Freaky",
+      "blurb": "Life sciences discussion exploring animal behavior and natural phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1631943614": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wedding planning podcast focused on modern approaches and DIY strategies.",
+      "display_title": "Unbridely",
+      "blurb": "Modern wedding planning advice for couples seeking practical strategies and ideas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1631981552": {
+      "topics": [
+        "religion/hinduism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu devotional chanting and mantras focusing on Hare Krishna spiritual practice.",
+      "display_title": "Hare Krishna Hare Rama",
+      "blurb": "Hare Krishna devotional chants and mantras for spiritual meditation and practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1632064544": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Comedy podcast; specific comedy style and content focus not evident.",
+      "display_title": "Perfect Person",
+      "blurb": "Comedy podcast with humor and entertaining commentary for listeners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1632259928": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and interview podcast with guest conversations and comedic discussion.",
+      "display_title": "The Life Gorgeous",
+      "blurb": "Comedy interviews with guests discussing entertainment and lifestyle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1632706772": {
+      "topics": [
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running and endurance sports podcast from runner Marty Williamson.",
+      "display_title": "Miles With Marty Podcast",
+      "blurb": "Running and endurance sports discussion with training tips and runner interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1632773390": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Crochet and fiber arts podcast featuring makers and craft projects.",
+      "display_title": "The Crochet Baes",
+      "blurb": "Crochet and fiber arts discussion featuring makers and handmade projects.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1632846020": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby coaching podcast from Canterbury team covering strategy and player development.",
+      "display_title": "Canterbury Rugby's Coaches Corner",
+      "blurb": "Rugby coaching insights and strategy discussion from Canterbury team coaches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1632959234": {
+      "topics": [
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Broadway theater podcast discussing shows, performances, and theater industry.",
+      "display_title": "From the Mezzanine | A Broadway Podcast",
+      "blurb": "Broadway theater discussion covering shows, performances, and entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1632972080": {
+      "topics": [
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Art coaching and visual arts podcast helping artists develop their practice.",
+      "display_title": "The Art Coaching Club Podcast",
+      "blurb": "Visual arts coaching and discussion helping artists grow their creative practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1633070078": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic spiritual and emotional podcast focused on faith and feelings.",
+      "display_title": "Islamic Feelings ♡",
+      "blurb": "Islamic spirituality and emotional wellness podcast for Muslim listeners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1633201640": {
+      "topics": [
+        "math"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese language mathematics podcast; title suggests exciting math talk for learning.",
+      "display_title": "ワクワク数学トーク",
+      "blurb": "Mathematics education and discussion in Japanese for learning and exploration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1633466636": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music podcast from rapper Angie Martinez covering hip-hop culture and interviews.",
+      "display_title": "Angie Martinez IRL",
+      "blurb": "Music and hip-hop culture podcast with interviews and industry discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1633504754": {
+      "topics": [
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Paranormal and ghost stories podcast; entertainment vs. documentary intent unclear.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:44.650Z"
+    },
+    "1634095712": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Documentary on Angola history and civil war; journalism approach not fully evident.",
+      "display_title": "Bloody Angola: A Podcast by Jim Chapman",
+      "blurb": "Documentary exploration of Angola's history and historical conflict.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1634127986": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Game-themed podcast; specific games and content focus not fully clear.",
+      "display_title": "The Howling Salt Mine",
+      "blurb": "Games and hobbies discussion for entertainment and casual listeners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
+    },
+    "1634841536": {
+      "topics": [
+        "nature"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wilderness and nature-focused podcast about outdoor adventures and exploration.",
+      "display_title": "Sheep Fever",
+      "blurb": "Wilderness and outdoor adventure discussion with nature exploration topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-2a36b7b5",
+      "classified_at": "2026-08-08T00:54:30.934Z"
     }
   },
-  "built_at": "2026-08-07T16:50:43.873Z",
+  "built_at": "2026-08-08T00:54:44.650Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-07-47ba0aee",
+    "last_batch_id": "fresh-2026-08-08-2a36b7b5",
     "last_batch_tier": 1
   }
 }
