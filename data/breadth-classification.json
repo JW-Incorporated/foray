@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-08T08:57:37.091Z",
+  "built_at": "2026-08-08T17:07:09.417Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-08-049fd9ab",
+    "last_batch_id": "fresh-2026-08-08-13e9fbfd",
     "last_batch_tier": 1
   },
   "entries": {
@@ -136576,7 +136576,21 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "High-stakes fantasy sports strategy show covering draft tactics and player analysis.",
+      "display_title": "The Dominator",
+      "blurb": "Fantasy football experts discuss draft strategy, player values, and winning tactics for seasonal and dynasty leagues.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1671857632": {
       "topics": [
@@ -136652,7 +136666,21 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coach interviews exploring college and youth wrestling training, recruitment, and program development.",
+      "display_title": "Athletor Podcast with Mike Mal",
+      "blurb": "College wrestling coaches share training techniques and recruitment strategies from programs nationwide.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1672092973": {
       "topics": [
@@ -136743,7 +136771,25 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversational Spanish learning through native speaker dialogues for beginners.",
+      "display_title": "Spanish Conversations for Beginners",
+      "blurb": "Native Spanish speakers converse on everyday topics, providing listening practice for language learners.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1672775320": {
       "topics": [
@@ -137023,10 +137069,28 @@
     "1674047351": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health optimization for people over 50 covering nutrition, metabolism, and fitness strategies.",
+      "display_title": "Healthy AF",
+      "blurb": "Health expert Zane Griggs discusses nutrition science, metabolism, and fitness strategies for aging well.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1674060379": {
       "topics": [
@@ -137061,24 +137125,79 @@
     },
     "1674239699": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Farm entrepreneur explores agritourism, value-added agriculture, and rural business models.",
+      "display_title": "Rooted Agritourism",
+      "blurb": "Flower farmer hosts sharing strategies for sustainable farm businesses, agritourism, and direct-to-consumer sales.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1674336017": {
       "topics": [
         "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Obesity medicine physician discusses weight management treatments and chronic disease.",
+      "display_title": "The Obesity Guide",
+      "blurb": "Board-certified obesity physician Matthea Rentea discusses comprehensive weight management and metabolic health.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1674350681": {
       "topics": [
-        "culture/design"
+        "architecture",
+        "cities/urbanism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "architecture",
+          "confidence": 0.75
+        },
+        {
+          "node": "cities/urbanism",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Urban design and local development exploring infrastructure, housing, and city planning.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1674359942": {
       "topics": [
@@ -137103,17 +137222,50 @@
     },
     "1674410519": {
       "topics": [
-        "comedy/interviews"
+        "comedy/interviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.92
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians rewatch iconic TV series, analyzing episodes through modern cultural lens.",
+      "display_title": "Girls Rewatch: Sex and the City",
+      "blurb": "Brooklyn comedians rewatch Sex and the City episodes, analyzing dating, friendship, and feminism across generations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1674438791": {
       "topics": [
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Colombian stand-up comedy collective performing sketches and recording live shows.",
+      "display_title": "El Método Podcast",
+      "blurb": "Colombian comedy collective performs live stand-up specials and sketch comedy shows.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1674457782": {
       "topics": [
@@ -137135,7 +137287,21 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation industry discussion covering weekly news, airline operations, and aircraft developments.",
+      "display_title": "Radio Runway",
+      "blurb": "Four aviation enthusiasts discuss weekly industry news, airline developments, and aircraft operations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1674486810": {
       "topics": [
@@ -137173,7 +137339,21 @@
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion industry interviews with designers, editors, and creative directors about the industry.",
+      "display_title": "Au Coeur De La Mode",
+      "blurb": "Fashion journalist Loïc Prigent interviews designers, editors, and fashion industry leaders about the industry.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1674845032": {
       "topics": [
@@ -137236,7 +137416,21 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Filmmakers revisit movies from personal collections, deciding whether to keep or upgrade.",
+      "display_title": "Cinema Possessed",
+      "blurb": "Filmmakers discuss movies from their collections, analyzing what each film means to them today.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1674955855": {
       "topics": [
@@ -137263,11 +137457,24 @@
     },
     "1675123343": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mountain and trail running podcast covering race previews, athlete interviews, and endurance sports.",
+      "display_title": "The Sub Hub Podcast",
+      "blurb": "Trail running experts discuss mountain races, athlete training, and ultra-endurance competition.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1675124322": {
       "topics": [
@@ -137436,7 +137643,21 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation news recap covering accidents, airline developments, and aviation safety issues.",
+      "display_title": "Aviation News Recap",
+      "blurb": "Weekly recap of aviation industry news including accidents, investigations, and airline developments.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1676086801": {
       "topics": [
@@ -137714,10 +137935,29 @@
     },
     "1676690009": {
       "topics": [
-        "nature"
+        "nature",
+        "nature/earth-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.82
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Environmental journalism exploring coastal communities, climate change, and marine ecosystems.",
+      "display_title": "Sea Change",
+      "blurb": "NPR-produced journalism examining coastal communities, climate change, and environmental solutions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1676696187": {
       "topics": [
@@ -137753,11 +137993,24 @@
     },
     "1676781857": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Competitive swimming discussion covering NCAA, professional racing, and athletic trends.",
+      "display_title": "Swim Bros Podcast",
+      "blurb": "Swimming experts discuss NCAA swimming, professional competition, and sports industry trends.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1676803131": {
       "topics": [
@@ -137779,7 +138032,21 @@
         "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Persian casual conversation podcast with three friends discussing varied topics with humor.",
+      "display_title": "هاگیرواگیر",
+      "blurb": "Three friends have informal conversations covering diverse topics with humor and genuine debate.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1676846015": {
       "topics": [
@@ -137841,10 +138108,28 @@
     "1676999261": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal finance show discussing money, economic concepts, and financial decision-making for Gen Z.",
+      "display_title": "Networth and Chill",
+      "blurb": "Personal finance expert breaks down economics and money management in relatable, conversational terms.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1677004555": {
       "topics": [
@@ -138043,7 +138328,25 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.88
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film analysis and Coen brothers filmmaking through unproduced screenplay pages discussion.",
+      "display_title": "To the White Sea",
+      "blurb": "Filmmakers discuss Coen brothers' work and cinema techniques through close reading of an unproduced screenplay.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1677810412": {
       "topics": [
@@ -138212,10 +138515,32 @@
     },
     "1678643525": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sustainability podcast about practical, guilt-free green living and environmental impact.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1678808628": {
       "topics": [
@@ -138254,7 +138579,21 @@
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family-friendly trivia game show with educational questions for all ages.",
+      "display_title": "Family Trivia Challenge",
+      "blurb": "Kid-friendly trivia podcast covering entertainment, history, and culture for families.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1679025926": {
       "topics": [
@@ -138551,7 +138890,21 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy Premier League strategy guide covering tactics, player selection, and gameweek analysis.",
+      "display_title": "The 59th Minute FPL Podcast",
+      "blurb": "Fantasy football expert offers strategy advice on team selection and captaincy decisions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1679984415": {
       "topics": [
@@ -138618,10 +138971,28 @@
     "1680238547": {
       "topics": [
         "sports",
-        "news"
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Performance boating and offshore racing discussion; unclear if leisure activity or competitive sport focus.",
+      "display_title": "Boats & Bros Podcast",
+      "blurb": "Offshore racing champion discusses performance boating, competitive racing, and industry developments.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1680330412": {
       "topics": [
@@ -138650,23 +139021,72 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.88
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wall Street finance podcast analyzing market moves, deals, and financial industry trends.",
+      "display_title": "The Wall Street Skinny",
+      "blurb": "Investment banking experts discuss financial markets, major deals, and industry trends.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1680454703": {
       "topics": [
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bagpipe music showcasing performances, interviews, and Scottish pipe traditions.",
+      "display_title": "Enjoy Your Piping!",
+      "blurb": "Bagpipe enthusiast features performances and interviews from pipers worldwide.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1680570743": {
       "topics": [
         "medicine/biology",
-        "science",
-        "nature"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Molecular biology and genetic research discussion featuring PCR, gene therapy, and laboratory advances.",
+      "display_title": "Absolute Gene-ius",
+      "blurb": "Molecular biologists discuss gene research, PCR techniques, and advances in genetic science.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1680587836": {
       "topics": [
@@ -138686,10 +139106,32 @@
     },
     "1680598421": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "architecture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.88
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sustainable design and architecture podcast interviewing industry leaders about healthy, sustainable buildings.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1680627835": {
       "topics": [
@@ -138736,7 +139178,21 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Torah study classes and Jewish wisdom teachings from rabbi.",
+      "display_title": "Daily Morning Class",
+      "blurb": "Rabbi Meyer Yedid teaches daily Torah classes exploring Jewish wisdom and spiritual practice.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1680747031": {
       "topics": [
@@ -138764,14 +139220,42 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedians vent about everyday frustrations and annoyances in casual conversation format.",
+      "display_title": "Bone to Pick Podcast",
+      "blurb": "Stand-up comedians discuss daily frustrations and petty grievances with humor and honesty.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1680830207": {
       "topics": [
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime journalist covers high-profile cases, trials, and courtroom developments.",
+      "display_title": "13th Juror Podcast",
+      "blurb": "Host Brandi Churchwell breaks down major true crime cases from investigation through verdict.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1680884014": {
       "topics": [
@@ -138875,7 +139359,21 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NYC-focused journalism covering news, culture, and community issues in New York City.",
+      "display_title": "NYC NOW",
+      "blurb": "WNYC journalists report on New York City news, culture, and community issues.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1681313860": {
       "topics": [
@@ -138921,14 +139419,42 @@
         "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political commentary analyzing current events and threats to American democracy.",
+      "display_title": "The Warning with Steve Schmidt",
+      "blurb": "Political strategist Steve Schmidt analyzes current political events and democratic challenges.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1681606343": {
       "topics": [
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's professional basketball coverage including WNBA, college hoops, and emerging leagues.",
+      "display_title": "The Women's Hoops Show",
+      "blurb": "Host covers women's basketball including WNBA news, college hoops, and Unrivaled league.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1681668647": {
       "topics": [
@@ -139060,7 +139586,21 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pelvic floor physical therapy and women's health focusing on rehabilitation beyond exercises.",
+      "display_title": "Pelvic Floor, Core & More",
+      "blurb": "Physical therapist Dr. Desiree Cassell teaches pelvic floor health and core rehabilitation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1682337146": {
       "topics": [
@@ -139155,7 +139695,28 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "In-depth analysis of Alfred Hitchcock's films, career, and influence on cinema.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1682796974": {
       "topics": [
@@ -139169,7 +139730,21 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interior design advice for creating functional, stylish homes aligned with lifestyle.",
+      "display_title": "The My Decorator",
+      "blurb": "Interior designer offers practical advice for creating stylish, functional homes.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1682905063": {
       "topics": [
@@ -139190,7 +139765,21 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Atlanta-based comedy podcast combining stand-up with cultural and artistic conversations.",
+      "display_title": "No Draws Podcast",
+      "blurb": "Atlanta-based comedy show featuring stand-up and interviews with artists and entertainers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1683064228": {
       "topics": [
@@ -139212,7 +139801,21 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestling history and interviews with legendary wrestlers and promoters.",
+      "display_title": "Everybody's Got A Pod",
+      "blurb": "Wrestling legend Ted DiBiase shares stories and interviews from his Hall of Fame career.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1683205964": {
       "topics": [
@@ -139311,7 +139914,21 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Halo video game lore and universe deep exploration with passionate fans.",
+      "display_title": "The Library: Halo Lorecast",
+      "blurb": "Gaming enthusiasts discuss Halo video game lore, characters, and universe mysteries.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1683525348": {
       "topics": [
@@ -139337,10 +139954,28 @@
     "1683576689": {
       "topics": [
         "health/mental",
-        "psychology"
+        "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Faith-based wellness podcast exploring neuroplasticity, mental health, and spiritual practice.",
+      "display_title": "Rewire Your Brain",
+      "blurb": "Published scientist discusses faith-based approaches to mental health and neurological wellness.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1683584086": {
       "topics": [
@@ -139355,7 +139990,21 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual teachings from Isha Foundation founder Sadhguru in Kannada language.",
+      "display_title": "ಸದ್ಗುರು ಕನ್ನಡ",
+      "blurb": "Spiritual teacher Sadhguru shares wisdom on yoga, spirituality, and consciousness in Kannada.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1683845677": {
       "topics": [
@@ -139470,22 +140119,80 @@
         "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ecommerce founders discuss scaling brands, fundraising, and building nine-figure businesses.",
+      "display_title": "Operators",
+      "blurb": "Four successful ecommerce founders share strategies for scaling brands and building wealth.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1684459265": {
       "topics": [
-        "news",
-        "business"
+        "business",
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Funeral service industry insider perspectives on business practices and industry evolution.",
+      "display_title": "Funeral Service Insider",
+      "blurb": "Industry publication covers funeral service business trends, leadership, and professional development.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1684529609": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.92
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fashion industry builders discuss founders, business strategy, and technology reshaping the industry.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-13e9fbfd",
+      "classified_at": "2026-08-08T17:07:09.417Z"
     },
     "1684550335": {
       "topics": [
