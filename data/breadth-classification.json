@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-07T16:24:10.038Z",
+  "built_at": "2026-08-08T00:34:26.006Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-07-bc3ae1ec",
+    "last_batch_id": "fresh-2026-08-08-334cb228",
     "last_batch_tier": 1
   },
   "entries": {
@@ -122028,10 +122028,29 @@
     },
     "1610390463": {
       "topics": [
-        "sports/fantasy"
+        "economics/markets",
+        "math/puzzles"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.4
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fantasy football strategy, draft tactics, and tournament preparation.",
+      "display_title": "The RotoViz Best Ball Banana Stand",
+      "blurb": "Fantasy football draft strategy and roster construction for seasonal competitions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1610397352": {
       "topics": [
@@ -122133,12 +122152,29 @@
     },
     "1610909049": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "philosophy/ideas",
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Egyptian philosopher-doctor's works on spirituality, philosophy, and life meaning.",
+      "display_title": "الأعمال الكاملة لـ د. مصطفى محمود",
+      "blurb": "Philosophical and spiritual works of Egyptian doctor and writer Mustafa Mahmoud, spanning ethics, religion, and meaning.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1610918212": {
       "topics": [
@@ -122173,10 +122209,29 @@
     },
     "1611066147": {
       "topics": [
-        "math"
+        "computing",
+        "math/puzzles"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Machine learning algorithm analysis and recent AI research developments.",
+      "display_title": "Argmax",
+      "blurb": "Machine learning researchers discuss papers and algorithms shaping AI development.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1611073208": {
       "topics": [
@@ -122302,7 +122357,21 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unfiltered conversations between hosts and creative professionals from Brazil.",
+      "display_title": "Cringe Podcast",
+      "blurb": "Brazilian podcast of casual conversations with musicians, athletes, and various creative figures.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1611226020": {
       "topics": [
@@ -122914,10 +122983,34 @@
     },
     "1612994679": {
       "topics": [
-        "fiction/drama"
+        "history",
+        "history/military-ancient",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ming Dynasty Chinese history through emperors, political conflicts, and state institutions.",
+      "display_title": "明朝那些事",
+      "blurb": "Chinese podcast chronicling Ming Dynasty history through imperial politics, military intrigue, and bureaucratic evolution.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1613011136": {
       "topics": [
@@ -122979,10 +123072,29 @@
     },
     "1613340657": {
       "topics": [
-        "sports/tennis"
+        "economics/markets",
+        "sports/biomechanics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.65
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis sport economics, business strategy, and competitive market dynamics.",
+      "display_title": "Tennis Solutions for the USTA",
+      "blurb": "Tennis business expert analyzes sport growth, economics, and USTA strategic challenges.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1613346900": {
       "topics": [
@@ -123121,10 +123233,29 @@
     },
     "1613764767": {
       "topics": [
-        "business/management"
+        "business",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Repair shop owners sharing strategies for team-building, profitability, and business scaling.",
+      "display_title": "Shop Fix Academy Podcast",
+      "blurb": "Auto repair shop owners discuss scaling businesses, managing teams, and operational profitability.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1613767698": {
       "topics": [
@@ -123322,11 +123453,29 @@
     },
     "1614177735": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "comedy/casual-hangs",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy RPG actual play with casual storytelling and comedy throughout.",
+      "display_title": "Time's End Tavern",
+      "blurb": "Hosts play collaborative fantasy RPG campaigns with humor and immersive storytelling each week.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1614202986": {
       "topics": [
@@ -123560,10 +123709,24 @@
     },
     "1614908019": {
       "topics": [
-        "fiction/drama"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Serialized mystery and horror fiction with paranormal investigation themes.",
+      "display_title": "HAUNTED: The Audio Drama",
+      "blurb": "Serialized horror adventure fiction featuring investigations into paranormal and inexplicable phenomena.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1614953891": {
       "topics": [
@@ -123586,7 +123749,21 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "General aviation and airline industry news updates and regulatory developments.",
+      "display_title": "Airplane News Update",
+      "blurb": "Weekly briefing on aviation industry developments from FAA policy to aircraft orders.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1615113859": {
       "topics": [
@@ -123680,10 +123857,29 @@
     },
     "1615460637": {
       "topics": [
-        "culture/design"
+        "craft",
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pottery artists sharing techniques, artistic voice-finding, and ceramic craftsmanship.",
+      "display_title": "Shaping Your Pottery",
+      "blurb": "Pottery artists discuss techniques for finding unique voice in ceramics and mastering craft.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1615497076": {
       "topics": [
@@ -123848,10 +124044,29 @@
     },
     "1616283441": {
       "topics": [
-        "nature/pets"
+        "medicine/biology",
+        "nature/animal-cognition"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Canine health, nutrition research, and wellness practices for dog owners.",
+      "display_title": "The Alternative Dog Moms",
+      "blurb": "Dog owners discuss nutrition, raw feeding, veterinary oncology, and holistic canine wellness.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1616386196": {
       "topics": [
@@ -124047,11 +124262,29 @@
     },
     "1617048837": {
       "topics": [
-        "news",
-        "business"
+        "aviation",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation industry economics, airline strategy, and aerospace market developments.",
+      "display_title": "Aviation Week's Window Seat",
+      "blurb": "Industry leaders discuss airline economics, aircraft orders, and aviation sector strategy.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1617097042": {
       "topics": [
@@ -124224,10 +124457,29 @@
     },
     "1617744045": {
       "topics": [
-        "science/physics"
+        "space/rockets",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Space civilization, settlement infrastructure, and technological possibilities for humans beyond Earth.",
+      "display_title": "Our Future In Space",
+      "blurb": "Experts discuss space settlement infrastructure, asteroid mining, robotics, and humanity's off-world future.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1617844496": {
       "topics": [
@@ -124292,11 +124544,29 @@
     },
     "1618064121": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "sports/biomechanics",
+        "nature/animal-cognition"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.65
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Whitetail bowhunting technique, deer behavior study, and wilderness woodsmanship.",
+      "display_title": "Mission Whitetail",
+      "blurb": "Bowhunters share whitetail deer techniques, woodsmanship lessons, and ethical hunting practices.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1618071214": {
       "topics": [
@@ -124420,10 +124690,29 @@
     },
     "1618958655": {
       "topics": [
-        "nature"
+        "philosophy/ideas",
+        "nature/animal-cognition"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.55
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cryptid encounters and paranormal phenomena from folklore and reported sightings.",
+      "display_title": "Monstro Bizarro",
+      "blurb": "Real-life paranormal and cryptid encounter cases from across North America.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1619028254": {
       "topics": [
@@ -124435,10 +124724,29 @@
     },
     "1619058453": {
       "topics": [
-        "culture/books"
+        "philosophy/ideas",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophy and political thought through books on history and society.",
+      "display_title": "Wrapup",
+      "blurb": "Persian book summaries exploring philosophy, history, politics, and social ideas.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1619071982": {
       "topics": [
@@ -124449,10 +124757,29 @@
     },
     "1619080263": {
       "topics": [
-        "craft"
+        "craft",
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.95
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hand-knitting and fiber arts craftsmanship, color theory, and creative practice.",
+      "display_title": "Knitted Socks Only",
+      "blurb": "Host shares fiber arts projects, hand-knitting journey, and evolving craft expertise.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1619155154": {
       "topics": [
@@ -124476,7 +124803,25 @@
         "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Startup founders discuss building companies, culture evolution, and business scaling.",
+      "display_title": "The Closed Session",
+      "blurb": "Venture builders interview startup founders on AI, culture, and scaling challenges.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1619207363": {
       "topics": [
@@ -124525,11 +124870,24 @@
     },
     "1619408631": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychology of narcissistic abuse, relationship patterns, and trauma recovery.",
+      "display_title": "Breaking Free from Narcissistic Abuse",
+      "blurb": "Psychologist guides abuse survivors through narcissism patterns, manipulation tactics, and healing recovery.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1619498174": {
       "topics": [
@@ -124690,11 +125048,29 @@
     },
     "1620132105": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "sports/biomechanics",
+        "nature/animal-cognition"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.65
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Predator hunting tactics, equipment, firearms technique, and outdoor fieldcraft.",
+      "display_title": "The Texas Predator Hunting Podcast",
+      "blurb": "Hunters discuss predator calling, rifle techniques, gear reviews, and hunting ethics.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1620180371": {
       "topics": [
@@ -124863,33 +125239,105 @@
     },
     "1620582369": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's hormonal health, PCOS condition management, and nutrition research.",
+      "display_title": "The PCOS Repair Podcast",
+      "blurb": "Women's health expert discusses PCOS root causes, nutrition, hormones, and lifestyle healing.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1620584859": {
       "topics": [
         "music",
-        "history"
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Rock music history through recording studios, legends, and cultural artifacts.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1620592707": {
       "topics": [
-        "craft"
+        "craft",
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leather craftsmanship, material quality, tanning processes, and artisan techniques.",
+      "display_title": "Leathertainment Studio",
+      "blurb": "Leather craftspeople discuss tanning, quality assessment, sustainability, and industry practices.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1620607353": {
       "topics": [
-        "nature"
+        "nature/ocean-science",
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.95
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Whale behavior, marine conservation, and ocean ecosystem science.",
+      "display_title": "After the Breach",
+      "blurb": "Whale experts discuss marine conservation, species behavior, and ocean ecosystem health.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1620620736": {
       "topics": [
@@ -124908,10 +125356,24 @@
     },
     "1620788625": {
       "topics": [
-        "health/fitness"
+        "medicine/biology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's health during midlife, fitness, menopause, and holistic wellness.",
+      "display_title": "Health &amp; Fitness for Midlife Women",
+      "blurb": "Expert interviews on fitness, menopause, wellness, and mental health for midlife women.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-334cb228",
+      "classified_at": "2026-08-08T00:34:26.006Z"
     },
     "1620798364": {
       "topics": [
