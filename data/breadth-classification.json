@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-08T00:41:10.595Z",
+  "built_at": "2026-08-08T08:31:36.440Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-08-379715f7",
+    "last_batch_id": "fresh-2026-08-08-1520506e",
     "last_batch_tier": 1
   },
   "entries": {
@@ -128568,11 +128568,25 @@
     },
     "1640223649": {
       "topics": [
-        "fiction/comedy",
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "D&D comedy podcast with professional improvisers.",
+      "display_title": "Hell or High Rollers",
+      "blurb": "D&D adventure comedy featuring professional improvisers.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1640280106": {
       "topics": [
@@ -128599,10 +128613,25 @@
     },
     "1640318521": {
       "topics": [
-        "news/commentary"
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News analysis show covering current events.",
+      "display_title": "CNN One Thing",
+      "blurb": "News analysis examining current events in depth.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1640331646": {
       "topics": [
@@ -128679,10 +128708,30 @@
     },
     "1640740537": {
       "topics": [
-        "aviation"
+        "aviation",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation history and aerospace from Pima Air Museum.",
+      "display_title": "The Aviation Show",
+      "blurb": "Aviation and aerospace history from museum experts.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1640747361": {
       "topics": [
@@ -128995,7 +129044,22 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Narrated mystery stories for children.",
+      "display_title": "Detective Dexter",
+      "blurb": "Children's mystery stories narrated by Granny MacDuff.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1642245118": {
       "topics": [
@@ -129020,7 +129084,26 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Century of vampire cinema analyzed by experts.",
+      "display_title": "Vampire Videos",
+      "blurb": "100 years of vampire films and TV analyzed.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:36.440Z"
     },
     "1642334178": {
       "topics": [
@@ -129039,11 +129122,25 @@
     },
     "1642396117": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Eating disorder recovery and mental health.",
+      "display_title": "All Bodies. All Foods.",
+      "blurb": "Eating disorder recovery with clinical experts.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1642403980": {
       "topics": [
@@ -129100,10 +129197,25 @@
     },
     "1642540669": {
       "topics": [
-        "fiction/drama"
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marvel audio drama with full cast.",
+      "display_title": "Marvel's Wastelanders: Doom",
+      "blurb": "Marvel audio drama starring Dylan Baker.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1642546815": {
       "topics": [
@@ -129165,11 +129277,25 @@
     },
     "1642720087": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sport science for endurance running.",
+      "display_title": "The Physiology of Endurance Running Podcast",
+      "blurb": "Sport science research for runners.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1642760632": {
       "topics": [
@@ -129248,11 +129374,25 @@
     },
     "1643125075": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sport science for endurance running.",
+      "display_title": "The Physiology of Endurance Running Podcast",
+      "blurb": "Sport science research for runners.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1643163707": {
       "topics": [
@@ -129428,7 +129568,22 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DIY Cricut crafting projects.",
+      "display_title": "Weekend Crafting Adventures",
+      "blurb": "Cricut projects for custom gifts and crafts.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1644357616": {
       "topics": [
@@ -129441,10 +129596,25 @@
     },
     "1644417703": {
       "topics": [
-        "relationships"
+        "education/self-improvement"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Personal development and manifestation coaching.",
+      "display_title": "LYSS",
+      "blurb": "Personal transformation and manifestation guidance.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:36.440Z"
     },
     "1644427671": {
       "topics": [
@@ -129490,7 +129660,22 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Original animal stories for children.",
+      "display_title": "Animal Tales",
+      "blurb": "Original animal stories with educational facts.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1644711837": {
       "topics": [
@@ -129658,10 +129843,25 @@
     },
     "1645159771": {
       "topics": [
-        "religion/hinduism"
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu philosophy and ancient stories.",
+      "display_title": "Stories from Upanishads and Puranas",
+      "blurb": "Hindu philosophy through sacred stories.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1645205346": {
       "topics": [
@@ -129752,7 +129952,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode analysis of classic Taxi sitcom.",
+      "display_title": "'Night, Mr. Walters!: A Taxi Podcast",
+      "blurb": "Episode-by-episode Taxi sitcom analysis.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1645587747": {
       "topics": [
@@ -129771,11 +129986,30 @@
     },
     "1645621279": {
       "topics": [
-        "news/tech",
+        "economics",
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cryptocurrency policy and enforcement.",
+      "display_title": "TRM Talks",
+      "blurb": "Crypto policy, regulation, and enforcement.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1645873147": {
       "topics": [
@@ -129871,10 +130105,25 @@
     },
     "1646160199": {
       "topics": [
-        "sports/hockey"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "New York Rangers hockey fan analysis.",
+      "display_title": "Broadway Block",
+      "blurb": "New York Rangers hockey fan commentary.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1646200654": {
       "topics": [
@@ -129885,10 +130134,25 @@
     },
     "1646273281": {
       "topics": [
-        "religion/christianity"
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biblical narration with pastoral guidance.",
+      "display_title": "Bible in a Year",
+      "blurb": "Biblical passages with pastoral commentary.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1646283677": {
       "topics": [
@@ -129906,10 +130170,25 @@
     },
     "1646287507": {
       "topics": [
-        "relationships"
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pop culture from legal/psychological angles.",
+      "display_title": "Psych Legal Pop Podcast",
+      "blurb": "Pop culture from legal and psychological perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:36.440Z"
     },
     "1646342962": {
       "topics": [
@@ -129920,11 +130199,25 @@
     },
     "1646415595": {
       "topics": [
-        "space",
-        "science"
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and astrophysics (German).",
+      "display_title": "The Milky Way Podcast",
+      "blurb": "Astronomy and astrophysics discussions.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1646458230": {
       "topics": [
@@ -130085,11 +130378,25 @@
     },
     "1646878177": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ultra-distance running events.",
+      "display_title": "Backyard Ultra Podcast",
+      "blurb": "Backyard Ultra race recaps and athletes.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1646896091": {
       "topics": [
@@ -130114,10 +130421,25 @@
     },
     "1647019105": {
       "topics": [
-        "religion/christianity"
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Faith and culture conversations.",
+      "display_title": "The Kirk Cameron Show",
+      "blurb": "Faith, culture, and lifestyle discussions.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1647020295": {
       "topics": [
@@ -130177,10 +130499,25 @@
     },
     "1647276667": {
       "topics": [
-        "comedy/interviews"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy morning show with callers.",
+      "display_title": "Bueno Bueno",
+      "blurb": "Comedy morning show with live callers.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1647290879": {
       "topics": [
@@ -130208,11 +130545,25 @@
     },
     "1647431245": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "St. Louis Blues hockey discussion.",
+      "display_title": "Blues Fan Forum",
+      "blurb": "St. Louis Blues hockey fans discussing the team.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1647431399": {
       "topics": [
@@ -130309,7 +130660,22 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Forest ranger stories with animal characters.",
+      "display_title": "Tales from Cottonwood Trails",
+      "blurb": "Forest ranger stories with animal characters.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1647991952": {
       "topics": [
@@ -130406,10 +130772,25 @@
     },
     "1648250425": {
       "topics": [
-        "health/fitness"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hybrid fitness/obstacle race interviews.",
+      "display_title": "Rox Lyfe",
+      "blurb": "HYROX hybrid fitness athlete interviews.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1648301427": {
       "topics": [
@@ -130469,10 +130850,25 @@
     },
     "1648355341": {
       "topics": [
-        "business/marketing"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Local business marketing and growth.",
+      "display_title": "Grow Your Local Business",
+      "blurb": "Local business marketing and growth strategies.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1648363134": {
       "topics": [
@@ -130543,10 +130939,25 @@
     },
     "1648692487": {
       "topics": [
-        "sports/baseball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MLB postseason strategy and insight.",
+      "display_title": "The Book of Joe",
+      "blurb": "MLB postseason strategy and commentary.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1648705536": {
       "topics": [
@@ -130581,10 +130992,25 @@
     },
     "1648895227": {
       "topics": [
-        "sports/wrestling"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling match recommendations from multiple organizations.",
+      "display_title": "Wrestling Recommendations",
+      "blurb": "Professional wrestling match reviews and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1648903956": {
       "topics": [
@@ -130595,10 +131021,25 @@
     },
     "1648929043": {
       "topics": [
-        "religion/christianity"
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Religious devotional and spiritual guidance.",
+      "display_title": "Inklings with Emily Belle Freeman",
+      "blurb": "Spiritual devotional content and reflections.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1648946940": {
       "topics": [
@@ -130632,17 +131073,47 @@
     },
     "1649029117": {
       "topics": [
-        "nature/pets"
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horse care and equine science education.",
+      "display_title": "Mad Barn Academy",
+      "blurb": "Equine nutrition and health education.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1649051569": {
       "topics": [
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Flower farming and seed starting.",
+      "display_title": "Seed Talk",
+      "blurb": "Gardening and flower farming from experts.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1649055929": {
       "topics": [
@@ -130799,10 +131270,25 @@
     },
     "1649600581": {
       "topics": [
-        "religion/christianity"
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Faith and spiritual growth conversations.",
+      "display_title": "The Candace Cameron Bure Podcast",
+      "blurb": "Faith and spiritual growth conversations.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1649600835": {
       "topics": [
@@ -130876,7 +131362,22 @@
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Filmmaker and crew interviews.",
+      "display_title": "Kentucky Call Sheet",
+      "blurb": "Filmmaker and production crew interviews.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:36.440Z"
     },
     "1649729973": {
       "topics": [
@@ -130887,11 +131388,25 @@
     },
     "1649774845": {
       "topics": [
-        "adventure/exploration",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fishing stories and practical fishing discussion.",
+      "display_title": "Cut & Retie",
+      "blurb": "Fishing stories and practical fishing tips.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1649775416": {
       "topics": [
@@ -130965,10 +131480,25 @@
     },
     "1650103837": {
       "topics": [
-        "news/commentary"
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News commentary and political analysis.",
+      "display_title": "The Mark Thompson Show",
+      "blurb": "News commentary and political analysis.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1650142740": {
       "topics": [
@@ -130994,10 +131524,25 @@
     },
     "1650174655": {
       "topics": [
-        "business/marketing"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Digital marketing and Meta ads strategy.",
+      "display_title": "Meta Ads: Under the Hood",
+      "blurb": "Meta ads strategy and digital marketing.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1650247755": {
       "topics": [
@@ -131147,10 +131692,25 @@
     },
     "1650739087": {
       "topics": [
-        "religion/hinduism"
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu saint biography and philosophy.",
+      "display_title": "Shri Sai Satcharitra",
+      "blurb": "Hindu saint life and spiritual philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1650834032": {
       "topics": [
@@ -131161,10 +131721,25 @@
     },
     "1650867787": {
       "topics": [
-        "culture/art"
+        "craft/photography"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Photography business and motherhood.",
+      "display_title": "Motherhood Anthology",
+      "blurb": "Photography business education for mothers.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1650931217": {
       "topics": [
@@ -131175,11 +131750,25 @@
     },
     "1650989239": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "nature/earth-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "River science and fluvial geomorphology.",
+      "display_title": "RSM River Mechanics Podcast",
+      "blurb": "River science and sediment transport research.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-08-1520506e",
+      "classified_at": "2026-08-08T08:31:13.288Z"
     },
     "1651004191": {
       "topics": [
