@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-07T11:44:41.966Z",
+  "built_at": "2026-08-08T11:44:21.163Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -10919,6 +10919,240 @@
       "investigation",
       "society-law",
       "news"
+    ],
+    "cbc-ideas--a-book-prescription-for-mental-health": [
+      "mental-health",
+      "books",
+      "bibliotherapy",
+      "therapy",
+      "wellbeing",
+      "self-help",
+      "literature",
+      "world-war-1",
+      "medical-history"
+    ],
+    "materialism-podcast--episode-120-thermal-protection-systems": [
+      "materials-science",
+      "aerospace",
+      "aerospace-engineering",
+      "spacecraft",
+      "heat-shield",
+      "nasa",
+      "thermal-engineering",
+      "heat-transfer"
+    ],
+    "being-an-engineer--s7e33-sam-thomason-the-black-magic": [
+      "engineering",
+      "manufacturing",
+      "cnc",
+      "automation",
+      "robotics",
+      "careers",
+      "japan",
+      "machining",
+      "industrial"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1613": [
+      "history-of-science",
+      "history-of-technology",
+      "physics",
+      "electricity",
+      "science-history",
+      "biography",
+      "science"
+    ],
+    "this-week-in-startups--how-ai-splits-startups-into-winners": [
+      "startups",
+      "business",
+      "ai",
+      "ai-adoption",
+      "tech-industry",
+      "hedge-fund",
+      "markets",
+      "saas"
+    ],
+    "fretboard-journal-guitar-podcast--podcast-559-maisy-owen": [
+      "guitar",
+      "songwriting",
+      "music",
+      "interview",
+      "singers",
+      "americana",
+      "album"
+    ],
+    "shop-talk-live--stl372-david-bedrosian-is-a-clever": [
+      "woodworking",
+      "furniture-making",
+      "craft",
+      "tools",
+      "shop-talk",
+      "interview",
+      "dust-collection"
+    ],
+    "planetary-radio--space-policy-edition-science-a-new": [
+      "space-policy",
+      "science-funding",
+      "policy",
+      "government",
+      "space",
+      "research",
+      "science"
+    ],
+    "planet-money--older-workers-aren-t-retiring-should": [
+      "economics",
+      "labor",
+      "labor-markets",
+      "personal-finance",
+      "policy",
+      "aging",
+      "retirement"
+    ],
+    "odd-lots--how-a-sardine-gets-from-the": [
+      "economics",
+      "food",
+      "food-history",
+      "markets",
+      "business",
+      "supply-chain",
+      "seafood",
+      "consumer-products"
+    ],
+    "the-race-f1-podcast--tech-show-why-mercedes-should-fear": [
+      "formula-1",
+      "racing",
+      "motorsport",
+      "engineering",
+      "mercedes",
+      "interview"
+    ],
+    "partially-examined-life--pel-presents-pvi-122-hello-from": [
+      "philosophy",
+      "iran",
+      "interview",
+      "religion",
+      "ideas",
+      "islamic-philosophy"
+    ],
+    "the-cinematography-podcast--shooting-mud-fog-and-firelight-in": [
+      "cinematography",
+      "filmmaking",
+      "photography",
+      "television",
+      "lighting",
+      "behind-the-scenes"
+    ],
+    "radiolab--red-herring": [
+      "cold-war",
+      "sweden",
+      "mystery",
+      "navy",
+      "storytelling",
+      "investigation",
+      "military"
+    ],
+    "amicus-dahlia-lithwick--by-the-people-now-it-s": [
+      "law",
+      "courts",
+      "politics",
+      "us-constitution",
+      "civics",
+      "government"
+    ],
+    "i-know-dino--dinosaur-growth": [
+      "dinosaurs",
+      "paleontology",
+      "tyrannosaurs",
+      "science",
+      "fossils",
+      "evolution"
+    ],
+    "woodshop-life--how-much-glue-using-hickory-veneer": [
+      "woodworking",
+      "veneer",
+      "craft",
+      "diy",
+      "furniture-making",
+      "workshop"
+    ],
+    "mel-robbins-podcast--feel-better-fast-the-5-things": [
+      "mental-health",
+      "self-improvement",
+      "self-help",
+      "anxiety",
+      "stress",
+      "mindset",
+      "wellbeing"
+    ],
+    "happier-gretchen-rubin--more-happier-have-you-ever-felt": [
+      "self-improvement",
+      "happiness",
+      "gretchen-rubin",
+      "habits",
+      "personal-growth",
+      "wellbeing"
+    ],
+    "handsome--pretty-little-episode-103": [
+      "comedy",
+      "banter",
+      "pop-culture",
+      "casual",
+      "humor"
+    ],
+    "criminal--mr-apology": [
+      "true-crime",
+      "new-york",
+      "1980s",
+      "mystery",
+      "history",
+      "strangers"
+    ],
+    "unexplained--season-9-episode-30-come-hear": [
+      "paranormal",
+      "unexplained",
+      "mystery",
+      "investigation",
+      "death",
+      "research"
+    ],
+    "dear-sugars--you-could-make-this-beautiful-henry": [
+      "poetry",
+      "interview",
+      "personal-journals",
+      "relationships",
+      "celebrities",
+      "acting"
+    ],
+    "dear-sugars--you-could-make-this-beautiful-peter": [
+      "poetry",
+      "interview",
+      "personal-journals",
+      "relationships",
+      "radio"
+    ],
+    "dear-sugars--you-could-make-this-beautiful-mike": [
+      "comedy",
+      "poetry",
+      "interview",
+      "personal-journals",
+      "relationships",
+      "parenting"
+    ],
+    "wow-in-the-world--wewow-on-the-weekend-confusing-questions": [
+      "kids",
+      "science-for-kids",
+      "family",
+      "education",
+      "trivia",
+      "comedy"
+    ],
+    "freakonomics-radio--684-he-helped-clean-up-the": [
+      "economics",
+      "finance",
+      "markets",
+      "ai",
+      "regulation",
+      "banking",
+      "interview"
     ],
     "stuff-you-should-know--reggae-kingston-s-gift-to-the": [
       "reggae",
