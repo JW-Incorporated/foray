@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-09T01:00:02.795Z",
+  "built_at": "2026-08-09T08:59:41.387Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-09-98e1c65f",
+    "last_batch_id": "fresh-2026-08-09-60d8502c",
     "last_batch_tier": 1
   },
   "entries": {
@@ -16986,11 +16986,25 @@
     },
     "826194407": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror film reviews from 1970s with genre analysis.",
+      "display_title": "Decades of Horror | Movie Reviews of 1970s",
+      "blurb": "1970s horror film reviews with expert genre analysis and film history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "827233918": {
       "topics": [
@@ -143747,10 +143761,30 @@
     },
     "1697128097": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional tennis players in casual conversation about sport and life.",
+      "display_title": "All on the table, tennis talk like never",
+      "blurb": "Tennis stars in candid diner conversations about their sport and lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1697162428": {
       "topics": [
@@ -143771,7 +143805,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official Rugby World Cup 2025 tournament coverage and analysis.",
+      "display_title": "The Official Rugby World Cup 2025 Podcast",
+      "blurb": "Official Rugby World Cup podcast with tournament coverage and host analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1697258731": {
       "topics": [
@@ -143814,10 +143863,29 @@
     "1697444279": {
       "topics": [
         "health/nutrition",
-        "food"
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Plant-based nutrition guidance by dietitian for health transformation.",
+      "display_title": "Plant Based Eating Made Easy | Simple Strategies",
+      "blurb": "Plant-based nutrition guidance by dietitian for dietary transition and health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1697476308": {
       "topics": [
@@ -143907,7 +143975,22 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry podcast based on genre classification.",
+      "display_title": "\"Lecture-casts\"- A Lecture Series on General Chemistry",
+      "blurb": "Are you interested in learning about General Chemistry ! Are you passionate abou",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1697794816": {
       "topics": [
@@ -144035,10 +144118,30 @@
     },
     "1698316253": {
       "topics": [
-        "philosophy"
+        "science/chemistry",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "General chemistry lectures and interviews with science educators.",
+      "display_title": "Geeky Stoics",
+      "blurb": "Chemistry lectures and interviews with science educators and researchers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1698439585": {
       "topics": [
@@ -144049,10 +144152,30 @@
     },
     "1698462485": {
       "topics": [
-        "tv-film/reviews"
+        "philosophy/ideas",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stoicism and philosophy through pop culture storytelling and analysis.",
+      "display_title": "Spooky Chicks & Horror Flicks",
+      "blurb": "Stoic philosophy lessons from Star Wars, Marvel, and pop culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1698513192": {
       "topics": [
@@ -144111,10 +144234,25 @@
     },
     "1698764645": {
       "topics": [
-        "kids-family/stories"
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror movie reviews and scene-by-scene technical analysis.",
+      "display_title": "Mr. Eerie's Mystery Series",
+      "blurb": "Horror movie reviews analyzing scares, scenes, and cinematic technique.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1698866018": {
       "topics": [
@@ -144132,10 +144270,30 @@
     },
     "1698918455": {
       "topics": [
-        "religion/spirituality"
+        "religion/spirituality",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Trauma healing and manifestation through spiritual practices.",
+      "display_title": "Issy Living",
+      "blurb": "Manifestation and trauma healing interviews focused on spiritual practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1699012712": {
       "topics": [
@@ -144147,11 +144305,30 @@
     },
     "1699044011": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "kids-family/stories",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family-friendly original supernatural mystery stories for ages 9+.",
+      "display_title": "Relay",
+      "blurb": "Family-friendly mystery stories with supernatural and magical encounters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1699067317": {
       "topics": [
@@ -144221,11 +144398,30 @@
     },
     "1699442321": {
       "topics": [
-        "news",
-        "business"
+        "sports/endurance",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.92
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running podcast covering track, trail, ultrarunning with expert commentary.",
+      "display_title": "UBS Global Research Pod Hub",
+      "blurb": "Running conversations covering track, trail, and ultrarunning athletics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1699479379": {
       "topics": [
@@ -144320,10 +144516,30 @@
     },
     "1699915841": {
       "topics": [
-        "tv-film/reviews"
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Global economic, strategy, and industry analysis from UBS experts.",
+      "display_title": "The Exclusive With Sharon Tharp",
+      "blurb": "Economic and strategic analysis from UBS covering markets and industries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1700005831": {
       "topics": [
@@ -144404,10 +144620,30 @@
     },
     "1700375795": {
       "topics": [
-        "nature"
+        "tv-film/interviews",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality TV insider coverage with exclusive interviews and behind-the-scenes access.",
+      "display_title": "Nocturnal Worlds",
+      "blurb": "Reality TV insider coverage with exclusive interviews and behind-scenes access.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1700442353": {
       "topics": [
@@ -144497,10 +144733,30 @@
     },
     "1700557697": {
       "topics": [
-        "news/commentary"
+        "nature",
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.92
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Immersive Australian nocturnal ecosystem soundscapes and storytelling.",
+      "display_title": "FDD Morning Brief",
+      "blurb": "Nocturnal wildlife stories and nature sounds from Australian ecosystems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1700621028": {
       "topics": [
@@ -144654,11 +144910,30 @@
     },
     "1701005795": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.88
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily geopolitical analysis focused on Middle East security affairs.",
+      "display_title": "Murder in HR",
+      "blurb": "Daily geopolitical brief on Middle East affairs and national security.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1701022490": {
       "topics": [
@@ -144693,10 +144968,25 @@
     },
     "1701260891": {
       "topics": [
-        "business/marketing"
+        "fiction/comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Star-studded audio drama comedy about corporate HR murder mystery.",
+      "display_title": "Do This, NOT That: Marketing Tips with Jay",
+      "blurb": "Audio drama comedy about a murder mystery in corporate HR departments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1701273560": {
       "topics": [
@@ -144794,10 +145084,25 @@
     },
     "1701403307": {
       "topics": [
-        "news/daily"
+        "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marketing strategies using behavioral science and decision psychology.",
+      "display_title": "Bloomberg News Now",
+      "blurb": "Marketing tips using behavioral science and psychological principles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1701440025": {
       "topics": [
@@ -144839,18 +145144,52 @@
     },
     "1701585239": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "news/daily",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.94
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily global news updates covering politics, finance, technology, markets.",
+      "display_title": "Good Bad Billionaire",
+      "blurb": "Daily news briefs covering global politics, finance, tech, and markets.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1701610475": {
       "topics": [
-        "sports/fantasy"
+        "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Analysis of billionaires' wealth generation, lives, and societal impact.",
+      "display_title": "The Gianni Buttice FPL Podcast",
+      "blurb": "BBC analysis of billionaires including Elon Musk and Cristiano Ronaldo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1701639387": {
       "topics": [
@@ -144862,11 +145201,25 @@
     },
     "1701650561": {
       "topics": [
-        "sports",
-        "news"
+        "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy Premier League strategy, team-building tips and analysis.",
+      "display_title": "Ed Clements and Jeff Ward",
+      "blurb": "Fantasy Premier League strategy and team-building advice for competition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1701650866": {
       "topics": [
@@ -144892,17 +145245,52 @@
     },
     "1701685139": {
       "topics": [
-        "religion/judaism"
+        "sports",
+        "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.88
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Austin drive-time sports talk covering NFL and college football.",
+      "display_title": "Rabbi Kraz's Shiurim",
+      "blurb": "Austin sports talk covering NFL, college football, and general sports.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1701722663": {
       "topics": [
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV Reviews podcast based on genre classification.",
+      "display_title": "We Know The Traitors",
+      "blurb": "Join Pooya as he recaps The Traitors, diving deep into the thrilling world of de",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1701871713": {
       "topics": [
@@ -144947,7 +145335,22 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness podcast based on genre classification.",
+      "display_title": "In Moderation",
+      "blurb": "Providing health, nutrition and fitness advice in moderate amounts to help you l",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1701982039": {
       "topics": [
@@ -145084,14 +145487,44 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby podcast based on genre classification.",
+      "display_title": "Pillar To Post",
+      "blurb": "Pillar To Post is an Aussie weekly rugby podcast hosted by Jaybor, Big Fat Darc",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1702877219": {
       "topics": [
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive podcast based on genre classification.",
+      "display_title": "MartiniWorks Podcast",
+      "blurb": "Hey bud, welcome to the MartiniWorks podcast. Join Alex, Dakota, and Gels every",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1702886407": {
       "topics": [
@@ -145240,7 +145673,26 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports News podcast based on genre classification.",
+      "display_title": "No Spin Rodeo",
+      "blurb": "Join Kendra Santos and Tommy Joe Lucia as they discuss important topics in the r",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1703321959": {
       "topics": [
@@ -145403,7 +145855,22 @@
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion & Beauty podcast based on genre classification.",
+      "display_title": "Sneaky Leak Podcast",
+      "blurb": "Listen in every week with hosts Henny, Elaina & Janelle as they come together to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1703811699": {
       "topics": [
@@ -145554,7 +146021,22 @@
         "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Alternative Health podcast based on genre classification.",
+      "display_title": "Good Sleep: Positive Affirmations",
+      "blurb": "Unwind now with our positive sleep affirmations podcast. Our soothing sleep affi",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1704654452": {
       "topics": [
@@ -145602,7 +146084,22 @@
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film Interviews podcast based on genre classification.",
+      "display_title": "Be Afraid",
+      "blurb": "Hosted by Dr. Kutter Callaway, this podcast takes you on a journey into the hear",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1704761766": {
       "topics": [
@@ -145703,7 +146200,25 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Music Interviews podcast based on genre classification.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1705087719": {
       "topics": [
@@ -145732,7 +146247,22 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Animation & Manga podcast based on genre classification.",
+      "display_title": "Binary Break",
+      "blurb": "An actual play podcast set in the world of Digimon. A story about growing up and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1705148059": {
       "topics": [
@@ -145869,7 +146399,22 @@
         "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Visual Arts podcast based on genre classification.",
+      "display_title": "Painting Insights",
+      "blurb": "A podcast about painting. Interviews and conversations with top contemporary pai",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1705455823": {
       "topics": [
@@ -145933,7 +146478,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "After Shows podcast based on genre classification.",
+      "display_title": "Media Club Plus",
+      "blurb": "Welcome to Media Club Plus: a podcast about diving into the media that interests",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1705694900": {
       "topics": [
@@ -145964,7 +146524,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hockey podcast based on genre classification.",
+      "display_title": "The Jason Gregor Show",
+      "blurb": "Edmonton's ultimate time sports show. If you want to vent or praise your f",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1705778220": {
       "topics": [
@@ -146048,7 +146623,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soccer podcast based on genre classification.",
+      "display_title": "That Milan Podcast",
+      "blurb": "Martino Puccio and Matt Santangelo discuss everything AC Milan from the matches,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1706022094": {
       "topics": [
@@ -146069,7 +146659,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV Reviews podcast based on genre classification.",
+      "display_title": "Breaking Down the Silo",
+      "blurb": "This is a Mangum Talks podcast, dedicated to reviewing each episode of the Apple",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1706044037": {
       "topics": [
@@ -146077,14 +146682,48 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music History podcast based on genre classification.",
+      "display_title": "Into The Heart of U2 Podcast",
+      "blurb": "Into the Heart of U2 Podcast is the most comprehensive dive into the history of",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1706046233": {
       "topics": [
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby podcast based on genre classification.",
+      "display_title": "Inside Line",
+      "blurb": "Inside Line dives deep into the most pressing talking points and breaking news f",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1706056792": {
       "topics": [
@@ -146107,7 +146746,22 @@
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physics podcast based on genre classification.",
+      "display_title": "Hiçbir Şey Tesadüf Değil",
+      "blurb": "İnsanlık tarihini değiştiren bazı keşifler sanki bir rastlantıymış gibi anlatılı",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1706133112": {
       "topics": [
@@ -146180,14 +146834,47 @@
         "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design podcast based on genre classification.",
+      "display_title": "Damn Good Interior Designer",
+      "blurb": "Join Cheryl Kees Clendenon and Liz Lapan, the dynamic duo behind the visionary a",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1706446307": {
       "topics": [
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chemistry podcast based on genre classification.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /delve/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1706487610": {
       "topics": [
@@ -146278,7 +146965,22 @@
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pets & Animals podcast based on genre classification.",
+      "display_title": "Behavior Buzzzzzz with 2 Amys",
+      "blurb": "We're your sassy hosts, Dr. Amy L. Pike and Dr. Amy Learn, A.K.A... THE AMYS! As",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1706775253": {
       "topics": [
@@ -146462,7 +147164,22 @@
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Performing Arts podcast based on genre classification.",
+      "display_title": "Keys To The Kingdom",
+      "blurb": "Keys to the Kingdom is an unprecedented, eight-part docuseries exploring the pec",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1707134773": {
       "topics": [
@@ -146505,7 +147222,22 @@
         "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Careers podcast based on genre classification.",
+      "display_title": "Pass The Mic Podcast",
+      "blurb": "Ever wish you could get personal and professional advice from powerful women? We",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-60d8502c",
+      "classified_at": "2026-08-09T08:59:41.387Z"
     },
     "1707217868": {
       "topics": [
