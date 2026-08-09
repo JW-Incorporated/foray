@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-09T00:12:07.136Z",
+  "built_at": "2026-08-09T08:10:45.200Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-09-1ce17108",
+    "last_batch_id": "fresh-2026-08-09-be6aaba4",
     "last_batch_tier": 1
   },
   "entries": {
@@ -139277,11 +139277,30 @@
     },
     "1674628050": {
       "topics": [
-        "news",
-        "business"
+        "business",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial analysis of credit markets and bonds",
+      "display_title": "The Credit Edge by Bloomberg Intelligence",
+      "blurb": "Weekly analysis of credit news, corporate bonds, and market trends backed by Bloomberg Intelligence data.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1674685974": {
       "topics": [
@@ -139289,7 +139308,26 @@
         "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nervous system-focused anxiety and depression guidance",
+      "display_title": "Regulate & Rewire: An Anxiety & Depression Podcast",
+      "blurb": "Practical tools for nervous system regulation and mental health based on trauma-informed practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1674762317": {
       "topics": [
@@ -139376,24 +139414,84 @@
     },
     "1675124322": {
       "topics": [
-        "travel"
+        "travel",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Alaska travel stories and destination guides",
+      "display_title": "Alaska Uncovered Podcast",
+      "blurb": "Expert interviews and insider perspectives on traveling and living in Alaska.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1675161522": {
       "topics": [
-        "sports/basketball"
+        "business",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial analysis of credit markets and bonds",
+      "display_title": "Podcast P with Paul George",
+      "blurb": "Weekly analysis of credit news, corporate bonds, and market trends backed by Bloomberg Intelligence data.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1675195560": {
       "topics": [
+        "automotive/racing",
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.9
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive racing and performance culture",
+      "display_title": "EAT SLEEP RACE",
+      "blurb": "Interviews with racing professionals and enthusiasts about drag racing and performance vehicles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1675197759": {
       "topics": [
@@ -139550,10 +139648,34 @@
     "1676094378": {
       "topics": [
         "music",
-        "history"
+        "music/classical",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/classical",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Steely Dan fandom, music history, and cultural analysis",
+      "display_title": "Gaucho Amigos",
+      "blurb": "Exploring Steely Dan's resurgence and the band's influence on music and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1676099257": {
       "topics": [
@@ -139580,10 +139702,30 @@
     },
     "1676164770": {
       "topics": [
-        "religion/christianity"
+        "religion",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Latter-day Saint church and political history",
+      "display_title": "Church History Matters",
+      "blurb": "In-depth discussions of LDS church history and its intersection with American politics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1676259280": {
       "topics": [
@@ -139619,10 +139761,33 @@
     },
     "1676330976": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Competitive dance parenting insights and community",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1676359275": {
       "topics": [
@@ -139634,10 +139799,30 @@
     },
     "1676389104": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Perfume reviews and collector community",
+      "display_title": "Nose Candy",
+      "blurb": "In-depth discussions of fragrances, collections, and perfume culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1676401431": {
       "topics": [
@@ -139666,11 +139851,30 @@
     },
     "1676494602": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "health",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Critical analysis of wellness culture and diet trends",
+      "display_title": "Rethinking Wellness",
+      "blurb": "Skeptical examination of popular wellness practices and the science behind health claims.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1676513108": {
       "topics": [
@@ -139707,10 +139911,35 @@
     },
     "1676634678": {
       "topics": [
-        "business/marketing"
+        "business",
+        "engineering/ai-robotics",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business applications and ethics of AI technology",
+      "display_title": "Leveraging AI",
+      "blurb": "Insights on implementing AI responsibly in business with practical, real-world applications.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1676637848": {
       "topics": [
@@ -139888,17 +140117,61 @@
     },
     "1677053238": {
       "topics": [
+        "tv-film",
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep dive analysis of prestige television shows",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8",
+        "display_title: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1677100656": {
       "topics": [
-        "philosophy"
+        "psychology",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cultural trends through psychiatric and psychological lens",
+      "display_title": "Psychobabble",
+      "blurb": "Analysis of modern therapy culture, wellness trends, and their psychological implications.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1677158558": {
       "topics": [
@@ -139965,10 +140238,30 @@
     },
     "1677258744": {
       "topics": [
-        "math"
+        "computing",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Computer science and technology education",
+      "display_title": "My Computer Science Broadcast",
+      "blurb": "Q&A and educational content about computer science, mathematics, and tech topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1677343929": {
       "topics": [
@@ -140147,10 +140440,30 @@
     },
     "1677935808": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist meditation and spiritual community practice",
+      "display_title": "Sit Club with Davin Youngs",
+      "blurb": "Weekly guided meditation and contemplative discussions centered on Buddhist principles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1677949629": {
       "topics": [
@@ -140198,10 +140511,30 @@
     },
     "1678158744": {
       "topics": [
-        "sports/wrestling"
+        "sports",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "MMA discussion and athlete interviews",
+      "display_title": "Redhawk Recap",
+      "blurb": "Conversations with MMA fighters and coaches about fighting, training, and the sport.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1678197880": {
       "topics": [
@@ -140278,10 +140611,30 @@
     },
     "1678369152": {
       "topics": [
-        "music"
+        "music",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Heavy metal history and band interviews",
+      "display_title": "REQUIEM METAL PODCAST",
+      "blurb": "Discussions of metal music genres, band histories, and artist interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1678559416": {
       "topics": [
@@ -140428,10 +140781,30 @@
     },
     "1679271378": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design business strategy and entrepreneurship",
+      "display_title": "Profitable Designer",
+      "blurb": "Business and marketing strategies for designers building profitable creative practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1679310650": {
       "topics": [
@@ -140442,25 +140815,84 @@
     },
     "1679364258": {
       "topics": [
-        "kids-family/stories"
+        "business",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial analysis of credit markets and bonds",
+      "display_title": "Let’s Read With Lyla and Dad",
+      "blurb": "Weekly analysis of credit news, corporate bonds, and market trends backed by Bloomberg Intelligence data.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1679408280": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "kids-family/stories",
+        "fiction/comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's storytelling with familiar characters",
+      "display_title": "Latest Peppa pig Stories",
+      "blurb": "Read-along stories featuring Peppa Pig and other children's characters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1679454606": {
       "topics": [
-        "gaming"
+        "gaming",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game industry news and analysis",
+      "display_title": "IGN.com - Daily Fix (Video)",
+      "blurb": "Daily coverage of gaming industry news, releases, and entertainment developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1679457693": {
       "topics": [
@@ -140480,10 +140912,30 @@
     },
     "1679466396": {
       "topics": [
-        "sports/soccer"
+        "sports/soccer",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soccer history and memorable match narratives",
+      "display_title": "Soccer Bedtime Stories",
+      "blurb": "Storytelling about iconic soccer matches, players, and moments in football history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1679561565": {
       "topics": [
@@ -140502,12 +140954,33 @@
     },
     "1679591994": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "business/startups",
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Biotechnology entrepreneurship and innovation",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1679604930": {
       "topics": [
@@ -140618,11 +141091,33 @@
     },
     "1679851392": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "culture/books",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Literary analysis and author study",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1679872468": {
       "topics": [
@@ -140671,10 +141166,30 @@
     },
     "1680031836": {
       "topics": [
-        "culture/books"
+        "business",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial analysis of credit markets and bonds",
+      "display_title": "Librivox Audiobooks",
+      "blurb": "Weekly analysis of credit news, corporate bonds, and market trends backed by Bloomberg Intelligence data.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1680075779": {
       "topics": [
@@ -140686,10 +141201,30 @@
     },
     "1680211092": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish spiritual practices and mindfulness",
+      "display_title": "Soulful Jewish Living: Mindful Practices For Every Day",
+      "blurb": "Spiritual guidance and mindfulness practices rooted in Jewish traditions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1680226771": {
       "topics": [
@@ -140809,10 +141344,33 @@
     },
     "1680728280": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Philosophical inquiry and contemplation",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1680733691": {
       "topics": [
@@ -141030,10 +141588,33 @@
     },
     "1682026224": {
       "topics": [
-        "fiction/drama"
+        "espionage",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "espionage",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Espionage history and spy narratives",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1682047968": {
       "topics": [
@@ -141062,8 +141643,30 @@
         "adventure/exploration",
         "nature"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.5
+        },
+        {
+          "node": "nature",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1682128969": {
       "topics": [
@@ -141314,8 +141917,27 @@
       "topics": [
         "religion/spirituality"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8",
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1683527427": {
       "topics": [
@@ -141513,8 +142135,34 @@
         "science",
         "nature"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.5
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        },
+        {
+          "node": "nature",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1684789910": {
       "topics": [
@@ -141594,8 +142242,26 @@
       "topics": [
         "aviation"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1685196752": {
       "topics": [
@@ -141608,8 +142274,26 @@
       "topics": [
         "sports/soccer"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1685204050": {
       "topics": [
@@ -141622,8 +142306,26 @@
       "topics": [
         "kids-family/stories"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1685286851": {
       "topics": [
@@ -141638,8 +142340,30 @@
         "economics/markets",
         "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.5
+        },
+        {
+          "node": "business",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1685349616": {
       "topics": [
@@ -141756,8 +142480,26 @@
       "topics": [
         "tv-film/animation"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1686112183": {
       "topics": [
@@ -141770,8 +142512,26 @@
       "topics": [
         "food"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1686246125": {
       "topics": [
@@ -141820,8 +142580,26 @@
       "topics": [
         "kids-family/parenting"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1686352696": {
       "topics": [
@@ -141850,8 +142628,26 @@
       "topics": [
         "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1686495508": {
       "topics": [
@@ -141909,8 +142705,27 @@
       "topics": [
         "religion/spirituality"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 18w > 8",
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1686664028": {
       "topics": [
@@ -141969,8 +142784,26 @@
       "topics": [
         "sports/golf"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1686964637": {
       "topics": [
@@ -142065,8 +142898,26 @@
       "topics": [
         "religion/christianity"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1687376132": {
       "topics": [
@@ -142170,8 +143021,26 @@
       "topics": [
         "fiction/sci-fi"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1687675095": {
       "topics": [
@@ -142256,8 +143125,26 @@
       "topics": [
         "news/daily"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Awaiting manual review",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: missing"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-be6aaba4",
+      "classified_at": "2026-08-09T08:10:45.200Z"
     },
     "1688261326": {
       "topics": [
