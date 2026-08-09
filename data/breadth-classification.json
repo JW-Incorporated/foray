@@ -52200,13 +52200,1093 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-08-ed1596e7",
       "classified_at": "2026-08-08T16:51:02.415Z"
+    },
+    "1652349752": {
+      "topics": [
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly tennis news, player interviews, and match analysis.",
+      "display_title": "Talking Tennis",
+      "blurb": "Tennis interviews and analysis from professional players and coaches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1652494328": {
+      "topics": [
+        "religion/spirituality",
+        "culture/mythology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories of Christian saints, mystics, visionaries and historical religious figures.",
+      "display_title": "The Flowered Path",
+      "blurb": "Tales of saints and Christian mystics from historical and contemporary sources.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1652665688": {
+      "topics": [
+        "comedy/casual-hangs",
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language comedy duo discussing social dilemmas with interviews.",
+      "display_title": "La Pareja Más Aburrida del Mundo",
+      "blurb": "A Spanish couple and their dog chat about social situations and relationships.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1652706344": {
+      "topics": [
+        "culture/fashion",
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion history through 2000s, designers, Met Gala, and Vogue magazine influence.",
+      "display_title": "In VOGUE: The Archives",
+      "blurb": "Fashion history series exploring designers and style from 2000s culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1652738714": {
+      "topics": [
+        "business/startups",
+        "medicine/biology",
+        "engineering/ai-robotics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Synthetic biology entrepreneurs building biotech companies and engineered biology solutions.",
+      "display_title": "Grow Everything Biotech Podcast",
+      "blurb": "Interviews with synthetic biology founders creating materials and foods.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1653818756": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories from people leaving Orthodox Judaism, family narratives and identity.",
+      "display_title": "Heretic in the House",
+      "blurb": "Series exploring lives of those leaving and within Orthodox Jewish communities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1654006346": {
+      "topics": [
+        "space",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Accessible astronomy and space science with humor for general audiences.",
+      "display_title": "Pale Blue Pod",
+      "blurb": "Astronomy explained with humor by an astrophysicist and comedian duo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1654074926": {
+      "topics": [
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "2026 FIFA World Cup coverage with analysis and emotional reactions.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1654786706": {
+      "topics": [
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language learning through real-life stories and conversation.",
+      "display_title": "SuaveSpanish",
+      "blurb": "Learn Spanish through real stories told by native speakers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1654924910": {
+      "topics": [
+        "kids-family/parenting",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting support for demand-avoidant children and nervous system strategies.",
+      "display_title": "At Peace Parents Podcast",
+      "blurb": "Parenting guidance for pathological demand avoidance (PDA) in children.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1655062070": {
+      "topics": [
+        "society/government",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Veteran stories, military retirement process, and post-service transitions.",
+      "display_title": "Military Retirement Podcast",
+      "blurb": "Veterans and retirees share stories about leaving military and starting businesses.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1655788604": {
+      "topics": [
+        "fiction/comedy",
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Award-winning sci-fi comedy audio drama about an all-woman spaceship crew.",
+      "display_title": "Starship Q Star",
+      "blurb": "Sci-fi comedy audio series about an all-woman crew stranded in space.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1655789270": {
+      "topics": [
+        "craft",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mindful creative practices, textile work, and maker interviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1656338354": {
+      "topics": [
+        "fiction/comedy",
+        "gaming/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Warhammer 40K live-play TTRPG with comedy and dramatic storytelling.",
+      "display_title": "WarHams - Narrative Declaration",
+      "blurb": "Live-play Warhammer 40K TTRPG sessions with improvisation and humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1656542642": {
+      "topics": [
+        "education/language-learning",
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Russian language learning paired with Russian-speaking culture and context.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1657069274": {
+      "topics": [
+        "kids-family/education",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science, history, and technology education for kids by a young creator.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1657266572": {
+      "topics": [
+        "sports/biomechanics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball interviews and culture from German/European perspective.",
+      "display_title": "Volleyball Insider",
+      "blurb": "German volleyball culture and player interviews from professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1657299416": {
+      "topics": [
+        "gaming",
+        "tv-film/reviews"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Multimedia reviews covering games, movies, books, and pop culture.",
+      "display_title": "Nostalgic Canuck",
+      "blurb": "Personal reviews of video games, films, literature, and entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1657458632": {
+      "topics": [
+        "comedy/interviews",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast with hang sessions and advice calls to listeners.",
+      "display_title": "Stavvy's World",
+      "blurb": "Weekly comedy hang and advice show with comedians and guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1657505018": {
+      "topics": [
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby coverage and interviews focused on Iowa sports community.",
+      "display_title": "B-Side Bois: A Rugby Podcast",
+      "blurb": "Rugby interviews and regional sports coverage from Iowa community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1657740206": {
+      "topics": [
+        "fiction/drama",
+        "history/military-modern"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scripted drama thriller about Hitler and psychotherapist relationship.",
+      "display_title": "The Hitler File",
+      "blurb": "Dramatized audio thriller exploring an alternate WWII psychological narrative.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1657824056": {
+      "topics": [
+        "aviation/accidents"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation/accidents",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Analysis of airplane crashes with meteorological and technical expertise.",
+      "display_title": "Radar Contact Lost: The Podcast",
+      "blurb": "Detailed examinations of aircraft disasters and weather-related accidents.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1658118308": {
+      "topics": [
+        "news",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Indian business news covering startups, markets, and economic stories.",
+      "display_title": "Daybreak",
+      "blurb": "Daily India business news covering markets, startups, and policy changes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1658146214": {
+      "topics": [
+        "health/nutrition",
+        "health/mental",
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Nutrition and eating disorders from Christian faith perspective with grace.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1658287076": {
+      "topics": [
+        "education/how-to",
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Christian home organization, decluttering, and faith-based routines.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1658593616": {
+      "topics": [
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biology of trauma, trauma recovery, and nervous system science.",
+      "display_title": "The Biology of Trauma® With Dr. Aimie",
+      "blurb": "Medical exploration of trauma effects on the nervous system and healing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1658615966": {
+      "topics": [
+        "tv-film/reviews",
+        "history/military-modern"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Analysis and reviews of classic war films and cinema history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1660268930": {
+      "topics": [
+        "economics/markets",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Retirement planning financial advice and economic strategies.",
+      "display_title": "Retirement Answers",
+      "blurb": "Retirement planning and financial strategy guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1660701356": {
+      "topics": [
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Travel rewards and points optimization for travel dreams.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1660707794": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Crafts and artisanal making practices.",
+      "display_title": "Passion for Craft Podcast",
+      "blurb": "Conversations about craft making and artisan practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1661475938": {
+      "topics": [
+        "personal-journals"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Personal reflections and gratitude practice.",
+      "display_title": "The Grateful Thread Podcast",
+      "blurb": "Personal stories and reflections on gratitude.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1661637038": {
+      "topics": [
+        "culture/mythology",
+        "religion/hinduism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/mythology",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Indian mythology and ancient tales in Hindi.",
+      "display_title": "Kahani Pauranik Bharat Ki",
+      "blurb": "Stories from Indian mythology and ancient Hindu traditions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1661849072": {
+      "topics": [
+        "food"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Food and nutrition content.",
+      "display_title": "Get Fed Today",
+      "blurb": "Food and nutrition topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1662221966": {
+      "topics": [
+        "craft",
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewelry making and craftsmanship at the workbench.",
+      "display_title": "Jewellery Talks At The Bench",
+      "blurb": "Jewelry making techniques and artisan craft discussions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1662378560": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fiber arts, spinning, and textile crafts.",
+      "display_title": "Wool n' Spinning Radio",
+      "blurb": "Fiber arts including spinning, knitting, and textile production.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1662990704": {
+      "topics": [
+        "business/startups",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneur interviews about scaling businesses and building empires.",
+      "display_title": "Living The Red Life",
+      "blurb": "Entrepreneur interviews about building and scaling successful businesses.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1663042304": {
+      "topics": [
+        "tv-film/reviews",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep analysis of Saturday Night Live sketches and episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8",
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1663063424": {
+      "topics": [
+        "health/nutrition",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical women's health topics from credible clinicians.",
+      "display_title": "Speaking of Women's Health",
+      "blurb": "Evidence-based women's health information from medical experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1663542464": {
+      "topics": [
+        "personal-journals",
+        "adventure/exploration"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nature reflections, Indigenous perspective, and natural soundscapes.",
+      "display_title": "Terra Firma",
+      "blurb": "Indigenous poet shares reflections on nature with ambient soundscapes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1663611710": {
+      "topics": [
+        "news/tech",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Linux and open-source software news roundup.",
+      "display_title": "Linux & Open Source News",
+      "blurb": "Weekly news about Linux, open-source software, and computing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1663644692": {
+      "topics": [
+        "hobbies",
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fandom culture history, fanfiction, and fan conventions.",
+      "display_title": "This Week In Fandom History",
+      "blurb": "Fandom culture and internet history with fan convention coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-859fae5d",
+      "classified_at": "2026-08-09T00:50:42.131Z"
     }
   },
-  "built_at": "2026-08-08T16:51:02.415Z",
+  "built_at": "2026-08-09T00:50:42.131Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-08-ed1596e7",
+    "last_batch_id": "fresh-2026-08-09-859fae5d",
     "last_batch_tier": 1
   }
 }
