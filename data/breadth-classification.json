@@ -54250,13 +54250,1002 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-09-48a463d1",
       "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1671811868": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Catholic faith podcast discussing scripture, spirituality, and church teachings.",
+      "display_title": "Podcast de los Caballeros",
+      "blurb": "Catholic podcast exploring scripture, faith, marriage, and spiritual challenges.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1671865388": {
+      "topics": [
+        "society/government",
+        "history/military-modern"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Army training center podcast on modern warfighting doctrine and tactics.",
+      "display_title": "The Crucible",
+      "blurb": "Military leadership podcast on warfighting doctrine from the Joint Readiness Training Center.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1671873182": {
+      "topics": [
+        "comedy",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy panel show with Joel Kim Booster discussing dating, sex, and relationships.",
+      "display_title": "Intimacy Coordinator",
+      "blurb": "Comedy show exploring dating, relationships, and intimacy through guest panels.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1671894776": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual tennis podcast discussing players, tournaments, and the sport's culture.",
+      "display_title": "Nice Point Podcast",
+      "blurb": "Tennis podcast covering players, tournaments, and sport culture with gossip and analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1672097570": {
+      "topics": [
+        "gaming/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep dive into Magic the Gathering set history through Commander lens.",
+      "display_title": "Shivam And Wheeler Love Magic",
+      "blurb": "Two Magic the Gathering enthusiasts review game sets and card history.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1672610072": {
+      "topics": [
+        "medicine",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cardiologist discussing healthcare innovation, primary care, and medicine's challenges.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1672853222": {
+      "topics": [
+        "health/fitness",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness coaching for perimenopausal/menopausal women focusing on strength training.",
+      "display_title": "Menopause Strength Training",
+      "blurb": "Strength training guidance for women navigating midlife body changes.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1673109764": {
+      "topics": [
+        "education",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discusses AI-powered school models and education innovation with entrepreneurs and educators.",
+      "display_title": "Future of Education Podcast",
+      "blurb": "EdTech founders and educators reimagining K-12 learning with AI and personalization.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1673504840": {
+      "topics": [
+        "news/daily",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news brief with political commentary curated by Newsmax.",
+      "display_title": "The Newsmax Daily",
+      "blurb": "20-minute daily news roundup with political analysis and commentary.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1673526434": {
+      "topics": [
+        "sports/endurance",
+        "adventure/exploration"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swimming adventures, water sports, and mental health benefits of aquatic activities.",
+      "display_title": "MYSWIM",
+      "blurb": "Personal swimming stories, water sports, and aquatic adventures worldwide.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1673596832": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Survivor host Jeff Probst explains production, casting, and creative decisions behind the show.",
+      "display_title": "On Fire with Jeff Probst",
+      "blurb": "Survivor showrunner reveals behind-the-scenes production decisions and casting processes.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1673823428": {
+      "topics": [
+        "tv-film/interviews",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with behind-the-camera professionals from film and TV production.",
+      "display_title": "WRAP DRINKS",
+      "blurb": "Interviews with film and TV production professionals on set life and career paths.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1673858702": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily sports talk about Chicago Cubs with insider analysis and commentary.",
+      "display_title": "Cubs REKAP Podcast",
+      "blurb": "Daily Chicago Cubs analysis, trades, and game commentary.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1673866016": {
+      "topics": [
+        "education",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College admissions expert demystifies application process for students and parents.",
+      "display_title": "Admittedly",
+      "blurb": "College admissions strategies and expert advice for students and parents.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1674036422": {
+      "topics": [
+        "space",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy podcast exploring cosmology, astrophysics, and space science.",
+      "display_title": "The Space Between",
+      "blurb": "Astronomy and space science conversations with researchers and science communicators.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1674044366": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science fiction audio drama series with mysterious creatures and suspenseful narrative.",
+      "display_title": "The Road of Shadows",
+      "blurb": "Sci-fi audio drama series about a man evading mysterious supernatural creatures.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1674359942": {
+      "topics": [
+        "tv-film/reviews",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth analysis of Saturday Night Live's 50+ year history and impact.",
+      "display_title": "Not Ready for Prime Time Project",
+      "blurb": "Saturday Night Live history, episodes, and legacy examined in depth.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1674957140": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MLB insider coverage with current and former players discussing the sport.",
+      "display_title": "Foul Territory",
+      "blurb": "Baseball insider coverage with current and retired MLB players and analysts.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1675443932": {
+      "topics": [
+        "health/mental",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women-focused podcast on trauma, healing, personal growth, and faith.",
+      "display_title": "Girl Just Heal",
+      "blurb": "Women's mental health, healing journeys, and personal growth podcast.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1675737488": {
+      "topics": [
+        "society",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Community violence prevention strategies and practitioners in Black and Brown communities.",
+      "display_title": "New Hood Peace Partners",
+      "blurb": "Community violence prevention work and strategies with practitioners and researchers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1676314916": {
+      "topics": [
+        "music",
+        "history/technology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music industry history covering blog era gatekeepers and rise of digital superstars.",
+      "display_title": "The Blog Era",
+      "blurb": "Music industry history from digital disruption to modern streaming era.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1676329100": {
+      "topics": [
+        "music",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Songwriting career advice from Grammy-nominated songwriter and financial advisor.",
+      "display_title": "Songwriter Soup",
+      "blurb": "Songwriting careers, music industry tips, and financial guidance for artists.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1676489540": {
+      "topics": [
+        "religion/christianity",
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.75
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mix of Christian theology and paranormal phenomena from religious perspective.",
+      "display_title": "Haunted Cosmos",
+      "blurb": "Christian perspectives on paranormal phenomena and spiritual encounters.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1676513108": {
+      "topics": [
+        "health/nutrition",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Functional nutrition podcast for women covering hormones, gut health, and wellness.",
+      "display_title": "Fueled & Free Podcast",
+      "blurb": "Women's nutrition and metabolic health with guidance on hormones and gut.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1676513864": {
+      "topics": [
+        "psychology",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cognitive psychology, linguistics, and human behavior from renowned Harvard professor.",
+      "display_title": "Life Of The Mind",
+      "blurb": "Cognitive psychology and human behavior explored by renowned cognitive scientist.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1676637848": {
+      "topics": [
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Midlife career challenges, AI disruption, ageism, and workplace transformation.",
+      "display_title": "It Gets Late Early",
+      "blurb": "Career advice for experienced workers navigating AI, layoffs, and ageism.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1676769764": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Padel sports culture, players, Premier Padel tour, and equipment.",
+      "display_title": "The Padel Podcast",
+      "blurb": "Padel tennis sport coverage with player interviews and industry news.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1677158558": {
+      "topics": [
+        "health/mental",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ADHD podcast discussing diagnosis, neurodivergence, and related mental health topics.",
+      "display_title": "ADHD Chatter",
+      "blurb": "ADHD, autism, and neurodivergence discussed with experts and personal stories.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1677184070": {
+      "topics": [
+        "computing",
+        "engineering"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI, technology innovation, and builders creating the future with tech leaders.",
+      "display_title": "Possible",
+      "blurb": "Technology and AI innovation with forward-thinking leaders and builders.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1677186116": {
+      "topics": [
+        "education/courses",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Respiratory therapy education with study content and practice questions.",
+      "display_title": "Respiratory Therapy Study Hall",
+      "blurb": "Respiratory therapy education with practice questions and clinical content.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1677426788": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode-by-episode rewatch and analysis of Dawson's Creek with producers.",
+      "display_title": "Back To You, Bob!",
+      "blurb": "Dawson's Creek anniversary rewatch podcast with TV producers and analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1677831398": {
+      "topics": [
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's strength training, empowerment, longevity, and muscle-building guidance.",
+      "display_title": "Stronger by Design",
+      "blurb": "Women's fitness and strength training for longevity and empowerment.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1677842672": {
+      "topics": [
+        "science",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neuroscience and brain function explained through storytelling and research.",
+      "display_title": "Inner Cosmos",
+      "blurb": "Neuroscience and brain function explored through stories and interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1677872366": {
+      "topics": [
+        "science",
+        "nature"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science communication podcast about the future with researchers and scientists.",
+      "display_title": "Seeking A Scientist",
+      "blurb": "Science communication exploring the future through conversations with researchers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1678032422": {
+      "topics": [
+        "culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Meta-podcast about podcasts; essentially a curated news feed in audio format.",
+      "display_title": "New Podcasts",
+      "blurb": "Trailers and announcements for new and noteworthy podcast shows.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1678227992": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Homemaking, gardening, cooking, and household management for modern homemakers.",
+      "display_title": "Untraditionally Traditional",
+      "blurb": "Homemaking, gardening, and home cooking for the modern household.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1678331984": {
+      "topics": [
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Systematic Spanish language instruction building vocabulary and grammar.",
+      "display_title": "LearnCraft Spanish",
+      "blurb": "Spanish language learning with vocabulary, grammar, and conversational practice.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1678816652": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gardening expert Steve Bender answers gardening questions with practical advice.",
+      "display_title": "Ask Grumpy",
+      "blurb": "Gardening advice and tips from Southern Living's Grumpy Gardener.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1678826858": {
+      "topics": [
+        "health/mental",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental health treatment through metabolic interventions and nutrition.",
+      "display_title": "Metabolic Mind",
+      "blurb": "Mental health through metabolic psychiatry and nutritional interventions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1679025926": {
+      "topics": [
+        "science",
+        "nature"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "nature",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Highly specialized agricultural podcast for apple growers; narrow specialized audience.",
+      "display_title": "Scaffolds",
+      "blurb": "Apple orchard management with pest updates and disease forecasting.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1679170946": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MLB roster transactions, trades, and rumors coverage during hot stove season.",
+      "display_title": "MLB Trade Rumors Podcast",
+      "blurb": "MLB trade rumors, transactions, and roster analysis during hot stove season.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-39d15ad9",
+      "classified_at": "2026-08-09T16:50:44.197Z"
     }
   },
-  "built_at": "2026-08-09T08:51:13.312Z",
+  "built_at": "2026-08-09T16:50:44.197Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-09-48a463d1",
+    "last_batch_id": "fresh-2026-08-09-39d15ad9",
     "last_batch_tier": 1
   }
 }
