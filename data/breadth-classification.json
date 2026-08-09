@@ -52948,6 +52948,28 @@
       "batch_id": "fresh-2026-08-09-859fae5d",
       "classified_at": "2026-08-09T00:50:42.131Z"
     },
+    "1660682978": {
+      "topics": [
+        "culture/fashion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beauty and makeup-focused comedy show with guest interviews.",
+      "display_title": "Beautiful and Bothered",
+      "blurb": "Weekly beauty and pop culture commentary with celebrity guest interviews.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
     "1660701356": {
       "topics": [
         "travel"
@@ -53280,13 +53302,961 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-09-859fae5d",
       "classified_at": "2026-08-09T00:50:42.131Z"
+    },
+    "1663942916": {
+      "topics": [
+        "kids-family/parenting",
+        "medicine/biology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Naturopathic doctors discussing pregnancy, fertility, birth, and motherhood.",
+      "display_title": "Healthy As A Mother",
+      "blurb": "Evidence-based and holistic health guidance for fertility, pregnancy, and motherhood.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1664023748": {
+      "topics": [
+        "health/alternative",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Claims to teach healing using energy and alternative medicine; mixes speculative claims with some scientific guests.",
+      "display_title": "Resonance Rising",
+      "blurb": "Alternative approaches to chronic disease recovery using sound, light, and energy practices.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1664299388": {
+      "topics": [
+        "culture/pop-culture",
+        "news/politics"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Investigative series on UFOs and government cover-ups; speculative content mixed with credible whistleblower interviews.",
+      "display_title": "WEAPONIZED",
+      "blurb": "Investigative interviews on UFOs, paranormal phenomena, and alleged government cover-ups.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1664931236": {
+      "topics": [
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political commentary show focused on California governance and election coverage.",
+      "display_title": "The Steve Hilton Show",
+      "blurb": "Political commentary on California politics and government policy.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1665203594": {
+      "topics": [
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental health and wellness discussions with celebrity and expert guests.",
+      "display_title": "The Squeeze",
+      "blurb": "Mental health and wellbeing conversations exploring coping strategies with celebrity guests.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1665244970": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Weekly reviews and analysis of RuPaul's Drag Race episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1665481280": {
+      "topics": [
+        "relationships",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Married couple discussing personal finances, investing, and relationships.",
+      "display_title": "For Better and Worth",
+      "blurb": "Personal finance and relationship insights from a married couple building wealth together.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1665488006": {
+      "topics": [
+        "kids-family/parenting"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motherhood discussions questioning mainstream narratives and emphasizing ancestral wisdom.",
+      "display_title": "Moms Off The Record",
+      "blurb": "Nuanced motherhood conversations exploring parenting practices and holistic health approaches.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1666050632": {
+      "topics": [
+        "kids-family/education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interactive imagination and mindfulness audio adventures for children.",
+      "display_title": "Super Simple Imagination Time",
+      "blurb": "Guided imagination adventures with music and social-emotional learning for children.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1666125722": {
+      "topics": [
+        "medicine/biology",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discusses metabolic health, nutrition, and biology-related medical topics.",
+      "display_title": "The Metabolic Link",
+      "blurb": "Metabolic health and nutrition science discussions with medical experts.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1666435172": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball-focused sports podcast.",
+      "display_title": "SET THE PIPE!!",
+      "blurb": "Volleyball-focused sports discussion and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1666708976": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hunting and outdoor lifestyle podcast with fitness and perseverance themes.",
+      "display_title": "Keep Hammering Collective",
+      "blurb": "Hunting, outdoor sports, and fitness conversations with industry professionals.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1666742066": {
+      "topics": [
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Self-improvement and psychology discussions about personal potential.",
+      "display_title": "Am I the Genius?",
+      "blurb": "Self-improvement conversations exploring personal potential and psychological growth.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1667141474": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball podcast providing analysis and commentary.",
+      "display_title": "Outside The Pins",
+      "blurb": "Volleyball sport analysis and commentary.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1667198522": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive culture and car-focused podcast.",
+      "display_title": "Minnoxide",
+      "blurb": "Automotive culture and car enthusiast discussions.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1667334002": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive retail and industry-focused podcast.",
+      "display_title": "In the Aisles with Derek Bieri",
+      "blurb": "Automotive retail and industry professional discussions.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1667718020": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy Premier League (FPL) soccer podcast with strategic analysis.",
+      "display_title": "Top Bins With Twins",
+      "blurb": "Fantasy Premier League soccer strategy and analysis podcast.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1667951858": {
+      "topics": [
+        "sports/fantasy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football news, strategy, and analysis podcast.",
+      "display_title": "Fantasy Football Daily",
+      "blurb": "Daily fantasy football news and strategic analysis.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1668038660": {
+      "topics": [
+        "science",
+        "math/puzzles"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biostatistics and statistical methodology podcast for researchers.",
+      "display_title": "Biostatistics Podcast",
+      "blurb": "Biostatistics and research methodology discussions for scientists.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1668235178": {
+      "topics": [
+        "education/self-improvement",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal development and psychology-focused show.",
+      "display_title": "The Sabrina Zohar Show",
+      "blurb": "Personal development and psychology conversations exploring human potential.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1668397502": {
+      "topics": [
+        "nature/pets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pet ownership advice and behavioral guidance.",
+      "display_title": "The Pet Parent Hotline",
+      "blurb": "Pet behavior and care advice for dog and cat owners.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1668436814": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gardening tips and home garden growing guidance.",
+      "display_title": "Garden Guys",
+      "blurb": "Gardening tips and home growing advice from experienced gardeners.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1669038344": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and entertainment reviews with nostalgic retrospectives.",
+      "display_title": "Nostalgia Critic",
+      "blurb": "Comedic reviews of TV, film, and pop culture with nostalgic analysis.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1669058216": {
+      "topics": [
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast covering various how-to and practical topics.",
+      "display_title": "The Snowjobs Podcast",
+      "blurb": "Educational discussions on practical skills and knowledge.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1669604504": {
+      "topics": [
+        "culture/pop-culture",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Couple discussing life, relationships, and unplanned situations.",
+      "display_title": "The Unplanned Podcast",
+      "blurb": "Relationships and lifestyle conversations from a married couple.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1669646168": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game reviews and comedy commentary.",
+      "display_title": "Zero Punctuation",
+      "blurb": "Rapid-fire video game reviews with comedic commentary and critique.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1669806434": {
+      "topics": [
+        "nature/pets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog rescue and pet adoption advocacy podcast.",
+      "display_title": "Pick of the Litter Podcast",
+      "blurb": "Dog rescue and pet adoption stories and advocacy.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1669923788": {
+      "topics": [
+        "medicine/biology",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neurology medical education podcast from MedLink.",
+      "display_title": "MedLink Neurology Podcast",
+      "blurb": "Neurology medical education and clinical discussions for healthcare professionals.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1670019206": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Commercial whiskey guide and tasting podcast (Japanese title).",
+      "display_title": "業務用威士忌指南",
+      "blurb": "Commercial whiskey selection and tasting guide for bartenders and hospitality professionals.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1670202284": {
+      "topics": [
+        "sports",
+        "news/daily"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports news and analysis podcast.",
+      "display_title": "Geek Warning",
+      "blurb": "Sports news and fan commentary.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1670675234": {
+      "topics": [
+        "economics/markets",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Forbes business news and financial market updates.",
+      "display_title": "Forbes Topline",
+      "blurb": "Daily business news and financial market analysis from Forbes.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1670705840": {
+      "topics": [
+        "automotive/racing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Formula 1 racing podcast with detailed race analysis.",
+      "display_title": "P1 with Matt and Tommy",
+      "blurb": "Formula 1 racing news, analysis, and commentary.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1670741192": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Latin American soccer podcast covering futbol in the Americas.",
+      "display_title": "Futbol Americas",
+      "blurb": "Latin American soccer news and match analysis.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1670913020": {
+      "topics": [
+        "music",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "50-year history of hip-hop music and culture.",
+      "display_title": "50 Years of Hip Hop",
+      "blurb": "Hip-hop music history and cultural impact over five decades.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1671039476": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast with casual conversation.",
+      "display_title": "Guys: With Bryan Quinby",
+      "blurb": "Comedy and casual conversation podcast.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1671380024": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baseball news and insider access podcast.",
+      "display_title": "Brewers All Access",
+      "blurb": "Baseball news and behind-the-scenes access.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:51:13.312Z"
+    },
+    "1671384614": {
+      "topics": [
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business management and leadership insights podcast.",
+      "display_title": "Time on Wing Podcast",
+      "blurb": "Business management and leadership strategy discussions.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1671500810": {
+      "topics": [
+        "sports/golf"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf sport discussion and analysis podcast.",
+      "display_title": "Talk Birdie To Me",
+      "blurb": "Golf sport news, analysis, and commentary.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1671608708": {
+      "topics": [
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language learning podcast with Puerto Rican culture focus.",
+      "display_title": "Learn Spanish a lo Boricua",
+      "blurb": "Spanish language learning with Puerto Rican cultural context.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
+    },
+    "1671641810": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis sport conversations and interviews.",
+      "display_title": "SERVING ACES",
+      "blurb": "Tennis sport interviews and professional conversations.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5-20251001 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-48a463d1",
+      "classified_at": "2026-08-09T08:50:20.393Z"
     }
   },
-  "built_at": "2026-08-09T00:51:03.134Z",
+  "built_at": "2026-08-09T08:51:13.312Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-09-859fae5d",
+    "last_batch_id": "fresh-2026-08-09-48a463d1",
     "last_batch_tier": 1
   }
 }
