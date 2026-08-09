@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-08T11:44:21.163Z",
+  "built_at": "2026-08-09T11:43:24.723Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -11153,6 +11153,81 @@
       "regulation",
       "banking",
       "interview"
+    ],
+    "the-ancients--shapur-i-rome-s-greatest-enemy": [
+      "persia",
+      "ancient-rome",
+      "sasanian-empire",
+      "military-history",
+      "ancient-history",
+      "empires",
+      "war"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1614": [
+      "advice",
+      "19th-century",
+      "history-of-science",
+      "engineering-history",
+      "self-help"
+    ],
+    "twenty-minute-vc--20vc-the-ai-boom-will-create": [
+      "venture-capital",
+      "startups",
+      "fundraising",
+      "tech-industry",
+      "ai",
+      "seed-investing"
+    ],
+    "around-the-house-eric-g--don-t-fall-behind-your-ultimate": [
+      "home-improvement",
+      "home-repair",
+      "maintenance",
+      "seasonal-maintenance",
+      "roofing"
+    ],
+    "around-the-house-eric-g--from-drips-to-disasters-stop-water": [
+      "home-improvement",
+      "home-repair",
+      "water",
+      "insurance",
+      "smart-home",
+      "leak-detection"
+    ],
+    "philosophize-this--episode-251-you-must-change-your": [
+      "philosophy",
+      "peter-sloterdijk",
+      "existentialism",
+      "continental-philosophy",
+      "heidegger"
+    ],
+    "i-know-dino--volcanoes-and-extinctions-with-history-daily": [
+      "dinosaurs",
+      "extinction",
+      "paleontology",
+      "birds",
+      "natural-disasters",
+      "crossover"
+    ],
+    "astonishing-legends--amy-bruni-s-cuisine-to-kill": [
+      "paranormal",
+      "ghost-stories",
+      "true-crime",
+      "history",
+      "cooking"
+    ],
+    "casefile--casefile-extra-maria-cruz": [
+      "true-crime",
+      "missing-persons",
+      "cold-case",
+      "new-york",
+      "disappearance"
+    ],
+    "wow-in-the-world--wewow-on-the-weekend-baby-dennis": [
+      "kids",
+      "science-for-kids",
+      "family",
+      "animal-behavior",
+      "variety-show"
     ]
   }
 }

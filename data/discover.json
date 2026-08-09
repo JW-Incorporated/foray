@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-08T11:44:21.163Z",
+  "built_at": "2026-08-09T11:43:24.723Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -26114,6 +26114,217 @@
         "economics/markets"
       ],
       "hook": "Former SEC chair Gary Gensler weighs whether America's AI bet could trigger the next crash.",
+      "explicit": false
+    },
+    {
+      "id": "the-ancients--shapur-i-rome-s-greatest-enemy",
+      "show": "The Ancients",
+      "title": "Shapur I: Rome's Greatest Enemy?",
+      "apple_collection_id": 1520403988,
+      "apple_track_id": 1000780943610,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/shapur-i-romes-greatest-enemy/id1520403988?i=1000780943610&uo=4",
+      "release_date": "2026-08-09",
+      "duration_min": 58,
+      "duration_sec": 3495,
+      "audio_url": "https://sphinx.acast.com/p/acast/s/the-ancients/e/6a75bc15485923987cc23ead/media.mp3?tk=eyJ0ayI6ImRlZmF1bHQiLCJhZHMiOnRydWUsInNwb25zIjp0cnVlLCJzdGF0dXMiOiJwdWJsaWMifQ==&sig=Gs19nvO9VlErHCqOZ76wCJ38Lb6xuu2-L5odOYSanUc",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 55933387,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/6c/94/31/6c943113-5484-a41d-5cb7-bf606ff289ef/mza_6401313720037127611.jpeg/600x600bb.jpg",
+      "topics": [
+        "history/military-ancient"
+      ],
+      "hook": "Shapur I rebuilt the Sasanian Persian Empire, crushed Roman armies, and captured Emperor Valerian.",
+      "explicit": false
+    },
+    {
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1614",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 1614: Advice for Living, 1836",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000781155928,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1614-advice-for-living-1836/id121493645?i=1000781155928&uo=4",
+      "release_date": "2026-08-09",
+      "duration_min": 4,
+      "duration_sec": 227,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260809.mp3?srcid=apple-podcasts",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 1812345,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "topics": [
+        "history/technology"
+      ],
+      "hook": "A short segment on practical advice for living, drawn from the year 1836.",
+      "explicit": false
+    },
+    {
+      "id": "twenty-minute-vc--20vc-the-ai-boom-will-create",
+      "show": "The Twenty Minute VC (20VC)",
+      "title": "20VC: The AI Boom Will Create Enormous Roadkill: Who Wins & Loses | Why Founders Should Never Take Multi-Stage Money at Seed | Why Triple, Triple, Double, Double is Good Enough",
+      "apple_collection_id": 958230465,
+      "apple_track_id": 1000781078343,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/20vc-the-ai-boom-will-create-enormous-roadkill-who/id958230465?i=1000781078343&uo=4",
+      "release_date": "2026-08-08",
+      "duration_min": 85,
+      "duration_sec": 5112,
+      "audio_url": "https://traffic.libsyn.com/secure/thetwentyminutevc/David_Frankel__Founder_Collective_2.mp3?dest-id=240976",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 81787200,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cb/4a/f9/cb4af9a2-5857-c3f1-30d4-14395af9a14f/mza_11350890235230424535.jpeg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "Seed investor David Frankel on fund sizing, AI bubble roadkill, and staying disciplined at seed.",
+      "explicit": true
+    },
+    {
+      "id": "around-the-house-eric-g--don-t-fall-behind-your-ultimate",
+      "show": "Around the House with Eric G",
+      "title": "Don't Fall Behind: Your Ultimate Guide to Autumn Home Prep!",
+      "apple_collection_id": 869377733,
+      "apple_track_id": 1000781113788,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/dont-fall-behind-your-ultimate-guide-to-autumn-home-prep/id869377733?i=1000781113788&uo=4",
+      "release_date": "2026-08-08",
+      "duration_min": 40,
+      "duration_sec": 2386,
+      "audio_url": "https://episodes.captivate.fm/episode/95c360e7-f316-4016-9207-7f73cf2a48aa.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 57274269,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/55/d0/42/55d042d1-d595-0fce-c14a-04e2d4d48505/mza_8757307005226717506.jpg/600x600bb.jpg",
+      "topics": [
+        "craft/diy-home"
+      ],
+      "hook": "Eric G walks through fall home prep: gutters, roof inspection, and rainy-season readiness.",
+      "explicit": false
+    },
+    {
+      "id": "around-the-house-eric-g--from-drips-to-disasters-stop-water",
+      "show": "Around the House with Eric G",
+      "title": "From Drips to Disasters: Stop Water Damage Before It Starts!",
+      "apple_collection_id": 869377733,
+      "apple_track_id": 1000781097270,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/from-drips-to-disasters-stop-water-damage-before-it-starts/id869377733?i=1000781097270&uo=4",
+      "release_date": "2026-08-08",
+      "duration_min": 38,
+      "duration_sec": 2280,
+      "audio_url": "https://episodes.captivate.fm/episode/b9167a1a-77a9-41e1-9cfc-804f0571f6b8.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 54729590,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/55/d0/42/55d042d1-d595-0fce-c14a-04e2d4d48505/mza_8757307005226717506.jpg/600x600bb.jpg",
+      "topics": [
+        "craft/diy-home"
+      ],
+      "hook": "Eric G and Ian Greene break down smart leak detection to stop water damage early.",
+      "explicit": false
+    },
+    {
+      "id": "philosophize-this--episode-251-you-must-change-your",
+      "show": "Philosophize This!",
+      "title": "Episode #251 ... You Must Change Your Life, Pt. 2 - The Worlds That Make Us",
+      "apple_collection_id": 659155419,
+      "apple_track_id": 1000781066088,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-251-you-must-change-your-life-pt-2-the-worlds/id659155419?i=1000781066088&uo=4",
+      "release_date": "2026-08-08",
+      "duration_min": 35,
+      "duration_sec": 2125,
+      "audio_url": "https://pdst.fm/e/pscrb.fm/rss/p/mgln.ai/e/433/claritaspod.com/measure/traffic.megaphone.fm/ADV2834643555.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/c1/b7/51/c1b751eb-ab38-f11c-d6c1-0a9de79b7061/mza_12134548126279202007.jpg/600x600bb.jpg",
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "hook": "Part two on Sloterdijk's You Must Change Your Life: Heidegger, symbolic immunity, and modern cynicism.",
+      "explicit": false
+    },
+    {
+      "id": "i-know-dino--volcanoes-and-extinctions-with-history-daily",
+      "show": "I Know Dino: The Big Dinosaur Podcast",
+      "title": "Volcanoes and Extinctions with HIstory Daily",
+      "apple_collection_id": 960976813,
+      "apple_track_id": 1000781162003,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/volcanoes-and-extinctions-with-history-daily/id960976813?i=1000781162003&uo=4",
+      "release_date": "2026-08-08",
+      "duration_min": 33,
+      "duration_sec": 1969,
+      "audio_url": "https://pscrb.fm/rss/p/mgln.ai/e/802/rss.art19.com/episodes/a1d95ce9-6bbc-40d5-8169-b50cfa2c5a73.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 31516630,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/49/6c/4c/496c4c91-e216-77d6-64a4-8096e6f89f48/mza_14223214653639207080.jpeg/600x600bb.jpg",
+      "topics": [
+        "nature/paleontology"
+      ],
+      "hook": "History Daily's Lindsay Graham joins to cover the last great auks and Krakatoa's 1883 eruption.",
+      "explicit": false
+    },
+    {
+      "id": "astonishing-legends--amy-bruni-s-cuisine-to-kill",
+      "show": "Astonishing Legends",
+      "title": "Amy Bruni’s Cuisine to Kill For",
+      "apple_collection_id": 923527373,
+      "apple_track_id": 1000781136650,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/amy-brunis-cuisine-to-kill-for/id923527373?i=1000781136650&uo=4",
+      "release_date": "2026-08-09",
+      "duration_min": 88,
+      "duration_sec": 5260,
+      "audio_url": "https://pdst.fm/e/arttrk.com/p/ABMA5/clrtpod.com/m/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/audioboom.com/posts/8937601.mp3?modified=1786231741&sid=4322549&source=rss&rssua=Foray",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ad/76/bc/ad76bc47-5cc2-3a33-3831-eb131d4056ed/mza_6281920426640935874.jpg/600x600bb.jpg",
+      "topics": [
+        "paranormal",
+        "history"
+      ],
+      "hook": "Amy Bruni discusses her new cookbook pairing true ghost stories with haunted-restaurant recipes and history.",
+      "explicit": false
+    },
+    {
+      "id": "casefile--casefile-extra-maria-cruz",
+      "show": "Casefile True Crime",
+      "title": "Casefile Extra: Maria Cruz",
+      "apple_collection_id": 998568017,
+      "apple_track_id": 1000779394989,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/casefile-extra-maria-cruz/id998568017?i=1000779394989&uo=4",
+      "release_date": "2026-08-08",
+      "duration_min": 59,
+      "duration_sec": 3526,
+      "audio_url": "https://sphinx.acast.com/p/open/s/679acff465f74095106abfaa/e/6a76e7d1a34367fcf5f53cc8/media.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 84948478,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/32/81/a3/3281a345-6fa5-1d0d-b0bc-f02b0850a0ae/mza_17562537467118278179.jpeg/600x600bb.jpg",
+      "topics": [
+        "true-crime"
+      ],
+      "hook": "Maria Cruz vanished after a 2003 doctor's visit, leaving investigators no trace of where she went.",
+      "explicit": true
+    },
+    {
+      "id": "wow-in-the-world--wewow-on-the-weekend-baby-dennis",
+      "show": "Wow in the World",
+      "title": "WeWow on the Weekend: Baby Dennis and Caring Chimpanzees!",
+      "apple_collection_id": 1233834541,
+      "apple_track_id": 1000781163399,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/wewow-on-the-weekend-baby-dennis-and-caring-chimpanzees/id1233834541?i=1000781163399&uo=4",
+      "release_date": "2026-08-09",
+      "duration_min": 23,
+      "duration_sec": 1352,
+      "audio_url": "https://pscrb.fm/rss/p/rss.art19.com/episodes/467c8390-ad4d-42d4-89be-9c577635690f.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 21636493,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ea/7f/81/ea7f8136-ed50-8cbc-150f-98b55652fd01/mza_494748641219422199.jpeg/600x600bb.jpg",
+      "topics": [
+        "kids-family/education"
+      ],
+      "hook": "Dennis and Reggie's family variety show mixes perfumes, skydiving, and chimpanzee science for kids.",
       "explicit": false
     }
   ]
