@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-09T00:31:25.138Z",
+  "built_at": "2026-08-09T08:30:56.799Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-09-05e5d29f",
+    "last_batch_id": "fresh-2026-08-09-18635675",
     "last_batch_tier": 1
   },
   "entries": {
@@ -139307,12 +139307,32 @@
     },
     "1678867489": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "psychology",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Brain science and cognitive performance optimization for building mental capacity.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1679019143": {
       "topics": [
@@ -139371,10 +139391,24 @@
     },
     "1679137573": {
       "topics": [
-        "religion/islam"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Polish Catholic priest discussing theology, pastoral care, and spiritual retreat.",
+      "display_title": "Ks. Piotr Pawlukiewicz",
+      "blurb": "Teachings and retreats from Polish Catholic theologian and pastor.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1679170946": {
       "topics": [
@@ -139385,11 +139419,24 @@
     },
     "1679203927": {
       "topics": [
-        "space",
-        "science"
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language podcast explaining how the universe works, planets, black holes.",
+      "display_title": "Conversemos de Astronomía",
+      "blurb": "Spanish-language astronomy discussions covering planets, black holes, and cosmic phenomena.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1679258812": {
       "topics": [
@@ -139560,11 +139607,24 @@
     },
     "1679777323": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical business advice for running profitable, calm companies.",
+      "display_title": "Jason On Firms Podcast",
+      "blurb": "Practical tips for running more profitable, calm, and efficient businesses.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1679817767": {
       "topics": [
@@ -139666,10 +139726,24 @@
     },
     "1680226771": {
       "topics": [
-        "sports/rugby"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "English-speaking Italian rugby podcast covering rugby news and analysis.",
+      "display_title": "Spritz & Scrums",
+      "blurb": "Italian rugby podcast covering Benetton Rugby, matches, and Italian rugby culture.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1680238547": {
       "topics": [
@@ -139763,11 +139837,29 @@
     },
     "1680627835": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "food/cooking-science",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Registered dietitian simplifies macronutrient science for practical nutrition.",
+      "display_title": "Macros Made Easy",
+      "blurb": "Nutrition simplified: a registered dietitian explains macros and balanced eating.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1680632799": {
       "topics": [
@@ -139810,10 +139902,24 @@
     },
     "1680747031": {
       "topics": [
-        "fiction/sci-fi"
+        "craft/filmmaking"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sci-fi audio drama production; narrative media format.",
+      "display_title": "Deviser",
+      "blurb": "Sci-fi horror audio drama series.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:56.799Z"
     },
     "1680818574": {
       "topics": [
@@ -139999,10 +140105,24 @@
     },
     "1681682155": {
       "topics": [
-        "sports/tennis"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ATP tennis analysis and coverage from multiple perspectives and platforms.",
+      "display_title": "Painting Lines Podcast",
+      "blurb": "Professional ATP tennis analysis, interviews, and match coverage.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1681700182": {
       "topics": [
@@ -140081,11 +140201,29 @@
     },
     "1682131345": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/biomechanics",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physical therapist helping runners prevent and recover from running injuries.",
+      "display_title": "Rehab For Runners",
+      "blurb": "Physical therapy guidance for preventing running injuries and maintaining fitness.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1682160500": {
       "topics": [
@@ -140097,10 +140235,24 @@
     },
     "1682167135": {
       "topics": [
-        "religion/spirituality"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Spiritual consciousness exploration and techniques.",
+      "display_title": "Astral Realms",
+      "blurb": "Spiritual exploration and consciousness techniques.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:56.799Z"
     },
     "1682198984": {
       "topics": [
@@ -140193,10 +140345,24 @@
     },
     "1682905063": {
       "topics": [
-        "sports/cricket"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Indian Women's Premier League cricket match analysis and discussion.",
+      "display_title": "The Boundary Line",
+      "blurb": "Women's Premier League cricket analysis and match discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1682912986": {
       "topics": [
@@ -140276,10 +140442,24 @@
     },
     "1683405079": {
       "topics": [
-        "true-crime"
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Investigative true crime mystery narratives.",
+      "display_title": "Believe in Magic",
+      "blurb": "Investigative true crime stories.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:56.799Z"
     },
     "1683411536": {
       "topics": [
@@ -140297,10 +140477,29 @@
     },
     "1683472603": {
       "topics": [
-        "religion/spirituality"
+        "philosophy/ideas",
+        "psychology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Spirituality, emotional health, healing, and spiritual awakening discussion.",
+      "display_title": "Awakening Process 101",
+      "blurb": "Discussions on spirituality, emotional healing, and personal growth.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1683487505": {
       "topics": [
@@ -140362,18 +140561,45 @@
     },
     "1683845677": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Harvard Business Review strategies for building and scaling businesses.",
+      "display_title": "HBR On Strategy",
+      "blurb": "Business strategy frameworks for building, innovating, and scaling companies.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1683899359": {
       "topics": [
-        "sports/golf"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf equipment retailer podcast featuring instruction and industry talk.",
+      "display_title": "2nd Swing Thoughts",
+      "blurb": "Golf instruction, equipment discussion, and industry expertise.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1683905652": {
       "topics": [
@@ -140501,11 +140727,24 @@
     },
     "1684351915": {
       "topics": [
-        "health/mental",
         "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Explores strengths and challenges of autism and ADHD neurotype.",
+      "display_title": "AuDHD Flourishing",
+      "blurb": "Psychology and support for people with autism and ADHD.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1684408059": {
       "topics": [
@@ -140539,10 +140778,29 @@
     },
     "1684550335": {
       "topics": [
-        "health/fitness"
+        "sports/biomechanics",
+        "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Pregnancy, postpartum, and pelvic health guidance for female athletes.",
+      "display_title": "The Barbell Mamas Podcast",
+      "blurb": "Fitness and health guidance for pregnant and postpartum women.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1684581201": {
       "topics": [
@@ -140578,10 +140836,24 @@
     },
     "1684800547": {
       "topics": [
-        "travel"
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tropical lifestyle and travel relaxation content.",
+      "display_title": "License to Chill",
+      "blurb": "Tropical lifestyle and travel discussions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:56.799Z"
     },
     "1684816356": {
       "topics": [
@@ -140593,10 +140865,24 @@
     },
     "1684883107": {
       "topics": [
-        "culture/design"
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tabletop RPG design analysis breaking down individual game mechanics.",
+      "display_title": "Dice Exploder",
+      "blurb": "Tabletop RPG design analysis and game mechanics exploration.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1684983263": {
       "topics": [
@@ -140711,10 +140997,24 @@
     },
     "1685691481": {
       "topics": [
-        "true-crime"
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "True crime investigation of fraud case.",
+      "display_title": "Scamanda",
+      "blurb": "True crime investigation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:56.799Z"
     },
     "1685720261": {
       "topics": [
@@ -140751,7 +141051,21 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mechanic's reflections on automotive industry challenges and toll.",
+      "display_title": "The Jaded Mechanic Podcast",
+      "blurb": "Automotive industry reflections and mechanic's perspective on the trade.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1685930399": {
       "topics": [
@@ -140799,10 +141113,29 @@
     },
     "1686112183": {
       "topics": [
-        "nature"
+        "nature",
+        "nature/ocean-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fishing history, present, and future from Irish coastal perspective.",
+      "display_title": "East Pass Podcast",
+      "blurb": "Fishing exploration covering history, current practices, and future.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1686166770": {
       "topics": [
@@ -140865,10 +141198,24 @@
     },
     "1686453271": {
       "topics": [
-        "travel"
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Conversations about building business and life while moving abroad.",
+      "display_title": "The Move Abroad Coach",
+      "blurb": "Discussions on building business and lifestyle abroad.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1686474540": {
       "topics": [
@@ -141207,10 +141554,24 @@
     },
     "1687839937": {
       "topics": [
-        "kids-family/parenting"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Christian parenting humor and faith-based family encouragement.",
+      "display_title": "MESSmerized",
+      "blurb": "Christian perspectives on marriage, family, and parenting.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1687840766": {
       "topics": [
@@ -141286,10 +141647,24 @@
     },
     "1688312089": {
       "topics": [
-        "gaming"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "News and media commentary with critical perspective.",
+      "display_title": "The Josh Carr Show",
+      "blurb": "News commentary and media criticism.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:56.799Z"
     },
     "1688396186": {
       "topics": [
@@ -141537,10 +141912,29 @@
     },
     "1689434107": {
       "topics": [
-        "science/physics"
+        "science",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Modern physics journey examining fine-tuning and theological implications.",
+      "display_title": "Physics to God",
+      "blurb": "Physics exploration and theological implications of modern science.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1689453293": {
       "topics": [
@@ -141756,11 +142150,29 @@
     },
     "1690154299": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports",
+        "nature"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sea swimming and marine environment focus from Irish coastal perspective.",
+      "display_title": "From A to Sea",
+      "blurb": "Sea swimming and Irish coastal environment exploration.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1690170622": {
       "topics": [
@@ -141787,10 +142199,24 @@
     },
     "1690260745": {
       "topics": [
-        "news/commentary"
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Video game discussion and industry analysis.",
+      "display_title": "Punching Up",
+      "blurb": "Nintendo video game news and analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:56.799Z"
     },
     "1690377386": {
       "topics": [
@@ -141994,10 +142420,24 @@
     },
     "1690898293": {
       "topics": [
-        "science/chemistry"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career acceleration strategies from top STEM professionals.",
+      "display_title": "STEAM Success Blueprint",
+      "blurb": "Career strategies and success patterns from STEM professionals.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1690962274": {
       "topics": [
@@ -142015,10 +142455,24 @@
     },
     "1691020723": {
       "topics": [
-        "tv-film/interviews"
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film analysis and legacy of action movie Speed and director Jan de Bont.",
+      "display_title": "50 MPH",
+      "blurb": "Film analysis and making of the movie Speed.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1691025015": {
       "topics": [
@@ -142030,10 +142484,24 @@
     },
     "1691053027": {
       "topics": [
-        "comedy/stand-up"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hebrew-language comedy podcast about absurd reviews and critics.",
+      "display_title": "מתחת לכל ביקורת",
+      "blurb": "Hebrew-language comedy about absurd reviews and criticism.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1691070228": {
       "topics": [
@@ -142065,18 +142533,45 @@
     },
     "1691170585": {
       "topics": [
-        "sports",
-        "news"
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Remote control hobby coverage including racing, drifting, off-road.",
+      "display_title": "RC Underground Radio",
+      "blurb": "Remote control hobby discussion including racing and off-road.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1691199979": {
       "topics": [
-        "culture/books"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genre literature discussion and analysis.",
+      "display_title": "Shelved By Genre",
+      "blurb": "Genre literature discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:56.799Z"
     },
     "1691240203": {
       "topics": [
@@ -142117,17 +142612,45 @@
     },
     "1691341435": {
       "topics": [
-        "sports/golf"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf broadcaster panel discussing professional golf tour news.",
+      "display_title": "The Chipping Forecast",
+      "blurb": "Professional golf tour analysis and news coverage.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1691449153": {
       "topics": [
-        "kids-family/education"
+        "business/founders"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Homeschooling programs and educational resources.",
+      "display_title": "Homeschool Our Way",
+      "blurb": "Homeschooling programs and resources.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:56.799Z"
     },
     "1691452657": {
       "topics": [
@@ -142210,10 +142733,24 @@
     },
     "1691890561": {
       "topics": [
-        "sports/baseball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "University of Oklahoma baseball team coverage and analysis.",
+      "display_title": "Under the Visor Sooners",
+      "blurb": "Oklahoma University Sooners baseball team coverage and analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1691892722": {
       "topics": [
@@ -142238,10 +142775,24 @@
     },
     "1691954785": {
       "topics": [
-        "comedy/interviews"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedian interviewing people about dating and relationships humorously.",
+      "display_title": "First Date with Lauren Compton",
+      "blurb": "Comedian interviewing people about dating and relationships.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1692014664": {
       "topics": [
@@ -142275,17 +142826,45 @@
     },
     "1692043957": {
       "topics": [
-        "religion/spirituality"
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Theological insights from reverend doctor on spiritual kingdom messages.",
+      "display_title": "Experiencing God in New Ways",
+      "blurb": "Theological insights and spiritual teachings.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1692046405": {
       "topics": [
-        "sports/volleyball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Taiwanese volleyball podcast sharing personal stories from athletes.",
+      "display_title": "這個我們場外說",
+      "blurb": "Taiwanese volleyball podcast with athlete stories and interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-18635675",
+      "classified_at": "2026-08-09T08:30:39.197Z"
     },
     "1692046415": {
       "topics": [
