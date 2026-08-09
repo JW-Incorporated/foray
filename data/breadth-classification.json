@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-08T16:37:42.259Z",
+  "built_at": "2026-08-09T00:38:05.484Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-08-042ca38a",
+    "last_batch_id": "fresh-2026-08-09-c0b5d654",
     "last_batch_tier": 1
   },
   "entries": {
@@ -148524,10 +148524,35 @@
     },
     "1706820976": {
       "topics": [
+        "health/mental",
+        "culture/books",
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "CALLING HOME with Whitney Goodman, LMFT focuses on Mental Health.",
+      "display_title": "CALLING HOME with Whitney Goodman, LMFT",
+      "blurb": "Whitney Goodman is a licensed marriage and family therapist and author on a mission to help adult family members have better relationships. Each ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1706843972": {
       "topics": [
@@ -149317,12 +149342,35 @@
     },
     "1708993594": {
       "topics": [
-        "medicine/biology",
         "science",
-        "nature"
+        "business/startups",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Data in Biotech focuses on Science.",
+      "display_title": "Data in Biotech",
+      "blurb": "Data in Biotech is a fortnightly podcast exploring how companies leverage data to drive innovation in life sciences. Every two weeks, Ross Katz, Princ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1709029431": {
       "topics": [
@@ -150629,10 +150677,35 @@
     },
     "1712716378": {
       "topics": [
-        "music"
+        "music",
+        "business",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Big Interview with Dan Rather focuses on Music.",
+      "display_title": "The Big Interview with Dan Rather",
+      "blurb": "Dan Rather sits down with the biggest names in the music business for thoughtful conversations, insights, and revelations you won't hear anywhere...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1712717917": {
       "topics": [
@@ -150678,10 +150751,40 @@
     },
     "1712787796": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "kids-family/parenting",
+        "kids-family/stories",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.75
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "چی؟کجا؟چرا؟ | what?where?why? focuses on Education for Kids.",
+      "display_title": "چی؟کجا؟چرا؟ | what?where?why?",
+      "blurb": "پادکستی برای بچه‌هایی که سوال‌هاشون رو جدی می‌گیرین. برای ارسال صدای همینجا کلیک کنین https://darwagkids.com/ Hosted on Acast. See acast.com/priv...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:47.131Z"
     },
     "1712799353": {
       "topics": [
@@ -150742,11 +150845,30 @@
     },
     "1712912098": {
       "topics": [
-        "space",
-        "science"
+        "music",
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Vector focuses on Music.",
+      "display_title": "The Vector",
+      "blurb": "The global economy is launching into space - are you? Tune into the Vector, Space Commerce Institute’s monthly show exploring the trends, topics,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1712968933": {
       "topics": [
@@ -150890,10 +151012,29 @@
     "1713407788": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Motivation focuses on Startups & deep tech.",
+      "display_title": "Daily Motivation",
+      "blurb": "Welcome to \"Daily Motivation,\" the ultimate podcast designed to empower you to conquer your goals and embrace a life of positivity and success. E...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:38:05.484Z"
     },
     "1713410581": {
       "topics": [
@@ -150997,10 +151138,30 @@
     },
     "1714021342": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/after-shows",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Babes in the Conclave - A Traitors Podcast focuses on After Shows.",
+      "display_title": "Babes in the Conclave - A Traitors Podcast",
+      "blurb": "Australian Traitors Season 2 contestant Annabel Claire Fidler and Australian Survivor Brain Philly Ferguson ( aka ChiliPhilly) cover The Traitors...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:47.131Z"
     },
     "1714031449": {
       "topics": [
@@ -151012,10 +151173,25 @@
     },
     "1714039702": {
       "topics": [
-        "tv-film/interviews"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Permit Room focuses on Culture.",
+      "display_title": "Permit Room",
+      "blurb": "Permit Room is the latest Tenglish podcast that is hosted by Sree Saran. Listen to him banter with guests from all walks of life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:47.131Z"
     },
     "1714100207": {
       "topics": [
@@ -151027,10 +151203,25 @@
     },
     "1714175986": {
       "topics": [
-        "culture/art"
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baroque B*tches - An Art History Gossip Podcast focuses on History.",
+      "display_title": "Baroque B*tches - An Art History Gossip Podcast",
+      "blurb": "High brow art… low brow tea! Our podcast is a light dive into your favorite artists juicy drama. Art is for everyone on this show and we’re servi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1714188967": {
       "topics": [
@@ -151042,10 +151233,25 @@
     },
     "1714198414": {
       "topics": [
-        "sports/cricket"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket Without Borders focuses on Sports.",
+      "display_title": "Cricket Without Borders",
+      "blurb": "What's happening in women's cricket around the world - the game, the people, the personalities!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1714203488": {
       "topics": [
@@ -151065,10 +151271,30 @@
     },
     "1714266208": {
       "topics": [
-        "science/physics"
+        "culture/books",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Particle Mysteries: The Coldest Case focuses on Books.",
+      "display_title": "Particle Mysteries: The Coldest Case",
+      "blurb": "A podcast that takes you on a journey through the enigmatic depths of the cosmos. In this series, hosts Joseph Piergrossi, a science writer worki...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1714285558": {
       "topics": [
@@ -151099,10 +151325,25 @@
     },
     "1714299370": {
       "topics": [
-        "business/marketing"
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "EmpowerU focuses on Business.",
+      "display_title": "EmpowerU",
+      "blurb": "This podcast seeks to empower you as a person, leader, operator, and customer to gain knowledge and confidence while consuming it from the livest...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1714331000": {
       "topics": [
@@ -151156,10 +151397,25 @@
     },
     "1714491190": {
       "topics": [
-        "automotive"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Driven to Ride focuses on Sports.",
+      "display_title": "Driven to Ride",
+      "blurb": "Driven to Ride shares the stories of motorcyclists from all walks of life: prominent journalists, racers, celebrities who you didn’t know rode motorcy",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1714512374": {
       "topics": [
@@ -151293,10 +151549,40 @@
     },
     "1714672018": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/parenting",
+        "kids-family/stories",
+        "nature/earth-science",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.75
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Snuggle: Kids bedtime stories focuses on Parenting.",
+      "display_title": "Snuggle: Kids bedtime stories",
+      "blurb": "Snuggle is the calming story-telling podcast for kids! Enter a cozy world of imagination perfect for bedtime, quiet time, or any time you want to...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:47.131Z"
     },
     "1714702092": {
       "topics": [
@@ -151346,7 +151632,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chiclets Game Notes focuses on Hockey.",
+      "display_title": "Chiclets Game Notes",
+      "blurb": "undefined",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:38:05.484Z"
     },
     "1715029209": {
       "topics": [
@@ -151385,11 +151686,25 @@
     },
     "1715138806": {
       "topics": [
-        "music",
-        "history"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Album Anniversary Podcast! focuses on Music.",
+      "display_title": "The Album Anniversary Podcast!",
+      "blurb": "Over the last couple years I have documented the released date of thousands of albums and every day on social media I post about those albums. I ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1715193758": {
       "topics": [
@@ -151408,10 +151723,25 @@
     },
     "1715224846": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Am I? An Am I The Asshole (AITA) Podcast focuses on Comedy.",
+      "display_title": "Am I? An Am I The Asshole (AITA)",
+      "blurb": "Michelle Burkey and Tracey Johnson attempt to answer the age-old question, \"Am I The Asshole?\" using examples from the popular Reddit sub r/AmIth...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:47.131Z"
     },
     "1715377331": {
       "topics": [
@@ -151499,10 +151829,30 @@
     },
     "1715855014": {
       "topics": [
-        "craft/diy-home"
+        "space",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Country Proud Living  Nurturing Home, Empowered Self focuses on Space.",
+      "display_title": "Country Proud Living  Nurturing Home, Empowered Self",
+      "blurb": "Country Proud Living is a podcast for someone who longs for a slower, more intentional life and a home that truly supports who they are becoming....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1715867797": {
       "topics": [
@@ -151804,10 +152154,25 @@
     },
     "1716904762": {
       "topics": [
-        "sports/rugby"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "England Rugby Game Developers Podcast focuses on Sports.",
+      "display_title": "England Rugby Game Developers Podcast",
+      "blurb": "A podcast from the England Rugby team responsible for the training of coaches, match officials and volunteers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1716961184": {
       "topics": [
@@ -151833,10 +152198,30 @@
     },
     "1717063030": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lucy & Sam's Perfect Brains focuses on Comedy.",
+      "display_title": "Lucy & Sam's Perfect Brains",
+      "blurb": "You might have SEEN Lucy Beaumont and Sam Campbell on Taskmaster but would you be interested in LISTENING to them? Can comedy’s biggest fruitcake...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1717101051": {
       "topics": [
@@ -151866,7 +152251,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "قصص رون focuses on Drama.",
+      "display_title": "قصص رون",
+      "blurb": "فانز قصص رون",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:47.131Z"
     },
     "1717262936": {
       "topics": [
@@ -151930,10 +152330,30 @@
     },
     "1717530598": {
       "topics": [
-        "food"
+        "space",
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The BrewedAt Podcast focuses on Space.",
+      "display_title": "The BrewedAt Podcast",
+      "blurb": "\"The BrewedAt Podcast\" takes an engaging and behind-the-scenes look at the movers and shakers in the Craft Beer, Food & Bar space. Each episode f...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1717644239": {
       "topics": [
@@ -151970,10 +152390,25 @@
     },
     "1717782166": {
       "topics": [
-        "gaming"
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Windbreaker focuses on News & Current Affairs.",
+      "display_title": "Windbreaker",
+      "blurb": "Windbreaker is Second Wind's premier gaming podcast hosted by Yahtzee Croshaw, Marty Sliva & JM8. Join the trio (and occasional guests) weekly to...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1717795673": {
       "topics": [
@@ -152195,11 +152630,33 @@
     },
     "1718854510": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "religion",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "CASE STUDIES focuses on Religion & Spirituality.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1718883666": {
       "topics": [
@@ -152299,10 +152756,25 @@
     },
     "1719124774": {
       "topics": [
-        "sports/volleyball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "VB Adrenaline Podcast focuses on Sports.",
+      "display_title": "VB Adrenaline Podcast",
+      "blurb": "Welcome to the VBAdrenaline Podcast, your pulse-pounding source for all things volleyball! Hosted by Darren Tipton, we bring you the hottest topi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1719200063": {
       "topics": [
@@ -152332,7 +152804,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Pros of San Diego Unmatched focuses on Tennis.",
+      "display_title": "The Pros of San Diego Unmatched",
+      "blurb": "Tennis talk. Conan and Jenna are talking everything tennis, join us!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:38:05.484Z"
     },
     "1719280670": {
       "topics": [
@@ -152347,7 +152834,22 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Oh Crap with Jamie focuses on Parenting.",
+      "display_title": "Oh Crap with Jamie",
+      "blurb": "A podcast for conscious parents who drop the f-bomb. A lot. We are the overthinkers, the dreamers, and the doers. We are parenting in a radically...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:47.131Z"
     },
     "1719454802": {
       "topics": [
@@ -152404,10 +152906,25 @@
     },
     "1719561136": {
       "topics": [
-        "sports/football"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Barn Podcast Network focuses on Sports.",
+      "display_title": "The Barn Podcast Network",
+      "blurb": "Your home for all of the Auburn content and insight you need! Kyle Rush aka Charlie5, Zac Blackerby, Lindsay Crosby and Brad Law will provide you...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1719570183": {
       "topics": [
@@ -152544,10 +153061,30 @@
     },
     "1720269562": {
       "topics": [
-        "fiction/drama"
+        "sports",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Winnie Taylor's 4th and Inches focuses on Sports.",
+      "display_title": "Winnie Taylor's 4th and Inches",
+      "blurb": "13-year-old Winnie moves in with her dad, Derek, a retired quarterback, whose promising career ended badly. When Cleveland loses their starting Q...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1720379887": {
       "topics": [
@@ -152628,12 +153165,35 @@
     },
     "1720574866": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "health",
+        "business/startups",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "RealPharma: Conversations with Pharma Pathfinders focuses on Health & Fitness.",
+      "display_title": "RealPharma: Conversations with Pharma Pathfinders",
+      "blurb": "For biopharma pros seeking insightful discussions and a deeper understanding of the pharma world, join Dr. Na-Ri Oh and Ian Wendt as they talk wi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1720670621": {
       "topics": [
@@ -152826,10 +153386,29 @@
     "1721454748": {
       "topics": [
         "nature/earth-science",
-        "science"
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "On-Farm Trials Podcast with the PNW Farmers' Network focuses on Earth Science.",
+      "display_title": "On-Farm Trials Podcast with the PNW Farmers' Network",
+      "blurb": "Here on the On-Farm Trials Podcast, host Carol McFarland dives into the different trials that come with farming systems innovation in the inland ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:47.131Z"
     },
     "1721576655": {
       "topics": [
@@ -152894,10 +153473,25 @@
     },
     "1721813926": {
       "topics": [
-        "news/politics"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bad Hasbara - The World's Most Moral Podcast focuses on Comedy.",
+      "display_title": "Bad Hasbara - The World's Most Moral Podcast",
+      "blurb": "A comedy podcast about the latest and greatest in US and Israeli propaganda.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1721815157": {
       "topics": [
@@ -152908,10 +153502,30 @@
     },
     "1721816368": {
       "topics": [
-        "comedy/stand-up"
+        "comedy",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aque yo mando podcast focuses on Comedy.",
+      "display_title": "Aque yo mando podcast",
+      "blurb": "Denver Based Podcast, a wild ride full of comedy , sex, gossip, real life struggles and relationships . No filters. No apologies. Just Chula runn...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1721842163": {
       "topics": [
@@ -152979,10 +153593,30 @@
     },
     "1721966230": {
       "topics": [
-        "craft/diy-home"
+        "news",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home Organizing for Beginners: Organizing, cleaning and time management strategies focuses on N...",
+      "display_title": "Home Organizing for Beginners: Organizing, cleaning and time",
+      "blurb": "You’ve tried everything to get a clean and organized home, but nothing seems to work for you and you really feel like you’re failing at this whol...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1721967427": {
       "topics": [
@@ -153113,11 +153747,30 @@
     },
     "1722322354": {
       "topics": [
-        "news/tech",
-        "computing"
+        "science",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Last AI focuses on Science.",
+      "display_title": "The Last AI",
+      "blurb": "The Last AI is all about artificial intelligence news. Each episode digs into the top stories, new research, and the breakthroughs moving the ind...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1722322714": {
       "topics": [
@@ -153202,10 +153855,35 @@
     },
     "1722576184": {
       "topics": [
-        "sports/basketball"
+        "sports",
+        "craft",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Big Podcast with Shaq focuses on Sports.",
+      "display_title": "The Big Podcast with Shaq",
+      "blurb": "NBA Hall of Famer & 4x Champion, Shaquille O'Neal aka SHAQ, goes on the record from Shahookah Studios with co-host Adam Lefkoe to bring you nonst...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1722685826": {
       "topics": [
@@ -153340,10 +154018,40 @@
     },
     "1723240846": {
       "topics": [
-        "health/alternative"
+        "science",
+        "health",
+        "business",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Experience Miracles™ Podcast focuses on Science.",
+      "display_title": "The Experience Miracles™ Podcast",
+      "blurb": "Welcome to the \"Experience Miracles\" Podcast w/ Dr. Tony Ebel – where we provide HOPE, ANSWERS, and DRUG-FREE HELP to parents navigating their ch...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1723245542": {
       "topics": [
@@ -153370,10 +154078,35 @@
     },
     "1723403350": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "nature/earth-science",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Backyard Bouquet Podcast: Cut Flower Farming Podcast for Flower Farmers & Backyard Gardener...",
+      "display_title": "The Backyard Bouquet Podcast: Cut Flower Farming Podcast",
+      "blurb": "A podcast for flower farmers, gardeners, and cut flower growers who are growing more than just flowers. Hosted by Jennifer Gulizia of The Floweri...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:47.131Z"
     },
     "1723539749": {
       "topics": [
@@ -153490,14 +154223,63 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stock Trading for Beginners focuses on Markets.",
+      "display_title": "Stock Trading for Beginners",
+      "blurb": "Welcome to \"Stock Trading for Beginners,\" hosted by Tyler Stokes of StokesTrades.com. This podcast is a real-time chronicle of my journey in stoc...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:47.131Z"
     },
     "1723760398": {
       "topics": [
-        "sports/hockey"
+        "history",
+        "sports",
+        "news",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NHL Wraparound Podcast focuses on History.",
+      "display_title": "NHL Wraparound Podcast",
+      "blurb": "Breadth and depth. Contemporary and historical. Straight-forward and experienced. The NHL Wraparound podcast features Neil Smith, President-Gener...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1723780089": {
       "topics": [
@@ -153516,10 +154298,35 @@
     },
     "1723787140": {
       "topics": [
-        "business/management"
+        "business/startups",
+        "culture/books",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Run the Numbers focuses on Startups & deep tech.",
+      "display_title": "Run the Numbers",
+      "blurb": "Run the Numbers is a business podcast about financial metrics and business models for CFOs, aspiring CFOs, finance leaders, and ambitious people ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1723835486": {
       "topics": [
@@ -153545,11 +154352,40 @@
     },
     "1723878862": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "science",
+        "comedy",
+        "health",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weight Loss And ... focuses on Science.",
+      "display_title": "Weight Loss And ...",
+      "blurb": "Your go-to hangout for everything weight loss… and beyond! “Weight Loss and…” is brought to you by the University of Alabama at Birmingham (UAB) ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1723904363": {
       "topics": [
@@ -153561,17 +154397,56 @@
     "1723910026": {
       "topics": [
         "news",
-        "business"
+        "business",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "America In The Morning focuses on News & Current Affairs.",
+      "display_title": "America In The Morning",
+      "blurb": "Start your workday with America in the Morning, Westwood One’s award-winning magazine. News doesn’t stop when you’re sleeping so join host John T...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1723936876": {
       "topics": [
-        "sports/wrestling"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestle Lingus Show focuses on Sports.",
+      "display_title": "Wrestle Lingus Show",
+      "blurb": "Imagine a world that wasn’t offended by jokes, a world that wasn’t sawft and clutched their pearls when a group of people were made fun of. Imagi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:47.131Z"
     },
     "1723939253": {
       "topics": [
@@ -153784,7 +154659,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Shtark Tank focuses on Judaism.",
+      "display_title": "Shtark Tank",
+      "blurb": "If you are a Ben Torah in the workforce, this is the podcast for you! Make sure to check out ShtarkTank.org for more meaningful content. You can ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:47.131Z"
     },
     "1724693010": {
       "topics": [
@@ -153854,10 +154744,25 @@
     },
     "1724839648": {
       "topics": [
-        "gaming"
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Bedrock podcast - A Minecraft podcast focuses on Craft & making.",
+      "display_title": "The Bedrock podcast - A Minecraft podcast",
+      "blurb": "Welcome to The Bedrock podcast. Where we talk about Minecraft - right here! Diamonds, Emeralds, Redstone we talk about all those things and more....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-c0b5d654",
+      "classified_at": "2026-08-09T00:37:12.864Z"
     },
     "1724845637": {
       "topics": [
