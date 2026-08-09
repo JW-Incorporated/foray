@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-09T08:30:56.799Z",
+  "built_at": "2026-08-09T16:30:38.266Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-09-18635675",
+    "last_batch_id": "fresh-2026-08-09-45ce3418",
     "last_batch_tier": 1
   },
   "entries": {
@@ -143114,8 +143114,23 @@
       "topics": [
         "math"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on math; content and episodes confirm strong topical alignment.",
+      "display_title": "Number of The Day",
+      "blurb": "Learn about a new number in small bite-sized episodes. Each day we examine look at a new number, it's significance and cultural impact. We start...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1693172484": {
       "topics": [
@@ -143128,8 +143143,23 @@
       "topics": [
         "sports/golf"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on golf; content and episodes confirm strong topical alignment.",
+      "display_title": "The NCG Golf Podcast",
+      "blurb": "The NCG Golf Podcast, by National Club Golfer, brings stories from the world of golf to life. Tom Irwin and Steve Carroll chat about everything f...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1693209578": {
       "topics": [
@@ -143177,10 +143207,43 @@
     },
     "1693323253": {
       "topics": [
-        "aviation"
+        "aviation",
+        "comedy/casual-hangs",
+        "architecture",
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 1
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.44
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.36
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on aviation; content and episodes confirm strong topical alignment.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1693403323": {
       "topics": [
@@ -143222,15 +143285,50 @@
       "topics": [
         "medicine"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on medicine; content and episodes confirm strong topical alignment.",
+      "display_title": "Critical Care Time",
+      "blurb": "Critical Care Time is the podcast for everyone who cares for the critically Ill. Whether you work in an ICU, a Med-Surg unit, an ED, a PACU or th...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1693576639": {
       "topics": [
-        "travel"
+        "travel",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.6
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on travel & places; content and episodes confirm strong topical alignment.",
+      "display_title": "Cruise Conversations Podcast",
+      "blurb": "A weekly podcast hosted by Michael and Frank featuring topics such as cruise news, tips & tricks, cruise recommendations, and much more!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1693602939": {
       "topics": [
@@ -143306,10 +143404,35 @@
     },
     "1693729711": {
       "topics": [
-        "nature/pets"
+        "comedy/casual-hangs",
+        "nature/pets",
+        "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.6
+        },
+        {
+          "node": "food",
+          "confidence": 0.33
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on casual hangs; content and episodes confirm strong topical alignment.",
+      "display_title": "The Grand Drive",
+      "blurb": "Here at The Grand Drive, we will cover all things in the swine show industry from birth to butcher. We are going behind the scenes to bring you e...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1693739175": {
       "topics": [
@@ -143408,10 +143531,40 @@
     },
     "1694388433": {
       "topics": [
-        "craft/diy-home"
+        "espionage/cold-war-tech",
+        "history/technology",
+        "comedy/casual-hangs",
+        "architecture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.67
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.44
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on cold war tech; content and episodes confirm strong topical alignment.",
+      "display_title": "PINAcast: Permaculture Institute of...",
+      "blurb": "The PINAcast brings together conversations from Some of the top thought leaders in the Permaculture space. Hear how they got started and created...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1694392423": {
       "topics": [
@@ -143513,8 +143666,23 @@
       "topics": [
         "relationships"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on relationships; content and episodes confirm strong topical alignment.",
+      "display_title": "福说聊天会",
+      "blurb": "节目名称：福说聊天会 节目简介： 起初来自于福州几名脱口秀爱好者之间的闲扯——自己聊天把自己逗笑就太亏了，为啥不录成节目逗笑大家呢？ 这是一个杂谈类的播客节目，话题天马行空。偶尔有一些相对小众或专业的话题，我们会以番外篇的方式推出。 我们的初衷就是让大家开心，但是也想尽可能地聊出点东西来，...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1694998186": {
       "topics": [
@@ -143570,10 +143738,40 @@
     },
     "1695523807": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "craft",
+        "architecture",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.65
+        },
+        {
+          "node": "craft",
+          "confidence": 0.5
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.44
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on diy & home; content and episodes confirm strong topical alignment.",
+      "display_title": "Home & Hosting with Loui Burke",
+      "blurb": "Home & Hosting with Loui Burke is an interior design, home styling and modern homemaking podcast for renters, first-home owners and anyone who wa...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1695554792": {
       "topics": [
@@ -143601,10 +143799,40 @@
     },
     "1695637747": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "craft/diy-home",
+        "business/startups",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.36
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.36
+        },
+        {
+          "node": "craft",
+          "confidence": 0.33
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on pets & animals; content and episodes confirm strong topical alignment.",
+      "display_title": "The Well-Mannered Mutt Podcast",
+      "blurb": "Welcome to The Well-Mannered Mutt Podcast, the show for dog owners looking to improve their relationship with their canine friends. This podcast...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1695679247": {
       "topics": [
@@ -143662,8 +143890,23 @@
       "topics": [
         "tv-film/interviews"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on film interviews; content and episodes confirm strong topical alignment.",
+      "display_title": "Massacre Radio with Membersonly Dave",
+      "blurb": "Join Membersonly Dave, the baddest boy in Cleveland, as he jams your ears with MASSACRE RADIO! Terrifying guests of the horror film world and bey...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1695875823": {
       "topics": [
@@ -143738,8 +143981,23 @@
       "topics": [
         "sports/volleyball"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on volleyball; content and episodes confirm strong topical alignment.",
+      "display_title": "Volley Takes",
+      "blurb": "Volley Takes is a podcast dedicated to talk all things volleyball news, culture, and more! Hosted by Abby Benton (@numberonevolleyball) on Instag...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1696017800": {
       "topics": [
@@ -143939,10 +144197,40 @@
     },
     "1696468189": {
       "topics": [
-        "nature"
+        "nature",
+        "comedy/casual-hangs",
+        "aviation",
+        "food"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.6
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.4
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.33
+        },
+        {
+          "node": "food",
+          "confidence": 0.33
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on nature; content and episodes confirm strong topical alignment.",
+      "display_title": "Nature Now",
+      "blurb": "Nature Now presents eclectic Pacific Northwest-focused news, insights and observations about the natural world around us. Anything that grabs the...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1696491806": {
       "topics": [
@@ -143954,10 +144242,30 @@
     },
     "1696519927": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "business/startups"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.36
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on performing arts; content and episodes confirm strong topical alignment.",
+      "display_title": "Great Detectives of Old Time Radio ...",
+      "blurb": "Adam Graham continues his journey through Old Time Radio Detective programs from their first available adventure to their final bow in Seasons 4-...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1696601121": {
       "topics": [
@@ -143975,10 +144283,40 @@
     },
     "1696679179": {
       "topics": [
-        "sports/football"
+        "sports/football",
+        "history/military-ancient",
+        "craft",
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.6
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.33
+        },
+        {
+          "node": "craft",
+          "confidence": 0.33
+        },
+        {
+          "node": "business",
+          "confidence": 0.33
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on football; content and episodes confirm strong topical alignment.",
+      "display_title": "Fantasy Football Today Dynasty",
+      "blurb": "Love Fantasy Football Today? Obsessed with Dynasty Fantasy Football? This is the podcast you need. Join host Heath Cummings, the rest of the FFT...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1696707201": {
       "topics": [
@@ -144041,10 +144379,35 @@
     },
     "1697072689": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "craft",
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft",
+          "confidence": 0.5
+        },
+        {
+          "node": "history",
+          "confidence": 0.36
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on fitness; content and episodes confirm strong topical alignment.",
+      "display_title": "The Show Up Fitness Podcast",
+      "blurb": "Join Chris Hitchko, author of 'How to Become A Successful Personal Trainer' VOL 2 and CEO of Show Up Fitness as he guides personal trainers towar...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1697072807": {
       "topics": [
@@ -144121,10 +144484,39 @@
     "1697270947": {
       "topics": [
         "news",
-        "business"
+        "business/startups",
+        "science",
+        "food"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.33
+        },
+        {
+          "node": "food",
+          "confidence": 0.33
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on news & current affairs; content and episodes confirm strong topical alignment.",
+      "display_title": "The Bird Bath",
+      "blurb": "Welcome to The Bird Bath, a weekly news podcast. Join our host, Ryan Leech, as he highlights the latest news and trends in the evolving world of...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1697290677": {
       "topics": [
@@ -144417,10 +144809,30 @@
     },
     "1698439585": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "craft/diy-home"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.36
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on true crime; content and episodes confirm strong topical alignment.",
+      "display_title": "Detective Perspective",
+      "blurb": "Join former police detective and private investigator, Derrick Levasseur as he covers a new unsolved case every week. He'll discuss the facts of...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1698462485": {
       "topics": [
@@ -144447,11 +144859,40 @@
     },
     "1698542935": {
       "topics": [
+        "science",
+        "business",
         "news",
-        "business"
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.67
+        },
+        {
+          "node": "business",
+          "confidence": 0.67
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.36
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on science; content and episodes confirm strong topical alignment.",
+      "display_title": "The Top Line",
+      "blurb": "Biopharma and medtech explained. Every week, journalists from Fierce Biotech, Fierce Medtech, and Fierce Pharma recount the latest industry trend...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1698564262": {
       "topics": [
@@ -144500,10 +144941,40 @@
     },
     "1698908239": {
       "topics": [
-        "aviation"
+        "aviation",
+        "comedy/casual-hangs",
+        "history",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 1
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.36
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on aviation; content and episodes confirm strong topical alignment.",
+      "display_title": "Destination Aviation",
+      "blurb": "Love all things flying? Industry veteran Jeff Miller is here to help you feel more connected to the skies. Enjoy the friendliest of welcomes as J...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1698918455": {
       "topics": [
@@ -144532,8 +145003,23 @@
       "topics": [
         "sports/soccer"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on soccer; content and episodes confirm strong topical alignment.",
+      "display_title": "On The Continent - A European Footb...",
+      "blurb": "Welcome to On The Continent, the dedicated European football podcast brought to you by the Football Ramble. Dotun Adebayo and Andy Brassell are j...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1699085654": {
       "topics": [
@@ -144619,10 +145105,39 @@
     "1699479379": {
       "topics": [
         "health/mental",
-        "psychology"
+        "comedy",
+        "comedy/casual-hangs",
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.6
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.4
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.4
+        },
+        {
+          "node": "business",
+          "confidence": 0.33
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on mental health; content and episodes confirm strong topical alignment.",
+      "display_title": "Secondhand Therapy",
+      "blurb": "Secondhand Therapy is a funny, honest mental health podcast where two unlicensed best friends unpack their weekly therapy sessions. Join Louie Pa...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1699511251": {
       "topics": [
@@ -144672,17 +145187,56 @@
     "1699673221": {
       "topics": [
         "news",
-        "business"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.6
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on news & current affairs; content and episodes confirm strong topical alignment.",
+      "display_title": "Let's Talk Housing",
+      "blurb": "Let’s Talk Housing is your go-to Q&A-style podcast for all things real estate and economics. Hosted by Brennen Thomas, with insights from chief e...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1699744741": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on stories for kids; content and episodes confirm strong topical alignment.",
+      "display_title": "Animal Stories for Kids",
+      "blurb": "Do your kids light up when they hear about animals? Animal Stories for Kids is an audiobook style podcast of original, family friendly stories ab...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1699814272": {
       "topics": [
@@ -144718,8 +145272,23 @@
       "topics": [
         "fiction/sci-fi"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on science fiction; content and episodes confirm strong topical alignment.",
+      "display_title": "EXTRA ANORMAL",
+      "blurb": "Podcast Extra Anormal es el rincón donde lo inexplicable cobra vida. Desde los rincones más oscuros del misterio hasta las dimensiones ocultas de...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1699915841": {
       "topics": [
@@ -144730,10 +145299,35 @@
     },
     "1700005831": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "history",
+        "food"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.44
+        },
+        {
+          "node": "history",
+          "confidence": 0.36
+        },
+        {
+          "node": "food",
+          "confidence": 0.33
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on diy & home; content and episodes confirm strong topical alignment.",
+      "display_title": "Beyond the Garden Basics",
+      "blurb": "Picking up where the Garden Basics podcast left off. gardenbasics.substack.com",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1700125392": {
       "topics": [
@@ -144774,10 +145368,40 @@
     },
     "1700357503": {
       "topics": [
-        "business/marketing"
+        "business",
+        "business/marketing",
+        "history",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.67
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on business; content and episodes confirm strong topical alignment.",
+      "display_title": "The Edward Show",
+      "blurb": "Daily SEO advice, hacks, and interviews with some of the top voices in search engine optimization, as well as sit-downs with many undiscovered ta...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1700367421": {
       "topics": [
@@ -144977,8 +145601,23 @@
       "topics": [
         "culture/art"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on art; content and episodes confirm strong topical alignment.",
+      "display_title": "Comic Book Club News",
+      "blurb": "***WINNER 2024 Podcast Awards, Arts*** Comic Book Club News gives you the comic book news you need to know first thing in the morning, every week...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1701005795": {
       "topics": [
@@ -145251,10 +145890,40 @@
     },
     "1701898099": {
       "topics": [
-        "craft/diy-home"
+        "comedy/casual-hangs",
+        "craft",
+        "craft/diy-home",
+        "espionage/cold-war-tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft",
+          "confidence": 0.5
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.44
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on casual hangs; content and episodes confirm strong topical alignment.",
+      "display_title": "The Evergreen Thumb",
+      "blurb": "Since 1973, WSU Extension Master Gardeners have been developing programs to address the evolving needs of our communities. Each episode, we'll di...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1701907939": {
       "topics": [
@@ -145314,17 +145983,72 @@
     },
     "1701982039": {
       "topics": [
-        "craft"
+        "craft",
+        "comedy/casual-hangs",
+        "business/startups",
+        "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 1
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.36
+        },
+        {
+          "node": "food",
+          "confidence": 0.33
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on craft & making; content and episodes confirm strong topical alignment.",
+      "display_title": "A Yarn Story",
+      "blurb": "A Yarn Story Podcast is a knitting podcast for yarn lovers and knitters of all levels, from curious beginners to experienced makers. In each epis...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1702015351": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "craft",
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft",
+          "confidence": 0.5
+        },
+        {
+          "node": "history",
+          "confidence": 0.36
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on education for kids; content and episodes confirm strong topical alignment.",
+      "display_title": "Jamming on the Job",
+      "blurb": "Jamming on the Job is a multi-generational, music-inspired podcast for kids ages 4-8 and their parents and caregivers, starring Christina Sanabri...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1702054154": {
       "topics": [
@@ -145335,10 +146059,30 @@
     },
     "1702066933": {
       "topics": [
-        "sports/wrestling"
+        "sports/wrestling",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.6
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on wrestling; content and episodes confirm strong topical alignment.",
+      "display_title": "Nickals and Dimes",
+      "blurb": "Weekly podcast featuring UFC superstar Bo Nickal. Join the Penn State Grad for a full breakdown of the combat sports world, along with hilarious...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1702141880": {
       "topics": [
@@ -145395,8 +146139,23 @@
       "topics": [
         "religion/judaism"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on judaism; content and episodes confirm strong topical alignment.",
+      "display_title": "HaRav Yisroel Reisman",
+      "blurb": "Shiurim from Rabbi Yisroel Reisman",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1702409419": {
       "topics": [
@@ -145422,10 +146181,30 @@
     },
     "1702466197": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "aviation"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.6
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.33
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on science fiction; content and episodes confirm strong topical alignment.",
+      "display_title": "Upvoted / NoSleep: Scary Stories",
+      "blurb": "Real humans reading real scary stories, sourced from Reddit authors with their permission.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1702577074": {
       "topics": [
@@ -145542,10 +146321,35 @@
     },
     "1703112043": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "business/startups",
+        "food"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.36
+        },
+        {
+          "node": "food",
+          "confidence": 0.33
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on education for kids; content and episodes confirm strong topical alignment.",
+      "display_title": "5 Minute Mysteries with Kiddy Casey",
+      "blurb": "Welcome to 5-Minute Mysteries, a podcast that  every kind of mystery there is - from the wonders of everyday science to captivating compl...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1703139034": {
       "topics": [
@@ -145672,10 +146476,30 @@
     },
     "1703505775": {
       "topics": [
-        "relationships"
+        "relationships",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.6
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on relationships; content and episodes confirm strong topical alignment.",
+      "display_title": "Confidence",
+      "blurb": "As a dating coach and disorganized avoidant, I've observed dating from the lens of my own experience and through the experience of others. This p...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1703559924": {
       "topics": [
@@ -145860,8 +146684,23 @@
       "topics": [
         "true-crime"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on true crime; content and episodes confirm strong topical alignment.",
+      "display_title": "Alone in the Woods",
+      "blurb": "Real people submit their scariest outdoor experiences. Scary camping stories, hiking horror stories, and more - you'll never step foot outside ag...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1704349518": {
       "topics": [
@@ -145894,11 +146733,40 @@
     },
     "1704489337": {
       "topics": [
+        "espionage/cold-war-tech",
         "news",
-        "business"
+        "architecture",
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.6
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.44
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on cold war tech; content and episodes confirm strong topical alignment.",
+      "display_title": "Unofficial QuickBooks Accountants P...",
+      "blurb": "Stay up-to-date on the latest QuickBooks news, tips, and updates with Certified QuickBooks ProAdvisor Alicia Katz Pollock, MAT. Alicia and guests...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-45ce3418",
+      "classified_at": "2026-08-09T16:30:38.266Z"
     },
     "1704493894": {
       "topics": [
