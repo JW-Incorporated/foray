@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-08T17:07:09.417Z",
+  "built_at": "2026-08-09T01:00:02.795Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-08-13e9fbfd",
+    "last_batch_id": "fresh-2026-08-09-98e1c65f",
     "last_batch_tier": 1
   },
   "entries": {
@@ -140260,7 +140260,21 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama about teens with cancer entering a magical world; sci-fi worldbuilding.",
+      "display_title": "Nightingale",
+      "blurb": "Three cancer patients discover a portal to a magical realm filled with sentient machines. An epic audio drama blending fantasy adventure with real emotional growth.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1685052208": {
       "topics": [
@@ -140323,10 +140337,28 @@
     "1685286851": {
       "topics": [
         "health/nutrition",
-        "food"
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-backed podcast on GLP-1 medications, nutrition, and weight loss from registered dietitian.",
+      "display_title": "Your GLP-1 Bestie",
+      "blurb": "A registered dietitian guides listeners through GLP-1 medications like Ozempic with evidence-based nutrition and lifestyle strategies. Covers side effects, plateaus, and real-world application.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1685322096": {
       "topics": [
@@ -140378,7 +140410,21 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coverage of hybrid fitness racing (HYROX, DEKA); competitive obstacle-course fitness.",
+      "display_title": "Hybrid Fitness Media",
+      "blurb": "Weekly coverage of hybrid fitness racing competitions with athlete interviews and insider insights. Covers HYROX, DEKA, and emerging fitness racing formats.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T01:00:02.795Z"
     },
     "1685775555": {
       "topics": [
@@ -140412,11 +140458,29 @@
     },
     "1685930399": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "fiction/drama",
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dark comedy audio drama starring Jane Lynch about crime, passion, and betrayal in Florida.",
+      "display_title": "Love, Murder, Florida",
+      "blurb": "Jane Lynch stars in a Fargo-esque crime story where two bus operators' business feud turns deadly. Dark comedy meets genuine danger in this twisted Florida tale.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T01:00:02.795Z"
     },
     "1685941389": {
       "topics": [
@@ -140445,7 +140509,21 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep episode-by-episode analysis of One Piece anime with friends and expert guests.",
+      "display_title": "The Going Merry: A One Piece Review Podcast",
+      "blurb": "Three hosts break down One Piece episodes in real time with reactions and analysis. A passionate fan podcast celebrating the world's longest-running anime series.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1686026910": {
       "topics": [
@@ -140470,10 +140548,29 @@
     },
     "1686246125": {
       "topics": [
-        "religion/islam"
+        "religion/islam",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic podcast analyzing ideologies challenging Islam; Rebbe explores theology, politics, sexuality.",
+      "display_title": "Imam Tom Weekly, a Yaqeen podcast",
+      "blurb": "Imam Tom Facchine examines ideologies challenging Islam today and Islamic responses to political, theological, and social issues from an authentic worldview.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1686246159": {
       "topics": [
@@ -140487,7 +140584,21 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "LGBTQ-focused pro wrestling podcast with interviews from diverse wrestlers and performers.",
+      "display_title": "LGBT In The Ring",
+      "blurb": "Brian Bell interviews LGBTQ wrestlers across independent and professional promotions. A celebration of queer voices and identities in pro wrestling.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1686314916": {
       "topics": [
@@ -140622,7 +140733,21 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "BBC commentators discuss women's cricket with live analysis and tournament coverage.",
+      "display_title": "Storylines: The Women's Cricket Show",
+      "blurb": "Two BBC commentators analyze women's cricket with deep technical knowledge and player interviews. Focused coverage of international women's cricket tournaments.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1686899797": {
       "topics": [
@@ -140644,7 +140769,21 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Seven hosts discuss favorite TV shows through games, rankings, and character analysis.",
+      "display_title": "The Core 7 Podcast",
+      "blurb": "Seven hosts play TV trivia, rank shows, and debate character superpowers and fictional scenarios. A casual, fun exploration of beloved television.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1686967706": {
       "topics": [
@@ -140691,7 +140830,25 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "EPA-sponsored podcast on contaminated land management; experts discuss remediation and sustainability.",
+      "display_title": "Contamination Station: Safer Environment Together",
+      "blurb": "An EPA initiative featuring environmental engineers and remediation experts discussing contaminated site management. Practical guidance for a safer, cleaner environment.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1687215430": {
       "topics": [
@@ -140935,7 +141092,21 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bestselling author Elin Hilderbrand interviews authors about books, writing, and adaptation.",
+      "display_title": "Books, Beach, & Beyond",
+      "blurb": "Bestselling author Elin Hilderbrand and Tim Ehrenberg interview acclaimed writers about their craft. Conversations on books becoming TV, the writing process, and island life.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1688474821": {
       "topics": [
@@ -141037,7 +141208,24 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Wool mill owner shares handspinning, yarn-making, and fiber farm life and education.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1688885982": {
       "topics": [
@@ -141067,7 +141255,21 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Former NBA star Gilbert Arenas gives basketball analysis and cultural commentary.",
+      "display_title": "Gil's Arena",
+      "blurb": "Hall of Famer Gilbert Arenas offers sharp analysis of NBA games, trades, and culture. Known for unconventional takes and deep insight into modern basketball.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1689108747": {
       "topics": [
@@ -141093,24 +141295,82 @@
     },
     "1689220721": {
       "topics": [
+        "health/fitness",
         "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Applied neuroscience and strength conditioning podcast on pain, posture, and athletic performance.",
+      "display_title": "The KRUSE ELITE Podcast",
+      "blurb": "Combines neuroscience with fitness science to address pain and movement quality. Features strength, mobility, and recovery strategies grounded in neurological principles.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1689263201": {
       "topics": [
-        "news/commentary"
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "True crime podcast examining fentanyl poisoning case, legal proceedings, and family impact.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T01:00:02.795Z"
     },
     "1689322067": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Functional medicine podcast on root causes of disease through integrative medicine lens.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1689327807": {
       "topics": [
@@ -141134,7 +141394,25 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Local business radio featuring interviews with Northwest Arkansas entrepreneurs and leaders.",
+      "display_title": "Northwest Arkansas",
+      "blurb": "Business RadioX interviews local Northwest Arkansas leaders on real estate, nonprofits, and entrepreneurship. Community-focused conversations on economic development.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T01:00:02.795Z"
     },
     "1689409536": {
       "topics": [
@@ -141157,7 +141435,25 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI-generated, human-supervised daily briefing on pharma and biotech news and pipelines.",
+      "display_title": "Pharma and BioTech Daily",
+      "blurb": "Daily audio briefing covering pharma and biotech news—pipelines, deals, regulation, strategy. Concise for people building, running, and investing in life sciences.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1689464000": {
       "topics": [
@@ -141237,7 +141533,25 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Law firm podcast on business issues, practice management, and professional expertise.",
+      "display_title": "The Oberman Law Firm Podcast",
+      "blurb": "Business professionals and lawyers discuss real-world challenges in practice management, tax strategy, and regulatory compliance. Expert guidance on growth and risk.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T01:00:02.795Z"
     },
     "1689619250": {
       "topics": [
@@ -141256,10 +141570,28 @@
     "1689819329": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurs build real AI automations and workflows live on air; practical how-to format.",
+      "display_title": "Build With AI",
+      "blurb": "Non-technical entrepreneurs learn AI automation by watching real implementations built live. No theory—just battle-tested workflows, tools, and business applications.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1689872756": {
       "topics": [
@@ -141325,7 +141657,25 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Golf mental game podcast exploring psychology, science, and spirituality of the sport.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1690076879": {
       "topics": [
@@ -141416,10 +141766,33 @@
     },
     "1690409639": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Interviews with elite performers across fields on decision-making, strategy, and peak performance.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1690411429": {
       "topics": [
@@ -141480,7 +141853,25 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "BBC podcast investigating viral online trends, influencers, crypto, and internet culture.",
+      "display_title": "Top Comment",
+      "blurb": "BBC investigation into viral internet trends, misinformation, and platform dynamics. Exposes the algorithms, networks, and players shaping online discourse.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1690561809": {
       "topics": [
@@ -141503,14 +141894,54 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast compiling Elon Musk interviews and news; heavy clickbait presentation and editorializing.",
+      "display_title": "Elon Musk Thinking",
+      "blurb": "Documentary-style podcast about Elon Musk's life, companies, and ambitions. Interviews and news on Tesla, SpaceX, Neuralink, and emerging technologies.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1690601747": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Biotech pioneers share research journeys, breakthroughs, and stories from innovation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1690610690": {
       "topics": [
@@ -141628,7 +142059,21 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "C-SPAN curated podcast feed on nonfiction books; authors discuss history, biography, current events.",
+      "display_title": "C-SPAN Bookshelf",
+      "blurb": "C-SPAN interviews with nonfiction authors on history, biography, and current affairs. Curated collection of literary conversations on consequential topics.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1691157207": {
       "topics": [
@@ -141851,7 +142296,21 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Gold Coast Titans rugby league recap and preview; community-focused podcast.",
+      "display_title": "Gold Coast Titans Frontline Podcast",
+      "blurb": "Weekly analysis of Gold Coast Titans rugby league matches. Recaps, previews, and community celebration of local team performance and player updates.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1692120672": {
       "topics": [
@@ -141866,7 +142325,24 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chinese film critics analyze cinema history, aesthetics, and contemporary filmmaking.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1692163444": {
       "topics": [
@@ -141990,7 +142466,24 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Analysis of Lubavitcher Rebbe's letters on contemporary issues and Jewish philosophy.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1692862668": {
       "topics": [
@@ -142038,10 +142531,29 @@
     },
     "1693081991": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jungian psychology podcast exploring myth, dreams, ritual art, and re-enchantment.",
+      "display_title": "Blue Medicine Journal : A Jungian Podcast",
+      "blurb": "Jungian perspective on myth, dreams, and ritual. Conversations with depth psychologists and artists on spiritual practice and psychological transformation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1693102440": {
       "topics": [
@@ -142099,7 +142611,21 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jane Austen Society podcast featuring scholars and authors discussing Austen's life and works.",
+      "display_title": "Austen Chat",
+      "blurb": "Monthly JASNA podcast with scholars and authors on Jane Austen's novels, life, and legacy. Expert conversations on literature, history, and Austen's ongoing influence.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1693256596": {
       "topics": [
@@ -142283,7 +142809,25 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Short cybersecurity briefings for professionals on threats, vulnerabilities, and concepts.",
+      "display_title": "Daily Cyber Security News",
+      "blurb": "Practical, bite-sized cybersecurity briefings on vulnerabilities and emerging threats. Designed for security professionals, developers, and IT teams.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1693864143": {
       "topics": [
@@ -142312,7 +142856,21 @@
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Backyard chicken keeper shares practical tips, health advice, and care guidance.",
+      "display_title": "Crazy Chicken People",
+      "blurb": "A passionate backyard chicken keeper shares practical care tips and husbandry advice. Stories and guidance on raising healthy, happy flocks at home.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1694200934": {
       "topics": [
@@ -142337,10 +142895,29 @@
     },
     "1694220083": {
       "topics": [
-        "relationships"
+        "relationships",
+        "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian dating podcast on preparing for marriage, relationships, and faith-based courtship.",
+      "display_title": "Dear Future Husband",
+      "blurb": "Christian women discuss dating, relationships, and marriage preparation. Expert interviews and peer conversations on faith-centered courtship and commitment.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1694243385": {
       "topics": [
@@ -142467,7 +143044,21 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two comedians share unfiltered conversations, weird stories, and comedic banter.",
+      "display_title": "Rabbit Hole",
+      "blurb": "Two internet comedians deliver unfiltered conversations and absurd storytelling. A casual hang with zero educational pretense, just raw comedy and friendship.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1695069448": {
       "topics": [
@@ -142568,7 +143159,21 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official Duke Men's Basketball podcast with players, coaches, and staff interviews.",
+      "display_title": "The Brotherhood Podcast",
+      "blurb": "Duke Men's Basketball podcast featuring current and former players discussing team life, recruitment, and the program's culture. Built by the players, for the fans.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1695718532": {
       "topics": [
@@ -142662,7 +143267,25 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Android news, hardware, and software coverage from tech journalists and experts.",
+      "display_title": "Android Faithful",
+      "blurb": "Weekly Android news on phones, foldables, tablets, and OS updates. Expert analysis and community discussion of the Android ecosystem and emerging trends.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1695988317": {
       "topics": [
@@ -142796,10 +143419,32 @@
     },
     "1696179731": {
       "topics": [
-        "health/alternative"
+        "health",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.9
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Doula discusses birth physiology, pain-free birth, and pregnancy; faith-based framing.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T01:00:02.795Z"
     },
     "1696185862": {
       "topics": [
@@ -142853,7 +143498,24 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily soccer/football coverage with match recaps, previews, and industry commentary.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1696371119": {
       "topics": [
@@ -142861,15 +143523,54 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast on grassland conservation, ranching, and sustainable land stewardship.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1696376177": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition coach teaches intuitive eating, food freedom, and binge-eating recovery.",
+      "display_title": "Kelly Lyons Podcast",
+      "blurb": "A nutrition coach offers strategies for ending binge eating and achieving food freedom. Science-backed approaches to intuitive eating and sustainable wellness.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1696468189": {
       "topics": [
@@ -142949,7 +143650,21 @@
         "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "CNN anchor reports breaking political news with interviews and insider perspective.",
+      "display_title": "The Source with Kaitlan Collins",
+      "blurb": "CNN anchor Kaitlan Collins covers breaking political news and elections. Direct interviews and investigative reporting on the day's most pressing stories.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1696981632": {
       "topics": [
@@ -142963,7 +143678,21 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nine-episode sci-fi thriller on AI assistants and the ethics of human connection.",
+      "display_title": "Ad Lucem",
+      "blurb": "A nine-part sci-fi thriller set in 2032 exploring ethical dilemmas of AI-mediated human connection. Examines technology, manipulation, and consequences of corporate innovation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1697068142": {
       "topics": [
@@ -142985,7 +143714,21 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA superfan Kenny Beecham shares in-depth game analysis and basketball insights.",
+      "display_title": "Small Ball with Kenny Beecham",
+      "blurb": "NBA superfan Kenny Beecham delivers sharp analysis of games, trades, and player stories. Unique perspectives on basketball culture and playoff drama.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-98e1c65f",
+      "classified_at": "2026-08-09T00:59:39.511Z"
     },
     "1697077063": {
       "topics": [
