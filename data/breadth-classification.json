@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-09T08:39:26.435Z",
+  "built_at": "2026-08-09T16:47:40.181Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-09-ea89ceea",
+    "last_batch_id": "fresh-2026-08-09-57b984d6",
     "last_batch_tier": 1
   },
   "entries": {
@@ -158625,7 +158625,22 @@
         "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Opinion-driven commentary on American politics and social issues.",
+      "display_title": "Reasonably Optimistic",
+      "blurb": "Weekly conversations about how America can improve and thrive, hosted by Megan McArdle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1734655204": {
       "topics": [
@@ -158633,7 +158648,26 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily sports talk covering Texas teams and broader sports news.",
+      "display_title": "Game Time",
+      "blurb": "Daily sports show covering Texas teams, trades, and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1734657941": {
       "topics": [
@@ -158734,10 +158768,29 @@
     "1734869584": {
       "topics": [
         "news/tech",
-        "computing"
+        "engineering/energy-grid"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly headlines and updates on solar energy and renewables.",
+      "display_title": "Solar News Weekly",
+      "blurb": "Weekly recap of solar and renewable energy industry headlines.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1734908174": {
       "topics": [
@@ -158793,10 +158846,30 @@
     },
     "1735019422": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Academic lectures on molecular chemistry and organic synthesis.",
+      "display_title": "Activations en chimie moléculaire - Louis Fensterbank",
+      "blurb": "Collège de France seminars on molecular chemistry and synthesis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1735040674": {
       "topics": [
@@ -158827,10 +158900,25 @@
     },
     "1735052380": {
       "topics": [
-        "culture/books"
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audiobook reading of Marcus Aurelius Meditations.",
+      "display_title": "The Meditations - Audiobook",
+      "blurb": "Audiobook of Marcus Aurelius Meditations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1735130689": {
       "topics": [
@@ -159066,14 +159154,44 @@
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content about dog training and behavior.",
+      "display_title": "Reward Your Dog Podcast",
+      "blurb": "Podcast about dog training and rewards-based dog behavior.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1735786366": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Appears focused on Lucy Ball or related media.",
+      "display_title": "The Lucy Podcast",
+      "blurb": "Podcast about Lucy and television history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1735826749": {
       "topics": [
@@ -159092,10 +159210,25 @@
     },
     "1735977478": {
       "topics": [
-        "tv-film/interviews"
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast covering murders in Star City.",
+      "display_title": "The Star City Murders Podcast",
+      "blurb": "True crime podcast investigating murders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1735991276": {
       "topics": [
@@ -159282,7 +159415,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish mysticism and Kabbalah teachings.",
+      "display_title": "Spiritual Principles | Kabbalah",
+      "blurb": "Teachings on Kabbalistic spiritual principles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1736501883": {
       "topics": [
@@ -159496,10 +159644,25 @@
     },
     "1737271114": {
       "topics": [
-        "automotive"
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cycling and cycling culture content.",
+      "display_title": "Cycle World Podcast",
+      "blurb": "Podcast about cycling, bicycles, and cycling community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1737278150": {
       "topics": [
@@ -159756,10 +159919,25 @@
     },
     "1737939088": {
       "topics": [
-        "automotive"
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DIY and home repair content from two hosts.",
+      "display_title": "2 Dudes 1 Wrench",
+      "blurb": "2 hosts discussing DIY projects and repairs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1737959261": {
       "topics": [
@@ -159875,10 +160053,25 @@
     },
     "1738393924": {
       "topics": [
-        "sports/rugby"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby podcast focused on British rugby teams and players.",
+      "display_title": "Rosbifs Rugby",
+      "blurb": "Rugby podcast covering British rugby and players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1738445966": {
       "topics": [
@@ -159953,7 +160146,22 @@
         "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Folk art and traditional arts and crafts.",
+      "display_title": "House of Folk Art",
+      "blurb": "Podcast about folk art and traditional craftsmanship.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1738776739": {
       "topics": [
@@ -159965,10 +160173,25 @@
     },
     "1738784164": {
       "topics": [
-        "nature"
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel advice and safety for travelers.",
+      "display_title": "Safe Travels",
+      "blurb": "Travel podcast focused on travel safety and tips.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1738794415": {
       "topics": [
@@ -160020,14 +160243,44 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness coaching focused on arm training and development.",
+      "display_title": "The Arm Coach Podcast",
+      "blurb": "Podcast about arm training and fitness coaching.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1739117038": {
       "topics": [
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket discussions focusing on county cricket.",
+      "display_title": "The Cricketer's County Conversation",
+      "blurb": "Podcast discussing county cricket and cricketers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1739138143": {
       "topics": [
@@ -160109,7 +160362,22 @@
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marketing strategies and tactics for business operators.",
+      "display_title": "Marketing Operators",
+      "blurb": "Podcast about marketing operations and strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1739440703": {
       "topics": [
@@ -160124,7 +160392,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jazz music and wellness themed podcast.",
+      "display_title": "Jazz Therapy",
+      "blurb": "Podcast blending jazz music with therapy and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1739491069": {
       "topics": [
@@ -160253,17 +160536,52 @@
     },
     "1739949892": {
       "topics": [
-        "sports/golf"
+        "sports/golf",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf and political commentary combined.",
+      "display_title": "Golf And Politics",
+      "blurb": "Podcast combining golf discussion with political commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1739954896": {
       "topics": [
-        "gaming"
+        "kids-family"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's podcast focused on Pokemon.",
+      "display_title": "Pokemon Kids Podcast",
+      "blurb": "Kids podcast about Pokemon and related topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1739961271": {
       "topics": [
@@ -160299,7 +160617,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running podcast focused on women runners.",
+      "display_title": "Women’s Running Collective",
+      "blurb": "Podcast community for women runners and running.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1740170954": {
       "topics": [
@@ -160479,10 +160816,25 @@
     },
     "1740648724": {
       "topics": [
-        "sports/baseball"
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Craft brewing and brewery focused content.",
+      "display_title": "Brewer Fanatic Podcast",
+      "blurb": "Podcast for craft brewing enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1740649128": {
       "topics": [
@@ -160583,7 +160935,22 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Anime fan podcast discussing reincarnation anime.",
+      "display_title": "That Time We Got Reincarnated as an Anime",
+      "blurb": "Podcast about anime and animation content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1741211837": {
       "topics": [
@@ -160641,7 +161008,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic Quran recitation by Saud Al-Shuraim.",
+      "display_title": "تلاوات سعود الشريم | saud al-shuraim",
+      "blurb": "Islamic Quran recitations in Arabic.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1741368721": {
       "topics": [
@@ -160827,10 +161209,25 @@
     },
     "1742000812": {
       "topics": [
-        "fiction/drama"
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unclear from title.",
+      "display_title": "Yours Truly Johnny Dollar Daily",
+      "blurb": "Fiction podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1742002302": {
       "topics": [
@@ -160851,7 +161248,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hockey podcast focused on Utah hockey.",
+      "display_title": "Utah Hockey Podcast",
+      "blurb": "Podcast covering Utah hockey and hockey topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1742086084": {
       "topics": [
@@ -160859,7 +161271,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dedicated running podcast for runners.",
+      "display_title": "The Running Kind Podcast",
+      "blurb": "Podcast for running enthusiasts and distance runners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1742099663": {
       "topics": [
@@ -160885,10 +161316,25 @@
     },
     "1742255140": {
       "topics": [
-        "music"
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Religious worship and spiritual music podcast.",
+      "display_title": "The Worship Keys Podcast",
+      "blurb": "Podcast about worship music and spiritual keys.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1742273984": {
       "topics": [
@@ -160915,10 +161361,25 @@
     },
     "1742348104": {
       "topics": [
-        "sports/baseball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports commentary by broadcasters Benetti and Dickerson.",
+      "display_title": "Have A Seat with Jason Benetti and Dan",
+      "blurb": "Sports podcast with broadcasters Jason Benetti and Dan Dickerson.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1742355637": {
       "topics": [
@@ -161008,10 +161469,30 @@
     },
     "1742833210": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice and psychology from Dr. Shefali.",
+      "display_title": "Parenting & You With Dr. Shefali",
+      "blurb": "Parenting podcast with Dr. Shefali on child psychology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1742853634": {
       "topics": [
@@ -161118,10 +161599,25 @@
     },
     "1743085978": {
       "topics": [
-        "fiction/drama"
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ASMR content with audio storytelling and relaxation.",
+      "display_title": "Spicy ASMR by Dipsea",
+      "blurb": "ASMR podcast with relaxing audio content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1743096956": {
       "topics": [
@@ -161196,7 +161692,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket podcast covering broader cultural and social angles.",
+      "display_title": "It’s Not Just Cricket",
+      "blurb": "Cricket podcast discussing cricket and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1743581022": {
       "topics": [
@@ -161251,10 +161762,25 @@
     },
     "1743702376": {
       "topics": [
-        "philosophy"
+        "education/self-improvement"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Wellness and life advice theme, limited signal.",
+      "display_title": "Lives Well Lived",
+      "blurb": "Podcast about living well and personal wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1743709642": {
       "topics": [
@@ -161493,7 +162019,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fiction based on Dead Space science fiction game.",
+      "display_title": "Dead Space: Deep Cover",
+      "blurb": "Science fiction podcast based on Dead Space.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1744485065": {
       "topics": [
@@ -161519,10 +162060,25 @@
     },
     "1744630840": {
       "topics": [
-        "news/commentary"
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "UFO investigations and paranormal research podcast.",
+      "display_title": "Vetted: The UFO Sleuth",
+      "blurb": "Podcast investigating UFO reports and paranormal claims.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1744631325": {
       "topics": [
@@ -161541,10 +162097,25 @@
     },
     "1744644850": {
       "topics": [
-        "nature"
+        "hobbies"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Agriculture and wildlife related content.",
+      "display_title": "WildAg Podcast",
+      "blurb": "Podcast about agriculture and wildlife.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1744730383": {
       "topics": [
@@ -161563,11 +162134,30 @@
     },
     "1744748488": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "health/fitness",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and fitness coaching for midlife weight management.",
+      "display_title": "Master Your Metabolism For Weight Loss After 40!",
+      "blurb": "Health podcast on metabolism, weight loss, and menopause.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-09-57b984d6",
+      "classified_at": "2026-08-09T16:47:30.419Z"
     },
     "1744800092": {
       "topics": [
