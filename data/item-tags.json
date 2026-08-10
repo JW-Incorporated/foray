@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-09T11:43:24.723Z",
+  "built_at": "2026-08-10T11:46:13.093Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -11228,6 +11228,219 @@
       "family",
       "animal-behavior",
       "variety-show"
+    ],
+    "the-rest-is-history--695-elizabeth-i-vs-the-catholics": [
+      "history",
+      "tudor-england",
+      "elizabeth-i",
+      "spanish-empire",
+      "england",
+      "military-history",
+      "espionage"
+    ],
+    "conan-obrien-needs-a-friend--greta-lee": [
+      "comedy",
+      "interviews",
+      "celebrity",
+      "korean-culture",
+      "identity",
+      "film",
+      "asian-american"
+    ],
+    "smartless--robby-hoffman": [
+      "comedy",
+      "humor",
+      "banter",
+      "stand-up-comedy",
+      "interviews",
+      "celebrity"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3397": [
+      "history",
+      "technology",
+      "history-of-technology",
+      "publishing",
+      "media",
+      "engineering-history"
+    ],
+    "acquired--disney-the-renaissance-and-the-empire": [
+      "business",
+      "business-history",
+      "disney",
+      "media",
+      "entertainment",
+      "leadership",
+      "entrepreneurship"
+    ],
+    "founders--428-how-claude-shannon-worked": [
+      "business",
+      "biography",
+      "history-of-technology",
+      "computing-history",
+      "computing",
+      "innovation",
+      "founders"
+    ],
+    "twenty-minute-vc--20vc-will-openrouter-sell-for-10bn": [
+      "business",
+      "startups",
+      "venture-capital",
+      "ai",
+      "artificial-intelligence",
+      "tech-industry",
+      "founders"
+    ],
+    "partially-examined-life--pel-presents-nem-258-dan-montgomery": [
+      "music",
+      "songwriting",
+      "americana",
+      "guitar",
+      "music-analysis",
+      "singers"
+    ],
+    "unexplainable--why-hank-green-takes-pseudoscience-seriously": [
+      "science",
+      "skeptic",
+      "science-communication",
+      "misinformation",
+      "science-journalism",
+      "debunking"
+    ],
+    "how-i-built-this--madegood-salma-and-nima-fotovat-lost": [
+      "business",
+      "entrepreneurship",
+      "founders",
+      "family-business",
+      "food",
+      "consumer-products"
+    ],
+    "huberman-lab--using-ai-to-increase-your-intelligence": [
+      "ai",
+      "artificial-intelligence",
+      "robotics",
+      "technology",
+      "neuroscience",
+      "science"
+    ],
+    "the-matt-walker-podcast--147-does-sleep-really-clean-your": [
+      "sleep",
+      "neuroscience",
+      "brain",
+      "brain-health",
+      "health",
+      "cognition"
+    ],
+    "the-peter-attia-drive--403-peptides-separating-scientific-promise-from": [
+      "peptides",
+      "longevity",
+      "health",
+      "medicine",
+      "supplements",
+      "evidence-based"
+    ],
+    "strict-scrutiny--sometimes-these-f-ckers-lose": [
+      "politics",
+      "law",
+      "society-law",
+      "supreme-court",
+      "government",
+      "policy"
+    ],
+    "the-archaeology-show--journal-club-july-2026-ep-337": [
+      "archaeology",
+      "ai",
+      "science",
+      "history",
+      "research",
+      "ethics"
+    ],
+    "ten-percent-happier--the-neuroscience-of-likability-social-connection": [
+      "neuroscience",
+      "brain",
+      "brain-health",
+      "social-skills",
+      "psychology",
+      "science-communication"
+    ],
+    "mel-robbins-podcast--world-leading-psychologist-how-to-manifest": [
+      "psychology",
+      "self-improvement",
+      "consciousness",
+      "mindset",
+      "science",
+      "personal-growth"
+    ],
+    "happier-gretchen-rubin--little-happier-are-you-a-clutch": [
+      "self-improvement",
+      "psychology",
+      "sports",
+      "athletes",
+      "habits",
+      "mindset"
+    ],
+    "armchair-expert--taron-egerton": [
+      "comedy",
+      "interviews",
+      "celebrity",
+      "acting",
+      "wales",
+      "film"
+    ],
+    "call-her-daddy--anxious-attachment-101": [
+      "relationships",
+      "attachment",
+      "psychology",
+      "intimacy",
+      "self-improvement",
+      "mental-health"
+    ],
+    "comedy-bang-bang--wainscotting-hold-the-hamm-david-wain": [
+      "comedy",
+      "sketch-comedy",
+      "film",
+      "interviews",
+      "improv",
+      "celebrity"
+    ],
+    "working-it-out-birbiglia--chloe-troast-and-mike-answer-your": [
+      "comedy",
+      "improv",
+      "interviews",
+      "stand-up",
+      "sketch-comedy",
+      "snl"
+    ],
+    "crime-junkie--murdered-bill-peggy-stephenson": [
+      "true-crime",
+      "murder",
+      "cold-case",
+      "investigation",
+      "forensics",
+      "crime"
+    ],
+    "wicked-words--maurice-chammah-the-last-twelve-weeks": [
+      "true-crime",
+      "death-penalty",
+      "law",
+      "journalism",
+      "criminal-justice",
+      "texas"
+    ],
+    "this-american-life--443-amusement-park": [
+      "personal-journals",
+      "storytelling",
+      "true-stories",
+      "journalism",
+      "careers",
+      "americana"
+    ],
+    "wow-in-the-world--disgustival-why-does-gross-stuff-make": [
+      "kids",
+      "science-for-kids",
+      "science",
+      "curiosity",
+      "animal-defenses",
+      "education"
     ]
   }
 }
