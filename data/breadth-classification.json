@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-09T16:14:29.378Z",
+  "built_at": "2026-08-10T00:15:14.573Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-09-2af59e52",
+    "last_batch_id": "fresh-2026-08-10-5cd8eba7",
     "last_batch_tier": 1
   },
   "entries": {
@@ -144198,10 +144198,30 @@
     },
     "1691893350": {
       "topics": [
+        "business",
         "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with agricultural entrepreneurs, innovators, and leaders discussing business strategy and industry transformation.",
+      "display_title": "Leaders Of The West",
+      "blurb": "Conversations with entrepreneurs and leaders in agriculture and ranching about innovation, strategy, and building sustainable businesses.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1691953935": {
       "topics": [
@@ -147732,10 +147752,30 @@
     },
     "1704382902": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on artistic development, creative identity, overcoming self-doubt, and finding authentic artistic voice.",
+      "display_title": "The Art Coach Podcast",
+      "blurb": "Guidance on creative growth, artistic identity, and overcoming self-doubt from an art coach perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1704480561": {
       "topics": [
@@ -147772,7 +147812,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily coverage of Washington Wizards basketball including trades, roster analysis, and season updates.",
+      "display_title": "The Wizards Podcast",
+      "blurb": "Postgame analysis, trades, signings, and season coverage for Washington Wizards basketball.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1704608129": {
       "topics": [
@@ -147790,12 +147845,30 @@
     },
     "1704666768": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "kids-family/parenting",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Belgian-language podcast about child development milestones and parenting guidance for toddlers and preschoolers.",
+      "display_title": "Sarah voor ouders",
+      "blurb": "Child development guidance from a psychologist for parents navigating early childhood milestones.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1704710653": {
       "topics": [
@@ -147855,24 +147928,82 @@
     },
     "1704761766": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with cinematographers and film operators about visual storytelling and filmmaking craft.",
+      "display_title": "The Op",
+      "blurb": "Conversations with cinematographers and operators about visual storytelling and the art of filmmaking.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1704769014": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "For Pilates teachers and studio owners; covers teaching, business practices, and evidence-based fitness.",
+      "display_title": "Pilates Exchange",
+      "blurb": "Insights for Pilates instructors and studio owners on teaching, business, and evidence-based practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1704813354": {
       "topics": [
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "In-depth wrestling analysis and stories about professional wrestling history and current events.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1704871055": {
       "topics": [
@@ -148056,10 +148187,30 @@
     },
     "1705429014": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marketing and sales strategies for female founders covering scaling, content strategy, and revenue building.",
+      "display_title": "Running With Wolves",
+      "blurb": "Marketing and sales strategies for female founders scaling their businesses.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1705451747": {
       "topics": [
@@ -148189,10 +148340,30 @@
     },
     "1705778220": {
       "topics": [
-        "craft"
+        "craft",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three makers discuss growing craft businesses from hobby to professional scale.",
+      "display_title": "Setting Up Shoppe",
+      "blurb": "Three makers share their journeys scaling craft businesses from hobbyist side hustles to professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1705897176": {
       "topics": [
@@ -148228,10 +148399,30 @@
     },
     "1705899138": {
       "topics": [
-        "gaming"
+        "gaming",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth discussion of Five Nights at Freddy's lore, theories, and narrative analysis.",
+      "display_title": "Freddy Fazbear Pizza Podcast",
+      "blurb": "Community podcast analyzing Five Nights at Freddy's lore and theories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1705906455": {
       "topics": [
@@ -148275,17 +148466,57 @@
     },
     "1705972518": {
       "topics": [
-        "business/management"
+        "business/management",
+        "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership and management advice from The Economist covering hiring, meetings, and workplace dynamics.",
+      "display_title": "Boss Class from The Economist",
+      "blurb": "Management advice covering hiring, meetings, workplace AI, and leadership challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1705989552": {
       "topics": [
-        "comedy/interviews"
+        "comedy/interviews",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedian David Lucas interviews guests while fishing, primarily centered on comedy and personalities.",
+      "display_title": "Fishing with David Lucas",
+      "blurb": "Comedian David Lucas takes guests fishing while discussing comedy, life, and personalities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1705996373": {
       "topics": [
@@ -148453,14 +148684,44 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football strategy, roster advice, draft analysis, and mailbag answers from PlayerProfiler.",
+      "display_title": "Dear Ms. Fantasy",
+      "blurb": "Fantasy football strategy and lineup advice covering draft tactics and trade analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1706368614": {
       "topics": [
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling legend Bob Roop shares stories and memories from throughout his wrestling career.",
+      "display_title": "The Wrestling Stoop w/Bob Roop",
+      "blurb": "Wrestling legend Bob Roop shares career stories and memories from professional wrestling history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1706416937": {
       "topics": [
@@ -148563,10 +148824,33 @@
     },
     "1706738712": {
       "topics": [
-        "math"
+        "math",
+        "education/courses"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Interviews exploring real-world applications of mathematics across industries and fields.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1706739162": {
       "topics": [
@@ -148574,7 +148858,26 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily sports commentary on Edmonton Oilers and broader sports news from veteran broadcaster.",
+      "display_title": "The Lowdown with Lowetide",
+      "blurb": "Daily sports commentary covering the Edmonton Oilers and broader sports news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1706746698": {
       "topics": [
@@ -148582,7 +148885,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about the Hardrock 100 ultramarathon covering runners, volunteers, and training.",
+      "display_title": "Hardtalk by the Hardrock 100 Endurance Run",
+      "blurb": "Stories and interviews from participants and volunteers of the Hardrock 100 ultramarathon.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1706761841": {
       "topics": [
@@ -148683,7 +149005,22 @@
         "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Replay of Mike Calta daily radio show with news commentary and talk.",
+      "display_title": "Mike Calta Full Show Replay",
+      "blurb": "Daily radio show replay with news, commentary, and talk content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1706944557": {
       "topics": [
@@ -148797,14 +149134,49 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality TV after-show commentary on 90 Day Fiancé with humor and cultural critique.",
+      "display_title": "90 Day Fiancé: Honestly!",
+      "blurb": "Unfiltered commentary on 90 Day Fiancé reality drama with humor and cultural insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1707168624": {
       "topics": [
-        "aviation"
+        "aviation",
+        "history/military-modern"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Commemorative Air Force educational content on warbirds, aviation history, and aviation heritage.",
+      "display_title": "CAF Warbird Tube",
+      "blurb": "Educational content on historic aircraft, aviation history, and warbirds from the Commemorative Air Force.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1707189255": {
       "topics": [
@@ -148838,17 +149210,57 @@
     },
     "1707243132": {
       "topics": [
+        "personal-journals",
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lifestyle vlogging from Alix Earle covering beauty, travel, events, and personal moments.",
+      "display_title": "Hot Mess",
+      "blurb": "Lifestyle vlog covering beauty, travel, events, and personal moments from Alix Earle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1707335580": {
       "topics": [
-        "automotive"
+        "automotive",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations between Fast and Furious star Sung Kang and car builder Emelia Hartford about car culture.",
+      "display_title": "Car Stories with Sung Kang and Emelia Hartford",
+      "blurb": "Car culture conversations from Fast and Furious star Sung Kang and builder Emelia Hartford.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1707360141": {
       "topics": [
@@ -148926,10 +149338,30 @@
     },
     "1707572106": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Exploration of Lubavitch Chabad identity and Jewish life through personal stories and interviews.",
+      "display_title": "Homesick for Lubavitch",
+      "blurb": "Personal stories exploring Lubavitch and Chabad Jewish identity and community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1707589849": {
       "topics": [
@@ -149098,10 +149530,30 @@
     },
     "1708100388": {
       "topics": [
-        "music"
+        "music",
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis podcast examining Taylor Swift lyrics through literary and rhetorical lenses.",
+      "display_title": "AP Taylor Swift",
+      "blurb": "Smart literary analysis of Taylor Swift lyrics covering themes, symbolism, and rhetorical devices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1708101832": {
       "topics": [
@@ -149164,10 +149616,30 @@
     },
     "1708337172": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Enthusiasts discussing orchid species, cultivation, breeding, and horticulture.",
+      "display_title": "The Orchid Pod",
+      "blurb": "Passionate discussion of orchid species, cultivation, genetics, and collecting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1708338186": {
       "topics": [
@@ -149175,7 +149647,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Trail running and ultramarathon interviews and training advice from experienced runners.",
+      "display_title": "Dirt And Vert",
+      "blurb": "Trail running and ultramarathon stories featuring training, racing, and runner interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1708462661": {
       "topics": [
@@ -149226,7 +149717,26 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Football strategy analysis and sports news from Coach Kevin Smith covering NFL tactics.",
+      "display_title": "The Call Sheet Daily, with Coach Kevin Smith",
+      "blurb": "Football strategy and analysis from Coach Kevin Smith covering the NFL.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1708625782": {
       "topics": [
@@ -149237,10 +149747,30 @@
     },
     "1708660680": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion and design conversations from co-owners of 3sixteen menswear brand discussing craftsmanship.",
+      "display_title": "Singularities",
+      "blurb": "Fashion and design conversations featuring menswear, craftsmanship, and brand philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1708664521": {
       "topics": [
@@ -149284,7 +149814,22 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Portuguese-language volleyball podcast featuring professional female athletes sharing experiences.",
+      "display_title": "2Point Difference",
+      "blurb": "Volleyball stories and interviews with professional female athletes from around the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1708827121": {
       "topics": [
@@ -149405,10 +149950,29 @@
     "1709342064": {
       "topics": [
         "education/language-learning",
-        "linguistics/language"
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beginner Korean language learning using storytelling and comprehensible input with cultural context.",
+      "display_title": "Cozy Storytime in Korean",
+      "blurb": "Korean language learning for beginners using storytelling and cultural context.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1709343022": {
       "topics": [
@@ -149439,7 +150003,22 @@
         "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedian Russell Howard interviews guests discussing brilliant things that bring joy to life.",
+      "display_title": "Russell Howard's Five Brilliant Things",
+      "blurb": "Comedian Russell Howard interviews guests discussing their passions and brilliant things.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1709512413": {
       "topics": [
@@ -149662,10 +150241,30 @@
     },
     "1710245838": {
       "topics": [
-        "religion/spirituality"
+        "religion/spirituality",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Eastern Orthodox spiritual teachings and homilies featuring monastic and patristic content.",
+      "display_title": "Athonite Audio",
+      "blurb": "Eastern Orthodox spiritual teachings from monks and church leaders on prayer and faith.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1710263475": {
       "topics": [
@@ -149773,7 +150372,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode-by-episode analysis of Mad Men TV series from veteran Mad Men bloggers.",
+      "display_title": "They Coined It, a Mad Men Podcast",
+      "blurb": "Episode-by-episode analysis of Mad Men from experienced series fans and writers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1710616965": {
       "topics": [
@@ -149843,10 +150457,30 @@
     },
     "1710908658": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ASMR bedtime stories narrated in a deep voice for sleep and relaxation.",
+      "display_title": "Dozing Off | Deep Voice ASMR Bedtime Stories",
+      "blurb": "Relaxing ASMR bedtime stories narrated in a soothing deep voice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1710962409": {
       "topics": [
@@ -150042,10 +150676,30 @@
     },
     "1711453890": {
       "topics": [
-        "health/alternative"
+        "health/alternative",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories from cancer survivors and healers exploring integrative and alternative healing approaches.",
+      "display_title": "Radical Remission Project \"Stories That Heal\" Podcast",
+      "blurb": "Stories from cancer survivors exploring integrative healing and hope.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1711484531": {
       "topics": [
@@ -150118,14 +150772,53 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Movie-by-movie journey through Godzilla film history with analysis and guest discussions.",
+      "display_title": "Skreeonk! A Godzilla Movie Marathon",
+      "blurb": "Chronological analysis of Godzilla films from the beginning of the franchise.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1711723206": {
       "topics": [
-        "gaming"
+        "gaming",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game news and industry analysis from veteran YouTube content creators.",
+      "display_title": "Level With Me Podcast",
+      "blurb": "Video game industry news and analysis from experienced gaming content creators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1711793555": {
       "topics": [
@@ -150186,10 +150879,30 @@
     },
     "1711860486": {
       "topics": [
-        "relationships"
+        "relationships",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Married couple discussing marriage challenges, communication, and relationship dynamics.",
+      "display_title": "Morrow Marriage | Disrupting Divorce",
+      "blurb": "Advice from a married couple on navigating marriage challenges and strengthening relationships.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1711951624": {
       "topics": [
@@ -150341,10 +151054,30 @@
     },
     "1712529780": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bodybuilding and fitness science from IFBB Pro and NASM trainer covering training and recovery.",
+      "display_title": "Peak Physique Podcast",
+      "blurb": "Bodybuilding and fitness science from IFBB Pro covering training, recovery, and athlete performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1712553112": {
       "topics": [
@@ -150376,17 +151109,57 @@
     },
     "1712729886": {
       "topics": [
-        "tv-film/animation"
+        "tv-film/animation",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Russian-language anime podcast discussing new shows, classics, and anime culture.",
+      "display_title": "Ну что, пацаны, аниме?",
+      "blurb": "Russian-language anime podcast discussing series, analyzing tropes, and cultural context.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1712744280": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "craft/photography"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with professional photographers covering various photographic genres and careers.",
+      "display_title": "Artist Spotlight - The Podcast",
+      "blurb": "Interviews with professional photographers discussing their work, careers, and photographic craft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1712751273": {
       "topics": [
@@ -150428,7 +151201,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Father and daughter discussing current film and TV releases with critical analysis.",
+      "display_title": "Reel Talk with Honey & Jonathan Ross",
+      "blurb": "Father and daughter discuss film and TV releases with humor and critical insight.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1712873427": {
       "topics": [
@@ -150509,17 +151297,57 @@
     },
     "1713169728": {
       "topics": [
-        "food"
+        "food",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home cooks discussing recipe development, techniques, and food science from professionals.",
+      "display_title": "The Recipe with Kenji and Deb",
+      "blurb": "Recipe development and food science from professional home cooks exploring cooking techniques.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1713188490": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French child psychotherapist discussing child development, education, and parenting topics.",
+      "display_title": "Caroline Goldman - The podcast",
+      "blurb": "Child development and parenting guidance from a French psychotherapist and developmental expert.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1713209009": {
       "topics": [
@@ -150580,10 +151408,30 @@
     },
     "1713378216": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "education/courses"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Norwegian-language deep dive into each of the periodic table's 118 elements and their significance.",
+      "display_title": "Grunnstoffene",
+      "blurb": "Norwegian podcast exploring each element of the periodic table and its impact on the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1713384664": {
       "topics": [
@@ -150656,10 +151504,30 @@
     },
     "1713646818": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marketing strategy and growth discussions from experienced brand builders and entrepreneurs.",
+      "display_title": "Sweat Equity",
+      "blurb": "Marketing strategy and brand building insights from successful entrepreneurs and strategists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-5cd8eba7",
+      "classified_at": "2026-08-10T00:15:14.573Z"
     },
     "1713697707": {
       "topics": [
