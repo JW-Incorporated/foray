@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-10T00:30:39.969Z",
+  "built_at": "2026-08-10T08:30:41.753Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-10-8b7af94c",
+    "last_batch_id": "fresh-2026-08-10-d4862b96",
     "last_batch_tier": 1
   },
   "entries": {
@@ -150322,10 +150322,33 @@
     },
     "1712717917": {
       "topics": [
+        "religion/christianity",
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Identified as religion podcast based on content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 34w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1712729886": {
       "topics": [
@@ -150418,10 +150441,29 @@
     "1712968933": {
       "topics": [
         "nature/earth-science",
-        "science"
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as nature podcast based on content.",
+      "display_title": "GIS Chat Podcast",
+      "blurb": "Podcast Host Jazzmen J. Wilson interviews GIS (Geographic Information Systems) professionals who work in utility, conservation, mining, cartography, programming, design, project ma...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1713077967": {
       "topics": [
@@ -150545,10 +150587,30 @@
     },
     "1713410581": {
       "topics": [
-        "tv-film/after-shows"
+        "culture/pop-culture",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as culture podcast based on content.",
+      "display_title": "Screw The Clout",
+      "blurb": "The \"Screw the Clout\" podcast, hosted by the dynamic and fearless Steve Stanulis, is a high-energy journey through the realms of entertainment and music industries. In this podcast...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1713413210": {
       "topics": [
@@ -150605,17 +150667,55 @@
     },
     "1713740803": {
       "topics": [
-        "sports/soccer"
+        "sports/soccer",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as sports podcast based on content.",
+      "display_title": "kicker WM-Daily - Dein täglicher WM-Wecker",
+      "blurb": "kicker Daily ist euer täglicher Fußball-Kompass. Die kicker-Redaktion sortiert für euch jeden Morgen die wichtigsten Sport-News des Tages: Was gibt's Neues aus der Bundesliga und 2...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1713846211": {
       "topics": [
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Identified as relationships podcast based on content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1713999569": {
       "topics": [
@@ -150897,10 +150997,33 @@
     },
     "1714655395": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Identified as culture podcast based on content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1714672018": {
       "topics": [
@@ -150921,7 +151044,25 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Identified as sports podcast based on content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1714831829": {
       "topics": [
@@ -150978,7 +151119,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as tv-film podcast based on content.",
+      "display_title": "Proper Chat: A Love Island Podcast",
+      "blurb": "\"Proper Chat\" is like a lively and fabulous brunch date with four besties who can't stop gushing about the juiciest drama, the flirtiest romances, and the cheekiest one-liners from...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1715089253": {
       "topics": [
@@ -151033,11 +151189,30 @@
     },
     "1715384509": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "nature",
+        "nature/earth-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as nature podcast based on content.",
+      "display_title": "Sonoran Sky",
+      "blurb": "Lovers of Arizona, join us under the Sonoran Sky! Each week, Arizona&#39;s Family First Alert Meteorologists will bring you in-depth and entertaining conversations on our state&#39...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1715463842": {
       "topics": [
@@ -151065,10 +151240,30 @@
     },
     "1715504359": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as culture podcast based on content.",
+      "display_title": "House of Lou",
+      "blurb": "Take a step inside the city’s creative community with St. Louis’ first design podcast, House of Lou",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1715538114": {
       "topics": [
@@ -151117,10 +151312,30 @@
     },
     "1715867797": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as sports podcast based on content.",
+      "display_title": "Dynasty Life",
+      "blurb": "Fantasy Football seasons come and go, but dynasty fantasy football is LIFE. Theo Gremminger brings you Fantasy Points’ newest Dynasty Podcast: Dynasty Life",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1715878887": {
       "topics": [
@@ -151142,7 +151357,26 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as economics podcast based on content.",
+      "display_title": "Thoughtful Money with Adam Taggart",
+      "blurb": "Actionable insights on building wealth from the top experts in money & the markets Hosted by Adam Taggart",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1715911151": {
       "topics": [
@@ -151192,10 +151426,33 @@
     },
     "1716279601": {
       "topics": [
-        "relationships"
+        "relationships",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Identified as relationships podcast based on content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1716337829": {
       "topics": [
@@ -151269,10 +151526,25 @@
     },
     "1716616543": {
       "topics": [
-        "sports/wrestling"
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as culture podcast based on content.",
+      "display_title": "Rumor & Innuendo",
+      "blurb": "Bruce Prichard might not deal in rumor & innuendo, but we do. Join former WWE writer Robert Karpeles and SEScoop’s Dominic DeAngelo weekdays at noon Eastern for Podcast Heat’s firs...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1716617413": {
       "topics": [
@@ -151280,7 +151552,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as nature podcast based on content.",
+      "display_title": "Talking Climate",
+      "blurb": "Conversations about transformative research happening in the fields of climate science and policy at University of Utah.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1716617572": {
       "topics": [
@@ -151332,7 +151623,29 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Identified as music podcast based on content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1716778101": {
       "topics": [
@@ -151373,10 +151686,33 @@
     },
     "1716982465": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Identified as craft podcast based on content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1716987177": {
       "topics": [
@@ -151583,10 +151919,34 @@
     },
     "1718461549": {
       "topics": [
-        "travel"
+        "travel",
+        "kids-family"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Identified as travel podcast based on content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8",
+        "blurb: 34w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1718475603": {
       "topics": [
@@ -151679,10 +152039,33 @@
     },
     "1718772295": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Identified as kids-family podcast based on content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1718788627": {
       "topics": [
@@ -151702,10 +152085,30 @@
     },
     "1718816431": {
       "topics": [
-        "travel"
+        "travel",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as travel podcast based on content.",
+      "display_title": "The BoldlyGo Podcast: Revolutionizing Your Journey",
+      "blurb": "The BoldlyGo Podcast: Revolutionizing Your Journey is your inside pass to traveling better, farther, and more luxuriously using points, miles, and smart travel strategies. Hosted b...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1718851160": {
       "topics": [
@@ -151853,10 +152256,30 @@
     },
     "1719212923": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as kids-family podcast based on content.",
+      "display_title": "小泼猴妙趣百科丨十万个科普百科大全丨睡前故事",
+      "blurb": "《小泼猴妙趣百科》原创少儿科普故事由普信文化旗下Prosee Studio精心打造，致力于将有价值的科普知识以简单易懂的方式融入到简短精彩的故事中，有温度、开脑洞，满足孩子对万物不断萌发的好奇心，潜移默化地提升孩子的科学素养和情商智慧。",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1719213892": {
       "topics": [
@@ -151900,7 +152323,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as sports podcast based on content.",
+      "display_title": "The Rugby Rundown",
+      "blurb": "Welcome to The Rugby Rundown! Join hosts, former British-Irish and England legend, Alex Corbisiero, alongside former MLR and USA Rugby star, Will Hooley, for the ultimate weekly ru...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1719541679": {
       "topics": [
@@ -152029,7 +152467,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as sports podcast based on content.",
+      "display_title": "\"Sete di Tennis\" condotto da Federico Ferrero",
+      "blurb": "Un appuntamento a cura di Federico Ferrero, voce del tennis per Sky ed Eurosport, firma di numerose testate nazionali, autore per Rizzoli, Hoepli, ADD. Storie, aneddoti, momenti in...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1719789201": {
       "topics": [
@@ -152220,10 +152673,33 @@
     },
     "1720513717": {
       "topics": [
-        "math"
+        "math",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Identified as math podcast based on content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1720574866": {
       "topics": [
@@ -152243,10 +152719,33 @@
     },
     "1720750279": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        },
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Identified as religion podcast based on content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1720765874": {
       "topics": [
@@ -152344,10 +152843,30 @@
     },
     "1721280757": {
       "topics": [
+        "sports/endurance",
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as sports podcast based on content.",
+      "display_title": "The Endurance Drive Podcast",
+      "blurb": "Welcome to the Endurance Drive podcast! Our mission is to share the key principles that structure our approach to endurance training and coaching. Visit theendurancedrive.com to le...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1721299626": {
       "topics": [
@@ -152576,10 +153095,25 @@
     },
     "1721967427": {
       "topics": [
-        "tv-film/after-shows"
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as culture podcast based on content.",
+      "display_title": "Bravo's Hot Mic",
+      "blurb": "Bravo's Hot Mic OFFICIAL podcast tells the real stories behind Bravo’s biggest shows. Cut through the social media speculation and conspiracy theories and get the definitive, behin...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1721969693": {
       "topics": [
@@ -152653,10 +153187,34 @@
     "1722321613": {
       "topics": [
         "news/tech",
-        "computing"
+        "computing",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as news podcast based on content.",
+      "display_title": "Start Here AI",
+      "blurb": "Start Here AI brings you the latest AI news in clear and simple terms. Each episode covers the developments, tools, and ideas shaping artificial intelligence, so you can stay ahead...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1722322040": {
       "topics": [
@@ -152748,7 +153306,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as sports podcast based on content.",
+      "display_title": "Endorphine par Running Addict",
+      "blurb": "La performance n'est jamais qu'une question d'entraînement. Elle est influencée par notre sommeil, notre alimentation, nos émotions, notre environnement, nos relations, nos croyanc...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1722479780": {
       "topics": [
@@ -152776,10 +153353,29 @@
     "1722571117": {
       "topics": [
         "sports/endurance",
-        "health/fitness"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as sports podcast based on content.",
+      "display_title": "Distance To Empty",
+      "blurb": "Become a Subscriber: http://patreon.com/DistancetoEmptyPod Distance To Empty will take its audience deep into the world of ultra-endurance running, with a particular focus on races...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1722576184": {
       "topics": [
@@ -152820,10 +153416,30 @@
     },
     "1722854107": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as kids-family podcast based on content.",
+      "display_title": "Raising Godly Girls",
+      "blurb": "For over 30 years, American Heritage Girls® has come alongside families and youth ministry leaders in offering Christ-centered, girl-focused character development. Through the Rais...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1722923909": {
       "topics": [
@@ -152848,10 +153464,30 @@
     },
     "1723008031": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        },
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as religion podcast based on content.",
+      "display_title": "佛经读诵（心经，佛说阿弥陀经，金刚经，普门品等）",
+      "blurb": "诵读佛经的时候，我们会不自觉地集中念力，端心正意，使我们身心处于空的宁静状态，更有利于得佛加持，灭除烦恼，增加功德利益。读诵佛经可以得到清净明利诸善根，把善良的种子播种进自己的识田。",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1723046569": {
       "topics": [
@@ -152914,17 +153550,55 @@
     },
     "1723116481": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Identified as culture podcast based on content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1723125565": {
       "topics": [
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as sports podcast based on content.",
+      "display_title": "The Volleyball University Podcast",
+      "blurb": "The Volleyball University Podcast is meant to help you improve your game on and off the court. From mental performance to skills to strategy to nutrition, we cover it all.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1723225253": {
       "topics": [
@@ -153068,10 +153742,30 @@
     },
     "1723621735": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as gaming podcast based on content.",
+      "display_title": "Versus Wolves",
+      "blurb": "Woolie Versus and Eyepatch Wolf force each other to experience different media. Hilarity/Violence ensues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1723626781": {
       "topics": [
@@ -153187,10 +153881,30 @@
     },
     "1723876813": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as tv-film podcast based on content.",
+      "display_title": "On Cinema On Demand",
+      "blurb": "'On Cinema On Demand' hosted by Tim Heidecker and Joseph \"Joey Patron\" Patrocelli features new movie experts to discuss the week's releases. This program is available in original v...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1723878862": {
       "topics": [
@@ -153381,10 +154095,33 @@
     },
     "1724086897": {
       "topics": [
-        "business/management"
+        "business/management",
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Identified as business podcast based on content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 14w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1724120477": {
       "topics": [
@@ -153440,10 +154177,30 @@
     },
     "1724288737": {
       "topics": [
-        "sports/basketball"
+        "sports/basketball",
+        "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Identified as sports podcast based on content.",
+      "display_title": "Third Apron",
+      "blurb": "A fun NBA podcast about transactions and the CBA. Hosted by salary cap analyst Yossi Gozlan and NBA writer Sam Quinn.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-d4862b96",
+      "classified_at": "2026-08-10T08:30:41.753Z"
     },
     "1724309207": {
       "topics": [
