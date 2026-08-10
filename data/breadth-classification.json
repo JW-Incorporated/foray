@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-09T16:58:09.752Z",
+  "built_at": "2026-08-10T00:57:51.968Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-09-753a7825",
+    "last_batch_id": "fresh-2026-08-10-b03fe66d",
     "last_batch_tier": 1
   },
   "entries": {
@@ -151407,10 +151407,35 @@
     },
     "1720670621": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "science",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kids explain science topics through expert interviews and real-world examples.",
+      "display_title": "媽媽老師，我想問問題!",
+      "blurb": "Kids ask science experts about earthquakes, vegetables, animals, and how things work.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1720750279": {
       "topics": [
@@ -151457,17 +151482,52 @@
     },
     "1721007485": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/stand-up",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unfiltered comedy show mixing stand-up, relationships, gossip, and life struggles.",
+      "display_title": "Aque yo mando podcast",
+      "blurb": "Denver-based comedy with no filters: guests share wild stories about fights, relationships, and growing up.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1721023499": {
       "topics": [
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly women's rugby news, tournament results, and player coverage worldwide.",
+      "display_title": "Women's Rugby Rundown",
+      "blurb": "Weekly rugby news covering international competitions, player updates, and women's rugby events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1721113418": {
       "topics": [
@@ -151486,10 +151546,30 @@
     },
     "1721245241": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Veterinary behaviorist teaches dog training strategies for common behavioral problems.",
+      "display_title": "Help! My Dog",
+      "blurb": "Dog trainer and vet shares practical strategies for reactivity, anxiety, aggression, and obedience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1721250552": {
       "topics": [
@@ -151600,10 +151680,30 @@
     },
     "1721601479": {
       "topics": [
-        "comedy/interviews"
+        "comedy/interviews",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nostalgic interviews where comedians relive childhood memories and wild stories.",
+      "display_title": "The Wayback with Ryan Sickler",
+      "blurb": "Comedians share nostalgic childhood memories, embarrassing moments, and local stories from their past.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1721623113": {
       "topics": [
@@ -151614,18 +151714,62 @@
     },
     "1721626451": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "FBI whistleblower hosts commentary on current events, policy, and political accountability.",
+      "display_title": "The American Radicals Podcast",
+      "blurb": "FBI whistleblower Steve Friend critiques federal policy, deportations, and political scandals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1721628785": {
       "topics": [
+        "sports/hockey",
         "sports",
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's hockey stories, player interviews, and behind-the-scenes access to pro and college players.",
+      "display_title": "Rinkside Rundown",
+      "blurb": "Interviews with women's hockey players, coaches, and experts across PWHL and college leagues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1721662293": {
       "topics": [
@@ -151652,10 +151796,35 @@
     },
     "1721815157": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "health/nutrition",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's health coach covers hormones, fitness, nutrition, and perimenopause challenges.",
+      "display_title": "Where Women Win with Sarah Fechter",
+      "blurb": "Women's health expert Sarah Fechter discusses fitness, hormones, nutrition, and aging well.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1721816368": {
       "topics": [
@@ -151666,17 +151835,57 @@
     },
     "1721842163": {
       "topics": [
-        "relationships"
+        "relationships",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coaching podcast for women deciding whether to stay in or leave their marriages.",
+      "display_title": "The Stay or Go Podcast",
+      "blurb": "Bold coaching space where women contemplating divorce find clarity and courage to choose.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1721855075": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Taiwanese casual comedy show about life frustrations, trends, and social observations.",
+      "display_title": "小熱NOW",
+      "blurb": "Two friends vent about life, complain about consumerism, and mock trends with dark humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1721855892": {
       "topics": [
@@ -151704,10 +151913,30 @@
     },
     "1721931911": {
       "topics": [
-        "business/management"
+        "business/management",
+        "society/government"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Board governance experts discuss corporate director roles, leadership, and board culture.",
+      "display_title": "BoardVision",
+      "blurb": "Directors and executives discuss corporate governance, board culture, and leadership challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1721966230": {
       "topics": [
@@ -151725,10 +151954,30 @@
     },
     "1721969693": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three hosts debate 2024 election coverage, strategy, and political stakes.",
+      "display_title": "Politix",
+      "blurb": "Weekly election analysis: Brian Beutler and Matthew Yglesias debate politics and what's at stake.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1721969812": {
       "topics": [
@@ -151783,18 +152032,62 @@
     },
     "1722166331": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Year-long guided Bible reading through ESV translation by bestselling author.",
+      "display_title": "Through the ESV Bible in a Year",
+      "blurb": "Daily Bible readings: Old Testament once, New Testament and Psalms twice over one year.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1722184073": {
       "topics": [
         "health/mental",
-        "psychology"
+        "psychology/decision-making",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two friends journal publicly about personal growth, wellness, and self-transformation.",
+      "display_title": "Transform",
+      "blurb": "Two best friends share vulnerable journeys on wellness, growth, postpartum, and self-love.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1722246285": {
       "topics": [
@@ -151963,10 +152256,35 @@
     },
     "1722771407": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "nature/animal-cognition",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wisconsin birders discuss birding tips, field stories, and bird species from around the world.",
+      "display_title": "The Badgerland Birding Podcast",
+      "blurb": "Wisconsin birders share field tips, sighting stories, and conversations with birding enthusiasts worldwide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1722783794": {
       "topics": [
@@ -151978,10 +152296,30 @@
     },
     "1722800993": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily hockey discussion with former players covering recent news, trades, and rumors.",
+      "display_title": "Morning Cuppa Hockey",
+      "blurb": "Daily NHL coverage: news, trades, player interviews, and salary cap analysis from former pros.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1722854107": {
       "topics": [
@@ -151992,10 +152330,30 @@
     },
     "1722923909": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two fans obsess over Seinfeld, analyzing every episode detail and continuity errors.",
+      "display_title": "Ruining Seinfeld",
+      "blurb": "Obsessive fans analyze Seinfeld episode-by-episode, catching continuity errors and nitpicking details.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1722955377": {
       "topics": [
@@ -152035,10 +152393,30 @@
     },
     "1723083767": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "LA Dodgers baseball analysis covering trades, injuries, games, and team strategies.",
+      "display_title": "All Dodgers",
+      "blurb": "LA Dodgers analysis: player interviews, trade rumors, game breakdowns, and season coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1723090226": {
       "topics": [
@@ -152089,14 +152467,44 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Complete Quran recitation by professional Islamic reciter in Hafs Assem narration.",
+      "display_title": "القارئ بدر التركي",
+      "blurb": "Complete Quran recitation in Hafs Assem narration by respected Islamic reader Bader Alturki.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1723240559": {
       "topics": [
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Full Quran recitation by professional Islamic reciter in Hafs Assem narration.",
+      "display_title": "القارئ أحمد النفيس",
+      "blurb": "Complete Quran recitation in Hafs Assem narration by Islamic reciter Ahmad Al Nufais.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1723240846": {
       "topics": [
@@ -152123,10 +152531,30 @@
     },
     "1723394243": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teacher Robert Beatty leads guided meditations and teachings on mindfulness.",
+      "display_title": "The Robert Beatty Podcast",
+      "blurb": "Buddhist teacher Robert Beatty guides mindfulness and loving-kindness meditations from his lineage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1723403350": {
       "topics": [
@@ -152137,10 +152565,30 @@
     },
     "1723539749": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Feminist critique of Bravo reality TV shows including Housewives, Vanderpump Rules, and more.",
+      "display_title": "The Bravo Investigator Podcast",
+      "blurb": "Reality TV reviews: Housewives, Vanderpump Rules, and Bravo shows analyzed from feminist lens.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1723553817": {
       "topics": [
@@ -152232,10 +152680,35 @@
     },
     "1723637897": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "nature",
+        "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        },
+        {
+          "node": "food",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Suburban homesteading covering gardening, preserving food, and sustainable living strategies.",
+      "display_title": "The Homestead Challenge",
+      "blurb": "Suburban homesteading: gardening, food preservation, and sustainable living without overwhelming yourself.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1723713201": {
       "topics": [
@@ -152322,10 +152795,30 @@
     },
     "1723904363": {
       "topics": [
+        "gaming/design",
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming podcast discussing recent video game releases, industry news, and soundtracks.",
+      "display_title": "Summon Sign",
+      "blurb": "In-depth gaming conversations: new releases, soundtracks, industry news from veteran players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1723910026": {
       "topics": [
@@ -152344,10 +152837,30 @@
     },
     "1723939253": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly gardening podcast with multiple hosts sharing tips, interviews, and seasonal updates.",
+      "display_title": "The Garden Party",
+      "blurb": "Weekly gardening show: tips, guest interviews, and seasonal updates for gardeners everywhere.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1723943281": {
       "topics": [
@@ -152409,12 +152922,35 @@
     },
     "1724060519": {
       "topics": [
-        "medicine/biology",
+        "nature/animal-cognition",
         "science",
-        "nature"
+        "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language wildlife education for kids featuring biologists discussing animals and nature.",
+      "display_title": "Camaleón",
+      "blurb": "Wildlife education for kids in Spanish: biologists explain animals, insects, and ocean creatures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1724072568": {
       "topics": [
@@ -152535,7 +153071,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swedish tennis podcast covering pro matches, tournaments, and player analysis.",
+      "display_title": "Tennis Signerat",
+      "blurb": "Swedish tennis podcast: pro match coverage, tournament analysis, and Swedish player updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1724468197": {
       "topics": [
@@ -152554,10 +153105,30 @@
     },
     "1724479553": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career guidance for lawyers navigating large law firms, partnerships, and professional strategy.",
+      "display_title": "Big Law Life",
+      "blurb": "Law firm career guidance: strategies for associates, partners, and navigating BigLaw challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1724481206": {
       "topics": [
@@ -152644,10 +153215,35 @@
     },
     "1724845637": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "relationships",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unscripted conversations about relationships, parenting, mental health with no filters.",
+      "display_title": "Sheena Interrupted",
+      "blurb": "Honest conversations: real talk about relationships, parenting, and mental health without filters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1724858241": {
       "topics": [
@@ -152688,10 +153284,30 @@
     },
     "1724982131": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two electrochemists troubleshoot lab problems and interview other electrochemistry researchers.",
+      "display_title": "The Electrochemistry Podcast",
+      "blurb": "Electrochemists discuss research problems, troubleshooting, and interview other specialists in the field.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1724982367": {
       "topics": [
@@ -152703,17 +153319,57 @@
     },
     "1724990033": {
       "topics": [
-        "sports/rugby"
+        "sports/rugby",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "UK Rugby League news, game analysis, and interviews during the season.",
+      "display_title": "Super League Raw",
+      "blurb": "UK Rugby League news and analysis: weekly game recaps, team coverage, and player interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1724998535": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reptile keeping podcast with breeder interviews, care tips, and pet ownership stories.",
+      "display_title": "Scaled Success Reptile Podcast",
+      "blurb": "Reptile breeding and care: interviews with breeders, husbandry tips, and pet ownership stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1725010737": {
       "topics": [
@@ -152756,10 +153412,30 @@
     },
     "1725093167": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improvised comedy fake therapy sessions tackling relationships, couples issues, and life problems.",
+      "display_title": "Say More with Dr? Sheila",
+      "blurb": "Improvised comedy fake therapy: host Amy Poehler and guests mock couples therapy with satire.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1725165705": {
       "topics": [
@@ -152836,10 +153512,30 @@
     },
     "1725335081": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Theravada Buddhist teachings from Bhante Joe covering meditation, practice, and philosophy.",
+      "display_title": "Dhamma-Vinaya Patipadā Podcast",
+      "blurb": "Theravada Buddhist teachings: Bhante Joe leads talks on meditation, practice, and Buddhist philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1725348405": {
       "topics": [
@@ -152937,7 +153633,26 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI news explained in plain language covering developments, tools, and emerging technologies.",
+      "display_title": "Personal AI",
+      "blurb": "AI news explained simply: developments in AI tools, models, and how they impact users.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1725553221": {
       "topics": [
@@ -152966,10 +153681,34 @@
     "1725633083": {
       "topics": [
         "sports/endurance",
-        "health/fitness"
+        "health/fitness",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Open water swimming culture and community: athletes, adventurers, and passionate dippers.",
+      "display_title": "Swim Roots",
+      "blurb": "Open water swimming stories: athletes, records, ice swimming, and community passion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1725642176": {
       "topics": [
@@ -153063,10 +153802,29 @@
     "1725976637": {
       "topics": [
         "economics/markets",
-        "business"
+        "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "High-net-worth founders reveal personal finances, portfolios, and spending decisions radically.",
+      "display_title": "Moneywise",
+      "blurb": "Founders with $10M+ net worth reveal personal finances, portfolios, and wealth strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1725978990": {
       "topics": [
@@ -153143,17 +153901,57 @@
     },
     "1726095905": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Direct sales business strategies, marketing tactics, and success stories from everyday sellers.",
+      "display_title": "Direct Sales: the Other 99%",
+      "blurb": "Direct sales strategies: marketing, business building, and real stories from everyday sellers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1726117889": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science fiction audio drama: journalist uncovers dark history of a mysterious New Hampshire town.",
+      "display_title": "Consumed",
+      "blurb": "Science fiction audio drama: a journalist discovers dark secrets in an idyllic New Hampshire town.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1726135306": {
       "topics": [
@@ -153173,10 +153971,30 @@
     },
     "1726191515": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Harry Potter analysis: exploring positive and negative aspects of characters and Wizarding World.",
+      "display_title": "Critical Magic Theory",
+      "blurb": "Harry Potter analysis: exploring the Wizarding World's strengths and shortcomings thoughtfully.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1726204645": {
       "topics": [
@@ -153234,10 +154052,30 @@
     },
     "1726311755": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pilates instruction and teacher education: technique, class design, and movement philosophy.",
+      "display_title": "The Pilates Lounge",
+      "blurb": "Pilates education: instructor training, movement technique, class design, and wellness philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1726395369": {
       "topics": [
@@ -153496,15 +154334,58 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.95
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily technology news covering AI, robotics, cybersecurity, gadgets, and industry developments.",
+      "display_title": "Tech News Daily",
+      "blurb": "Daily tech news in under 10 minutes: AI, robotics, cybersecurity, gadgets, and industry updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1727164529": {
       "topics": [
         "health/nutrition",
-        "food"
+        "food",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Digestive health specialist coaches clients on IBS, SIBO, and gut health through diet and lifestyle.",
+      "display_title": "The Gut Health Dialogues",
+      "blurb": "Digestive health coaching: IBS and SIBO management through diet, supplements, and lifestyle changes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-b03fe66d",
+      "classified_at": "2026-08-10T00:57:51.968Z"
     },
     "1727186270": {
       "topics": [
