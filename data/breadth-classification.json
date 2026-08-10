@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-10T08:12:44.311Z",
+  "built_at": "2026-08-10T16:13:36.456Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-10-b3d9d18a",
+    "last_batch_id": "fresh-2026-08-10-81335263",
     "last_batch_tier": 1
   },
   "entries": {
@@ -155883,11 +155883,30 @@
     },
     "1726817880": {
       "topics": [
-        "music",
-        "history"
+        "music/theory-production",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Album-by-album metal and rock music history analysis.",
+      "display_title": "Dig Me Out: 70s & 80s Metal",
+      "blurb": "Music historians examine classic rock and metal albums.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1726825538": {
       "topics": [
@@ -155914,10 +155933,30 @@
     },
     "1726848744": {
       "topics": [
-        "automotive"
+        "automotive",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MINI Cooper community, modifications, maintenance, culture.",
+      "display_title": "The Cooper Cast Podcast",
+      "blurb": "MINI enthusiasts discuss vehicles, mods, and ownership culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1726861491": {
       "topics": [
@@ -156142,10 +156181,30 @@
     },
     "1727579772": {
       "topics": [
-        "sports/volleyball"
+        "sports/volleyball",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball coaches discuss NCAA tournaments and strategy.",
+      "display_title": "The Coaches Group Chat",
+      "blurb": "Coaches break down NCAA volleyball tournaments and tactics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1727624957": {
       "topics": [
@@ -156239,10 +156298,33 @@
     },
     "1727965758": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Beauty business ownership and salon management.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1728035074": {
       "topics": [
@@ -156285,7 +156367,25 @@
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Alternative spirituality and pagan traditions.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1728148741": {
       "topics": [
@@ -156374,10 +156474,29 @@
     "1728367398": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition and mindful eating for sustainable health.",
+      "display_title": "Lose Weight Mindfully",
+      "blurb": "Mindful eating and nutrition strategies for wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1728398501": {
       "topics": [
@@ -156403,10 +156522,33 @@
     },
     "1728487836": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1728520625": {
       "topics": [
@@ -156440,10 +156582,33 @@
     },
     "1728574320": {
       "topics": [
-        "kids-family/education"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1728575834": {
       "topics": [
@@ -156464,7 +156629,22 @@
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Google Ads strategy and digital marketing expertise.",
+      "display_title": "Inside Google Ads with Jyll Saskin Gales",
+      "blurb": "Google Ads expert answers marketing strategy questions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1728690254": {
       "topics": [
@@ -156618,7 +156798,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist philosophy from Daisaku Ikeda writings.",
+      "display_title": "The New Human Revolution by Daisaku Ikeda",
+      "blurb": "Buddhist philosophy and personal development teachings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1729024382": {
       "topics": [
@@ -156643,10 +156838,33 @@
     },
     "1729072482": {
       "topics": [
-        "sports/fantasy"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1729082998": {
       "topics": [
@@ -156657,10 +156875,33 @@
     },
     "1729083192": {
       "topics": [
-        "culture/design"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1729089915": {
       "topics": [
@@ -156671,10 +156912,25 @@
     },
     "1729149318": {
       "topics": [
-        "sports/tennis"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify; needs human review.",
+      "display_title": "SET BY SET",
+      "blurb": "See show description for topic.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1729196451": {
       "topics": [
@@ -156738,10 +156994,33 @@
     },
     "1729371744": {
       "topics": [
-        "nature"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1729403599": {
       "topics": [
@@ -156852,10 +157131,25 @@
     },
     "1729749924": {
       "topics": [
-        "comedy/interviews"
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship advice and personal topics.",
+      "display_title": "Peggy Fo Show",
+      "blurb": "Relationship advice and personal discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1729757225": {
       "topics": [
@@ -156909,10 +157203,33 @@
     },
     "1730091684": {
       "topics": [
-        "health/alternative"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1730097248": {
       "topics": [
@@ -157042,11 +157359,30 @@
     },
     "1730751738": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "adventure/exploration",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Diving and water sports discussion.",
+      "display_title": "Tauchtalk: Der Podcast rund ums tauchen",
+      "blurb": "Diving and underwater exploration discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1730764168": {
       "topics": [
@@ -157082,10 +157418,33 @@
     },
     "1730803524": {
       "topics": [
-        "sports/wrestling"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1730941305": {
       "topics": [
@@ -157183,17 +157542,63 @@
     },
     "1731080658": {
       "topics": [
-        "culture/performing-arts"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1731175248": {
       "topics": [
-        "religion/judaism"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1731185593": {
       "topics": [
@@ -157266,10 +157671,33 @@
     },
     "1731402504": {
       "topics": [
-        "business/marketing"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1731430653": {
       "topics": [
@@ -157335,10 +157763,33 @@
     },
     "1731591858": {
       "topics": [
-        "health/alternative"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1731715408": {
       "topics": [
@@ -157363,11 +157814,33 @@
     },
     "1731747072": {
       "topics": [
-        "sports",
-        "news"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1731753679": {
       "topics": [
@@ -157549,11 +158022,33 @@
     },
     "1732327008": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1732561755": {
       "topics": [
@@ -157586,10 +158081,25 @@
     },
     "1732709328": {
       "topics": [
-        "kids-family/stories"
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship advice and personal topics.",
+      "display_title": "Zeepy Sleep: Calming Bedtime Stories for Kids",
+      "blurb": "Relationship advice and personal discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1732730205": {
       "topics": [
@@ -157814,11 +158324,33 @@
     },
     "1733485452": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1733497559": {
       "topics": [
@@ -158045,10 +158577,33 @@
     },
     "1734175014": {
       "topics": [
-        "kids-family/stories"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1734187401": {
       "topics": [
@@ -158068,10 +158623,33 @@
     },
     "1734286446": {
       "topics": [
-        "tv-film/animation"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1734312219": {
       "topics": [
@@ -158204,10 +158782,33 @@
     },
     "1734510582": {
       "topics": [
-        "nature/pets"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1734511738": {
       "topics": [
@@ -158218,10 +158819,33 @@
     },
     "1734624762": {
       "topics": [
-        "craft/diy-home"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1734654238": {
       "topics": [
@@ -158279,10 +158903,33 @@
     },
     "1734712758": {
       "topics": [
-        "tv-film/reviews"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1734719479": {
       "topics": [
@@ -158425,32 +159072,117 @@
     },
     "1735214538": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interior design business and professional development.",
+      "display_title": "To-The-Trade with Interior Design Community",
+      "blurb": "Interior designers share business and design insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1735309794": {
       "topics": [
-        "craft/diy-home"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1735335876": {
       "topics": [
-        "sports/fantasy"
+        "sports/baseball",
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baseball analytics and statistics.",
+      "display_title": "MLB Data Warehouse - The Podcast",
+      "blurb": "Baseball data and analytics discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1735342950": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1735379217": {
       "topics": [
@@ -158462,10 +159194,33 @@
     },
     "1735443024": {
       "topics": [
-        "comedy/casual-hangs"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1735492408": {
       "topics": [
@@ -158788,18 +159543,52 @@
     },
     "1736624934": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beauty business ownership and salon management.",
+      "display_title": "Style POV",
+      "blurb": "Stylists share salon ownership and business insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1736625150": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's bedtime stories and sleep content.",
+      "display_title": "Cypress Creek",
+      "blurb": "Calming bedtime stories for children.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1736729543": {
       "topics": [
@@ -158855,10 +159644,33 @@
     },
     "1736799360": {
       "topics": [
-        "sports/basketball"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1736841796": {
       "topics": [
@@ -158954,11 +159766,33 @@
     },
     "1737311190": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1737442386": {
       "topics": [
@@ -159034,10 +159868,25 @@
     },
     "1737711228": {
       "topics": [
-        "travel"
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship advice and personal topics.",
+      "display_title": "ITALIAN, FOR SURE  |  Conversations with Italians",
+      "blurb": "Relationship advice and personal discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1737715790": {
       "topics": [
@@ -159147,10 +159996,33 @@
     },
     "1738085364": {
       "topics": [
-        "tv-film/reviews"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1738121304": {
       "topics": [
@@ -159200,10 +160072,33 @@
     },
     "1738285800": {
       "topics": [
-        "religion/spirituality"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1738311008": {
       "topics": [
@@ -159253,10 +160148,33 @@
     },
     "1738529568": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1738537069": {
       "topics": [
@@ -159302,11 +160220,33 @@
     },
     "1738663470": {
       "topics": [
-        "sports",
-        "news"
+        "culture/art",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Harlem Renaissance artists and cultural history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-81335263",
+      "classified_at": "2026-08-10T16:13:36.456Z"
     },
     "1738666596": {
       "topics": [
