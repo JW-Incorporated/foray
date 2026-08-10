@@ -57307,13 +57307,1019 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-10-e7569506",
       "classified_at": "2026-08-10T08:50:53.003Z"
+    },
+    "1699597868": {
+      "topics": [
+        "education/language-learning",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "French language learning through authentic conversations about culture.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1699657298": {
+      "topics": [
+        "business/founders",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurs share journeys building million-dollar businesses through resilience.",
+      "display_title": "Million Dollar Grit",
+      "blurb": "Founder stories covering entrepreneurship, business growth, resilience through challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1700489042": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby analysis covering international teams, transfers, and player interviews.",
+      "display_title": "HG Rugby",
+      "blurb": "In-depth rugby coverage of international competitions, transfers, and team dynamics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1700728724": {
+      "topics": [
+        "culture/fashion",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beauty professionals discuss business growth, authenticity, and career development.",
+      "display_title": "The BeautyPro Podcast",
+      "blurb": "For salon owners and stylists: business profitability, personal investment, and industry success.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1700759036": {
+      "topics": [
+        "tv-film/reviews",
+        "tv-film/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism analyzing sex scenes across cinema history and culture.",
+      "display_title": "Sex in the Cinema",
+      "blurb": "Critical examination of intimate scenes in film, exploring cinema history and cultural impact.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1701000632": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby league news, analysis, and commentary on Super League and NRL.",
+      "display_title": "League Express Podcast",
+      "blurb": "Professional rugby league coverage with transfers, match analysis, and industry news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1701022490": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Premier League veterans discuss football news, transfers, and tournament drama.",
+      "display_title": "The Rest Is Football",
+      "blurb": "Premier League insights from experienced analysts covering news, transfers, and tournaments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1701273560": {
+      "topics": [
+        "religion/hinduism",
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vedanta philosophy and Hindu spirituality through temple talks.",
+      "display_title": "Santa Barbara Vedanta Temple",
+      "blurb": "Weekly Hindu spiritual talks on Vedanta philosophy, meditation, and inner transformation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1701381608": {
+      "topics": [
+        "comedy/stand-up",
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedian interviews with sports and pop culture commentary.",
+      "display_title": "Obnoxious Valid Points",
+      "blurb": "Comedian Matt Lewis hosts fellow comedians and entertainers for laughs and commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1701659420": {
+      "topics": [
+        "philosophy/ideas",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classical philosophy applied to modern life challenges.",
+      "display_title": "Philosophies for Life",
+      "blurb": "Ancient philosophers applied to modern living: relationships, finance, spirituality, personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1701889022": {
+      "topics": [
+        "science",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and cosmic science exploration.",
+      "display_title": "The Cosmos",
+      "blurb": "Explorations of astronomy, space, and cosmic phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1702054154": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama continuation of Marvel's Black Widow character.",
+      "display_title": "Marvel's Wastelanders: Black Widow",
+      "blurb": "Audio drama series continuing Marvel's Black Widow in a fictional narrative.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1702141880": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official Wolverhampton Wanderers football club podcast.",
+      "display_title": "The Official Wolves Podcast",
+      "blurb": "Official Wolverhampton Wanderers coverage with club news, analysis, and insider updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1702241936": {
+      "topics": [
+        "science/physics",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physics science education and experimentation.",
+      "display_title": "The Science Lab",
+      "blurb": "Physics science exploration and educational experiments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1702753838": {
+      "topics": [
+        "comedy",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy advice podcast offering practical life guidance.",
+      "display_title": "We're Here to Help",
+      "blurb": "Comedians provide advice and humor on life's practical challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1703255582": {
+      "topics": [
+        "kids-family/stories",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Disney Frozen audio drama for children.",
+      "display_title": "Disney Frozen: Forces of Nature",
+      "blurb": "Audio drama based on Frozen for children and families.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1703420294": {
+      "topics": [
+        "society/law",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Criminal justice system exploration and analysis.",
+      "display_title": "Science of Justice",
+      "blurb": "Exploration of justice systems, law, and criminal science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1703635148": {
+      "topics": [
+        "kids-family/stories",
+        "religion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Religious stories and teachings for children.",
+      "display_title": "Tiny Theologians",
+      "blurb": "Religious stories and spiritual teachings designed for children.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1704654452": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "American football sports coverage and live commentary.",
+      "display_title": "Hurrdat Sports Live",
+      "blurb": "Live American football coverage and sports analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1704911138": {
+      "topics": [
+        "hobbies",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show related to 1916, possibly Irish history or cultural interest.",
+      "display_title": "The 1916 Company Podcast",
+      "blurb": "Topics related to 1916 and associated cultural or historical interests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1705010396": {
+      "topics": [
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal stories and narrative by author Krystine.",
+      "display_title": "Erotic Stories by Krystine",
+      "blurb": "Personal narrative and storytelling from the author.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1705148540": {
+      "topics": [
+        "religion",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Religious faith and spirituality discussion with interviewer.",
+      "display_title": "What's God Got To Do With It?",
+      "blurb": "Conversations exploring religion, faith, and spirituality.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1705179728": {
+      "topics": [
+        "paranormal",
+        "science/physics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "UFO and UAP phenomena discussion, paranormal and science intersection.",
+      "display_title": "Dear People of Earth Science",
+      "blurb": "Exploration of UFO, UAP, and paranormal phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1705406600": {
+      "topics": [
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy interviews in Persian language.",
+      "display_title": "رختکن بازنده‌ها",
+      "blurb": "Comedy interviews and entertainment in Persian.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1705458482": {
+      "topics": [
+        "kids-family/stories",
+        "nature/animal-cognition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's stories featuring wild animals.",
+      "display_title": "Wild Creature Adventures",
+      "blurb": "Stories for kids featuring wild animals and nature adventures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1705694900": {
+      "topics": [
+        "paranormal",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal stories, myths, and historical misdeeds.",
+      "display_title": "After Dark: Myths, Misdeeds & the Paranormal",
+      "blurb": "Stories exploring paranormal phenomena, myths, and historical mysteries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1705918298": {
+      "topics": [
+        "personal-journals",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal journey and transformation with Jeanette Yates.",
+      "display_title": "From Guilt to Good with Jeanette Yates",
+      "blurb": "Personal transformation and growth journey with host Jeanette Yates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1706526260": {
+      "topics": [
+        "culture/performing-arts",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion of The Archers BBC radio drama series.",
+      "display_title": "All About The Archers",
+      "blurb": "Exploration of BBC's long-running radio drama series The Archers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1706527028": {
+      "topics": [
+        "business",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home services business growth and profit optimization.",
+      "display_title": "Profitable Home Services Podcast",
+      "blurb": "Business strategies for home services companies to increase profits and cash flow.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1706534198": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Late-night American football commentary and discussion.",
+      "display_title": "Nightcap",
+      "blurb": "Late-night football commentary and sports discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1706843972": {
+      "topics": [
+        "paranormal",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mysteries and celestial phenomena in French.",
+      "display_title": "Mystères et étoiles",
+      "blurb": "Exploration of mysteries and celestial phenomena in French.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1707066236": {
+      "topics": [
+        "space",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Space telescope technology and astronomical discoveries.",
+      "display_title": "James Webb Space Telescope",
+      "blurb": "Exploration of the James Webb Space Telescope and astronomical discoveries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1707083138": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime stories presented as bedtime narratives.",
+      "display_title": "Bedtime Stories",
+      "blurb": "True crime stories narrated as bedtime tales.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1707217868": {
+      "topics": [
+        "economics/markets",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wealth building and investment strategies.",
+      "display_title": "Wake Up to Wealth",
+      "blurb": "Strategies for building wealth and managing personal finance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1707410660": {
+      "topics": [
+        "comedy",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual conversation between hosts with humor.",
+      "display_title": "Clock It with Symone & Eugene",
+      "blurb": "Casual conversations and comedy between hosts Symone and Eugene.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1707427094": {
+      "topics": [
+        "tv-film/animation",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Anime television discussion and fan conversations.",
+      "display_title": "Do You Watch Anime?",
+      "blurb": "Discussions exploring anime, animation, and pop culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1707599354": {
+      "topics": [
+        "hobbies",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Subscription service digests and summaries.",
+      "display_title": "Churners Digest",
+      "blurb": "Digests and summaries of subscription service content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1707761906": {
+      "topics": [
+        "business/founders",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneur stories and business success journeys.",
+      "display_title": "The CJ Moneyway Show",
+      "blurb": "Entrepreneur interviews covering business success, resilience, and personal leadership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
+    },
+    "1707903044": {
+      "topics": [
+        "music",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal music stories and artist interviews.",
+      "display_title": "Songs of Our Lives",
+      "blurb": "Musicians and artists discuss the songs that shaped their lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-7309330d",
+      "classified_at": "2026-08-10T16:51:38.407Z"
     }
   },
-  "built_at": "2026-08-10T08:50:53.003Z",
+  "built_at": "2026-08-10T16:51:38.407Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-10-e7569506",
+    "last_batch_id": "fresh-2026-08-10-7309330d",
     "last_batch_tier": 1
   }
 }
