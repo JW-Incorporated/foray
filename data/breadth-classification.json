@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-10T08:24:46.645Z",
+  "built_at": "2026-08-10T16:28:29.653Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-10-b1dd8099",
+    "last_batch_id": "fresh-2026-08-10-0fcd309c",
     "last_batch_tier": 1
   },
   "entries": {
@@ -155609,7 +155609,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Maul or Nothing covers rugby.",
+      "display_title": "Maul or Nothing",
+      "blurb": "Max Lahiff, Ryan Wilson and Marc Edwards bring you Maul or Nothing. Join the lads each week as they take you on a visceral and hilarious journey th...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1724209160": {
       "topics": [
@@ -155628,10 +155643,30 @@
     },
     "1724261259": {
       "topics": [
-        "travel"
+        "travel",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Small Brained Pod spans travel & places and culture.",
+      "display_title": "Small Brained Pod",
+      "blurb": "Over the course of my travels I’ve met tons of amazing people with even more amazing stories. Here you’ll find some of those stories. And the occas...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1724276610": {
       "topics": [
@@ -155730,11 +155765,25 @@
     },
     "1724779353": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "tv-film/history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Director Dossiers covers film history.",
+      "display_title": "The Director Dossiers",
+      "blurb": "Each episode of “The Director Dossiers” is a mega into film history that an influential director’s entire career, or focuses on a single movie in t...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1724781096": {
       "topics": [
@@ -155776,10 +155825,25 @@
     },
     "1724858241": {
       "topics": [
-        "fiction/drama"
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror podcast featuring paranormal stories and urban legends.",
+      "display_title": "Tales of the Night",
+      "blurb": "Paranormal stories, urban legends, and horror narratives from Latin America now in English, hosted by Uriel Reyes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:29.653Z"
     },
     "1724935038": {
       "topics": [
@@ -155936,7 +156000,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Astrocast spans space and science.",
+      "display_title": "The Astrocast",
+      "blurb": "A podcast about Astrophotography and Astronomy. discussions into all things Astro. Gear, Best Practices, Interviews, and everything in between.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1725061014": {
       "topics": [
@@ -156059,17 +156142,47 @@
     },
     "1725348405": {
       "topics": [
-        "tv-film/interviews"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "We Are One Podcast covers culture.",
+      "display_title": "We Are One Podcast",
+      "blurb": "This podcast is interview styles of survivors, members and ex members of the IFB community discussing the good the bad and the ugly of the IFB. IFB...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1725357429": {
       "topics": [
         "kids-family/parenting"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "My First Podcast - Sound adventures for tiny kids and parents covers parenting.",
+      "display_title": "My First Podcast - Sound adventures f...",
+      "blurb": "My First Podcast is a magical world of babies’ daily sounds made for the very young to enjoy together with their grown ups. In each episode we sens...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1725368341": {
       "topics": [
@@ -156104,8 +156217,23 @@
       "topics": [
         "culture/fashion"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stash Chats covers fashion & beauty.",
+      "display_title": "Stash Chats",
+      "blurb": "Welcome to Stash Chats! Each week I'll be talking to a different member of the sewing community about their sewing stash! Follow us on https://yout...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1725530848": {
       "topics": [
@@ -156144,8 +156272,27 @@
         "news/tech",
         "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Anthropic News spans tech news and computing.",
+      "display_title": "Anthropic News",
+      "blurb": "Anthropic News keeps you up to date on everything happening in artificial intelligence. We break down the top AI news, the latest tools and researc...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1725553091": {
       "topics": [
@@ -156160,8 +156307,27 @@
         "news/tech",
         "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Update AI spans tech news and computing.",
+      "display_title": "Update AI",
+      "blurb": "Update AI is all about artificial intelligence news. Each episode digs into the top stories, new research, and the breakthroughs moving the industr...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1725597608": {
       "topics": [
@@ -156200,16 +156366,54 @@
         "health/nutrition",
         "food"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        },
+        {
+          "node": "food",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Gut Health Podcast spans nutrition and food.",
+      "display_title": "The Gut Health Podcast",
+      "blurb": "The Gut Health Podcast the scientific connection between the gut, food, mood, microbes and well-being. Kate Scarlata is a world-renowned GI dietiti...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1725734721": {
       "topics": [
         "sports/endurance",
         "health/fitness"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Borderlands Trail and Ultra Running spans endurance and fitness.",
+      "display_title": "Borderlands Trail and Ultra Running",
+      "blurb": "Borderlands Trail and Ultra Running is a storytelling podcast for ultra runners who love this sport deeply, the iconic races, the legendary athlete...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1725737068": {
       "topics": [
@@ -156259,15 +156463,49 @@
         "health/mental",
         "psychology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stephen Dalton Sleep Stories spans mental health and psychology.",
+      "display_title": "Stephen Dalton Sleep Stories",
+      "blurb": "Fall asleep with soothing bedtime stories, all written and recorded by Irish actor, writer, and narrator, Stephen Dalton. These sleep stories are h...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1725903189": {
       "topics": [
         "culture/fashion"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The MakeUp Artist Podcast covers fashion & beauty.",
+      "display_title": "The MakeUp Artist Podcast",
+      "blurb": "Shelby Henry, an established San Diego makeup artist, sits down with some of the industry's best and brightest to not just talk about makeup but wh...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1725911780": {
       "topics": [
@@ -156335,8 +156573,27 @@
         "economics/markets",
         "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Rundown spans markets and business.",
+      "display_title": "The Rundown",
+      "blurb": "Daily stock market update in under 10 minutes. Stay up to date with the companies making the biggest moves and learn about the economic news that c...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1726069906": {
       "topics": [
@@ -156365,7 +156622,22 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Body Peace Podcast with Jennie Kramer and Nina Manolson covers food.",
+      "display_title": "Body Peace Podcast with Jennie Kramer...",
+      "blurb": "Welcome to the Body Peace Podcast (formerly Herstory on a Plate). We are so excited to bring you the Body Peace Podcast—a space for deep, compassio...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1726095905": {
       "topics": [
@@ -156469,8 +156741,23 @@
       "topics": [
         "sports/tennis"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Centrkurt covers tennis.",
+      "display_title": "Centrkurt",
+      "blurb": "Vítejte na Centrkurtu! Nový tenisový podcast vás zavede do zákulisí, ale nabídne i expertní hlasy exkluzivních hostů. Průvodce Centrkurtem je Jan J...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1726414179": {
       "topics": [
@@ -156569,7 +156856,22 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Go To Food Podcast covers food.",
+      "display_title": "The Go To Food Podcast",
+      "blurb": "The Go-To Food Podcast is where the world’s most influential chefs, restaurateurs, food writers and critics share the stories behind their craft. H...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1726755811": {
       "topics": [
@@ -156820,15 +157122,45 @@
       "topics": [
         "sports/volleyball"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Court Captains: A Volleyball Podcast covers volleyball.",
+      "display_title": "Court Captains: A Volleyball Podcast",
+      "blurb": "Two former college volleyball players (Kelly & Nikki) and our volley newbie friend (Ian) talking all things Pro Volleyball Federation",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1727440761": {
       "topics": [
         "tv-film/after-shows"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Prison Breaking With Sarah & Paul covers after shows.",
+      "display_title": "Prison Breaking With Sarah & Paul",
+      "blurb": "Just have a little faith. We got a runner! Welcome to Prisneyland, Fish. And welcome to the Prison Break re-watch podcast you always knew you neede...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1727447761": {
       "topics": [
@@ -156875,8 +157207,23 @@
       "topics": [
         "sports/tennis"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Good Trouble With Nick Kyrgios covers tennis.",
+      "display_title": "Good Trouble With Nick Kyrgios",
+      "blurb": "Hosted by tennis' beloved troublemaker, Nick Kyrgios, \"Good Trouble with Nick Kyrgios\" is a video podcast series that the personal journeys of indi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1727579772": {
       "topics": [
@@ -157138,8 +157485,23 @@
       "topics": [
         "science/chemistry"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Green Chem Pod covers chemistry.",
+      "display_title": "Green Chem Pod",
+      "blurb": "If we tell you “chemistry”, you may think of crazy bubbling and explosions in labs, or a picture of big industries releasing dirty chemicals in riv...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1728487244": {
       "topics": [
@@ -157222,8 +157584,23 @@
       "topics": [
         "craft/diy-home"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "How to Home covers diy & home.",
+      "display_title": "How to Home",
+      "blurb": "Interior Stylists Maxine Brady and Gemma Gear share their expert advice so that you can create your dream home. This podcast covers everything to d...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1728636042": {
       "topics": [
@@ -157329,8 +157706,27 @@
         "news",
         "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Shift Key with Robinson Meyer spans news & current affairs and business.",
+      "display_title": "Shift Key with Robinson Meyer",
+      "blurb": "Every week, Heatmap News Executive Editor Robinson Meyer and a guest make sense of the biggest shift of our time -- navigating the energy transitio...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1728937853": {
       "topics": [
@@ -157427,8 +157823,23 @@
       "topics": [
         "gaming"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Save Your Game covers gaming.",
+      "display_title": "Save Your Game",
+      "blurb": "A podcast about narrative video games hosted by internet bon vivant PushingUpRoses and special boy Matt Aukamp.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1729149318": {
       "topics": [
@@ -157442,14 +157853,44 @@
         "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel Secrets covers travel & places.",
+      "display_title": "Travel Secrets",
+      "blurb": "Welcome to Travel Secrets with Tanya Rose – the podcast sharing wisdom for fellow travellers. Tanya will be joined by an ensemble of well-travelled...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1729211571": {
       "topics": [
         "craft/diy-home"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gardening - Garden & Home covers diy & home.",
+      "display_title": "Gardening - Garden & Home",
+      "blurb": "🪴 Want personalized gardening advice? Chat with Nigel here — you can show me photos of your plants, ask me anything about your garden, and we'll s...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1729232071": {
       "topics": [
@@ -157641,8 +158082,23 @@
       "topics": [
         "sports/wrestling"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dark Side of the Ring: Unheard covers wrestling.",
+      "display_title": "Dark Side of the Ring: Unheard",
+      "blurb": "The podcast from the creators of the hit VICE TV show Dark Side of the Ring and the The Lapsed Fan is back for an all-new season. We take you...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1730091684": {
       "topics": [
@@ -157685,8 +158141,23 @@
       "topics": [
         "comedy/stand-up"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Duques y Campesinos covers stand-up.",
+      "display_title": "Duques y Campesinos",
+      "blurb": "Duques y Campesinos, un podcast conducido por Jonás Fierro, Carlos Ballarta, Coco Celis y Gazpacho, quien es un gato...Una producción de Chavos Ban...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1730402327": {
       "topics": [
@@ -157714,8 +158185,23 @@
       "topics": [
         "automotive"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Detailing Bay covers automotive.",
+      "display_title": "The Detailing Bay",
+      "blurb": "Tune in each week for Rich and Dave talking all things car detailing. From snow foams and waxes to catching up on the progress of the projects they...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1730507876": {
       "topics": [
@@ -158019,8 +158505,26 @@
       "topics": [
         "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "InSEWmniacs covers craft & making.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1731256857": {
       "topics": [
@@ -158066,8 +158570,30 @@
         "adventure/exploration",
         "nature"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Flylords Podcast spans exploration and nature.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1731314182": {
       "topics": [
@@ -158088,8 +158614,23 @@
       "topics": [
         "tv-film/reviews"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lead it Like Lasso: A Ted Lasso Rewatch Podcast covers film & tv reviews.",
+      "display_title": "Lead it Like Lasso: A Ted Lasso Rewatch",
+      "blurb": "Marnie Stockman and Nick Coniglio, authors of the book Lead it Like Lasso, dig into each episode of Ted Lasso with a lens of leadership. Each podca...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1731433540": {
       "topics": [
@@ -158124,8 +158665,26 @@
       "topics": [
         "news/daily"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Point Taken with Steve Scaffidi & Kristin Brey covers daily news.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1731591858": {
       "topics": [
@@ -158145,15 +158704,45 @@
       "topics": [
         "health/alternative"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Dr. Ardis Show Podcast covers alternative health.",
+      "display_title": "The Dr. Ardis Show Podcast",
+      "blurb": "World renowned health freedom fighter and speaker Dr. Ardis is a tireless researcher, always seeking to weed out deception in health and medicine, ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1731729321": {
       "topics": [
         "science/physics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The PAM Talks covers physics.",
+      "display_title": "The PAM Talks",
+      "blurb": "The Physics and Astronomy Mentors (PAM) Talks is a student-led podcast showcasing the voices of researchers who are a part of traditionally underre...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1731747072": {
       "topics": [
@@ -158214,15 +158803,45 @@
       "topics": [
         "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Crafting for Profit Live covers craft & making.",
+      "display_title": "Crafting for Profit Live",
+      "blurb": "Welcome to Crafting for Profit Live—where you craft your future by turning your passion into a paycheck! With more than 25 years experience and a D...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1731909501": {
       "topics": [
         "sports/basketball"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buha's Block with Jovan Buha covers basketball.",
+      "display_title": "Buha's Block with Jovan Buha",
+      "blurb": "Jovan Buha, a senior reporter covering the Los Angeles Lakers, analyzes the purple and gold with a weekly podcast that includes news, Xs and Os, st...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1731934092": {
       "topics": [
@@ -158251,7 +158870,22 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "This Old Baker Podcast covers food.",
+      "display_title": "This Old Baker Podcast",
+      "blurb": "This Old Baker Podcast is where I share the pantry mixes, copycat recipes, and scratch cooking shortcuts that keep my own family fed without starti...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-0fcd309c",
+      "classified_at": "2026-08-10T16:28:11.078Z"
     },
     "1732118065": {
       "topics": [
