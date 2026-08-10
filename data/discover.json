@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "built_at": "2026-08-09T11:43:24.723Z",
+  "built_at": "2026-08-10T11:46:13.093Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
       "show": "Lex Fridman Podcast",
-      "title": "#497 – Biggest Mysteries in Physics: Antimatter, Dark Energy & ToE – Don Lincoln",
+      "title": "#497 \u2013 Biggest Mysteries in Physics: Antimatter, Dark Energy & ToE \u2013 Don Lincoln",
       "apple_collection_id": 1434243584,
       "apple_track_id": 1000770203019,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/497-biggest-mysteries-in-physics-antimatter-dark-energy/id1434243584?i=1000770203019&uo=4",
@@ -25,7 +25,7 @@
     {
       "id": "lex-fridman-podcast--ffmpeg-video",
       "show": "Lex Fridman Podcast",
-      "title": "#496 – FFmpeg: The Incredible Technology Behind Video on the Internet",
+      "title": "#496 \u2013 FFmpeg: The Incredible Technology Behind Video on the Internet",
       "apple_collection_id": 1434243584,
       "apple_track_id": 1000766518218,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/496-ffmpeg-the-incredible-technology-behind-video-on/id1434243584?i=1000766518218&uo=4",
@@ -280,7 +280,7 @@
       "topics": [
         "nature/earth-science"
       ],
-      "hook": "David Suzuki's 1989 broadcast imagined 2039 — how close did it get?",
+      "hook": "David Suzuki's 1989 broadcast imagined 2039 \u2014 how close did it get?",
       "audio_url": "https://mgln.ai/e/12/cbc.mc.tritondigital.com/CBC_IDEAS_P/media/ideas/ideas-88V6yGPy-20260707.mp3",
       "audio_type": "audio/mpeg",
       "audio_bytes": 53984609,
@@ -362,7 +362,7 @@
         "science/materials",
         "history/technology"
       ],
-      "hook": "The 1964 Alaska quake was the second largest ever recorded — this is that story.",
+      "hook": "The 1964 Alaska quake was the second largest ever recorded \u2014 this is that story.",
       "audio_url": "https://podtrac.com/pts/redirect.mp3/pscrb.fm/rss/p/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/a91018a4-ea4f-4130-bf55-ae270180c327/48109605-021f-4a87-81fe-b47400fd9e33/audio.mp3?utm_source=Podcast&in_playlist=44710ecc-10bb-48d1-93c7-ae270180c33e",
       "audio_type": "audio/mpeg",
       "audio_bytes": 35549607,
@@ -383,7 +383,7 @@
         "science/materials",
         "history/technology"
       ],
-      "hook": "Physicists have chased a working fusion reactor for decades — where the science stands now.",
+      "hook": "Physicists have chased a working fusion reactor for decades \u2014 where the science stands now.",
       "audio_url": "https://podtrac.com/pts/redirect.mp3/pscrb.fm/rss/p/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/a91018a4-ea4f-4130-bf55-ae270180c327/4b6c5e78-b2d7-4bf3-b511-b46e00fde7d7/audio.mp3?utm_source=Podcast&in_playlist=44710ecc-10bb-48d1-93c7-ae270180c33e",
       "audio_type": "audio/mpeg",
       "audio_bytes": 42563868,
@@ -443,7 +443,7 @@
       "topics": [
         "science/materials"
       ],
-      "hook": "Cool a metal fast enough — a million degrees a second — and it becomes glass.",
+      "hook": "Cool a metal fast enough \u2014 a million degrees a second \u2014 and it becomes glass.",
       "audio_url": "https://pinecast.com/listen/328fa72a-cdcf-41fd-b86b-5ad0fbad8968.mp3?source=rss&ext=asset.mp3",
       "audio_type": "audio/mpeg",
       "audio_bytes": 77255425,
@@ -672,7 +672,7 @@
         "history/technology",
         "history/military-ancient"
       ],
-      "hook": "How wine built civilization — from Homer's Odyssey to Julius Caesar's conquests.",
+      "hook": "How wine built civilization \u2014 from Homer's Odyssey to Julius Caesar's conquests.",
       "audio_url": "https://pdst.fm/e/traffic.megaphone.fm/GLT1414718476.mp3?updated=1777979642",
       "audio_type": "audio/mpeg",
       "audio_bytes": null,
@@ -1113,7 +1113,7 @@
       "topics": [
         "history/military-ancient"
       ],
-      "hook": "Attacking the largest empire the world had ever seen — Alexander was 21.",
+      "hook": "Attacking the largest empire the world had ever seen \u2014 Alexander was 21.",
       "audio_url": "https://dts.podtrac.com/redirect.mp3/traffic.libsyn.com/dancarlinhh/dchha73_Mania_for_Subjugation_III.mp3",
       "audio_type": "audio/mpeg",
       "audio_bytes": 244412579,
@@ -1456,7 +1456,7 @@
         "business/startups",
         "history/technology"
       ],
-      "hook": "Ferrari has sold just 330,000 cars in 79 years — that scarcity is the whole business.",
+      "hook": "Ferrari has sold just 330,000 cars in 79 years \u2014 that scarcity is the whole business.",
       "audio_url": "https://pscrb.fm/rss/p/media.transistor.fm/9ca1df08/e400ba0d.mp3",
       "audio_type": "audio/mpeg",
       "audio_bytes": 229792455,
@@ -1577,7 +1577,7 @@
         "business/startups",
         "computing"
       ],
-      "hook": "Search started as finding pages — AI is turning it into asking, reasoning, and acting.",
+      "hook": "Search started as finding pages \u2014 AI is turning it into asking, reasoning, and acting.",
       "audio_url": "https://pscrb.fm/rss/p/media.transistor.fm/7eed9f55/b9387468.mp3",
       "audio_type": "audio/mpeg",
       "audio_bytes": 75083294,
@@ -1638,7 +1638,7 @@
       "topics": [
         "business/startups"
       ],
-      "hook": "Cerebras just did the largest semiconductor IPO in history — its CEO explains why.",
+      "hook": "Cerebras just did the largest semiconductor IPO in history \u2014 its CEO explains why.",
       "audio_url": "https://traffic.libsyn.com/secure/thetwentyminutevc/Andrew_Feldman_FINAL__Cerebras_3.mp3?dest-id=240976",
       "audio_type": "audio/mpeg",
       "audio_bytes": 59157626,
@@ -3128,7 +3128,7 @@
     {
       "id": "corecursive--risk-rolls-downhill",
       "show": "CoRecursive: Coding Stories",
-      "title": "Story: Risk Rolls Downhill—The Software Bug That Sent People to Prison",
+      "title": "Story: Risk Rolls Downhill\u2014The Software Bug That Sent People to Prison",
       "apple_collection_id": 1330329512,
       "apple_track_id": 1000729684938,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/story-risk-rolls-downhill-the-software-bug-that-sent/id1330329512?i=1000729684938&uo=4",
@@ -3688,7 +3688,7 @@
     {
       "id": "causality-engineered-network--verruckt-waterslide",
       "show": "Causality",
-      "title": "Verrückt Waterslide",
+      "title": "Verr\u00fcckt Waterslide",
       "apple_collection_id": 1046978749,
       "apple_track_id": 1000769311639,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/verr%C3%BCckt-waterslide/id1046978749?i=1000769311639&uo=4",
@@ -4008,7 +4008,7 @@
     {
       "id": "watt-it-takes--zum-ritu-narayan",
       "show": "Watt It Takes",
-      "title": "Zūm Founder and CEO Ritu Narayan",
+      "title": "Z\u016bm Founder and CEO Ritu Narayan",
       "apple_collection_id": 1554962073,
       "apple_track_id": 1000774796279,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/z%C5%ABm-founder-and-ceo-ritu-narayan/id1554962073?i=1000774796279&uo=4",
@@ -4752,7 +4752,7 @@
     {
       "id": "unauthorized-history-pacific-war--holding-the-door-open-the-battles-towards-bataan-episode-606",
       "show": "The Unauthorized History of the Pacific War",
-      "title": "Holding the Door Open: The Battles Towards Bataan – Episode 606",
+      "title": "Holding the Door Open: The Battles Towards Bataan \u2013 Episode 606",
       "apple_collection_id": 1641383288,
       "apple_track_id": 1000774821873,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/holding-the-door-open-the-battles-towards-bataan/id1641383288?i=1000774821873&uo=4",
@@ -4792,7 +4792,7 @@
     {
       "id": "unauthorized-history-pacific-war--shipbuilding-and-fleet-repair-in-the-pto-with-sal-mercoglian",
       "show": "The Unauthorized History of the Pacific War",
-      "title": "Shipbuilding and Fleet Repair in the PTO with Sal Mercogliano – Episode 549",
+      "title": "Shipbuilding and Fleet Repair in the PTO with Sal Mercogliano \u2013 Episode 549",
       "apple_collection_id": 1641383288,
       "apple_track_id": 1000760001495,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/shipbuilding-and-fleet-repair-in-the-pto-with/id1641383288?i=1000760001495&uo=4",
@@ -5292,7 +5292,7 @@
     {
       "id": "the-enormocast--enormocast-326-julia-cassou-telling-true-stories",
       "show": "The Enormocast: the climbing podcast",
-      "title": "Enormocast 326: Julia Cassou – Telling True Stories",
+      "title": "Enormocast 326: Julia Cassou \u2013 Telling True Stories",
       "apple_collection_id": 490027390,
       "apple_track_id": 1000775790968,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/enormocast-326-julia-cassou-telling-true-stories/id490027390?i=1000775790968&uo=4",
@@ -5312,7 +5312,7 @@
     {
       "id": "the-enormocast--enormocast-323-cole-brauer-every-day-the-sea",
       "show": "The Enormocast: the climbing podcast",
-      "title": "Enormocast 323: Cole Brauer – Every Day the Sea",
+      "title": "Enormocast 323: Cole Brauer \u2013 Every Day the Sea",
       "apple_collection_id": 490027390,
       "apple_track_id": 1000766227518,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/enormocast-323-cole-brauer-every-day-the-sea/id490027390?i=1000766227518&uo=4",
@@ -5332,7 +5332,7 @@
     {
       "id": "the-enormocast--enormocast-318-babsi-zangerl-10-years-later",
       "show": "The Enormocast: the climbing podcast",
-      "title": "Enormocast 318: Babsi Zangerl – 10 Years Later",
+      "title": "Enormocast 318: Babsi Zangerl \u2013 10 Years Later",
       "apple_collection_id": 490027390,
       "apple_track_id": 1000746205952,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/enormocast-318-babsi-zangerl-10-years-later/id490027390?i=1000746205952&uo=4",
@@ -5572,7 +5572,7 @@
     {
       "id": "clockwork-game-design-podcast--clockwork-game-design-podcast-the-final-fantasy-episode",
       "show": "The Clockwork Game Design Podcast",
-      "title": "Clockwork Game Design Podcast – The Final Fantasy Episode",
+      "title": "Clockwork Game Design Podcast \u2013 The Final Fantasy Episode",
       "apple_collection_id": 1048826488,
       "apple_track_id": 1000583225701,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/clockwork-game-design-podcast-the-final-fantasy-episode/id1048826488?i=1000583225701&uo=4",
@@ -5732,7 +5732,7 @@
     {
       "id": "the-peter-attia-drive--397-endometriosis-and-adenomyosis-diagnosis-fertility-reprod",
       "show": "The Peter Attia Drive",
-      "title": "#397 – Endometriosis and adenomyosis: diagnosis, fertility, reproductive aging, and emerging treatments | Renato Tomioka, M.D., Ph.D.",
+      "title": "#397 \u2013 Endometriosis and adenomyosis: diagnosis, fertility, reproductive aging, and emerging treatments | Renato Tomioka, M.D., Ph.D.",
       "apple_collection_id": 1400828889,
       "apple_track_id": 1000773684644,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/397-endometriosis-and-adenomyosis-diagnosis-fertility/id1400828889?i=1000773684644&uo=4",
@@ -6012,7 +6012,7 @@
     {
       "id": "experimental-brewing--episode-210-bob-and-denny-take-belgium-part-2",
       "show": "Experimental Brewing",
-      "title": "Episode 210 – Bob and Denny Take Belgium, Part 2",
+      "title": "Episode 210 \u2013 Bob and Denny Take Belgium, Part 2",
       "apple_collection_id": 1056223392,
       "apple_track_id": 1000756285773,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-210-bob-and-denny-take-belgium-part-2/id1056223392?i=1000756285773&uo=4",
@@ -6032,7 +6032,7 @@
     {
       "id": "experimental-brewing--episode-207-fonio-fonio-what-the-heck-are-you-fonio",
       "show": "Experimental Brewing",
-      "title": "Episode 207 – Fonio, Fonio, What The Heck Are You, Fonio?",
+      "title": "Episode 207 \u2013 Fonio, Fonio, What The Heck Are You, Fonio?",
       "apple_collection_id": 1056223392,
       "apple_track_id": 1000703518071,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-207-fonio-fonio-what-the-heck-are-you-fonio/id1056223392?i=1000703518071&uo=4",
@@ -6051,7 +6051,7 @@
     {
       "id": "experimental-brewing--episode-203-27-years-of-experience-in-norcal",
       "show": "Experimental Brewing",
-      "title": "Episode 203 – 27 Years Of Experience In NorCal",
+      "title": "Episode 203 \u2013 27 Years Of Experience In NorCal",
       "apple_collection_id": 1056223392,
       "apple_track_id": 1000680634000,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-203-27-years-of-experience-in-norcal/id1056223392?i=1000680634000&uo=4",
@@ -8020,7 +8020,7 @@
     {
       "id": "unauthorized-history-pacific-war--fall-of-singapore",
       "show": "The Unauthorized History of the Pacific War",
-      "title": "The Fall of Singapore – Episode 534",
+      "title": "The Fall of Singapore \u2013 Episode 534",
       "apple_collection_id": 1641383288,
       "apple_track_id": 1000742443025,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-fall-of-singapore-episode-534/id1641383288?i=1000742443025&uo=4",
@@ -8580,7 +8580,7 @@
     {
       "id": "song-exploder--silvana-estrada-como-un-pajaro",
       "show": "Song Exploder",
-      "title": "Silvana Estrada - Como Un Pájaro",
+      "title": "Silvana Estrada - Como Un P\u00e1jaro",
       "apple_collection_id": 788236947,
       "apple_track_id": 1000751533654,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/silvana-estrada-como-un-p%C3%A1jaro/id788236947?i=1000751533654&uo=4",
@@ -8740,7 +8740,7 @@
     {
       "id": "ologies-with-alie-ward--strigiformology-owls",
       "show": "Ologies with Alie Ward",
-      "title": "Strigiformology (OWLS) Part 1 with R.J. Gutiérrez",
+      "title": "Strigiformology (OWLS) Part 1 with R.J. Guti\u00e9rrez",
       "apple_collection_id": 1278815517,
       "apple_track_id": 1000735330574,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/strigiformology-owls-part-1-with-r-j-guti%C3%A9rrez/id1278815517?i=1000735330574&uo=4",
@@ -8920,7 +8920,7 @@
     {
       "id": "the-enormocast--300-honnold-kalous",
       "show": "The Enormocast: the climbing podcast",
-      "title": "Enormocast 300: Chris Kalous by Alex Honnold – No Retreat, No Surrender",
+      "title": "Enormocast 300: Chris Kalous by Alex Honnold \u2013 No Retreat, No Surrender",
       "apple_collection_id": 490027390,
       "apple_track_id": 1000683817742,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/enormocast-300-chris-kalous-by-alex-honnold-no-retreat/id490027390?i=1000683817742&uo=4",
@@ -8939,7 +8939,7 @@
     {
       "id": "the-enormocast--303-villanueva",
       "show": "The Enormocast: the climbing podcast",
-      "title": "Enormocast 303: Sean Villanueva O’Driscoll – A Very Particular Set of Skills",
+      "title": "Enormocast 303: Sean Villanueva O\u2019Driscoll \u2013 A Very Particular Set of Skills",
       "apple_collection_id": 490027390,
       "apple_track_id": 1000702192464,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/enormocast-303-sean-villanueva-odriscoll-a-very/id490027390?i=1000702192464&uo=4",
@@ -8959,7 +8959,7 @@
     {
       "id": "the-enormocast--316-astorga",
       "show": "The Enormocast: the climbing podcast",
-      "title": "Enormocast 316: Chantel Astorga – What Would Voytek Do?",
+      "title": "Enormocast 316: Chantel Astorga \u2013 What Would Voytek Do?",
       "apple_collection_id": 490027390,
       "apple_track_id": 1000738668636,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/enormocast-316-chantel-astorga-what-would-voytek-do/id490027390?i=1000738668636&uo=4",
@@ -8979,7 +8979,7 @@
     {
       "id": "the-enormocast--298-erickson",
       "show": "The Enormocast: the climbing podcast",
-      "title": "Enormocast 298: Jim Erickson – Clean and Free in the 1970s",
+      "title": "Enormocast 298: Jim Erickson \u2013 Clean and Free in the 1970s",
       "apple_collection_id": 490027390,
       "apple_track_id": 1000680130777,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/enormocast-298-jim-erickson-clean-and-free-in-the-1970s/id490027390?i=1000680130777&uo=4",
@@ -9263,7 +9263,7 @@
     {
       "id": "lex-fridman-podcast--demis-hassabis-ai",
       "show": "Lex Fridman Podcast",
-      "title": "#475 – Demis Hassabis: Future of AI, Simulating Reality, Physics and Video Games",
+      "title": "#475 \u2013 Demis Hassabis: Future of AI, Simulating Reality, Physics and Video Games",
       "apple_collection_id": 1434243584,
       "apple_track_id": 1000718721313,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/475-demis-hassabis-future-of-ai-simulating-reality/id1434243584?i=1000718721313&uo=4",
@@ -9283,7 +9283,7 @@
     {
       "id": "lex-fridman-podcast--terence-tao-math",
       "show": "Lex Fridman Podcast",
-      "title": "#472 – Terence Tao: Hardest Problems in Mathematics, Physics & the Future of AI",
+      "title": "#472 \u2013 Terence Tao: Hardest Problems in Mathematics, Physics & the Future of AI",
       "apple_collection_id": 1434243584,
       "apple_track_id": 1000712908152,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/472-terence-tao-hardest-problems-in-mathematics-physics/id1434243584?i=1000712908152&uo=4",
@@ -9303,7 +9303,7 @@
     {
       "id": "lex-fridman-podcast--janna-levin-black-holes",
       "show": "Lex Fridman Podcast",
-      "title": "#468 – Janna Levin: Black Holes, Wormholes, Aliens, Paradoxes & Extra Dimensions",
+      "title": "#468 \u2013 Janna Levin: Black Holes, Wormholes, Aliens, Paradoxes & Extra Dimensions",
       "apple_collection_id": 1434243584,
       "apple_track_id": 1000706451517,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/468-janna-levin-black-holes-wormholes-aliens-paradoxes/id1434243584?i=1000706451517&uo=4",
@@ -9323,7 +9323,7 @@
     {
       "id": "lex-fridman-podcast--dave-hone-dinosaurs",
       "show": "Lex Fridman Podcast",
-      "title": "#480 – Dave Hone: T-Rex, Dinosaurs, Extinction, Evolution, and Jurassic Park",
+      "title": "#480 \u2013 Dave Hone: T-Rex, Dinosaurs, Extinction, Evolution, and Jurassic Park",
       "apple_collection_id": 1434243584,
       "apple_track_id": 1000725047032,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/480-dave-hone-t-rex-dinosaurs-extinction-evolution/id1434243584?i=1000725047032&uo=4",
@@ -9443,7 +9443,7 @@
     {
       "id": "volts--grid-utilization",
       "show": "Volts",
-      "title": "Using more of the grid we’ve already built",
+      "title": "Using more of the grid we\u2019ve already built",
       "apple_collection_id": 1548554104,
       "apple_track_id": 1000758680373,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/using-more-of-the-grid-weve-already-built/id1548554104?i=1000758680373&uo=4",
@@ -9576,7 +9576,7 @@
         "business/startups",
         "history/technology"
       ],
-      "hook": "Skunk Works' U-2, SR-71, and stealth fighter — plus Lockheed's hidden role founding Silicon Valley.",
+      "hook": "Skunk Works' U-2, SR-71, and stealth fighter \u2014 plus Lockheed's hidden role founding Silicon Valley.",
       "audio_url": "https://pscrb.fm/rss/p/media.transistor.fm/8575303c/3721964e.mp3",
       "audio_type": "audio/mpeg",
       "audio_bytes": 202381930,
@@ -9647,7 +9647,7 @@
     {
       "id": "founders--jim-simons",
       "show": "Founders",
-      "title": "#387 Jim Simons Built The World’s Greatest Money-Making Machine",
+      "title": "#387 Jim Simons Built The World\u2019s Greatest Money-Making Machine",
       "apple_collection_id": 1141877104,
       "apple_track_id": 1000705757061,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/387-jim-simons-built-the-worlds-greatest-money-making/id1141877104?i=1000705757061&uo=4",
@@ -9697,7 +9697,7 @@
       "topics": [
         "economics/markets"
       ],
-      "hook": "Twisting fibers into rope made bridges, cranes, and whaling possible — a quiet materials revolution.",
+      "hook": "Twisting fibers into rope made bridges, cranes, and whaling possible \u2014 a quiet materials revolution.",
       "audio_url": "https://podtrac.com/pts/redirect.mp3/tracking.swap.fm/track/UVBrz8bN8aM2Xe47PEPu/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/8a94442e-5a74-4fa2-8b8d-ae27003a8d6b/019909ba-ab60-4975-bbb2-b45900e53a59/audio.mp3?utm_source=Podcast&in_playlist=982f5071-765c-403d-969d-ae27003a8d83",
       "audio_type": "audio/mpeg",
       "audio_bytes": 35435644,
@@ -9737,7 +9737,7 @@
       "topics": [
         "economics/markets"
       ],
-      "hook": "Miles of fiber-optic cable on the ocean floor carry the internet — and break easily.",
+      "hook": "Miles of fiber-optic cable on the ocean floor carry the internet \u2014 and break easily.",
       "audio_url": "https://podtrac.com/pts/redirect.mp3/tracking.swap.fm/track/UVBrz8bN8aM2Xe47PEPu/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/8a94442e-5a74-4fa2-8b8d-ae27003a8d6b/d05e23d4-18e1-442f-8953-b4480146b311/audio.mp3?utm_source=Podcast&in_playlist=982f5071-765c-403d-969d-ae27003a8d83",
       "audio_type": "audio/mpeg",
       "audio_bytes": 40448246,
@@ -10047,7 +10047,7 @@
     {
       "id": "the-peter-attia-drive--aging-clocks",
       "show": "The Peter Attia Drive",
-      "title": "#386 - Aging clocks—what they measure, how they work, and their clinical and real-world relevance",
+      "title": "#386 - Aging clocks\u2014what they measure, how they work, and their clinical and real-world relevance",
       "apple_collection_id": 1400828889,
       "apple_track_id": 1000759477214,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/386-aging-clocks-what-they-measure-how-they-work-and/id1400828889?i=1000759477214&uo=4",
@@ -10107,7 +10107,7 @@
     {
       "id": "making-chips--lights-out-machining",
       "show": "Making Chips Podcast for Manufacturing Leaders",
-      "title": "Lights Out Isn't the Future—It's Already Here",
+      "title": "Lights Out Isn't the Future\u2014It's Already Here",
       "apple_collection_id": 953541032,
       "apple_track_id": 1000755551737,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/lights-out-isnt-the-future-its-already-here/id953541032?i=1000755551737&uo=4",
@@ -10207,7 +10207,7 @@
     {
       "id": "this-podcast-will-kill-you--tear-gas",
       "show": "This Podcast Will Kill You",
-      "title": "Ep 207 Tear Gas: How can a chemical weapon be “humane”?",
+      "title": "Ep 207 Tear Gas: How can a chemical weapon be \u201chumane\u201d?",
       "apple_collection_id": 1299915173,
       "apple_track_id": 1000761253609,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/ep-207-tear-gas-how-can-a-chemical-weapon-be-humane/id1299915173?i=1000761253609&uo=4",
@@ -10297,7 +10297,7 @@
       "topics": [
         "science/materials"
       ],
-      "hook": "Titanium links the SR-71 to the hip replacement — and it's notoriously hard to work.",
+      "hook": "Titanium links the SR-71 to the hip replacement \u2014 and it's notoriously hard to work.",
       "audio_url": "https://pinecast.com/listen/379d9e09-0257-412a-98e6-60e8f66542c9.mp3?source=rss&ext=asset.mp3",
       "audio_type": "audio/mpeg",
       "audio_bytes": 57071774,
@@ -10367,7 +10367,7 @@
     {
       "id": "happiness-lab--no-regrets-bad-advice",
       "show": "The Happiness Lab with Dr. Laurie Santos",
-      "title": "Why “No Regrets” Is Bad Advice",
+      "title": "Why \u201cNo Regrets\u201d Is Bad Advice",
       "apple_collection_id": 1474245040,
       "apple_track_id": 1000773657289,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/why-no-regrets-is-bad-advice/id1474245040?i=1000773657289&uo=4",
@@ -10821,7 +10821,7 @@
     {
       "id": "sigma-nutrition-radio--electrolyte-mythology",
       "show": "Sigma Nutrition Radio",
-      "title": "#611: Electrolyte Mythology: Wellness Marketing vs. Evidence - Zoë Rom & Kylee Van Horn",
+      "title": "#611: Electrolyte Mythology: Wellness Marketing vs. Evidence - Zo\u00eb Rom & Kylee Van Horn",
       "apple_collection_id": 857888327,
       "apple_track_id": 1000774806835,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/611-electrolyte-mythology-wellness-marketing-vs-evidence/id857888327?i=1000774806835&uo=4",
@@ -10863,7 +10863,7 @@
     {
       "id": "sigma-nutrition-radio--how-to-interpret-nutrition-research-allison",
       "show": "Sigma Nutrition Radio",
-      "title": "#604: How To Interpret Nutrition Research – David Allison, PhD",
+      "title": "#604: How To Interpret Nutrition Research \u2013 David Allison, PhD",
       "apple_collection_id": 857888327,
       "apple_track_id": 1000766173294,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/604-how-to-interpret-nutrition-research-david-allison-phd/id857888327?i=1000766173294&uo=4",
@@ -10949,7 +10949,7 @@
     {
       "id": "happier-gretchen-rubin--fight-perfectionism",
       "show": "Happier with Gretchen Rubin",
-      "title": "Ep. 591: How to Fight Perfectionism—Plus a Simple Happiness Hack That Really Matters",
+      "title": "Ep. 591: How to Fight Perfectionism\u2014Plus a Simple Happiness Hack That Really Matters",
       "apple_collection_id": 969519520,
       "apple_track_id": 1000772228251,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/ep-591-how-to-fight-perfectionism-plus-a-simple/id969519520?i=1000772228251&uo=4",
@@ -11037,7 +11037,7 @@
     {
       "id": "good-inside-dr-becky--why-kids-behavior-feels-big",
       "show": "Good Inside with Dr. Becky",
-      "title": "Why Your Kid’s Behavior Feels So Big",
+      "title": "Why Your Kid\u2019s Behavior Feels So Big",
       "apple_collection_id": 1561689671,
       "apple_track_id": 1000768511140,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/why-your-kids-behavior-feels-so-big/id1561689671?i=1000768511140&uo=4",
@@ -11524,7 +11524,7 @@
     {
       "id": "2-bears-1-cave--patrice-oneal",
       "show": "2 Bears, 1 Cave with Tom Segura & Bert Kreischer",
-      "title": "Patrice O’Neal Destroyed Me",
+      "title": "Patrice O\u2019Neal Destroyed Me",
       "apple_collection_id": 1468013270,
       "apple_track_id": 1000772801037,
       "episode_guid": "d646adde-8f5c-11f0-ab92-175d05446cb1",
@@ -12415,7 +12415,7 @@
     {
       "id": "wicked-words--london-falling",
       "show": "Wicked Words - A True Crime Talk Show with Kate Winkler Dawson",
-      "title": "Patrick Radden Keefe: London Falling",
+      "title": "Patrick\u00a0Radden Keefe: London Falling",
       "apple_collection_id": 1538204210,
       "apple_track_id": 1000762354559,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/patrick-radden-keefe-london-falling/id1538204210?i=1000762354559&uo=4",
@@ -12531,7 +12531,7 @@
         "society",
         "personal-journals"
       ],
-      "hook": "Under Iran’s wartime internet blackout, people smuggle out voice memos because they want to be heard.",
+      "hook": "Under Iran\u2019s wartime internet blackout, people smuggle out voice memos because they want to be heard.",
       "explicit": false,
       "audio_url": "https://pfx.vpixl.com/6qj4J/dts.podtrac.com/redirect.mp/pdst.fm/e/prefix.up.audio/s/npr.simplecastaudio.com/d3081dd9-fcaf-445a-977c-4f56c28f5a6e/episodes/40ac9d61-48fa-49cd-8a8b-c80a95885223/audio/128/default.mp3?awCollectionId=d3081dd9-fcaf-445a-977c-4f56c28f5a6e&awEpisodeId=40ac9d61-48fa-49cd-8a8b-c80a95885223&nocache",
       "audio_type": "audio/mpeg",
@@ -12592,7 +12592,7 @@
         "science/storytelling",
         "personal-journals"
       ],
-      "hook": "A Coast Guardsman’s night watch and hula sisters at Merrie Monarch, where the gods intervene.",
+      "hook": "A Coast Guardsman\u2019s night watch and hula sisters at Merrie Monarch, where the gods intervene.",
       "explicit": false,
       "audio_url": "https://pdrl.fm/7a4827/dts.podtrac.com/redirect.mp3/tracking.swap.fm/track/sblTq32fyWAjsHzze2LG/mgln.ai/e/48/pscrb.fm/rss/p/dovetail.prxu.org/320/a35102a2-46d6-4c57-8aab-cb310b0d8985/1726-P_SOMETHING_SACRED_PODCAST_MP3.mp3",
       "audio_type": "audio/mpeg",
@@ -12802,7 +12802,7 @@
     {
       "id": "storycorps--what-were-made-of",
       "show": "StoryCorps",
-      "title": "What We’re Made Of",
+      "title": "What We\u2019re Made Of",
       "apple_collection_id": 250500859,
       "apple_track_id": 1000770725136,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/what-were-made-of/id250500859?i=1000770725136&uo=4",
@@ -12924,7 +12924,7 @@
         "personal-journals",
         "society"
       ],
-      "hook": "At seventeen, Theo Baker’s reporting on academic misconduct forced Stanford’s president out.",
+      "hook": "At seventeen, Theo Baker\u2019s reporting on academic misconduct forced Stanford\u2019s president out.",
       "explicit": false,
       "audio_url": "https://sphinx.acast.com/p/open/s/69655a401f21449d6dda7edc/e/6a2728fca917ce4c701c1095/media.mp3",
       "audio_type": "audio/mpeg",
@@ -13141,7 +13141,7 @@
         "health/mental",
         "education/self-improvement"
       ],
-      "hook": "Glennon shares her “Sort Your Mail” strategy for handling criticism without going quiet.",
+      "hook": "Glennon shares her \u201cSort Your Mail\u201d strategy for handling criticism without going quiet.",
       "explicit": true,
       "audio_url": "https://pdst.fm/e/pdrl.fm/097e32/pscrb.fm/rss/p/arttrk.com/p/30200/clrtpod.com/m/mgln.ai/e/p471541/traffic.megaphone.fm/ARWED8831987268.mp3",
       "audio_type": "audio/mpeg",
@@ -13265,7 +13265,7 @@
     {
       "id": "dear-prudence--love-sister-dont-like",
       "show": "Dear Prudence",
-      "title": "I Love My Sister But I Don’t Like Her. Help!",
+      "title": "I Love My Sister But I Don\u2019t Like Her. Help!",
       "apple_collection_id": 1667640147,
       "apple_track_id": 1000700194055,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/i-love-my-sister-but-i-dont-like-her-help/id1667640147?i=1000700194055&uo=4",
@@ -13276,7 +13276,7 @@
         "relationships",
         "personal-journals"
       ],
-      "hook": "Prudie and Traci Thomas on rude stepchildren, and loving a sister you don’t like.",
+      "hook": "Prudie and Traci Thomas on rude stepchildren, and loving a sister you don\u2019t like.",
       "explicit": false,
       "audio_url": "https://sphinx.acast.com/p/open/s/695d55b2d1ba84fb8f06bd87/e/1000700194055/media.mp3",
       "audio_type": "audio/mpeg",
@@ -13308,7 +13308,7 @@
     {
       "id": "wow-in-the-world--america-time-capsule",
       "show": "Wow in the World",
-      "title": "Digging for Answers: The Engineering Marvel of America’s 250th Anniversary 2,000-Pound Time Capsule!",
+      "title": "Digging for Answers: The Engineering Marvel of America\u2019s 250th Anniversary 2,000-Pound Time Capsule!",
       "apple_collection_id": 1233834541,
       "apple_track_id": 1000774657164,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/digging-for-answers-the-engineering-marvel-of/id1233834541?i=1000774657164&uo=4",
@@ -13329,7 +13329,7 @@
     {
       "id": "wow-in-the-world--two-whats-rachel-martin",
       "show": "Wow in the World",
-      "title": "Two Whats?! And A Wow! People Who Wow Edition – Rachel Martin – Guess the True Facts about this Award-Winning Journalist and Interviewer!",
+      "title": "Two Whats?! And A Wow! People Who Wow Edition \u2013 Rachel Martin \u2013 Guess the True Facts about this Award-Winning Journalist and Interviewer!",
       "apple_collection_id": 1233834541,
       "apple_track_id": 1000775290393,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/two-whats-and-a-wow-people-who-wow-edition/id1233834541?i=1000775290393&uo=4",
@@ -13434,7 +13434,7 @@
     {
       "id": "circle-round--parakeets-promise",
       "show": "Circle Round",
-      "title": "Summer Camp: The Parakeet’s Promise",
+      "title": "Summer Camp: The Parakeet\u2019s Promise",
       "apple_collection_id": 1246443751,
       "apple_track_id": 1000774892086,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/summer-camp-the-parakeets-promise/id1246443751?i=1000774892086&uo=4",
@@ -13542,7 +13542,7 @@
     {
       "id": "the-magnus-archives--magnus-protocol-1-first-shift",
       "show": "The Magnus Archives",
-      "title": "The Magnus Protocol 1 – First Shift",
+      "title": "The Magnus Protocol 1 \u2013 First Shift",
       "apple_collection_id": 1095138637,
       "apple_track_id": 1000642111615,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-magnus-protocol-1-first-shift/id1095138637?i=1000642111615&uo=4",
@@ -13674,7 +13674,7 @@
     {
       "id": "twenty-thousand-hertz--john-williams-a-composers-life",
       "show": "Twenty Thousand Hertz",
-      "title": "John Williams: A Composer’s Life",
+      "title": "John Williams: A Composer\u2019s Life",
       "apple_collection_id": 1171270672,
       "apple_track_id": 1000770054418,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/john-williams-a-composers-life/id1171270672?i=1000770054418&uo=4",
@@ -13912,7 +13912,7 @@
     {
       "id": "broken-record--radiohead-ed-obrien",
       "show": "Broken Record with Rick Rubin, Malcolm Gladwell, Bruce Headlam and Justin Richmond",
-      "title": "Radiohead’s Ed O’Brien",
+      "title": "Radiohead\u2019s Ed O\u2019Brien",
       "apple_collection_id": 1311004083,
       "apple_track_id": 1000773816510,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/radioheads-ed-obrien/id1311004083?i=1000773816510&uo=4",
@@ -13964,7 +13964,7 @@
       "topics": [
         "culture"
       ],
-      "hook": "Author John Vaillant on how fire shaped humanity — and how we're now reshaping fire.",
+      "hook": "Author John Vaillant on how fire shaped humanity \u2014 and how we're now reshaping fire.",
       "explicit": false,
       "audio_url": "https://mgln.ai/e/12/cbc.mc.tritondigital.com/CBC_IDEAS_P/media/ideas/ideas-99mQ2VMD-20260709.mp3",
       "audio_type": "audio/mpeg",
@@ -14050,7 +14050,7 @@
       "topics": [
         "nature/earth-science"
       ],
-      "hook": "Wetlands store more carbon than forests — time to rewrite the swamp's toxic-wasteland story.",
+      "hook": "Wetlands store more carbon than forests \u2014 time to rewrite the swamp's toxic-wasteland story.",
       "explicit": false,
       "audio_url": "https://mgln.ai/e/12/cbc.mc.tritondigital.com/CBC_IDEAS_P/media/ideas/ideas-ZlVDaoUV-20260710.mp3",
       "audio_type": "audio/mpeg",
@@ -14126,7 +14126,7 @@
     {
       "id": "engines-of-our-ingenuity--adams-education",
       "show": "Engines of Our Ingenuity",
-      "title": "The Engines of Our Ingenuity 1600: Adams’s Education",
+      "title": "The Engines of Our Ingenuity 1600: Adams\u2019s Education",
       "apple_collection_id": 121493645,
       "apple_track_id": 1000776346572,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1600-adamss-education/id121493645?i=1000776346572&uo=4",
@@ -14157,7 +14157,7 @@
       "topics": [
         "history/technology"
       ],
-      "hook": "An old privy becomes a window into a city's past — history from a trash bin.",
+      "hook": "An old privy becomes a window into a city's past \u2014 history from a trash bin.",
       "explicit": false,
       "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260710.mp3?srcid=apple-podcasts",
       "audio_type": "audio/mpeg",
@@ -14215,7 +14215,7 @@
       "topics": [
         "business/startups"
       ],
-      "hook": "Glean's Arvind Jain argues model labs won't win the app layer — and teams will grow.",
+      "hook": "Glean's Arvind Jain argues model labs won't win the app layer \u2014 and teams will grow.",
       "explicit": true,
       "audio_url": "https://traffic.libsyn.com/secure/thetwentyminutevc/The_Memo__Arvind_Jain__Glean.mp3?dest-id=240976",
       "audio_type": "audio/mpeg",
@@ -14310,7 +14310,7 @@
     {
       "id": "off-nominal--rtgs-promise-rover",
       "show": "Off-Nominal",
-      "title": "247 - RTGs Don’t Grow on Trees",
+      "title": "247 - RTGs Don\u2019t Grow on Trees",
       "apple_collection_id": 1294131221,
       "apple_track_id": 1000776200263,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/247-rtgs-dont-grow-on-trees/id1294131221?i=1000776200263&uo=4",
@@ -14426,7 +14426,7 @@
       "topics": [
         "science/storytelling"
       ],
-      "hook": "Why one woman gets goosebumps several times a day — and what the bumps signal.",
+      "hook": "Why one woman gets goosebumps several times a day \u2014 and what the bumps signal.",
       "explicit": true,
       "audio_url": "https://pscrb.fm/rss/p/mgln.ai/e/14/prfx.byspotify.com/e/dts.podtrac.com/pts/redirect.mp3/waaa.wnyc.org/758af4c0-a2c3-47ec-a2d8-05f41bfbde51/episodes/449c3648-e49d-409f-a952-300e9ade0bef/audio/128/default.mp3?aid=rss_feed&awCollectionId=758af4c0-a2c3-47ec-a2d8-05f41bfbde51&awEpisodeId=449c3648-e49d-409f-a952-300e9ade0bef&feed=EmVW7VGp",
       "audio_type": "audio/mpeg",
@@ -14500,7 +14500,7 @@
     {
       "id": "craft-beer-and-brewing-magazine-podcast--brewing-scientists-shellhammer-chenot-older-hops",
       "show": "Craft Beer & Brewing Magazine Podcast",
-      "title": "491: Brewing Scientists Tom Shellhammer and Cécile Chenot Are Changing How We Think About Older Hops",
+      "title": "491: Brewing Scientists Tom Shellhammer and C\u00e9cile Chenot Are Changing How We Think About Older Hops",
       "apple_collection_id": 1296082082,
       "apple_track_id": 1000776264682,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/brewing-scientists-tom-shellhammer-and-c%C3%A9cile-chenot/id1296082082?i=1000776264682&uo=4",
@@ -14714,7 +14714,7 @@
     {
       "id": "criminal--thats-not-me",
       "show": "Criminal",
-      "title": "That’s Not Me",
+      "title": "That\u2019s Not Me",
       "apple_collection_id": 809264944,
       "apple_track_id": 1000773888809,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/thats-not-me/id809264944?i=1000773888809&uo=4",
@@ -14811,7 +14811,7 @@
         "relationships",
         "personal-journals"
       ],
-      "hook": "The Sugars on ghosting — why sudden silence wounds, and how the ghosted move on.",
+      "hook": "The Sugars on ghosting \u2014 why sudden silence wounds, and how the ghosted move on.",
       "explicit": false,
       "audio_url": "https://mgln.ai/e/29/pscrb.fm/rss/p/prfx.byspotify.com/e/traffic.megaphone.fm/BUR1781326500.mp3",
       "audio_type": "audio/mpeg",
@@ -14843,7 +14843,7 @@
     {
       "id": "wow-in-the-world--two-whats-rae-wynn-grant",
       "show": "Wow in the World",
-      "title": "Two Whats?! And A Wow! People Who Wow Edition – Dr. Rae Wynn-Grant – Guess the True Facts about this Wildlife Ecologist, TV Host, and Author!",
+      "title": "Two Whats?! And A Wow! People Who Wow Edition \u2013 Dr. Rae Wynn-Grant \u2013 Guess the True Facts about this Wildlife Ecologist, TV Host, and Author!",
       "apple_collection_id": 1233834541,
       "apple_track_id": 1000776228123,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/two-whats-and-a-wow-people-who-wow-edition-dr-rae/id1233834541?i=1000776228123&uo=4",
@@ -14927,7 +14927,7 @@
     {
       "id": "call-her-daddy--maria-georgas",
       "show": "Call Her Daddy",
-      "title": "Maria Georgas: I Made Out with My Boyfriend’s Mistress (FBF)",
+      "title": "Maria Georgas: I Made Out with My Boyfriend\u2019s Mistress (FBF)",
       "apple_collection_id": 1418960261,
       "apple_track_id": 1000776392632,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/maria-georgas-i-made-out-with-my-boyfriends-mistress-fbf/id1418960261?i=1000776392632&uo=4",
@@ -15348,7 +15348,7 @@
     {
       "id": "the-peter-attia-drive--alzheimers-dementia-care-devi",
       "show": "The Peter Attia Drive",
-      "title": "#399 ‒ The evolution of Alzheimer's disease and dementia care: how early detection, personalized treatment, new therapies, and a multimodal approach are changing the landscape | Gayatri Devi, M.D.",
+      "title": "#399 \u2012 The evolution of Alzheimer's disease and dementia care: how early detection, personalized treatment, new therapies, and a multimodal approach are changing the landscape | Gayatri Devi, M.D.",
       "apple_collection_id": 1400828889,
       "apple_track_id": 1000776538766,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/399-the-evolution-of-alzheimers-disease-and/id1400828889?i=1000776538766&uo=4",
@@ -16089,7 +16089,7 @@
     {
       "id": "unauthorized-history-pacific-war--first-attacks-bataan",
       "show": "The Unauthorized History of the Pacific War",
-      "title": "The First Attacks on the Bataan Peninsula: January 1942 – Episode 608",
+      "title": "The First Attacks on the Bataan Peninsula: January 1942 \u2013 Episode 608",
       "apple_collection_id": 1641383288,
       "apple_track_id": 1000776740481,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-first-attacks-on-the-bataan-peninsula-january/id1641383288?i=1000776740481&uo=4",
@@ -16236,7 +16236,7 @@
     {
       "id": "sigma-nutrition-radio--supplement-safety-guerrini",
       "show": "Sigma Nutrition Radio",
-      "title": "#613: Supplement Safety & Medication Interactions – Giulia Guerrini, MPharm",
+      "title": "#613: Supplement Safety & Medication Interactions \u2013 Giulia Guerrini, MPharm",
       "apple_collection_id": 857888327,
       "apple_track_id": 1000776716429,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/613-supplement-safety-medication-interactions-giulia/id857888327?i=1000776716429&uo=4",
@@ -16474,7 +16474,7 @@
     {
       "id": "storycorps--stadium-beer-vendor",
       "show": "StoryCorps",
-      "title": "A Stadium Beer Vendor by What It's Like to Be…. With Dan Heath",
+      "title": "A Stadium Beer Vendor by What It's Like to Be\u2026. With Dan Heath",
       "apple_collection_id": 250500859,
       "apple_track_id": 1000776720355,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/a-stadium-beer-vendor-by-what-its-like-to-be-with-dan-heath/id250500859?i=1000776720355&uo=4",
@@ -16895,7 +16895,7 @@
     {
       "id": "planetary-radio--edge-of-space-time-book-club",
       "show": "Planetary Radio: Space Exploration, Astronomy and Science",
-      "title": "Book Club Edition: “The Edge of Space-Time” by Chanda Prescod-Weinstein",
+      "title": "Book Club Edition: \u201cThe Edge of Space-Time\u201d by Chanda Prescod-Weinstein",
       "apple_collection_id": 91689834,
       "apple_track_id": 1000777232652,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/book-club-edition-the-edge-of-space-time-by/id91689834?i=1000777232652&uo=4",
@@ -17469,7 +17469,7 @@
     {
       "id": "wow-in-the-world--two-whats-shark",
       "show": "Wow in the World",
-      "title": "Two Whats?! And A Wow! – Stumping the Shark",
+      "title": "Two Whats?! And A Wow! \u2013 Stumping the Shark",
       "apple_collection_id": 1233834541,
       "apple_track_id": 1000777180512,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/two-whats-and-a-wow-stumping-the-shark/id1233834541?i=1000777180512&uo=4",
@@ -17574,7 +17574,7 @@
     {
       "id": "the-rest-is-history--habsburgs-mayerling-part-1",
       "show": "The Rest Is History",
-      "title": "689. A Murderous Affair: The Habsburgs’ Greatest Scandal (Part 1)",
+      "title": "689. A Murderous Affair: The Habsburgs\u2019 Greatest Scandal (Part 1)",
       "apple_collection_id": 1537788786,
       "apple_track_id": 1000777218327,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/a-murderous-affair-the-habsburgs-greatest-scandal-part-1/id1537788786?i=1000777218327&uo=4",
@@ -17701,7 +17701,7 @@
     {
       "id": "fly-on-the-wall--sick-little-monkeys",
       "show": "Fly on the Wall with Dana Carvey and David Spade",
-      "title": "We’re Sick Little Monkeys",
+      "title": "We\u2019re Sick Little Monkeys",
       "apple_collection_id": 1603639502,
       "apple_track_id": 1000777517657,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/were-sick-little-monkeys/id1603639502?i=1000777517657&uo=4",
@@ -17953,7 +17953,7 @@
     {
       "id": "the-peter-attia-drive--400-ama-environmental-pollution",
       "show": "The Peter Attia Drive",
-      "title": "#400 ‒ AMA #87: Environmental pollution and longevity: air pollution, noise, light, EMFs, and practical strategies to mitigate health risks",
+      "title": "#400 \u2012 AMA #87: Environmental pollution and longevity: air pollution, noise, light, EMFs, and practical strategies to mitigate health risks",
       "apple_collection_id": 1400828889,
       "apple_track_id": 1000777501856,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/400-ama-87-environmental-pollution-and-longevity-air/id1400828889?i=1000777501856&uo=4",
@@ -17963,7 +17963,7 @@
       "topics": [
         "medicine/neuroscience"
       ],
-      "hook": "Which pollution risks hold up — air, noise, light, EMFs — and what actually reduces exposure.",
+      "hook": "Which pollution risks hold up \u2014 air, noise, light, EMFs \u2014 and what actually reduces exposure.",
       "explicit": false,
       "audio_url": "https://traffic.libsyn.com/secure/peterattiadrive/EP.400_-_AMA_87_Environmental_Pollution_SNEAK_PEEK.mp3?dest-id=713489",
       "audio_type": "audio/mpeg",
@@ -17995,7 +17995,7 @@
     {
       "id": "happiness-lab--men-need-bromance",
       "show": "The Happiness Lab with Dr. Laurie Santos",
-      "title": "Men Don’t Just Need Friends. They Need Bromance.",
+      "title": "Men Don\u2019t Just Need Friends. They Need Bromance.",
       "apple_collection_id": 1474245040,
       "apple_track_id": 1000777261052,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/men-dont-just-need-friends-they-need-bromance/id1474245040?i=1000777261052&uo=4",
@@ -18061,7 +18061,7 @@
     {
       "id": "happier-gretchen-rubin--help-rejecting-complainer",
       "show": "Happier with Gretchen Rubin",
-      "title": "Little Happier: The Challenge of the “Help-Rejecting Complainer”",
+      "title": "Little Happier: The Challenge of the \u201cHelp-Rejecting Complainer\u201d",
       "apple_collection_id": 969519520,
       "apple_track_id": 1000774214915,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/little-happier-the-challenge-of-the/id969519520?i=1000774214915&uo=4",
@@ -18635,7 +18635,7 @@
     {
       "id": "unauthorized-history-pacific-war--609-bataan-last-charge",
       "show": "The Unauthorized History of the Pacific War",
-      "title": "The Last Charge and The Battle of the Points: Jan-Feb 1942 on Bataan – Episode 609",
+      "title": "The Last Charge and The Battle of the Points: Jan-Feb 1942 on Bataan \u2013 Episode 609",
       "apple_collection_id": 1641383288,
       "apple_track_id": 1000777689396,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-last-charge-and-the-battle-of-the-points-jan/id1641383288?i=1000777689396&uo=4",
@@ -18687,7 +18687,7 @@
       "topics": [
         "cities/urbanism"
       ],
-      "hook": "Reports from Atlanta, Memphis, Chicago, Montréal and more, plus reverse Copenhagenization.",
+      "hook": "Reports from Atlanta, Memphis, Chicago, Montr\u00e9al and more, plus reverse Copenhagenization.",
       "explicit": false,
       "audio_url": "https://pdst.fm/e/traffic.libsyn.com/secure/waroncars/TWOC_TourREcap3_072126_v2.mp3?dest-id=807818",
       "audio_type": "audio/mpeg",
@@ -18761,7 +18761,7 @@
     {
       "id": "sigma-nutrition-radio--614-human-skills-coaching",
       "show": "Sigma Nutrition Radio",
-      "title": "#614: The Human Skills of Nutrition Coaching – Krista Scott-Dixon, PhD",
+      "title": "#614: The Human Skills of Nutrition Coaching \u2013 Krista Scott-Dixon, PhD",
       "apple_collection_id": 857888327,
       "apple_track_id": 1000777673197,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/614-the-human-skills-of-nutrition-coaching-krista/id857888327?i=1000777673197&uo=4",
@@ -18848,7 +18848,7 @@
     {
       "id": "handsome--michael-buble-selfless-acts",
       "show": "Handsome",
-      "title": "Michael Bublé asks about selfless acts",
+      "title": "Michael Bubl\u00e9 asks about selfless acts",
       "apple_collection_id": 1702258458,
       "apple_track_id": 1000777685521,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/michael-bubl%C3%A9-asks-about-selfless-acts/id1702258458?i=1000777685521&uo=4",
@@ -18858,7 +18858,7 @@
       "topics": [
         "comedy/casual-hangs"
       ],
-      "hook": "Michael Bublé brings a question he is afraid to answer himself, plus 007-inspired decor.",
+      "hook": "Michael Bubl\u00e9 brings a question he is afraid to answer himself, plus 007-inspired decor.",
       "explicit": true,
       "audio_url": "https://s.gum.fm/s-64da7e573d833e9c418c5266/mgln.ai/e/209/pscrb.fm/rss/p/prfx.byspotify.com/e/clrtpod.com/m/rss.art19.com/episodes/6d7daf4a-fed3-4532-b866-0bb727e1d728.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
       "audio_type": "audio/mpeg",
@@ -18934,7 +18934,7 @@
     {
       "id": "death-sex-money--quiet-storm-black-middle-class",
       "show": "Death, Sex & Money",
-      "title": "The Sexy Soundtrack for the ‘New Black Middle Class’",
+      "title": "The Sexy Soundtrack for the \u2018New Black Middle Class\u2019",
       "apple_collection_id": 870688022,
       "apple_track_id": 1000777679542,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-sexy-soundtrack-for-the-new-black-middle-class/id870688022?i=1000777679542&uo=4",
@@ -19072,7 +19072,7 @@
       "topics": [
         "society/government"
       ],
-      "hook": "The 1995 Dayton Accord ended Bosnia's war—but does stopping the killing amount to real peace?",
+      "hook": "The 1995 Dayton Accord ended Bosnia's war\u2014but does stopping the killing amount to real peace?",
       "explicit": false,
       "audio_url": "https://mgln.ai/e/12/cbc.mc.tritondigital.com/CBC_IDEAS_P/media/ideas/ideas-4lOnqcC1-20250915.mp3",
       "audio_type": "audio/mpeg",
@@ -19105,7 +19105,7 @@
     {
       "id": "being-an-engineer--s7e31-stanley-leong-engineering-your-finances",
       "show": "Being an Engineer",
-      "title": "S7E31 Stanley Leong | Engineering Your Finances: A Former Electrical Engineer’s Guide to Building Wealth",
+      "title": "S7E31 Stanley Leong | Engineering Your Finances: A Former Electrical Engineer\u2019s Guide to Building Wealth",
       "apple_collection_id": 1508222292,
       "apple_track_id": 1000778180550,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/s7e31-stanley-leong-engineering-your-finances-a/id1508222292?i=1000778180550&uo=4",
@@ -19243,7 +19243,7 @@
       "topics": [
         "history/military-ancient"
       ],
-      "hook": "The women of Augustus's new autocracy—Julia and Agrippina the Elder—and the rules imposed on them.",
+      "hook": "The women of Augustus's new autocracy\u2014Julia and Agrippina the Elder\u2014and the rules imposed on them.",
       "explicit": true,
       "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/tracking.swap.fm/track/YfZO4tERxneauNcW9Fgn/mgln.ai/e/211/traffic.megaphone.fm/ARML3514108667.mp3",
       "audio_type": "audio/mpeg",
@@ -19343,7 +19343,7 @@
       "topics": [
         "craft/diy-home"
       ],
-      "hook": "A lighting designer on transforming a home's feel—and why recessed can lights aren't the answer.",
+      "hook": "A lighting designer on transforming a home's feel\u2014and why recessed can lights aren't the answer.",
       "explicit": false
     },
     {
@@ -19496,7 +19496,7 @@
     {
       "id": "the-worlds-best-construction-podcast--new-york-s-2wtc-finally-breaks",
       "show": "The World's Best Construction Podcast",
-      "title": "New York’s 2WTC Finally Breaks Ground - #198",
+      "title": "New York\u2019s 2WTC Finally Breaks Ground - #198",
       "apple_collection_id": 1635354647,
       "apple_track_id": 1000778023144,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/new-yorks-2wtc-finally-breaks-ground-198/id1635354647?i=1000778023144&uo=4",
@@ -19579,7 +19579,7 @@
     {
       "id": "planetary-radio--hot-jupiters-the-roasted-planet-and",
       "show": "Planetary Radio: Space Exploration, Astronomy and Science",
-      "title": "Hot Jupiters: The ‘Roasted Planet’ and the wrong-way hotspot",
+      "title": "Hot Jupiters: The \u2018Roasted Planet\u2019 and the wrong-way hotspot",
       "apple_collection_id": 91689834,
       "apple_track_id": 1000777895562,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/hot-jupiters-the-roasted-planet-and-the-wrong-way-hotspot/id91689834?i=1000777895562&uo=4",
@@ -19810,7 +19810,7 @@
     {
       "id": "history-of-wwii-podcast--we-the-founders-the-constitution-government",
       "show": "The History of WWII Podcast",
-      "title": "We The Founders (The Constitution) | Government That Doesn’t Suck",
+      "title": "We The Founders (The Constitution) | Government That Doesn\u2019t Suck",
       "apple_collection_id": 493253759,
       "apple_track_id": 1000777975842,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/we-the-founders-the-constitution-government-that/id493253759?i=1000777975842&uo=4",
@@ -19957,7 +19957,7 @@
     {
       "id": "fast-talk--433-what-s-behind-the-resurgence",
       "show": "Fast Talk",
-      "title": "433: What’s Behind the Resurgence of American Mountain Bike Talent?",
+      "title": "433: What\u2019s Behind the Resurgence of American Mountain Bike Talent?",
       "apple_collection_id": 1490521721,
       "apple_track_id": 1000778020845,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/whats-behind-the-resurgence-of-american-mountain/id1490521721?i=1000778020845&uo=4",
@@ -19999,7 +19999,7 @@
     {
       "id": "ten-percent-happier--that-feeling-of-always-behind-and",
       "show": "10% Happier with Dan Harris",
-      "title": "That Feeling of \"Always-Behind and Never-Enough\"—Here's the Antidote | Ellen Hendriksen",
+      "title": "That Feeling of \"Always-Behind and Never-Enough\"\u2014Here's the Antidote | Ellen Hendriksen",
       "apple_collection_id": 1087147821,
       "apple_track_id": 1000778039868,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/that-feeling-of-always-behind-and-never-enough/id1087147821?i=1000778039868&uo=4",
@@ -20031,7 +20031,7 @@
       "topics": [
         "health/nutrition"
       ],
-      "hook": "Tim Spector and Sarah Berry on which sugars spike blood sugar—and small changes that help.",
+      "hook": "Tim Spector and Sarah Berry on which sugars spike blood sugar\u2014and small changes that help.",
       "explicit": false,
       "audio_url": "https://pdst.fm/e/traffic.megaphone.fm/ZOELIMITED6814891964.mp3",
       "audio_type": "audio/mpeg",
@@ -20367,7 +20367,7 @@
     {
       "id": "wow-in-the-world--two-whats-and-a-wow-just",
       "show": "Wow in the World",
-      "title": "Two Whats?! And A Wow! – Just Kitten Around",
+      "title": "Two Whats?! And A Wow! \u2013 Just Kitten Around",
       "apple_collection_id": 1233834541,
       "apple_track_id": 1000778163102,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/two-whats-and-a-wow-just-kitten-around/id1233834541?i=1000778163102&uo=4",
@@ -20451,7 +20451,7 @@
     {
       "id": "the-ancients--hollywood-s-odyssey-the-historians-verdict",
       "show": "The Ancients",
-      "title": "Hollywood’s Odyssey: The Historians' Verdict",
+      "title": "Hollywood\u2019s Odyssey: The Historians' Verdict",
       "apple_collection_id": 1520403988,
       "apple_track_id": 1000777899185,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/hollywoods-odyssey-the-historians-verdict/id1520403988?i=1000777899185&uo=4",
@@ -20577,7 +20577,7 @@
     {
       "id": "the-rest-is-history--691-elizabeth-i-vs-the-catholics",
       "show": "The Rest Is History",
-      "title": "691. Elizabeth I vs The Catholics: The Queen’s Spymaster (Part 1)",
+      "title": "691. Elizabeth I vs The Catholics: The Queen\u2019s Spymaster (Part 1)",
       "apple_collection_id": 1537788786,
       "apple_track_id": 1000778171213,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/elizabeth-i-vs-the-catholics-the-queens-spymaster-part-1/id1537788786?i=1000778171213&uo=4",
@@ -20872,7 +20872,7 @@
     {
       "id": "strong-towns-podcast--america-s-half-funded-highway-system",
       "show": "The Strong Towns Podcast",
-      "title": "America’s Half-Funded Highway System",
+      "title": "America\u2019s Half-Funded Highway System",
       "apple_collection_id": 369032477,
       "apple_track_id": 1000778523091,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/americas-half-funded-highway-system/id369032477?i=1000778523091&uo=4",
@@ -20935,7 +20935,7 @@
     {
       "id": "the-peter-attia-drive--401-how-curiosity-transforms-medicine-extraordinary",
       "show": "The Peter Attia Drive",
-      "title": "#401 ‒ How curiosity transforms medicine: extraordinary discoveries that changed modern healthcare",
+      "title": "#401 \u2012 How curiosity transforms medicine: extraordinary discoveries that changed modern healthcare",
       "apple_collection_id": 1400828889,
       "apple_track_id": 1000778486998,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/401-how-curiosity-transforms-medicine-extraordinary/id1400828889?i=1000778486998&uo=4",
@@ -21214,7 +21214,7 @@
     {
       "id": "wicked-words--justine-van-der-leun-unreasonable-women",
       "show": "Wicked Words - A True Crime Talk Show with Kate Winkler Dawson",
-      "title": "Justine van der Leun: Unreasonable Women",
+      "title": "Justine\u00a0van der Leun: Unreasonable Women",
       "apple_collection_id": 1538204210,
       "apple_track_id": 1000778502897,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/justine-van-der-leun-unreasonable-women/id1538204210?i=1000778502897&uo=4",
@@ -21251,7 +21251,7 @@
       "topics": [
         "kids-family/education"
       ],
-      "hook": "Mindy and Guy Raz visit a cat café to uncover the science behind cats loving tuna.",
+      "hook": "Mindy and Guy Raz visit a cat caf\u00e9 to uncover the science behind cats loving tuna.",
       "explicit": false
     },
     {
@@ -21511,7 +21511,7 @@
     {
       "id": "unauthorized-history-pacific-war--episode-612-guadalcanal-s-forgotten-fight",
       "show": "The Unauthorized History of the Pacific War",
-      "title": "Episode 612 – Guadalcanal’s Forgotten Fight: The US Army’s Crucial Role with Dave Holland",
+      "title": "Episode 612 \u2013 Guadalcanal\u2019s Forgotten Fight: The US Army\u2019s Crucial Role with Dave Holland",
       "apple_collection_id": 1641383288,
       "apple_track_id": 1000778674073,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-612-guadalcanals-forgotten-fight-the-us-armys/id1641383288?i=1000778674073&uo=4",
@@ -21595,7 +21595,7 @@
     {
       "id": "twiml-ai--why-models-are-ai-s-next",
       "show": "The TWIML AI Podcast",
-      "title": "Why Models Are AI’s Next Training Dataset with Damian Borth - #772",
+      "title": "Why Models Are AI\u2019s Next Training Dataset with Damian Borth - #772",
       "apple_collection_id": 1116303051,
       "apple_track_id": 1000778611501,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/why-models-are-ais-next-training-dataset-with-damian-borth/id1116303051?i=1000778611501&uo=4",
@@ -21788,7 +21788,7 @@
     {
       "id": "lex-fridman-podcast--499-gary-gallagher-american-civil-war",
       "show": "Lex Fridman Podcast",
-      "title": "#499 – Gary Gallagher: American Civil War, Slavery, Lincoln, Grant &#038; Lee",
+      "title": "#499 \u2013 Gary Gallagher: American Civil War, Slavery, Lincoln, Grant &#038; Lee",
       "apple_collection_id": 1434243584,
       "apple_track_id": 1000778760073,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/499-gary-gallagher-american-civil-war-slavery-lincoln/id1434243584?i=1000778760073&uo=4",
@@ -22042,7 +22042,7 @@
     {
       "id": "unexplainable--the-godzilla-el-ni-o",
       "show": "Unexplainable",
-      "title": "The Godzilla El Niño",
+      "title": "The Godzilla El Ni\u00f1o",
       "apple_collection_id": 1554578197,
       "apple_track_id": 1000778855182,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-godzilla-el-ni%C3%B1o/id1554578197?i=1000778855182&uo=4",
@@ -22656,7 +22656,7 @@
     {
       "id": "camera-shake-photography-podcast--25-years-of-photoshop-the-skills",
       "show": "Camera Shake Photography Podcast",
-      "title": "25 Years of Photoshop: The Skills AI Can’t Replace with COLIN SMITH - Episode 320",
+      "title": "25 Years of Photoshop: The Skills AI Can\u2019t Replace with COLIN SMITH - Episode 320",
       "apple_collection_id": 1514179611,
       "apple_track_id": 1000779112528,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/25-years-of-photoshop-the-skills-ai-cant-replace/id1514179611?i=1000779112528&uo=4",
@@ -22979,7 +22979,7 @@
     {
       "id": "wow-in-the-world--two-whats-and-a-wow-people",
       "show": "Wow in the World",
-      "title": "Two Whats?! And A Wow! People Who Wow Edition – Rene Carbajal – Guess the True Facts About this Marine Biologist and Octopus Expert!",
+      "title": "Two Whats?! And A Wow! People Who Wow Edition \u2013 Rene Carbajal \u2013 Guess the True Facts About this Marine Biologist and Octopus Expert!",
       "apple_collection_id": 1233834541,
       "apple_track_id": 1000779232403,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/two-whats-and-a-wow-people-who-wow-edition/id1233834541?i=1000779232403&uo=4",
@@ -23192,7 +23192,7 @@
     {
       "id": "partially-examined-life--pel-presents-nem-257-josh-joplin",
       "show": "The Partially Examined Life Philosophy Podcast",
-      "title": "PEL Presents NEM#257: Josh Joplin Doesn't Look Back… Until Now",
+      "title": "PEL Presents NEM#257: Josh Joplin Doesn't Look Back\u2026 Until Now",
       "apple_collection_id": 318345767,
       "apple_track_id": 1000779314062,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/pel-presents-nem-257-josh-joplin-doesnt-look-back-until-now/id318345767?i=1000779314062&uo=4",
@@ -23423,7 +23423,7 @@
     {
       "id": "the-rest-is-history--693-elizabeth-i-vs-the-catholics",
       "show": "The Rest Is History",
-      "title": "693. Elizabeth I vs The Catholics: England’s Greatest Hero (Part 3)",
+      "title": "693. Elizabeth I vs The Catholics: England\u2019s Greatest Hero (Part 3)",
       "apple_collection_id": 1537788786,
       "apple_track_id": 1000778171723,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/elizabeth-i-vs-the-catholics-englands-greatest-hero-part-3/id1537788786?i=1000778171723&uo=4",
@@ -23550,7 +23550,7 @@
     {
       "id": "fly-on-the-wall--is-spade-david-s-real-last",
       "show": "Fly on the Wall with Dana Carvey and David Spade",
-      "title": "Is Spade David’s Real Last Name?",
+      "title": "Is Spade David\u2019s Real Last Name?",
       "apple_collection_id": 1603639502,
       "apple_track_id": 1000779641104,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/is-spade-davids-real-last-name/id1603639502?i=1000779641104&uo=4",
@@ -23697,7 +23697,7 @@
     {
       "id": "how-i-built-this--serena-lily-serena-dugan-and-lily",
       "show": "How I Built This with Guy Raz",
-      "title": "Serena & Lily: Serena Dugan and Lily Kanter. They Built a $20M Brand—Then One Investor Almost Destroyed It",
+      "title": "Serena & Lily: Serena Dugan and Lily Kanter. They Built a $20M Brand\u2014Then One Investor Almost Destroyed It",
       "apple_collection_id": 1150510297,
       "apple_track_id": 1000779641699,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/serena-lily-serena-dugan-and-lily-kanter-they-built/id1150510297?i=1000779641699&uo=4",
@@ -23781,7 +23781,7 @@
     {
       "id": "the-peter-attia-drive--402-nmr-blood-analysis-how-heart",
       "show": "The Peter Attia Drive",
-      "title": "#402 ‒ NMR blood analysis: how heart disease risk, insulin resistance, inflammation, and mortality risk can be assessed from a single blood sample | Jim Otvos, Ph.D.",
+      "title": "#402 \u2012 NMR blood analysis: how heart disease risk, insulin resistance, inflammation, and mortality risk can be assessed from a single blood sample | Jim Otvos, Ph.D.",
       "apple_collection_id": 1400828889,
       "apple_track_id": 1000779625343,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/402-nmr-blood-analysis-how-heart-disease-risk-insulin/id1400828889?i=1000779625343&uo=4",
@@ -23867,7 +23867,7 @@
     {
       "id": "mel-robbins-podcast--if-this-doesn-t-make-you",
       "show": "The Mel Robbins Podcast",
-      "title": "If This Doesn’t Make You Believe in Yourself, Nothing Will",
+      "title": "If This Doesn\u2019t Make You Believe in Yourself, Nothing Will",
       "apple_collection_id": 1646101002,
       "apple_track_id": 1000779316252,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/if-this-doesnt-make-you-believe-in-yourself-nothing-will/id1646101002?i=1000779316252&uo=4",
@@ -23996,7 +23996,7 @@
     {
       "id": "crime-junkie--missing-kerry-o-brien-krueger",
       "show": "Crime Junkie",
-      "title": "MISSING: Kerry O’Brien-Krueger",
+      "title": "MISSING: Kerry O\u2019Brien-Krueger",
       "apple_collection_id": 1322200189,
       "apple_track_id": 1000779106608,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/missing-kerry-obrien-krueger/id1322200189?i=1000779106608&uo=4",
@@ -24083,7 +24083,7 @@
     {
       "id": "where-should-we-begin--i-love-my-partner-so-why",
       "show": "Where Should We Begin? with Esther Perel",
-      "title": "I Love My Partner, So Why Can’t I Let Go of My Ex?",
+      "title": "I Love My Partner, So Why Can\u2019t I Let Go of My Ex?",
       "apple_collection_id": 1237931798,
       "apple_track_id": 1000776810980,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/i-love-my-partner-so-why-cant-i-let-go-of-my-ex/id1237931798?i=1000776810980&uo=4",
@@ -24126,7 +24126,7 @@
     {
       "id": "design-matters--best-of-design-matters-quiara-alegr",
       "show": "Design Matters with Debbie Millman",
-      "title": "Best of Design Matters: Quiara Alegría Hudes",
+      "title": "Best of Design Matters: Quiara Alegr\u00eda Hudes",
       "apple_collection_id": 328074695,
       "apple_track_id": 1000779654173,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/best-of-design-matters-quiara-alegr%C3%ADa-hudes/id328074695?i=1000779654173&uo=4",
@@ -24141,7 +24141,7 @@
       "topics": [
         "culture/design"
       ],
-      "hook": "Playwright Quiara Alegría Hudes, co-creator of In the Heights, on identity, family, and her new novel.",
+      "hook": "Playwright Quiara Alegr\u00eda Hudes, co-creator of In the Heights, on identity, family, and her new novel.",
       "explicit": false
     },
     {
@@ -24422,7 +24422,7 @@
     {
       "id": "unauthorized-history-pacific-war--the-battle-of-the-pockets-and",
       "show": "The Unauthorized History of the Pacific War",
-      "title": "The Battle of the Pockets and MacArthur’s Departure – Episode 610",
+      "title": "The Battle of the Pockets and MacArthur\u2019s Departure \u2013 Episode 610",
       "apple_collection_id": 1641383288,
       "apple_track_id": 1000779843416,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-battle-of-the-pockets-and/id1641383288?i=1000779843416&uo=4",
@@ -24506,7 +24506,7 @@
     {
       "id": "sigma-nutrition-radio--615-why-processing-doesn-t-determine",
       "show": "Sigma Nutrition Radio",
-      "title": "#615: Why Processing Doesn't Determine the Healthfulness of Plant-Based Diets – Alysha Thompson, PhD",
+      "title": "#615: Why Processing Doesn't Determine the Healthfulness of Plant-Based Diets \u2013 Alysha Thompson, PhD",
       "apple_collection_id": 857888327,
       "apple_track_id": 1000779825485,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/615-why-processing-doesnt-determine-the-healthfulness/id857888327?i=1000779825485&uo=4",
@@ -24650,13 +24650,13 @@
         "science/materials",
         "history/technology"
       ],
-      "hook": "Phone books once listed everyone's number and address in town — a short history.",
+      "hook": "Phone books once listed everyone's number and address in town \u2014 a short history.",
       "explicit": false
     },
     {
       "id": "my-brother-my-brother-and-me--mbmbam-825-i-ain-t-fredo",
       "show": "My Brother, My Brother and Me",
-      "title": "MBMBaM 825: I Ain’t ’Fredo No Toast",
+      "title": "MBMBaM 825: I Ain\u2019t \u2019Fredo No Toast",
       "apple_collection_id": 367330921,
       "apple_track_id": 1000779891474,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/mbmbam-825-i-aint-fredo-no-toast/id367330921?i=1000779891474&uo=4",
@@ -24713,7 +24713,7 @@
       "topics": [
         "history/technology"
       ],
-      "hook": "Technical and everyday vocabularies collide — how treacherous words trip up plain communication.",
+      "hook": "Technical and everyday vocabularies collide \u2014 how treacherous words trip up plain communication.",
       "explicit": false
     },
     {
@@ -24797,7 +24797,7 @@
       "topics": [
         "espionage/cold-war-tech"
       ],
-      "hook": "Inside Cold War Britain's secret propaganda unit — forgeries, impersonations, and smear campaigns.",
+      "hook": "Inside Cold War Britain's secret propaganda unit \u2014 forgeries, impersonations, and smear campaigns.",
       "explicit": false
     },
     {
@@ -24839,7 +24839,7 @@
       "topics": [
         "economics/markets"
       ],
-      "hook": "A Caribbean island once ran on free land claims, no rent or deeds — what changed.",
+      "hook": "A Caribbean island once ran on free land claims, no rent or deeds \u2014 what changed.",
       "explicit": false
     },
     {
@@ -24929,7 +24929,7 @@
     {
       "id": "tiny-matters--from-cow-s-milk-to-blood",
       "show": "Tiny Matters",
-      "title": "From cow’s milk to blood banks: The surprising evolution of blood transfusions",
+      "title": "From cow\u2019s milk to blood banks: The surprising evolution of blood transfusions",
       "apple_collection_id": 1599757941,
       "apple_track_id": 1000779996285,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/from-cows-milk-to-blood-banks-the-surprising/id1599757941?i=1000779996285&uo=4",
@@ -25136,7 +25136,7 @@
         "true-crime",
         "society/law"
       ],
-      "hook": "Dee Warner vanished from her farm — three years later, an X-ray reveals what happened.",
+      "hook": "Dee Warner vanished from her farm \u2014 three years later, an X-ray reveals what happened.",
       "explicit": false
     },
     {
@@ -25394,7 +25394,7 @@
     {
       "id": "ten-percent-happier--self-help-without-other-people-is",
       "show": "10% Happier with Dan Harris",
-      "title": "Self-Help Without Other People Is Just Selfish — and Here's the Science to Prove It | Dan Harris",
+      "title": "Self-Help Without Other People Is Just Selfish \u2014 and Here's the Science to Prove It | Dan Harris",
       "apple_collection_id": 1087147821,
       "apple_track_id": 1000780123023,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/self-help-without-other-people-is-just-selfish-and/id1087147821?i=1000780123023&uo=4",
@@ -25416,7 +25416,7 @@
     {
       "id": "zoe-science-nutrition--the-evolutionary-science-behind-why-you",
       "show": "ZOE Science & Nutrition",
-      "title": "The evolutionary science behind why you can’t lose weight and how to avoid 5 modern food mistakes | Prof Daniel Lieberman",
+      "title": "The evolutionary science behind why you can\u2019t lose weight and how to avoid 5 modern food mistakes | Prof Daniel Lieberman",
       "apple_collection_id": 1611216298,
       "apple_track_id": 1000780231664,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-evolutionary-science-behind-why-you-cant-lose/id1611216298?i=1000780231664&uo=4",
@@ -25693,7 +25693,7 @@
     {
       "id": "planetary-radio--space-policy-edition-science-a-new",
       "show": "Planetary Radio: Space Exploration, Astronomy and Science",
-      "title": "Space Policy Edition: “Science: A New Golden Age” - Reimagining U.S. science policy",
+      "title": "Space Policy Edition: \u201cScience: A New Golden Age\u201d - Reimagining U.S. science policy",
       "apple_collection_id": 91689834,
       "apple_track_id": 1000780896703,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/space-policy-edition-science-a-new-golden-age/id91689834?i=1000780896703&uo=4",
@@ -25714,7 +25714,7 @@
     {
       "id": "planet-money--older-workers-aren-t-retiring-should",
       "show": "Planet Money",
-      "title": "Older workers aren’t retiring. Should they be forced to?",
+      "title": "Older workers aren\u2019t retiring. Should they be forced to?",
       "apple_collection_id": 290783428,
       "apple_track_id": 1000780142633,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/older-workers-arent-retiring-should-they-be-forced-to/id290783428?i=1000780142633&uo=4",
@@ -25841,7 +25841,7 @@
     {
       "id": "amicus-dahlia-lithwick--by-the-people-now-it-s",
       "show": "Amicus With Dahlia Lithwick | Law, justice, and the courts",
-      "title": "By the People | Now It’s Your Turn",
+      "title": "By the People | Now It\u2019s Your Turn",
       "apple_collection_id": 928790786,
       "apple_track_id": 1000780932784,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/by-the-people-now-its-your-turn/id928790786?i=1000780932784&uo=4",
@@ -26266,7 +26266,7 @@
     {
       "id": "astonishing-legends--amy-bruni-s-cuisine-to-kill",
       "show": "Astonishing Legends",
-      "title": "Amy Bruni’s Cuisine to Kill For",
+      "title": "Amy Bruni\u2019s Cuisine to Kill For",
       "apple_collection_id": 923527373,
       "apple_track_id": 1000781136650,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/amy-brunis-cuisine-to-kill-for/id923527373?i=1000781136650&uo=4",
@@ -26328,9 +26328,562 @@
       "explicit": false
     },
     {
+      "id": "the-rest-is-history--695-elizabeth-i-vs-the-catholics",
+      "show": "The Rest Is History",
+      "title": "695. Elizabeth I vs The Catholics: The Shadow War (Part 5)",
+      "apple_collection_id": 1537788786,
+      "apple_track_id": 1000778176895,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/elizabeth-i-vs-the-catholics-the-shadow-war-part-5/id1537788786?i=1000778176895&uo=4",
+      "release_date": "2026-08-09",
+      "duration_min": 62,
+      "duration_sec": 3715,
+      "audio_url": "https://pdst.fm/e/traffic.megaphone.fm/GLT5637968455.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/05/8f/a3058ff1-eff9-036b-f412-8c4e96aad380/mza_221907431660085079.jpg/600x600bb.jpg",
+      "topics": [
+        "history/technology",
+        "history/military-ancient"
+      ],
+      "hook": "Tom and Dominic examine the 1585 Spanish invasion threat to Elizabeth I, alongside Philip Sidney.",
+      "explicit": false
+    },
+    {
+      "id": "conan-obrien-needs-a-friend--greta-lee",
+      "show": "Conan O'Brien Needs a Friend",
+      "title": "Greta Lee",
+      "apple_collection_id": 1438054347,
+      "apple_track_id": 1000779153072,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/greta-lee/id1438054347?i=1000779153072&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 66,
+      "duration_sec": 3963,
+      "audio_url": "https://pdrl.fm/f3efd0/dts.podtrac.com/redirect.mp3/arttrk.com/p/ST44R/claritaspod.com/measure/stitcher.simplecastaudio.com/c945bd13-c7f3-4f22-95b5-4bf98e12b21f/episodes/cb45ed8f-e462-42c7-8b7a-9e9002aa6d59/audio/128/default.mp3?aid=rss_feed&awCollectionId=c945bd13-c7f3-4f22-95b5-4bf98e12b21f&awEpisodeId=cb45ed8f-e462-42c7-8b7a-9e9002aa6d59&feed=dHoohVNH",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 63421238,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c6/02/8a/c6028ab7-bffd-db83-53e4-34a4ea9bef21/mza_16944101310108746053.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "hook": "Greta Lee discusses her Korean-American Midwest upbringing, Past Lives' impact, and her upcoming Netflix film.",
+      "explicit": true
+    },
+    {
+      "id": "smartless--robby-hoffman",
+      "show": "SmartLess",
+      "title": "\"Robby Hoffman\"",
+      "apple_collection_id": 1521578868,
+      "apple_track_id": 1000778237453,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/robby-hoffman/id1521578868?i=1000778237453&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 54,
+      "duration_sec": 3260,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/559b7461-a7b0-4341-b142-0ae492cb0a65/episodes/7b5596b3-2883-432e-9e74-765b0b8593a1/audio/128/default.mp3?aid=rss_feed&awCollectionId=559b7461-a7b0-4341-b142-0ae492cb0a65&awEpisodeId=7b5596b3-2883-432e-9e74-765b0b8593a1&feed=hNaFxXpO",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 52161838,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b1/93/5f/b1935f9f-35be-9144-e813-626bd8dabfb4/mza_4132654708551836825.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "hook": "Comedian Robby Hoffman riffs on rich vs. poor, slow water runs, and brand-new towels.",
+      "explicit": true
+    },
+    {
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3397",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 3397: Magazine",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000781373052,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-3397-magazine/id121493645?i=1000781373052&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 4,
+      "duration_sec": 234,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260810.mp3?srcid=apple-podcasts",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 5638604,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "topics": [
+        "history/technology"
+      ],
+      "hook": "A short history of the magazine format and how it once shaped what people could read.",
+      "explicit": false
+    },
+    {
+      "id": "acquired--disney-the-renaissance-and-the-empire",
+      "show": "Acquired",
+      "title": "Disney: The Renaissance and the Empire",
+      "apple_collection_id": 1050462261,
+      "apple_track_id": 1000781367915,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/disney-the-renaissance-and-the-empire/id1050462261?i=1000781367915&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 273,
+      "duration_sec": 16376,
+      "audio_url": "https://pscrb.fm/rss/p/media.transistor.fm/4bcdc326/22e5d62f.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 262022993,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a8/e1/de/a8e1deff-9f88-4e55-a541-b0dc793c0cdc/mza_11539673419613154037.jpg/600x600bb.jpg",
+      "topics": [
+        "business/startups",
+        "history/technology"
+      ],
+      "hook": "How Michael Eisner and Frank Wells rescued Disney from near-collapse in 1984 into a media empire.",
+      "explicit": false
+    },
+    {
+      "id": "founders--428-how-claude-shannon-worked",
+      "show": "Founders",
+      "title": "#428 How Claude Shannon Worked",
+      "apple_collection_id": 1141877104,
+      "apple_track_id": 1000781268416,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/428-how-claude-shannon-worked/id1141877104?i=1000781268416&uo=4",
+      "release_date": "2026-08-09",
+      "duration_min": 51,
+      "duration_sec": 3078,
+      "audio_url": "https://traffic.megaphone.fm/DSLLC8077327013.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ed/71/4f/ed714f67-f095-a4ef-f38e-d8c02300666a/mza_11432355988627368701.jpg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "How Claude Shannon's abstract reasoning and engineering instinct built the foundations of information theory.",
+      "explicit": false
+    },
+    {
+      "id": "twenty-minute-vc--20vc-will-openrouter-sell-for-10bn",
+      "show": "The Twenty Minute VC (20VC)",
+      "title": "20VC: Will OpenRouter Sell for $10BN to Stripe? | Why Chinese Open Models Are Beating America\u2014and What Happens Next | Why Enterprises Are More Fearful of Anthropic and OpenAI Than China | Is the Routing Layer Becoming a Commodity with Alex Atallah",
+      "apple_collection_id": 958230465,
+      "apple_track_id": 1000781748829,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/20vc-will-openrouter-sell-for-%2410bn-to-stripe-why-chinese/id958230465?i=1000781748829&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 60,
+      "duration_sec": 3599,
+      "audio_url": "https://traffic.libsyn.com/secure/thetwentyminutevc/Alex_Atallah__OpenRouter.mp3?dest-id=240976",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 57568544,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cb/4a/f9/cb4af9a2-5857-c3f1-30d4-14395af9a14f/mza_11350890235230424535.jpeg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "OpenRouter's Alex Atallah on a rumored $10BN Stripe acquisition, AI model routing, and Chinese open models.",
+      "explicit": false
+    },
+    {
+      "id": "partially-examined-life--pel-presents-nem-258-dan-montgomery",
+      "show": "The Partially Examined Life Philosophy Podcast",
+      "title": "PEL Presents NEM#258: Dan Montgomery: Direct Communication",
+      "apple_collection_id": 318345767,
+      "apple_track_id": 1000781359044,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/pel-presents-nem-258-dan-montgomery-direct-communication/id318345767?i=1000781359044&uo=4",
+      "release_date": "2026-08-09",
+      "duration_min": 72,
+      "duration_sec": 4303,
+      "audio_url": "https://prfx.byspotify.com/e/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/mgln.ai/e/802/claritaspod.com/measure/traffic.libsyn.com/secure/partiallyexaminedlife/NEM_ep_258_7-7-26.mp3?dest-id=16399",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 103421504,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/32/eb/a9/32eba9ac-dfb0-618b-e874-6696c69ea59d/mza_257738567509116492.jpeg/600x600bb.jpg",
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "hook": "Musician Dan Montgomery walks through songs from four albums, ending with his latest Americana record.",
+      "explicit": true
+    },
+    {
+      "id": "unexplainable--why-hank-green-takes-pseudoscience-seriously",
+      "show": "Unexplainable",
+      "title": "Why Hank Green takes pseudoscience seriously",
+      "apple_collection_id": 1554578197,
+      "apple_track_id": 1000781905625,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/why-hank-green-takes-pseudoscience-seriously/id1554578197?i=1000781905625&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 27,
+      "duration_sec": 1625,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/mgln.ai/e/257/traffic.megaphone.fm/VMP2218064568.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
+      "topics": [
+        "science/storytelling"
+      ],
+      "hook": "Hank Green on why pseudoscience spreads easily and what that reveals about real science.",
+      "explicit": false
+    },
+    {
+      "id": "how-i-built-this--madegood-salma-and-nima-fotovat-lost",
+      "show": "How I Built This with Guy Raz",
+      "title": "MadeGood: Salma and Nima Fotovat Lost Their First Business.They Grew Their Next One Into a Snack Giant.",
+      "apple_collection_id": 1150510297,
+      "apple_track_id": 1000781701189,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/madegood-salma-and-nima-fotovat-lost-their-first/id1150510297?i=1000781701189&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 66,
+      "duration_sec": 3943,
+      "audio_url": "https://rss.art19.com/episodes/cf5715bf-e9e0-45e0-a8a9-1256a7a4ed0d.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 63101805,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/64/45/06/644506b5-c44f-f661-f74e-f63a4b2511bc/mza_14892199991035639268.jpeg/600x600bb.jpg",
+      "topics": [
+        "business/founders"
+      ],
+      "hook": "Salma and Nima Fotovat rebuilt after losing their family business, turning MadeGood into a snack empire.",
+      "explicit": false
+    },
+    {
+      "id": "huberman-lab--using-ai-to-increase-your-intelligence",
+      "show": "Huberman Lab",
+      "title": "Using AI to Increase Your Intelligence & Enrich Humanity | Dr. Fei-Fei Li",
+      "apple_collection_id": 1545953110,
+      "apple_track_id": 1000781905506,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/using-ai-to-increase-your-intelligence-enrich-humanity/id1545953110?i=1000781905506&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 128,
+      "duration_sec": 7707,
+      "audio_url": "https://traffic.megaphone.fm/SCIM5701398040.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
+      "topics": [
+        "medicine/neuroscience"
+      ],
+      "hook": "Fei-Fei Li on using AI safely to extend human intelligence, creativity, and collaboration with robots.",
+      "explicit": false
+    },
+    {
+      "id": "the-matt-walker-podcast--147-does-sleep-really-clean-your",
+      "show": "The Matt Walker Podcast",
+      "title": "#147 - Does Sleep Really Clean Your Brain?",
+      "apple_collection_id": 1578319619,
+      "apple_track_id": 1000781646142,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/147-does-sleep-really-clean-your-brain/id1578319619?i=1000781646142&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 25,
+      "duration_sec": 1518,
+      "audio_url": "https://pscrb.fm/rss/p/www.buzzsprout.com/1821163/episodes/19620451-147-does-sleep-really-clean-your-brain.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 18277114,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5a/3e/6c/5a3e6c8c-6c6f-31eb-6002-0bdaba3ae4f8/mza_5768385804711493809.jpg/600x600bb.jpg",
+      "topics": [
+        "medicine/neuroscience"
+      ],
+      "hook": "Matt Walker on the glymphatic system and how sleep flushes toxins from the brain.",
+      "explicit": false
+    },
+    {
+      "id": "the-peter-attia-drive--403-peptides-separating-scientific-promise-from",
+      "show": "The Peter Attia Drive",
+      "title": "#403 \u2012 Peptides: separating scientific promise from marketing hype",
+      "apple_collection_id": 1400828889,
+      "apple_track_id": 1000781365145,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/403-peptides-separating-scientific-promise-from-marketing/id1400828889?i=1000781365145&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 53,
+      "duration_sec": 3202,
+      "audio_url": "https://traffic.libsyn.com/secure/peterattiadrive/EP.403_-_Special_Peptides_AMA_PUBLIC_FINAL.mp3?dest-id=713489",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 51241630,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/89/b8/c0/89b8c0bb-f65c-66ef-8b96-fffea8f0cf5f/mza_872007510196734520.png/600x600bb.jpg",
+      "topics": [
+        "medicine/neuroscience"
+      ],
+      "hook": "Peter Attia separates real evidence from marketing hype around peptides for recovery, muscle growth, and longevity.",
+      "explicit": false
+    },
+    {
+      "id": "strict-scrutiny--sometimes-these-f-ckers-lose",
+      "show": "Strict Scrutiny",
+      "title": "Sometimes, These F*ckers Lose",
+      "apple_collection_id": 1469168641,
+      "apple_track_id": 1000781609910,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/sometimes-these-f-ckers-lose/id1469168641?i=1000781609910&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 91,
+      "duration_sec": 5466,
+      "audio_url": "https://clrtpod.com/m/pscrb.fm/rss/p/prfx.byspotify.com/e/arttrk.com/p/CRMDA/mgln.ai/e/284/dts.podtrac.com/redirect.mp3/audioboom.com/posts/8937745.mp3?modified=1786313219&sid=5166629&source=rss",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/68/3f/62/683f6228-b15b-e0de-8c2c-e8c20860ca98/mza_763663699315012405.png/600x600bb.jpg",
+      "topics": [
+        "society/law"
+      ],
+      "hook": "Melissa and Elie Mystal break down primary results and the Attorney General confirmation fight.",
+      "explicit": true
+    },
+    {
+      "id": "the-archaeology-show--journal-club-july-2026-ep-337",
+      "show": "The Archaeology Show",
+      "title": "Journal Club: July 2026 - Ep 337",
+      "apple_collection_id": 1168248976,
+      "apple_track_id": 1000781902089,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/journal-club-july-2026-ep-337/id1168248976?i=1000781902089&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 49,
+      "duration_sec": 2943,
+      "audio_url": "https://injector.simplecastaudio.com/cc0776a1-f341-4235-868f-2945398f6634/episodes/d2adb48d-3678-408f-8f65-176e81f07402/audio/128/default.mp3?aid=rss_feed&awCollectionId=cc0776a1-f341-4235-868f-2945398f6634&awEpisodeId=d2adb48d-3678-408f-8f65-176e81f07402&feed=MGJ78Sv7",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 47124697,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/86/63/56/86635691-554e-b600-8c66-c1074a6a661d/mza_10852883160787441689.jpg/600x600bb.jpg",
+      "topics": [
+        "history/archaeology"
+      ],
+      "hook": "The APN crew discusses AI's role in archaeology and a 100,000-year-old survived facial injury case.",
+      "explicit": false
+    },
+    {
+      "id": "ten-percent-happier--the-neuroscience-of-likability-social-connection",
+      "show": "10% Happier with Dan Harris",
+      "title": "The Neuroscience of Likability, Social Connection, and Brain Health | Ben Rein",
+      "apple_collection_id": 1087147821,
+      "apple_track_id": 1000780904309,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-neuroscience-of-likability-social-connection/id1087147821?i=1000780904309&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 61,
+      "duration_sec": 3640,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/pscrb.fm/rss/p/mgln.ai/e/35/traffic.libsyn.com/secure/05620661-2103-4fe0-9ab9-92bfc4d9cf22/20260806_TPHP_BenRein_AUDIO_Mastered_AudioVersion_v4.mp3?dest-id=4933335",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 58245297,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/04/87/79048703-d88c-acc2-c319-a8f2534b9ae5/mza_15018160844227259170.jpg/600x600bb.jpg",
+      "topics": [
+        "health/mental",
+        "psychology"
+      ],
+      "hook": "Neuroscientist Ben Rein on the biology of likability, social connection, and protecting brain health.",
+      "explicit": true
+    },
+    {
+      "id": "mel-robbins-podcast--world-leading-psychologist-how-to-manifest",
+      "show": "The Mel Robbins Podcast",
+      "title": "World Leading Psychologist: How to Manifest Anything & Create the Life You Want",
+      "apple_collection_id": 1646101002,
+      "apple_track_id": 1000780927779,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/world-leading-psychologist-how-to-manifest-anything/id1646101002?i=1000780927779&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 79,
+      "duration_sec": 4714,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/pdst.fm/e/stitcher.simplecastaudio.com/b9de9f5f-6dab-4833-b4c2-05f1d28dd998/episodes/91664d33-944f-4c53-9d4e-d963a385df93/audio/128/default.mp3?aid=rss_feed&awCollectionId=b9de9f5f-6dab-4833-b4c2-05f1d28dd998&awEpisodeId=91664d33-944f-4c53-9d4e-d963a385df93&feed=UCwaTX1J",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 75425164,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ab/66/a5/ab66a5f5-b52b-c70a-227b-0721bd9dc660/mza_13546984924981879479.jpg/600x600bb.jpg",
+      "topics": [
+        "education/self-improvement",
+        "health/mental"
+      ],
+      "hook": "Psychologist Cassandra Vieten on the science of imagination, visualization, and shaping what you create.",
+      "explicit": false
+    },
+    {
+      "id": "happier-gretchen-rubin--little-happier-are-you-a-clutch",
+      "show": "Happier with Gretchen Rubin",
+      "title": "Little Happier: Are You a Clutch Player or a Fast Starter?",
+      "apple_collection_id": 969519520,
+      "apple_track_id": 1000774216264,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/little-happier-are-you-a-clutch-player-or-a-fast-starter/id969519520?i=1000774216264&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 4,
+      "duration_sec": 252,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/claritaspod.com/measure/pscrb.fm/rss/p/mgln.ai/e/491/traffic.megaphone.fm/LEME1665361068.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/84/2a/3f/842a3fd1-591f-fa8a-f080-6a7c397d9102/mza_14614414942991077534.jpeg/600x600bb.jpg",
+      "topics": [
+        "education/self-improvement"
+      ],
+      "hook": "Gretchen Rubin on why some athletes thrive under pressure while others peak early.",
+      "explicit": false
+    },
+    {
+      "id": "armchair-expert--taron-egerton",
+      "show": "Armchair Expert with Dax Shepard",
+      "title": "Taron Egerton",
+      "apple_collection_id": 1345682353,
+      "apple_track_id": 1000781826820,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/taron-egerton/id1345682353?i=1000781826820&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 114,
+      "duration_sec": 6843,
+      "audio_url": "https://rss.art19.com/episodes/4ffdd703-5810-49ab-bd50-411edf6ad703.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 109500290,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f0/13/8f/f0138f4b-8bc3-0a64-2c11-ef566840f60f/mza_3062409012210474882.jpeg/600x600bb.jpg",
+      "topics": [
+        "comedy/interviews"
+      ],
+      "hook": "Taron Egerton on his Welsh upbringing, Colin Firth's mentorship, and channeling Elton John in Rocketman.",
+      "explicit": true
+    },
+    {
+      "id": "call-her-daddy--anxious-attachment-101",
+      "show": "Call Her Daddy",
+      "title": "Anxious Attachment 101",
+      "apple_collection_id": 1418960261,
+      "apple_track_id": 1000780961682,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/anxious-attachment-101/id1418960261?i=1000780961682&uo=4",
+      "release_date": "2026-08-09",
+      "duration_min": 44,
+      "duration_sec": 2632,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/f09b6967-f720-4383-a6cf-42d1f475bd95/episodes/032fc84f-9753-4217-bf6b-27645b0cdd92/audio/128/default.mp3?aid=rss_feed&awCollectionId=f09b6967-f720-4383-a6cf-42d1f475bd95&awEpisodeId=032fc84f-9753-4217-bf6b-27645b0cdd92&feed=mKn_QmLS",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 42826985,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/05/10/91/05109145-8c22-5464-1f20-aaedeab769f8/mza_10276081716633787086.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/interviews"
+      ],
+      "hook": "Alex breaks down anxious attachment, why inconsistent partners feel addictive, and how to identify your triggers.",
+      "explicit": true
+    },
+    {
+      "id": "comedy-bang-bang--wainscotting-hold-the-hamm-david-wain",
+      "show": "Comedy Bang Bang: The Podcast",
+      "title": "Wainscotting, Hold The Hamm (David Wain, James Mannion, Isabella Escalante)",
+      "apple_collection_id": 316045799,
+      "apple_track_id": 1000781378412,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/wainscotting-hold-the-hamm-david-wain-james-mannion/id316045799?i=1000781378412&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 87,
+      "duration_sec": 5214,
+      "audio_url": "https://pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/da3ab509-b112-4af1-a54b-45ff0ddecf42/episodes/f44d6684-77f9-4af8-b902-845d35c42c24/audio/128/default.mp3?aid=rss_feed&awCollectionId=da3ab509-b112-4af1-a54b-45ff0ddecf42&awEpisodeId=f44d6684-77f9-4af8-b902-845d35c42c24&feed=byb4nhvN",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 83428528,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/0b/ca/6e/0bca6ee0-0b2b-5df7-edee-4d9d1b2d4e8a/mza_10749952114435066299.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "hook": "David Wain talks Wet Hot American Summer's 25th anniversary rerelease, plus sketch bits from Lonnie Portapotti.",
+      "explicit": true
+    },
+    {
+      "id": "working-it-out-birbiglia--chloe-troast-and-mike-answer-your",
+      "show": "Mike Birbiglia's Working It Out",
+      "title": "Chloe Troast and Mike Answer Your Questions About Improv and Sketch",
+      "apple_collection_id": 1515419751,
+      "apple_track_id": 1000781320145,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/chloe-troast-and-mike-answer-your-questions-about/id1515419751?i=1000781320145&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 38,
+      "duration_sec": 2263,
+      "audio_url": "https://pdst.fm/e/afp-222748-injected.calisto.simplecastaudio.com/32ea5a12-6e17-42a1-8b7f-3cd5287077bd/episodes/d0f04254-cf0f-4106-b706-0cd5824edcf2/audio/128/default.mp3?aid=rss_feed&awCollectionId=32ea5a12-6e17-42a1-8b7f-3cd5287077bd&awEpisodeId=d0f04254-cf0f-4106-b706-0cd5824edcf2&feed=MTW0B2El",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 36211261,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ef/af/30/efaf301d-6e45-ca17-192e-ef7e66afdcfd/mza_16176505125015117955.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/stand-up",
+        "comedy/interviews"
+      ],
+      "hook": "Chloe Troast answers listener questions about improv going off the rails and life after SNL.",
+      "explicit": true
+    },
+    {
+      "id": "crime-junkie--murdered-bill-peggy-stephenson",
+      "show": "Crime Junkie",
+      "title": "MURDERED: Bill & Peggy Stephenson",
+      "apple_collection_id": 1322200189,
+      "apple_track_id": 1000779746511,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/murdered-bill-peggy-stephenson/id1322200189?i=1000779746511&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 41,
+      "duration_sec": 2487,
+      "audio_url": "https://tracking.swap.fm/track/fxUKVg2nSMaPSHLeKNKH/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/rsv.simplecastaudio.com/ec74d48c-cbf1-4764-923e-7d584dce50fa/episodes/39c22534-56e4-41d0-a023-e3eaefab43fe/audio/128/default.mp3?aid=rss_feed&awCollectionId=ec74d48c-cbf1-4764-923e-7d584dce50fa&awEpisodeId=39c22534-56e4-41d0-a023-e3eaefab43fe&feed=qm_9xx0g",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 39802296,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/8c/35/04/8c350430-2fbf-98d0-0a25-00b76550ffeb/mza_13445204151221888086.jpg/600x600bb.jpg",
+      "topics": [
+        "true-crime"
+      ],
+      "hook": "Bill and Peggy Stephenson were murdered in their Kentucky condo; a decade-old clue finally cracked it.",
+      "explicit": false
+    },
+    {
+      "id": "wicked-words--maurice-chammah-the-last-twelve-weeks",
+      "show": "Wicked Words - A True Crime Talk Show with Kate Winkler Dawson",
+      "title": "Maurice\u00a0Chammah: The Last Twelve Weeks",
+      "apple_collection_id": 1538204210,
+      "apple_track_id": 1000781671391,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/maurice-chammah-the-last-twelve-weeks/id1538204210?i=1000781671391&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 57,
+      "duration_sec": 3412,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/fdf29e64-8856-472d-b2cd-b24c011a225c/b07a348c-6479-4c8f-9bd4-b49d0141955a/audio.mp3?utm_source=Podcast&in_playlist=d35298b0-c12a-44ed-956a-b24c011a22e0",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 54636946,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9f/d5/37/9fd53772-b22c-5e3c-ac4a-3d8b9452fa74/mza_3649081017768100450.jpg/600x600bb.jpg",
+      "topics": [
+        "true-crime",
+        "history"
+      ],
+      "hook": "Journalist Maurice Chammah on attorneys racing to stop a Texas execution in a possible wrongful conviction.",
+      "explicit": true
+    },
+    {
+      "id": "this-american-life--443-amusement-park",
+      "show": "This American Life",
+      "title": "443: Amusement Park",
+      "apple_collection_id": 201671138,
+      "apple_track_id": 1000486207702,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/amusement-park/id201671138?i=1000486207702&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 62,
+      "duration_sec": 3736,
+      "audio_url": "https://pfx.vpixl.com/6qj4J/dts.podtrac.com/redirect.mp/pdst.fm/e/prefix.up.audio/s/npr.simplecastaudio.com/d3081dd9-fcaf-445a-977c-4f56c28f5a6e/episodes/474e1929-1ad3-4904-9f3c-aea8a463fc9c/audio/128/default.mp3?awCollectionId=d3081dd9-fcaf-445a-977c-4f56c28f5a6e&awEpisodeId=474e1929-1ad3-4904-9f3c-aea8a463fc9c&nocache",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f8/8e/ec/f88eec18-6bf4-e522-9450-7fadfeec0f93/mza_416174900963809096.jpg/600x600bb.jpg",
+      "topics": [
+        "personal-journals",
+        "science/storytelling"
+      ],
+      "hook": "Ira Glass visits Worlds of Fun, a Kansas City park where young staff love the job.",
+      "explicit": false
+    },
+    {
+      "id": "wow-in-the-world--disgustival-why-does-gross-stuff-make",
+      "show": "Wow in the World",
+      "title": "Disgustival! Why Does Gross Stuff Make Our Skin Crawl?",
+      "apple_collection_id": 1233834541,
+      "apple_track_id": 1000781622599,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/disgustival-why-does-gross-stuff-make-our-skin-crawl/id1233834541?i=1000781622599&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 26,
+      "duration_sec": 1547,
+      "audio_url": "https://pscrb.fm/rss/p/rss.art19.com/episodes/1ee3b847-27b2-4be2-b279-31bd04751d2a.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 24762827,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/c6/fc/04/c6fc04bd-2d1d-2893-450c-a88657727a00/mza_6224958262375040936.jpeg/600x600bb.jpg",
+      "topics": [
+        "kids-family/education"
+      ],
+      "hook": "Mindy and Guy Raz visit Disgustival, an art exhibit on why gross things trigger disgust.",
+      "explicit": false
+    },
+    {
       "id": "stuff-you-should-know--reggae-kingston-s-gift-to-the",
       "show": "Stuff You Should Know",
-      "title": "Reggae: Kingston’s Gift to the World",
+      "title": "Reggae: Kingston\u2019s Gift to the World",
       "apple_collection_id": 278981407,
       "apple_track_id": 1000780208497,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/reggae-kingstons-gift-to-the-world/id278981407?i=1000780208497&uo=4",
@@ -26374,7 +26927,7 @@
     {
       "id": "conan-obrien-needs-a-friend--summer-s-pouses-episode-2-amanda",
       "show": "Conan O'Brien Needs a Friend",
-      "title": "Summer S’pouses Episode 2: Amanda Lund",
+      "title": "Summer S\u2019pouses Episode 2: Amanda Lund",
       "apple_collection_id": 1438054347,
       "apple_track_id": 1000778725028,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/summer-spouses-episode-2-amanda-lund/id1438054347?i=1000778725028&uo=4",
@@ -26668,7 +27221,7 @@
     {
       "id": "well-theres-your-problem--episode-201-ycu-bola-os-supermarket",
       "show": "Well There's Your Problem",
-      "title": "Episode 201: Ycuá Bolaños Supermarket Explosion",
+      "title": "Episode 201: Ycu\u00e1 Bola\u00f1os Supermarket Explosion",
       "apple_collection_id": 1487829595,
       "apple_track_id": 1000780130947,
       "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-201-ycu%C3%A1-bola%C3%B1os-supermarket-explosion/id1487829595?i=1000780130947&uo=4",
@@ -26683,7 +27236,7 @@
       "topics": [
         "engineering/disasters"
       ],
-      "hook": "The engineering podcast examines the 2004 Ycuá Bolaños supermarket explosion and fire in Paraguay.",
+      "hook": "The engineering podcast examines the 2004 Ycu\u00e1 Bola\u00f1os supermarket explosion and fire in Paraguay.",
       "explicit": true
     },
     {
@@ -26872,7 +27425,7 @@
       "topics": [
         "music/classical"
       ],
-      "hook": "The wartime story behind Martinů's beloved First Symphony, praised by even the harshest critic.",
+      "hook": "The wartime story behind Martin\u016f's beloved First Symphony, praised by even the harshest critic.",
       "explicit": false
     },
     {
