@@ -55239,13 +55239,975 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-09-39d15ad9",
       "classified_at": "2026-08-09T16:50:44.197Z"
+    },
+    "1679310650": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Grounded sci-fi stories emphasizing institutional failures and psychological dread.",
+      "display_title": "Galactic Horrors",
+      "blurb": "Dark sci-fi: slow-burn narratives of technological secrecy and survival.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1679701862": {
+      "topics": [
+        "culture/fashion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity conversations from a Beverly Hills boutique, blending fashion, beauty, and personal stories.",
+      "display_title": "UNDRESSED WITH POL' AND PATRIK",
+      "blurb": "Celebrity interviews on fashion, beauty, reinvention, and personal life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1679833472": {
+      "topics": [
+        "fiction/drama",
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.88
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real-time epistolary adaptation of classic horror novel with ensemble cast.",
+      "display_title": "Re: Dracula",
+      "blurb": "Bram Stoker's Dracula dramatized as it unfolds in real-time.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1680362360": {
+      "topics": [
+        "health/fitness",
+        "health/alternative"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's precision medicine addressing hormones, metabolism, fitness, and functional health.",
+      "display_title": "The Rejuvenating Health Podcast",
+      "blurb": "Women's functional health: strategies for hormones, fitness, and metabolic wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1680633614": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily analysis of AI adoption, alignment risks, and economic disruption across sectors.",
+      "display_title": "The AI Daily Brief",
+      "blurb": "AI news and analysis: breakthroughs, risks, and industry impact.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1680905594": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chinese-language content mixing science, conspiracy, and cryptic lifestyle topics.",
+      "display_title": "老高与小茉",
+      "blurb": "Chinese podcast covering science, philosophy, and lifestyle topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1681017716": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with international hatmakers exploring craft, technique, and creative process.",
+      "display_title": "The Hatmaker's Podcast",
+      "blurb": "Conversations with hatmakers worldwide on craft and creative inspiration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1681173392": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA legend Kevin Garnett interviews stars and analyzes league trends.",
+      "display_title": "KG Certified",
+      "blurb": "Kevin Garnett interviews NBA stars and breaks down league trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1681529396": {
+      "topics": [
+        "health/fitness",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.88
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based Pilates teaching: biomechanics, evidence, and instructor development.",
+      "display_title": "Evidence-Based Pilates Podcast",
+      "blurb": "Science-backed Pilates: instruction, biomechanics, and professional training.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1681884284": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Los Angeles Angels coverage: games, trades, draft, and team analysis.",
+      "display_title": "AngelsWin Podcast",
+      "blurb": "Los Angeles Angels baseball: recaps, moves, and team analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1682160500": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chinese personal podcast blending life, philosophy, and cultural commentary.",
+      "display_title": "思文，败类",
+      "blurb": "Chinese podcast on life, relationships, and cultural reflection.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1682198984": {
+      "topics": [
+        "health/sexuality",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.88
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sex-positive hosts discuss ethical non-monogamy, BDSM, and personal growth.",
+      "display_title": "Girls Gone Deep",
+      "blurb": "Sex-positive conversations on ethical non-monogamy and relationships.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1682337146": {
+      "topics": [
+        "gaming",
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.88
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama and documentary on Nintendo's EarthBound series.",
+      "display_title": "MOTHER, She Wrote",
+      "blurb": "Audio drama-documentary on the EarthBound game series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1682796974": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestling commentary, event reactions, and industry discussion.",
+      "display_title": "The Late Night Grin",
+      "blurb": "Wrestling commentary: live reactions and match analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1683205964": {
+      "topics": [
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business growth strategy for landscaping and green industry professionals.",
+      "display_title": "The GROW! Show",
+      "blurb": "Business growth for landscaping and green industry entrepreneurs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1683373814": {
+      "topics": [
+        "religion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian teaching and sermons from New Birth Cathedral.",
+      "display_title": "New Birth Podcast",
+      "blurb": "Christian sermons and spiritual teaching from New Birth Cathedral.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1683411536": {
+      "topics": [
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "UK political news and current events with expert commentary.",
+      "display_title": "Pod Save the UK",
+      "blurb": "UK politics and current events with expert analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1684598156": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book club and literary discussion with recommendations and reviews.",
+      "display_title": "It Gets Good",
+      "blurb": "Book club discussions, reviews, and reading recommendations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1684789910": {
+      "topics": [
+        "business/startups",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneur interviews sharing growth strategies, scaling, and systems.",
+      "display_title": "Versa Business Tips Podcast",
+      "blurb": "Entrepreneur interviews: strategies for growth and scaling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1685093486": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investigative sports journalism and cultural storytelling.",
+      "display_title": "Pablo Torre Finds Out",
+      "blurb": "In-depth sports investigation and cultural journalism.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1685196752": {
+      "topics": [
+        "nature"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conservation and rewilding initiatives transforming ecosystems globally.",
+      "display_title": "Rewilding the World",
+      "blurb": "Global rewilding: ecosystem restoration and conservation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1685551028": {
+      "topics": [
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Diabetes technology, research, and management strategies for patients.",
+      "display_title": "Diabetech",
+      "blurb": "Diabetes technology, research, and patient management.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1685884946": {
+      "topics": [
+        "health/mental",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.88
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "CPTSD and trauma therapy: nervous system healing and recovery.",
+      "display_title": "The Complex Trauma Podcast",
+      "blurb": "CPTSD healing: nervous system recovery and somatic therapy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1686414242": {
+      "topics": [
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep interviews with accomplished designers on craft and innovation.",
+      "display_title": "Dive Club",
+      "blurb": "Designer interviews on craft, innovation, and practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1686664028": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychological sci-fi audio drama: survival, ego, power dynamics.",
+      "display_title": "Evergreen",
+      "blurb": "Audio drama: survivors in a malfunctioning underground biosphere.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1686967706": {
+      "topics": [
+        "sports/volleyball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball coaching, technique, and sport analysis for players.",
+      "display_title": "Out of Rotation Volleyball",
+      "blurb": "Volleyball coaching, technique, and elite athlete analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1687376132": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime memoir: organized crime history and insider accounts.",
+      "display_title": "MAFIA ROUNDTABLE",
+      "blurb": "Organized crime history: heists, stories, and insider accounts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1687542308": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sci-fi mystery audio drama: deep-sea discovery and threat.",
+      "display_title": "DERELICT",
+      "blurb": "Sci-fi thriller: mysterious artifact at ocean depths.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1687655510": {
+      "topics": [
+        "health/mental",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.88
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Therapist-led mental strength, resilience, and emotional development.",
+      "display_title": "Mentally Stronger",
+      "blurb": "Mental health strategies from therapist Amy Morin.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1687840766": {
+      "topics": [
+        "business/management",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business productivity: systems, time management, ADHD strategies.",
+      "display_title": "The Organized Coach",
+      "blurb": "Productivity and business systems for entrepreneurs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1687888418": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian living: vulnerability, faith, family, spiritual growth.",
+      "display_title": "Between Sundays",
+      "blurb": "Christian perspectives on faith, family, and growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1688194274": {
+      "topics": [
+        "math",
+        "religion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Math, philosophy, and faith: exploring hope and connection.",
+      "display_title": "Intersecting Us",
+      "blurb": "Math, philosophy, and spirituality explored together.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1688396186": {
+      "topics": [
+        "nature"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ornithology education: bird behavior, migration, ecology, conservation.",
+      "display_title": "Birds of a Feather",
+      "blurb": "Birding podcast: species, behavior, and conservation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1688628008": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improv prank calls with absurdist humor and comedic premises.",
+      "display_title": "CORN DOWN",
+      "blurb": "Improv prank calls with absurdist comedy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1689364598": {
+      "topics": [
+        "science",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Particle physics at CERN: universe, creativity, connection.",
+      "display_title": "Oh My God Particle",
+      "blurb": "Particle physics and CERN: universe and science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1689464000": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Generational memoir: family destruction and lasting impact.",
+      "display_title": "How To Destroy",
+      "blurb": "True crime memoir: narcissism and generational harm.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1689594452": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Competitive swimming: workouts, technique, and coaching expertise.",
+      "display_title": "Swimming with Polar Bears",
+      "blurb": "Swimming coaching: technique drills and training.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1689619250": {
+      "topics": [
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy interviews: cultural commentary and candid conversation.",
+      "display_title": "Time For Pie",
+      "blurb": "Comedy interviews with cultural commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1689872756": {
+      "topics": [
+        "sports/volleyball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beach volleyball coaching: recruiting, strategy, elite insight.",
+      "display_title": "Coaches on the Beach",
+      "blurb": "Beach volleyball coaching and elite strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1690377386": {
+      "topics": [
+        "kids-family"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biblical stories for children emphasizing gospel redemption.",
+      "display_title": "The Biggest Story",
+      "blurb": "Bible stories for kids: gospel-centered teaching.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
+    },
+    "1690471124": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Star Trek analysis: political allegory and cultural themes.",
+      "display_title": "Trek Politics",
+      "blurb": "Star Trek analysis: political themes and allegory.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-e4c07d25",
+      "classified_at": "2026-08-10T00:52:25.130Z"
     }
   },
-  "built_at": "2026-08-09T16:50:44.197Z",
+  "built_at": "2026-08-10T00:52:25.130Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-09-39d15ad9",
+    "last_batch_id": "fresh-2026-08-10-e4c07d25",
     "last_batch_tier": 1
   }
 }
