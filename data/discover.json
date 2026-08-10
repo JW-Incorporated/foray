@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-09T11:43:24.723Z",
+  "built_at": "2026-08-10T11:46:13.093Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -26325,6 +26325,559 @@
         "kids-family/education"
       ],
       "hook": "Dennis and Reggie's family variety show mixes perfumes, skydiving, and chimpanzee science for kids.",
+      "explicit": false
+    },
+    {
+      "id": "the-rest-is-history--695-elizabeth-i-vs-the-catholics",
+      "show": "The Rest Is History",
+      "title": "695. Elizabeth I vs The Catholics: The Shadow War (Part 5)",
+      "apple_collection_id": 1537788786,
+      "apple_track_id": 1000778176895,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/elizabeth-i-vs-the-catholics-the-shadow-war-part-5/id1537788786?i=1000778176895&uo=4",
+      "release_date": "2026-08-09",
+      "duration_min": 62,
+      "duration_sec": 3715,
+      "audio_url": "https://pdst.fm/e/traffic.megaphone.fm/GLT5637968455.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/05/8f/a3058ff1-eff9-036b-f412-8c4e96aad380/mza_221907431660085079.jpg/600x600bb.jpg",
+      "topics": [
+        "history/technology",
+        "history/military-ancient"
+      ],
+      "hook": "Tom and Dominic examine the 1585 Spanish invasion threat to Elizabeth I, alongside Philip Sidney.",
+      "explicit": false
+    },
+    {
+      "id": "conan-obrien-needs-a-friend--greta-lee",
+      "show": "Conan O'Brien Needs a Friend",
+      "title": "Greta Lee",
+      "apple_collection_id": 1438054347,
+      "apple_track_id": 1000779153072,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/greta-lee/id1438054347?i=1000779153072&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 66,
+      "duration_sec": 3963,
+      "audio_url": "https://pdrl.fm/f3efd0/dts.podtrac.com/redirect.mp3/arttrk.com/p/ST44R/claritaspod.com/measure/stitcher.simplecastaudio.com/c945bd13-c7f3-4f22-95b5-4bf98e12b21f/episodes/cb45ed8f-e462-42c7-8b7a-9e9002aa6d59/audio/128/default.mp3?aid=rss_feed&awCollectionId=c945bd13-c7f3-4f22-95b5-4bf98e12b21f&awEpisodeId=cb45ed8f-e462-42c7-8b7a-9e9002aa6d59&feed=dHoohVNH",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 63421238,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c6/02/8a/c6028ab7-bffd-db83-53e4-34a4ea9bef21/mza_16944101310108746053.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "hook": "Greta Lee discusses her Korean-American Midwest upbringing, Past Lives' impact, and her upcoming Netflix film.",
+      "explicit": true
+    },
+    {
+      "id": "smartless--robby-hoffman",
+      "show": "SmartLess",
+      "title": "\"Robby Hoffman\"",
+      "apple_collection_id": 1521578868,
+      "apple_track_id": 1000778237453,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/robby-hoffman/id1521578868?i=1000778237453&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 54,
+      "duration_sec": 3260,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/559b7461-a7b0-4341-b142-0ae492cb0a65/episodes/7b5596b3-2883-432e-9e74-765b0b8593a1/audio/128/default.mp3?aid=rss_feed&awCollectionId=559b7461-a7b0-4341-b142-0ae492cb0a65&awEpisodeId=7b5596b3-2883-432e-9e74-765b0b8593a1&feed=hNaFxXpO",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 52161838,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b1/93/5f/b1935f9f-35be-9144-e813-626bd8dabfb4/mza_4132654708551836825.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "hook": "Comedian Robby Hoffman riffs on rich vs. poor, slow water runs, and brand-new towels.",
+      "explicit": true
+    },
+    {
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3397",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 3397: Magazine",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000781373052,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-3397-magazine/id121493645?i=1000781373052&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 4,
+      "duration_sec": 234,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260810.mp3?srcid=apple-podcasts",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 5638604,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "topics": [
+        "history/technology"
+      ],
+      "hook": "A short history of the magazine format and how it once shaped what people could read.",
+      "explicit": false
+    },
+    {
+      "id": "acquired--disney-the-renaissance-and-the-empire",
+      "show": "Acquired",
+      "title": "Disney: The Renaissance and the Empire",
+      "apple_collection_id": 1050462261,
+      "apple_track_id": 1000781367915,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/disney-the-renaissance-and-the-empire/id1050462261?i=1000781367915&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 273,
+      "duration_sec": 16376,
+      "audio_url": "https://pscrb.fm/rss/p/media.transistor.fm/4bcdc326/22e5d62f.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 262022993,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a8/e1/de/a8e1deff-9f88-4e55-a541-b0dc793c0cdc/mza_11539673419613154037.jpg/600x600bb.jpg",
+      "topics": [
+        "business/startups",
+        "history/technology"
+      ],
+      "hook": "How Michael Eisner and Frank Wells rescued Disney from near-collapse in 1984 into a media empire.",
+      "explicit": false
+    },
+    {
+      "id": "founders--428-how-claude-shannon-worked",
+      "show": "Founders",
+      "title": "#428 How Claude Shannon Worked",
+      "apple_collection_id": 1141877104,
+      "apple_track_id": 1000781268416,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/428-how-claude-shannon-worked/id1141877104?i=1000781268416&uo=4",
+      "release_date": "2026-08-09",
+      "duration_min": 51,
+      "duration_sec": 3078,
+      "audio_url": "https://traffic.megaphone.fm/DSLLC8077327013.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ed/71/4f/ed714f67-f095-a4ef-f38e-d8c02300666a/mza_11432355988627368701.jpg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "How Claude Shannon's abstract reasoning and engineering instinct built the foundations of information theory.",
+      "explicit": false
+    },
+    {
+      "id": "twenty-minute-vc--20vc-will-openrouter-sell-for-10bn",
+      "show": "The Twenty Minute VC (20VC)",
+      "title": "20VC: Will OpenRouter Sell for $10BN to Stripe? | Why Chinese Open Models Are Beating America—and What Happens Next | Why Enterprises Are More Fearful of Anthropic and OpenAI Than China | Is the Routing Layer Becoming a Commodity with Alex Atallah",
+      "apple_collection_id": 958230465,
+      "apple_track_id": 1000781748829,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/20vc-will-openrouter-sell-for-%2410bn-to-stripe-why-chinese/id958230465?i=1000781748829&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 60,
+      "duration_sec": 3599,
+      "audio_url": "https://traffic.libsyn.com/secure/thetwentyminutevc/Alex_Atallah__OpenRouter.mp3?dest-id=240976",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 57568544,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cb/4a/f9/cb4af9a2-5857-c3f1-30d4-14395af9a14f/mza_11350890235230424535.jpeg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "OpenRouter's Alex Atallah on a rumored $10BN Stripe acquisition, AI model routing, and Chinese open models.",
+      "explicit": false
+    },
+    {
+      "id": "partially-examined-life--pel-presents-nem-258-dan-montgomery",
+      "show": "The Partially Examined Life Philosophy Podcast",
+      "title": "PEL Presents NEM#258: Dan Montgomery: Direct Communication",
+      "apple_collection_id": 318345767,
+      "apple_track_id": 1000781359044,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/pel-presents-nem-258-dan-montgomery-direct-communication/id318345767?i=1000781359044&uo=4",
+      "release_date": "2026-08-09",
+      "duration_min": 72,
+      "duration_sec": 4303,
+      "audio_url": "https://prfx.byspotify.com/e/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/mgln.ai/e/802/claritaspod.com/measure/traffic.libsyn.com/secure/partiallyexaminedlife/NEM_ep_258_7-7-26.mp3?dest-id=16399",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 103421504,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/32/eb/a9/32eba9ac-dfb0-618b-e874-6696c69ea59d/mza_257738567509116492.jpeg/600x600bb.jpg",
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "hook": "Musician Dan Montgomery walks through songs from four albums, ending with his latest Americana record.",
+      "explicit": true
+    },
+    {
+      "id": "unexplainable--why-hank-green-takes-pseudoscience-seriously",
+      "show": "Unexplainable",
+      "title": "Why Hank Green takes pseudoscience seriously",
+      "apple_collection_id": 1554578197,
+      "apple_track_id": 1000781905625,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/why-hank-green-takes-pseudoscience-seriously/id1554578197?i=1000781905625&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 27,
+      "duration_sec": 1625,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/mgln.ai/e/257/traffic.megaphone.fm/VMP2218064568.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
+      "topics": [
+        "science/storytelling"
+      ],
+      "hook": "Hank Green on why pseudoscience spreads easily and what that reveals about real science.",
+      "explicit": false
+    },
+    {
+      "id": "how-i-built-this--madegood-salma-and-nima-fotovat-lost",
+      "show": "How I Built This with Guy Raz",
+      "title": "MadeGood: Salma and Nima Fotovat Lost Their First Business.They Grew Their Next One Into a Snack Giant.",
+      "apple_collection_id": 1150510297,
+      "apple_track_id": 1000781701189,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/madegood-salma-and-nima-fotovat-lost-their-first/id1150510297?i=1000781701189&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 66,
+      "duration_sec": 3943,
+      "audio_url": "https://rss.art19.com/episodes/cf5715bf-e9e0-45e0-a8a9-1256a7a4ed0d.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 63101805,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/64/45/06/644506b5-c44f-f661-f74e-f63a4b2511bc/mza_14892199991035639268.jpeg/600x600bb.jpg",
+      "topics": [
+        "business/founders"
+      ],
+      "hook": "Salma and Nima Fotovat rebuilt after losing their family business, turning MadeGood into a snack empire.",
+      "explicit": false
+    },
+    {
+      "id": "huberman-lab--using-ai-to-increase-your-intelligence",
+      "show": "Huberman Lab",
+      "title": "Using AI to Increase Your Intelligence & Enrich Humanity | Dr. Fei-Fei Li",
+      "apple_collection_id": 1545953110,
+      "apple_track_id": 1000781905506,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/using-ai-to-increase-your-intelligence-enrich-humanity/id1545953110?i=1000781905506&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 128,
+      "duration_sec": 7707,
+      "audio_url": "https://traffic.megaphone.fm/SCIM5701398040.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
+      "topics": [
+        "medicine/neuroscience"
+      ],
+      "hook": "Fei-Fei Li on using AI safely to extend human intelligence, creativity, and collaboration with robots.",
+      "explicit": false
+    },
+    {
+      "id": "the-matt-walker-podcast--147-does-sleep-really-clean-your",
+      "show": "The Matt Walker Podcast",
+      "title": "#147 - Does Sleep Really Clean Your Brain?",
+      "apple_collection_id": 1578319619,
+      "apple_track_id": 1000781646142,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/147-does-sleep-really-clean-your-brain/id1578319619?i=1000781646142&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 25,
+      "duration_sec": 1518,
+      "audio_url": "https://pscrb.fm/rss/p/www.buzzsprout.com/1821163/episodes/19620451-147-does-sleep-really-clean-your-brain.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 18277114,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5a/3e/6c/5a3e6c8c-6c6f-31eb-6002-0bdaba3ae4f8/mza_5768385804711493809.jpg/600x600bb.jpg",
+      "topics": [
+        "medicine/neuroscience"
+      ],
+      "hook": "Matt Walker on the glymphatic system and how sleep flushes toxins from the brain.",
+      "explicit": false
+    },
+    {
+      "id": "the-peter-attia-drive--403-peptides-separating-scientific-promise-from",
+      "show": "The Peter Attia Drive",
+      "title": "#403 ‒ Peptides: separating scientific promise from marketing hype",
+      "apple_collection_id": 1400828889,
+      "apple_track_id": 1000781365145,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/403-peptides-separating-scientific-promise-from-marketing/id1400828889?i=1000781365145&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 53,
+      "duration_sec": 3202,
+      "audio_url": "https://traffic.libsyn.com/secure/peterattiadrive/EP.403_-_Special_Peptides_AMA_PUBLIC_FINAL.mp3?dest-id=713489",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 51241630,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/89/b8/c0/89b8c0bb-f65c-66ef-8b96-fffea8f0cf5f/mza_872007510196734520.png/600x600bb.jpg",
+      "topics": [
+        "medicine/neuroscience"
+      ],
+      "hook": "Peter Attia separates real evidence from marketing hype around peptides for recovery, muscle growth, and longevity.",
+      "explicit": false
+    },
+    {
+      "id": "strict-scrutiny--sometimes-these-f-ckers-lose",
+      "show": "Strict Scrutiny",
+      "title": "Sometimes, These F*ckers Lose",
+      "apple_collection_id": 1469168641,
+      "apple_track_id": 1000781609910,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/sometimes-these-f-ckers-lose/id1469168641?i=1000781609910&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 91,
+      "duration_sec": 5466,
+      "audio_url": "https://clrtpod.com/m/pscrb.fm/rss/p/prfx.byspotify.com/e/arttrk.com/p/CRMDA/mgln.ai/e/284/dts.podtrac.com/redirect.mp3/audioboom.com/posts/8937745.mp3?modified=1786313219&sid=5166629&source=rss",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/68/3f/62/683f6228-b15b-e0de-8c2c-e8c20860ca98/mza_763663699315012405.png/600x600bb.jpg",
+      "topics": [
+        "society/law"
+      ],
+      "hook": "Melissa and Elie Mystal break down primary results and the Attorney General confirmation fight.",
+      "explicit": true
+    },
+    {
+      "id": "the-archaeology-show--journal-club-july-2026-ep-337",
+      "show": "The Archaeology Show",
+      "title": "Journal Club: July 2026 - Ep 337",
+      "apple_collection_id": 1168248976,
+      "apple_track_id": 1000781902089,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/journal-club-july-2026-ep-337/id1168248976?i=1000781902089&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 49,
+      "duration_sec": 2943,
+      "audio_url": "https://injector.simplecastaudio.com/cc0776a1-f341-4235-868f-2945398f6634/episodes/d2adb48d-3678-408f-8f65-176e81f07402/audio/128/default.mp3?aid=rss_feed&awCollectionId=cc0776a1-f341-4235-868f-2945398f6634&awEpisodeId=d2adb48d-3678-408f-8f65-176e81f07402&feed=MGJ78Sv7",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 47124697,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/86/63/56/86635691-554e-b600-8c66-c1074a6a661d/mza_10852883160787441689.jpg/600x600bb.jpg",
+      "topics": [
+        "history/archaeology"
+      ],
+      "hook": "The APN crew discusses AI's role in archaeology and a 100,000-year-old survived facial injury case.",
+      "explicit": false
+    },
+    {
+      "id": "ten-percent-happier--the-neuroscience-of-likability-social-connection",
+      "show": "10% Happier with Dan Harris",
+      "title": "The Neuroscience of Likability, Social Connection, and Brain Health | Ben Rein",
+      "apple_collection_id": 1087147821,
+      "apple_track_id": 1000780904309,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-neuroscience-of-likability-social-connection/id1087147821?i=1000780904309&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 61,
+      "duration_sec": 3640,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/pscrb.fm/rss/p/mgln.ai/e/35/traffic.libsyn.com/secure/05620661-2103-4fe0-9ab9-92bfc4d9cf22/20260806_TPHP_BenRein_AUDIO_Mastered_AudioVersion_v4.mp3?dest-id=4933335",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 58245297,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/04/87/79048703-d88c-acc2-c319-a8f2534b9ae5/mza_15018160844227259170.jpg/600x600bb.jpg",
+      "topics": [
+        "health/mental",
+        "psychology"
+      ],
+      "hook": "Neuroscientist Ben Rein on the biology of likability, social connection, and protecting brain health.",
+      "explicit": true
+    },
+    {
+      "id": "mel-robbins-podcast--world-leading-psychologist-how-to-manifest",
+      "show": "The Mel Robbins Podcast",
+      "title": "World Leading Psychologist: How to Manifest Anything & Create the Life You Want",
+      "apple_collection_id": 1646101002,
+      "apple_track_id": 1000780927779,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/world-leading-psychologist-how-to-manifest-anything/id1646101002?i=1000780927779&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 79,
+      "duration_sec": 4714,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/pdst.fm/e/stitcher.simplecastaudio.com/b9de9f5f-6dab-4833-b4c2-05f1d28dd998/episodes/91664d33-944f-4c53-9d4e-d963a385df93/audio/128/default.mp3?aid=rss_feed&awCollectionId=b9de9f5f-6dab-4833-b4c2-05f1d28dd998&awEpisodeId=91664d33-944f-4c53-9d4e-d963a385df93&feed=UCwaTX1J",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 75425164,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ab/66/a5/ab66a5f5-b52b-c70a-227b-0721bd9dc660/mza_13546984924981879479.jpg/600x600bb.jpg",
+      "topics": [
+        "education/self-improvement",
+        "health/mental"
+      ],
+      "hook": "Psychologist Cassandra Vieten on the science of imagination, visualization, and shaping what you create.",
+      "explicit": false
+    },
+    {
+      "id": "happier-gretchen-rubin--little-happier-are-you-a-clutch",
+      "show": "Happier with Gretchen Rubin",
+      "title": "Little Happier: Are You a Clutch Player or a Fast Starter?",
+      "apple_collection_id": 969519520,
+      "apple_track_id": 1000774216264,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/little-happier-are-you-a-clutch-player-or-a-fast-starter/id969519520?i=1000774216264&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 4,
+      "duration_sec": 252,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/claritaspod.com/measure/pscrb.fm/rss/p/mgln.ai/e/491/traffic.megaphone.fm/LEME1665361068.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/84/2a/3f/842a3fd1-591f-fa8a-f080-6a7c397d9102/mza_14614414942991077534.jpeg/600x600bb.jpg",
+      "topics": [
+        "education/self-improvement"
+      ],
+      "hook": "Gretchen Rubin on why some athletes thrive under pressure while others peak early.",
+      "explicit": false
+    },
+    {
+      "id": "armchair-expert--taron-egerton",
+      "show": "Armchair Expert with Dax Shepard",
+      "title": "Taron Egerton",
+      "apple_collection_id": 1345682353,
+      "apple_track_id": 1000781826820,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/taron-egerton/id1345682353?i=1000781826820&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 114,
+      "duration_sec": 6843,
+      "audio_url": "https://rss.art19.com/episodes/4ffdd703-5810-49ab-bd50-411edf6ad703.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 109500290,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f0/13/8f/f0138f4b-8bc3-0a64-2c11-ef566840f60f/mza_3062409012210474882.jpeg/600x600bb.jpg",
+      "topics": [
+        "comedy/interviews"
+      ],
+      "hook": "Taron Egerton on his Welsh upbringing, Colin Firth's mentorship, and channeling Elton John in Rocketman.",
+      "explicit": true
+    },
+    {
+      "id": "call-her-daddy--anxious-attachment-101",
+      "show": "Call Her Daddy",
+      "title": "Anxious Attachment 101",
+      "apple_collection_id": 1418960261,
+      "apple_track_id": 1000780961682,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/anxious-attachment-101/id1418960261?i=1000780961682&uo=4",
+      "release_date": "2026-08-09",
+      "duration_min": 44,
+      "duration_sec": 2632,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/f09b6967-f720-4383-a6cf-42d1f475bd95/episodes/032fc84f-9753-4217-bf6b-27645b0cdd92/audio/128/default.mp3?aid=rss_feed&awCollectionId=f09b6967-f720-4383-a6cf-42d1f475bd95&awEpisodeId=032fc84f-9753-4217-bf6b-27645b0cdd92&feed=mKn_QmLS",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 42826985,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/05/10/91/05109145-8c22-5464-1f20-aaedeab769f8/mza_10276081716633787086.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/interviews"
+      ],
+      "hook": "Alex breaks down anxious attachment, why inconsistent partners feel addictive, and how to identify your triggers.",
+      "explicit": true
+    },
+    {
+      "id": "comedy-bang-bang--wainscotting-hold-the-hamm-david-wain",
+      "show": "Comedy Bang Bang: The Podcast",
+      "title": "Wainscotting, Hold The Hamm (David Wain, James Mannion, Isabella Escalante)",
+      "apple_collection_id": 316045799,
+      "apple_track_id": 1000781378412,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/wainscotting-hold-the-hamm-david-wain-james-mannion/id316045799?i=1000781378412&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 87,
+      "duration_sec": 5214,
+      "audio_url": "https://pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/da3ab509-b112-4af1-a54b-45ff0ddecf42/episodes/f44d6684-77f9-4af8-b902-845d35c42c24/audio/128/default.mp3?aid=rss_feed&awCollectionId=da3ab509-b112-4af1-a54b-45ff0ddecf42&awEpisodeId=f44d6684-77f9-4af8-b902-845d35c42c24&feed=byb4nhvN",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 83428528,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/0b/ca/6e/0bca6ee0-0b2b-5df7-edee-4d9d1b2d4e8a/mza_10749952114435066299.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "hook": "David Wain talks Wet Hot American Summer's 25th anniversary rerelease, plus sketch bits from Lonnie Portapotti.",
+      "explicit": true
+    },
+    {
+      "id": "working-it-out-birbiglia--chloe-troast-and-mike-answer-your",
+      "show": "Mike Birbiglia's Working It Out",
+      "title": "Chloe Troast and Mike Answer Your Questions About Improv and Sketch",
+      "apple_collection_id": 1515419751,
+      "apple_track_id": 1000781320145,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/chloe-troast-and-mike-answer-your-questions-about/id1515419751?i=1000781320145&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 38,
+      "duration_sec": 2263,
+      "audio_url": "https://pdst.fm/e/afp-222748-injected.calisto.simplecastaudio.com/32ea5a12-6e17-42a1-8b7f-3cd5287077bd/episodes/d0f04254-cf0f-4106-b706-0cd5824edcf2/audio/128/default.mp3?aid=rss_feed&awCollectionId=32ea5a12-6e17-42a1-8b7f-3cd5287077bd&awEpisodeId=d0f04254-cf0f-4106-b706-0cd5824edcf2&feed=MTW0B2El",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 36211261,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ef/af/30/efaf301d-6e45-ca17-192e-ef7e66afdcfd/mza_16176505125015117955.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/stand-up",
+        "comedy/interviews"
+      ],
+      "hook": "Chloe Troast answers listener questions about improv going off the rails and life after SNL.",
+      "explicit": true
+    },
+    {
+      "id": "crime-junkie--murdered-bill-peggy-stephenson",
+      "show": "Crime Junkie",
+      "title": "MURDERED: Bill & Peggy Stephenson",
+      "apple_collection_id": 1322200189,
+      "apple_track_id": 1000779746511,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/murdered-bill-peggy-stephenson/id1322200189?i=1000779746511&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 41,
+      "duration_sec": 2487,
+      "audio_url": "https://tracking.swap.fm/track/fxUKVg2nSMaPSHLeKNKH/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/rsv.simplecastaudio.com/ec74d48c-cbf1-4764-923e-7d584dce50fa/episodes/39c22534-56e4-41d0-a023-e3eaefab43fe/audio/128/default.mp3?aid=rss_feed&awCollectionId=ec74d48c-cbf1-4764-923e-7d584dce50fa&awEpisodeId=39c22534-56e4-41d0-a023-e3eaefab43fe&feed=qm_9xx0g",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 39802296,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/8c/35/04/8c350430-2fbf-98d0-0a25-00b76550ffeb/mza_13445204151221888086.jpg/600x600bb.jpg",
+      "topics": [
+        "true-crime"
+      ],
+      "hook": "Bill and Peggy Stephenson were murdered in their Kentucky condo; a decade-old clue finally cracked it.",
+      "explicit": false
+    },
+    {
+      "id": "wicked-words--maurice-chammah-the-last-twelve-weeks",
+      "show": "Wicked Words - A True Crime Talk Show with Kate Winkler Dawson",
+      "title": "Maurice Chammah: The Last Twelve Weeks",
+      "apple_collection_id": 1538204210,
+      "apple_track_id": 1000781671391,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/maurice-chammah-the-last-twelve-weeks/id1538204210?i=1000781671391&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 57,
+      "duration_sec": 3412,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/fdf29e64-8856-472d-b2cd-b24c011a225c/b07a348c-6479-4c8f-9bd4-b49d0141955a/audio.mp3?utm_source=Podcast&in_playlist=d35298b0-c12a-44ed-956a-b24c011a22e0",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 54636946,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9f/d5/37/9fd53772-b22c-5e3c-ac4a-3d8b9452fa74/mza_3649081017768100450.jpg/600x600bb.jpg",
+      "topics": [
+        "true-crime",
+        "history"
+      ],
+      "hook": "Journalist Maurice Chammah on attorneys racing to stop a Texas execution in a possible wrongful conviction.",
+      "explicit": true
+    },
+    {
+      "id": "this-american-life--443-amusement-park",
+      "show": "This American Life",
+      "title": "443: Amusement Park",
+      "apple_collection_id": 201671138,
+      "apple_track_id": 1000486207702,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/amusement-park/id201671138?i=1000486207702&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 62,
+      "duration_sec": 3736,
+      "audio_url": "https://pfx.vpixl.com/6qj4J/dts.podtrac.com/redirect.mp/pdst.fm/e/prefix.up.audio/s/npr.simplecastaudio.com/d3081dd9-fcaf-445a-977c-4f56c28f5a6e/episodes/474e1929-1ad3-4904-9f3c-aea8a463fc9c/audio/128/default.mp3?awCollectionId=d3081dd9-fcaf-445a-977c-4f56c28f5a6e&awEpisodeId=474e1929-1ad3-4904-9f3c-aea8a463fc9c&nocache",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f8/8e/ec/f88eec18-6bf4-e522-9450-7fadfeec0f93/mza_416174900963809096.jpg/600x600bb.jpg",
+      "topics": [
+        "personal-journals",
+        "science/storytelling"
+      ],
+      "hook": "Ira Glass visits Worlds of Fun, a Kansas City park where young staff love the job.",
+      "explicit": false
+    },
+    {
+      "id": "wow-in-the-world--disgustival-why-does-gross-stuff-make",
+      "show": "Wow in the World",
+      "title": "Disgustival! Why Does Gross Stuff Make Our Skin Crawl?",
+      "apple_collection_id": 1233834541,
+      "apple_track_id": 1000781622599,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/disgustival-why-does-gross-stuff-make-our-skin-crawl/id1233834541?i=1000781622599&uo=4",
+      "release_date": "2026-08-10",
+      "duration_min": 26,
+      "duration_sec": 1547,
+      "audio_url": "https://pscrb.fm/rss/p/rss.art19.com/episodes/1ee3b847-27b2-4be2-b279-31bd04751d2a.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 24762827,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/c6/fc/04/c6fc04bd-2d1d-2893-450c-a88657727a00/mza_6224958262375040936.jpeg/600x600bb.jpg",
+      "topics": [
+        "kids-family/education"
+      ],
+      "hook": "Mindy and Guy Raz visit Disgustival, an art exhibit on why gross things trigger disgust.",
       "explicit": false
     }
   ]
