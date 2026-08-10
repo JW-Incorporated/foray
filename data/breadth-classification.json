@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-09T16:47:40.181Z",
+  "built_at": "2026-08-10T00:38:27.619Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-09-57b984d6",
+    "last_batch_id": "fresh-2026-08-10-007f20eb",
     "last_batch_tier": 1
   },
   "entries": {
@@ -159044,7 +159044,22 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's narrative fiction with magical themes and moral lessons.",
+      "display_title": "The Search for the Silver Lining",
+      "blurb": "Adventure stories for young listeners with magical worlds and positive values.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1735510085": {
       "topics": [
@@ -159792,7 +159807,22 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dedicated volleyball team coverage with fan analysis and interviews.",
+      "display_title": "Ember's Nest",
+      "blurb": "Daily analysis and coverage of professional volleyball teams.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1737643651": {
       "topics": [
@@ -159898,10 +159928,30 @@
     },
     "1737857890": {
       "topics": [
-        "tv-film/animation"
+        "tv-film/animation",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nostalgic podcast reviewing classic animated series with pop culture perspective.",
+      "display_title": "X-Pod 97",
+      "blurb": "Analysis of classic animation and manga series with cultural commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1737867013": {
       "topics": [
@@ -160226,10 +160276,30 @@
     },
     "1738953784": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily gaming discussion and commentary from casual streamers.",
+      "display_title": "Side Scrollers",
+      "blurb": "Daily gaming news and commentary on current releases and trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1738958328": {
       "topics": [
@@ -160865,7 +160935,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Icelandic golf podcast with interviews and light-hearted discussion.",
+      "display_title": "Seinni níu",
+      "blurb": "Golf discussions and interviews with professional golfers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1740794209": {
       "topics": [
@@ -160883,10 +160968,30 @@
     },
     "1740816838": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychotherapist-led parenting advice grounded in attachment theory and child psychology.",
+      "display_title": "Robot Unicorn",
+      "blurb": "Expert parenting guidance based on psychology and attachment theory.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1740971373": {
       "topics": [
@@ -161499,7 +161604,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Red Sox team coverage with news, analysis, and fan updates.",
+      "display_title": "Red Seat Radio",
+      "blurb": "Daily Boston Red Sox news, analysis, and coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1742862589": {
       "topics": [
@@ -162234,10 +162354,33 @@
     },
     "1745066482": {
       "topics": [
-        "sports/soccer"
+        "sports/soccer",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Historical analysis of football with expert journalists examining key events.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1745112120": {
       "topics": [
@@ -162286,10 +162429,29 @@
     "1745182750": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Evidence-based solutions for digestive health and gut function.",
+      "display_title": "The Scoop on Poop",
+      "blurb": "Evidence-based guide to digestive health and gut optimization.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1745204141": {
       "topics": [
@@ -162416,10 +162578,30 @@
     },
     "1745798674": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily gaming discussion and commentary from casual streamers.",
+      "display_title": "The Geekenders",
+      "blurb": "Daily gaming news and commentary on current releases and trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1745980011": {
       "topics": [
@@ -162496,7 +162678,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedy and interviews with professional comedians.",
+      "display_title": "The Southern Saturday Podcast",
+      "blurb": "Comedy podcast with stand-up performances and interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1746228093": {
       "topics": [
@@ -162510,7 +162707,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tibetan Buddhist teachings on philosophy, tantra, and spiritual practice.",
+      "display_title": "Roar of the Kalkis Podcast",
+      "blurb": "Teachings on Tibetan Buddhism, philosophy, and spiritual practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1746379562": {
       "topics": [
@@ -162610,10 +162822,30 @@
     },
     "1746467044": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's educational storytelling podcast with playful narratives.",
+      "display_title": "הסכתוס",
+      "blurb": "Educational storytelling for children in Hebrew language.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1746480567": {
       "topics": [
@@ -162678,7 +162910,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized science fiction drama set in a near-future digital world.",
+      "display_title": "A Better Paradise",
+      "blurb": "Serialized sci-fi drama exploring themes of technology and society.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1746633244": {
       "topics": [
@@ -162726,10 +162973,30 @@
     },
     "1746776326": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly media analysis and industry trends from professional journalists.",
+      "display_title": "Mixed Signals from Semafor Media",
+      "blurb": "Media industry analysis and commentary on journalism and news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1746784916": {
       "topics": [
@@ -162895,10 +163162,29 @@
     "1747835458": {
       "topics": [
         "tv-film/history",
-        "history"
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and historical analysis of cinema and entertainment.",
+      "display_title": "Multiplex Overthruster",
+      "blurb": "Exploration of film history and cinema analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1747873257": {
       "topics": [
@@ -162981,7 +163267,22 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dedicated volleyball team coverage with fan analysis and interviews.",
+      "display_title": "Set Point Podcast",
+      "blurb": "Daily analysis and coverage of professional volleyball teams.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1748234347": {
       "topics": [
@@ -163002,7 +163303,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "The Rugby League Journeymen",
+      "blurb": "Podcast in the sports/rugby category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1748246311": {
       "topics": [
@@ -163121,7 +163437,22 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "Car and Driver's Into Cars",
+      "blurb": "Podcast in the automotive category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1749154088": {
       "topics": [
@@ -163276,7 +163607,26 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "Hunt Test Hobo Podcast",
+      "blurb": "Podcast in the adventure/exploration category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1749641957": {
       "topics": [
@@ -163327,7 +163677,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Red Sox team coverage with news, analysis, and fan updates.",
+      "display_title": "310 To Left",
+      "blurb": "Daily Boston Red Sox news, analysis, and coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1750000955": {
       "topics": [
@@ -163347,10 +163712,30 @@
     },
     "1750019962": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychotherapist-led parenting advice grounded in attachment theory and child psychology.",
+      "display_title": "Mindful Motherhood",
+      "blurb": "Expert parenting guidance based on psychology and attachment theory.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1750047932": {
       "topics": [
@@ -163468,7 +163853,22 @@
         "math"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "Now I Get It, with Dr. Andy",
+      "blurb": "Podcast in the math category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1750573474": {
       "topics": [
@@ -163578,7 +163978,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "Redshirt Cinema Club",
+      "blurb": "Podcast in the tv-film/reviews category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1750931834": {
       "topics": [
@@ -163592,7 +164007,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "Miles Ahead: The Canadian Points Podcast",
+      "blurb": "Podcast in the aviation category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1750975164": {
       "topics": [
@@ -163623,7 +164053,26 @@
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "重生农家小娘子古风言情",
+      "blurb": "Podcast in the fiction/comedy category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1751170269": {
       "topics": [
@@ -163730,10 +164179,30 @@
     },
     "1751496082": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's educational storytelling podcast with playful narratives.",
+      "display_title": "Daily Bread for Kids",
+      "blurb": "Educational storytelling for children in Hebrew language.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1751519210": {
       "topics": [
@@ -163764,7 +164233,26 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "I Completed 80s Music",
+      "blurb": "Podcast in the music category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1751578088": {
       "topics": [
@@ -163813,7 +164301,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "Quran Conversations",
+      "blurb": "Podcast in the religion/islam category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1751985558": {
       "topics": [
@@ -163835,7 +164338,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "Coffee In A Hangar",
+      "blurb": "Podcast in the aviation category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1751988993": {
       "topics": [
@@ -163849,7 +164367,22 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "Cultivating a Healthy Marriage with Tim Keller",
+      "blurb": "Podcast in the religion/christianity category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1752041501": {
       "topics": [
@@ -163910,7 +164443,26 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "Vandaag Inside Oranje",
+      "blurb": "Podcast in the sports category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1752132476": {
       "topics": [
@@ -163947,7 +164499,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "The Cricketer | Podcasts and Interviews",
+      "blurb": "Podcast in the sports/cricket category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1752173500": {
       "topics": [
@@ -163998,7 +164565,22 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "Vintage Spotlight",
+      "blurb": "Podcast in the sports/fantasy category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1752245269": {
       "topics": [
@@ -164028,7 +164610,22 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "The Unforgotten",
+      "blurb": "Podcast in the true-crime category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1752401597": {
       "topics": [
@@ -164067,7 +164664,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "The Lekker Rugby Pod!",
+      "blurb": "Podcast in the sports/rugby category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1752525548": {
       "topics": [
@@ -164219,10 +164831,29 @@
     "1753127830": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Evidence-based solutions for digestive health and gut function.",
+      "display_title": "IBS Nutrition Podcast by The IBS Dietitian",
+      "blurb": "Evidence-based guide to digestive health and gut optimization.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1753141662": {
       "topics": [
@@ -164425,10 +165056,29 @@
     "1754416156": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Evidence-based solutions for digestive health and gut function.",
+      "display_title": "West Wellness & Longevity",
+      "blurb": "Evidence-based guide to digestive health and gut optimization.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1754416166": {
       "topics": [
@@ -164524,7 +165174,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "US Cricket Now",
+      "blurb": "Podcast in the sports/cricket category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1754781902": {
       "topics": [
@@ -164545,7 +165210,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "The Hours",
+      "blurb": "Podcast in the sports/basketball category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1754857001": {
       "topics": [
@@ -164583,7 +165263,22 @@
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "Early Morning Coffee at CERN",
+      "blurb": "Podcast in the science/physics category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1755126066": {
       "topics": [
@@ -164679,7 +165374,26 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.85
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "Daily English listening ‏استماع الإنجليزية يوميا",
+      "blurb": "Podcast in the education/language-learning category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1755648129": {
       "topics": [
@@ -164843,7 +165557,26 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from genre prior.",
+      "display_title": "Buy That Guitar Podcast",
+      "blurb": "Podcast in the music category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1756321597": {
       "topics": [
@@ -165021,10 +165754,30 @@
     },
     "1756763626": {
       "topics": [
-        "sports/soccer"
+        "sports/soccer",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical analysis of football with expert journalists examining key events.",
+      "display_title": "The Transfer Flow Podcast",
+      "blurb": "In-depth football history and analysis from sports journalists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-10-007f20eb",
+      "classified_at": "2026-08-10T00:38:27.619Z"
     },
     "1756793568": {
       "topics": [
