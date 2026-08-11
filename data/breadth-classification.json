@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-11T08:24:10.048Z",
+  "built_at": "2026-08-11T16:27:03.913Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-11-ca77de48",
+    "last_batch_id": "fresh-2026-08-11-77318e5c",
     "last_batch_tier": 1
   },
   "entries": {
@@ -166719,14 +166719,44 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investigative journalism exploring extremist groups and white supremacist crimes.",
+      "display_title": "Weird Little Guys",
+      "blurb": "Investigative journalism exploring extremist groups and murders in America.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1760219025": {
       "topics": [
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sci-fi audio drama set on terraformed Mars with political intrigue.",
+      "display_title": "Sanctuary",
+      "blurb": "Epic sci-fi audio drama on terraformed Mars.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1760235028": {
       "topics": [
@@ -166832,10 +166862,30 @@
     },
     "1760845281": {
       "topics": [
-        "travel"
+        "travel",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Disney Vacation Club member tips, resort reviews, and travel planning.",
+      "display_title": "Addicted To DVC Podcast",
+      "blurb": "Tips and insider info on Disney Vacation Club properties.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1760928136": {
       "topics": [
@@ -166909,10 +166959,30 @@
     },
     "1761267999": {
       "topics": [
-        "news/daily"
+        "news/daily",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Progressive daily news focusing on democracy and legal victories.",
+      "display_title": "Good News for Lefties",
+      "blurb": "Daily progressive news focused on democracy and legal victories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1761279928": {
       "topics": [
@@ -166938,17 +167008,60 @@
     },
     "1761367959": {
       "topics": [
-        "business/management"
+        "business/management",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership advice specifically for Christian school administrators.",
+      "display_title": "Christian Principals Podcast",
+      "blurb": "Leadership advice for Christian school administrators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1761369345": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Defense analysis and foreign policy commentary from military veteran.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1761398472": {
       "topics": [
@@ -166959,10 +167072,30 @@
     },
     "1761404721": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conservative political commentary and analysis from radio personality.",
+      "display_title": "The Larry Elder Show",
+      "blurb": "Daily conservative political commentary from Larry Elder.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1761438573": {
       "topics": [
@@ -167069,7 +167202,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Private aviation industry news, trends, and expert analysis.",
+      "display_title": "The VIP Seat",
+      "blurb": "Weekly analysis of private aviation industry news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1762107278": {
       "topics": [
@@ -167080,10 +167228,30 @@
     },
     "1762108839": {
       "topics": [
-        "religion/spirituality"
+        "religion/spirituality",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations on consciousness, spirituality, and personal growth.",
+      "display_title": "Projector And The Flail",
+      "blurb": "Conversations on consciousness, spirituality, and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1762217793": {
       "topics": [
@@ -167262,10 +167430,30 @@
     },
     "1762744647": {
       "topics": [
-        "music"
+        "music",
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep song-by-song analysis of Beatles music and production.",
+      "display_title": "The Beatles: Note By Note",
+      "blurb": "Song-by-song analysis of Beatles records and music production.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1762821145": {
       "topics": [
@@ -167303,7 +167491,22 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice from Wiggles members on raising toddlers.",
+      "display_title": "Wiggle Talk",
+      "blurb": "Parents from The Wiggles discuss raising toddlers and family life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1763015773": {
       "topics": [
@@ -167554,7 +167757,22 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Original bedtime stories designed for children's sleep routines.",
+      "display_title": "Tuck-In Tales",
+      "blurb": "Original bedtime stories designed for children's sleep routines.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1763924609": {
       "topics": [
@@ -167579,10 +167797,30 @@
     },
     "1764134739": {
       "topics": [
-        "science/physics"
+        "science/physics",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physics and astronomy explained through workplace satire.",
+      "display_title": "The Multiverse Employee Handbook",
+      "blurb": "Physics and astronomy explained through workplace satire.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1764151396": {
       "topics": [
@@ -167745,7 +167983,22 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports commentary and NFL analysis from former quarterback.",
+      "display_title": "4th&1 Podcast with Cam Newton",
+      "blurb": "Sports commentary and NFL analysis from former quarterback Cam Newton.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1765159015": {
       "topics": [
@@ -167764,18 +168017,57 @@
     },
     "1765198131": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Analysis of democracy, military affairs, and national security.",
+      "display_title": "The Ken Harbaugh Show",
+      "blurb": "Analysis of democracy, military affairs, and national security.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1765221003": {
       "topics": [
         "music",
-        "history"
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Billboard's analysis of pop stardom and music industry trends.",
+      "display_title": "Greatest Pop Stars",
+      "blurb": "Weekly Billboard analysis of pop stardom and music industry trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1765250112": {
       "topics": [
@@ -167872,10 +168164,30 @@
     },
     "1765562181": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal stories and conversations from the Jewish community.",
+      "display_title": "Totally Unexpected!",
+      "blurb": "Personal stories and conversations from the Jewish community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1765581376": {
       "topics": [
@@ -167966,10 +168278,30 @@
     },
     "1766002371": {
       "topics": [
-        "health/alternative"
+        "education/how-to",
+        "health/fitness"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Teaching techniques and philosophy for yoga instructors.",
+      "display_title": "Yoga Teacher Confidential",
+      "blurb": "Teaching techniques and philosophy for yoga instructors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1766068544": {
       "topics": [
@@ -168057,10 +168389,30 @@
     },
     "1766595591": {
       "topics": [
-        "food"
+        "food",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "travel",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Local food scene and restaurant reviews from Seattle.",
+      "display_title": "Seattle Eats",
+      "blurb": "Local food scene and restaurant reviews from Seattle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1766669814": {
       "topics": [
@@ -168137,11 +168489,30 @@
     },
     "1767312237": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports",
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French waterpolo podcast featuring players, coaches, and analysis.",
+      "display_title": "La Pointe",
+      "blurb": "French waterpolo podcast featuring players, coaches, and match analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1767329371": {
       "topics": [
@@ -168163,7 +168534,22 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories from Idaho's natural world and wildlife.",
+      "display_title": "The Nature of Idaho",
+      "blurb": "Stories from Idaho's natural world and wildlife.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1767454006": {
       "topics": [
@@ -168338,11 +168724,30 @@
     },
     "1767970971": {
       "topics": [
-        "nature/earth-science",
+        "nature",
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories of conservation efforts and environmental protection.",
+      "display_title": "People Helping Nature Podcast",
+      "blurb": "Stories of conservation efforts and environmental protection worldwide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1767983375": {
       "topics": [
@@ -168443,10 +168848,30 @@
     },
     "1768556397": {
       "topics": [
+        "fiction",
         "culture/performing-arts"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic 1940s-50s detective radio drama from the golden age.",
+      "display_title": "Sam Spade",
+      "blurb": "Classic 1940s-50s detective radio drama from the golden age.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1768616411": {
       "topics": [
@@ -168637,7 +169062,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quranic recitations and Islamic spirituality.",
+      "display_title": "Haitham Al Dokhin",
+      "blurb": "Quranic recitations and Islamic spiritual practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1769201553": {
       "topics": [
@@ -168934,10 +169374,30 @@
     },
     "1770166695": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gardening and lawn care advice from an expert.",
+      "display_title": "You Bet Your Garden",
+      "blurb": "Gardening and lawn care advice from an expert.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1770199152": {
       "topics": [
@@ -169030,10 +169490,30 @@
     },
     "1770603501": {
       "topics": [
-        "fiction/sci-fi"
+        "tv-film/reviews",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "TV show reviews and discussion. Description claims For All Mankind but episodes cover Silo and other shows.",
+      "display_title": "Moonshow",
+      "blurb": "Discussions of sci-fi television shows and episodes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1770632171": {
       "topics": [
@@ -169054,10 +169534,29 @@
     "1770710481": {
       "topics": [
         "tv-film/history",
-        "history"
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast exploring classic film noir and crime cinema.",
+      "display_title": "Tipping My Fedora",
+      "blurb": "Podcast exploring classic film noir and crime cinema.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1770745380": {
       "topics": [
@@ -169088,7 +169587,22 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paper crafting tips, tricks, and craft community discussion.",
+      "display_title": "Craft Theories",
+      "blurb": "Podcast about paper crafting, DIY, and craft community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1770900190": {
       "topics": [
@@ -169133,7 +169647,26 @@
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio sitcom comedy featuring ensemble cast.",
+      "display_title": "Flula Makes Five",
+      "blurb": "Audio sitcom comedy starring Flula Borg and ensemble cast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1771201124": {
       "topics": [
@@ -169267,10 +169800,30 @@
     },
     "1771759341": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interactive mystery detective stories for children.",
+      "display_title": "Mystery Detectives!",
+      "blurb": "Interactive mystery detective stories for children.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1771769107": {
       "topics": [
@@ -169284,7 +169837,22 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Iowa Hawkeyes football and basketball analysis.",
+      "display_title": "The ANF Podcast",
+      "blurb": "Iowa Hawkeyes football and basketball analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1771890856": {
       "topics": [
@@ -169469,10 +170037,30 @@
     },
     "1772489427": {
       "topics": [
-        "tv-film/reviews"
+        "news/commentary",
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Biography and news coverage of conservative figure. Genre tag (TV Reviews) mismatches content.",
+      "display_title": "Candace Owens - Biography Flash",
+      "blurb": "Ongoing biography and news coverage of conservative figure Candace Owens.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1772506189": {
       "topics": [
@@ -169492,10 +170080,33 @@
     },
     "1772577837": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Archive of classic 1940s-50s radio detective dramas.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1772641448": {
       "topics": [
@@ -169515,10 +170126,30 @@
     },
     "1772674689": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Commentary on Israel, foreign policy, and Jewish American issues.",
+      "display_title": "Boundless Insights",
+      "blurb": "Commentary on Israel, foreign policy, and Jewish American issues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1772680590": {
       "topics": [
@@ -169561,10 +170192,30 @@
     },
     "1772756019": {
       "topics": [
-        "sports/volleyball"
+        "sports/volleyball",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational breakdown of modern volleyball rules.",
+      "display_title": "Volleyball Rules",
+      "blurb": "Educational podcast breaking down modern volleyball rules.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1772911050": {
       "topics": [
@@ -169576,10 +170227,30 @@
     },
     "1773016797": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations exploring Judaism, music, and spiritual wisdom.",
+      "display_title": "The Rest is Commentary",
+      "blurb": "Conversations exploring Judaism, music, and spiritual wisdom.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1773063180": {
       "topics": [
@@ -169614,10 +170285,30 @@
     },
     "1773173097": {
       "topics": [
-        "religion/spirituality"
+        "religion/spirituality",
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.7
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep conversations about meaning, relationships, and authentic living.",
+      "display_title": "Circle This",
+      "blurb": "Deep conversations about meaning, relationships, and authentic living.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1773173407": {
       "topics": [
@@ -169675,7 +170366,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Dark audio drama about haunted mansion. First episodes appear promotional/crossover content.",
+      "display_title": "Elias The Caretaker",
+      "blurb": "Dark audio drama about a haunted mansion and mysterious caretaker.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-77318e5c",
+      "classified_at": "2026-08-11T16:27:03.913Z"
     },
     "1773460668": {
       "topics": [
