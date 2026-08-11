@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-11T00:31:26.577Z",
+  "built_at": "2026-08-11T08:30:09.226Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-11-21ec32d8",
+    "last_batch_id": "fresh-2026-08-11-2fcbf178",
     "last_batch_tier": 1
   },
   "entries": {
@@ -162292,7 +162292,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sci-fi/mystery audio drama about government conspiracies in 1990s Ohio.",
+      "display_title": "Oakbridge - A Sci-Fi Mystery Audio Drama",
+      "blurb": "A mystery audio drama set in 1990s Ohio where a government nuclear facility triggers supernatural conspiracies. Each episode unravels dark secrets and threatening phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1747835458": {
       "topics": [
@@ -162343,10 +162358,29 @@
     "1747983061": {
       "topics": [
         "health/nutrition",
-        "food"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dr. Hyman discusses science-backed health trends, nutrition myths, and wellness strategies.",
+      "display_title": "Health Hacks with Mark Hyman, M.D.",
+      "blurb": "Science-backed wellness advice from Dr. Hyman on nutrition, stress, digestion, and health trends. Episodes cover practical strategies for living better.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1747985859": {
       "topics": [
@@ -162387,10 +162421,35 @@
     },
     "1748234347": {
       "topics": [
-        "relationships"
+        "relationships",
+        "news/commentary",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interview podcast exploring diverse perspectives on social issues, culture, and personal stories.",
+      "display_title": "Perspektives",
+      "blurb": "Host Big Bank interviews guests from varied backgrounds about resilience, culture, and social issues. Candid conversations about accountability and authenticity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1748241527": {
       "topics": [
@@ -162448,10 +162507,37 @@
     "1748452441": {
       "topics": [
         "space",
-        "science"
+        "science",
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Public conversations on UFO/UAP research, institutional responses, and scientific inquiry.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1748463797": {
       "topics": [
@@ -162474,7 +162560,22 @@
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astrology predictions and tarot readings for zodiac signs and celestial events.",
+      "display_title": "Beyond The Veil Tarot & Astrology",
+      "blurb": "Astrological predictions and tarot readings for all zodiac signs. Coverage of eclipses, planetary transits, and spiritual guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1748663426": {
       "topics": [
@@ -162493,33 +162594,111 @@
     },
     "1748724463": {
       "topics": [
-        "math"
+        "math",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with early-career mathematicians about research, career paths, and academic journeys.",
+      "display_title": "On A Tangent: Voices of Mathematics",
+      "blurb": "Early-career mathematicians share their research, paths to the field, and academic experiences. Hosted by Simone Ramello from Mathematics Münster.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1748833015": {
       "topics": [
         "economics/markets",
-        "business"
+        "business",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial planning, investing strategies, retirement preparation, and economic commentary.",
+      "display_title": "Retire SMART Podcast",
+      "blurb": "Independent financial advisors discuss retirement planning, investments, and economic trends. Topics include Social Security, tax strategies, and portfolio management.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1748842135": {
       "topics": [
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Exclusive interviews with Baseball Hall of Famers on their paths to enshrinement.",
+      "display_title": "The Road to Cooperstown",
+      "blurb": "Hall of Fame baseball players discuss their journeys to Cooperstown. Hosted by Jon Paul Morosi for the National Baseball Hall of Fame.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1748904997": {
       "topics": [
-        "news",
-        "business"
+        "business",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "C-suite executives discuss technology transformation, AI, and business strategy.",
+      "display_title": "Techfluential by Deloitte",
+      "blurb": "Deloitte hosts C-suite leaders discussing AI, technology transformation, and enterprise strategy. Episodes cover digital innovation and organizational change.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1748906412": {
       "topics": [
@@ -162533,7 +162712,22 @@
         "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual comedy podcast with humorous banter between best friends.",
+      "display_title": "Couch Fish Podcast",
+      "blurb": "Cameron Domasky and Brandon Farris bring casual humor and friendship dynamic. Unfiltered conversations about life, culture, and comedy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1749099844": {
       "topics": [
@@ -162558,10 +162752,30 @@
     },
     "1749170557": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Attorney Dina Doll analyzes high-profile legal cases and political legal issues.",
+      "display_title": "MissTrial",
+      "blurb": "Attorney and former journalist Dina Doll dissects high-profile legal cases. Expert analysis of trials and their impact on society.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1749336746": {
       "topics": [
@@ -162589,10 +162803,34 @@
     "1749378115": {
       "topics": [
         "fiction/comedy",
-        "comedy"
+        "comedy",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic radio comedy from legendary comedian Jack Benny with witty scripts and memorable characters.",
+      "display_title": "The Jack Benny Collection",
+      "blurb": "Golden-age radio comedy from Jack Benny's legendary show. Timeless humor, memorable characters, and witty scripts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1749397172": {
       "topics": [
@@ -162829,7 +163067,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama about a teenager drawn into paranormal mystery after parents disappear.",
+      "display_title": "The Disappearances of Lydia Fountayne",
+      "blurb": "After her parents vanish, teenager Lydia and friends navigate supernatural inheritance mysteries. Paranoia, friendships, and mysterious forces.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1750736528": {
       "topics": [
@@ -162849,25 +163102,82 @@
     "1750792597": {
       "topics": [
         "tv-film/history",
-        "history"
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Watch-along podcast discussing every Godzilla film through kaiju cinema history.",
+      "display_title": "Gorilla Whale: A Godzilla Watch-Along",
+      "blurb": "Kevin Carpenter and Kayla Knutson analyze every Godzilla film. Coverage of kaiju cinema history from classic to modern.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1750798999": {
       "topics": [
         "tv-film/history",
-        "history"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cinema podcast covering cult, psychotronic, arthouse, and under-explored film history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1750812295": {
       "topics": [
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode breakdowns and analysis of blockbuster fantasy and sci-fi TV shows.",
+      "display_title": "BingetownTV - Silo & House of Dragon",
+      "blurb": "Hosts discuss episodes of fantasy and sci-fi shows. Detailed breakdowns with community interaction and humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1750848914": {
       "topics": [
@@ -162879,10 +163189,30 @@
     },
     "1750862095": {
       "topics": [
+        "nature/ocean-science",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert conversations on sea turtle science, culture, conservation, and biology.",
+      "display_title": "Sea Turtle Stories",
+      "blurb": "Conversations with experts on sea turtle science, conservation, and ecology. Coverage of marine biology and global initiatives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1750868428": {
       "topics": [
@@ -162966,7 +163296,22 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly podcast reviewing first volumes of manga to help readers choose new titles.",
+      "display_title": "Manga Tak",
+      "blurb": "Weekly manga podcast discussing first volumes across genres. Recommendations and reviews for building manga collections.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1751194045": {
       "topics": [
@@ -163321,10 +163666,30 @@
     },
     "1752245269": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buffy-focused rewatch podcast with cast member Juliet Landau sharing behind-the-scenes stories.",
+      "display_title": "RE-VAMPED with Juliet Landau",
+      "blurb": "Juliet Landau hosts a Buffy rewatch with cast interviews and behind-the-scenes stories. Analysis of themes and character arcs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1752293730": {
       "topics": [
@@ -163435,10 +163800,30 @@
     },
     "1752742435": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with rabbis and mystics about Jewish spirituality and Kabbalistic philosophy.",
+      "display_title": "18 Questions, 40 Mystics",
+      "blurb": "Rabbi Benji Levy interviews 40 spiritual teachers on Jewish mysticism. Conversations on Kabbalah, spirituality, and existential questions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1752773148": {
       "topics": [
@@ -163456,10 +163841,30 @@
     },
     "1752785755": {
       "topics": [
+        "nature/pets",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        },
+        {
+          "node": "nature",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations on parrot behavior, care, training, conservation, and nutrition.",
+      "display_title": "Parrot Stars Podcast",
+      "blurb": "Alexis and Avery discuss parrot care, training, behavior, and conservation. Topics include captive welfare and species endangerment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1752809111": {
       "topics": [
@@ -163493,10 +163898,30 @@
     },
     "1753036033": {
       "topics": [
-        "sports/golf"
+        "sports/golf",
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        },
+        {
+          "node": "craft",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep dives into golf equipment design, fitting, club history, and gear testing.",
+      "display_title": "Kick Point: The Golf Gear Show",
+      "blurb": "In-depth golf equipment coverage from Golf Monthly. Topics include club design, fitting, and gear testing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1753117762": {
       "topics": [
@@ -163611,7 +164036,22 @@
         "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ambient nature sounds designed to promote deep sleep, meditation, and relaxation.",
+      "display_title": "Peaceful Rain - Nature Sounds Sleep",
+      "blurb": "Soothing nature soundscapes including rain, streams, and natural ambiance for sleep and relaxation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1753828253": {
       "topics": [
@@ -163639,7 +164079,22 @@
         "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Thunderstorm and rain ambient sounds for sleep, meditation, and relaxation.",
+      "display_title": "Thunderstorm Tranquility - Rain Sounds",
+      "blurb": "Thunderstorm and rainfall ambient sounds for sleep and meditation. Calming soundscapes for peaceful rest.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1753829873": {
       "topics": [
@@ -163753,7 +164208,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA commentary and analysis from veteran players breaking down trades, games, and rumors.",
+      "display_title": "To The Baha",
+      "blurb": "NBA veterans including Theo Pinson and Raymond Felton break down games, trades, and rumors. Live commentary on basketball culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1754469851": {
       "topics": [
@@ -163823,10 +164293,30 @@
     },
     "1754870011": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly cozy game podcast with recommendations, reviews, and news.",
+      "display_title": "Slow Burn: A Cozy Game Podcast",
+      "blurb": "Pat, Min, and Payton discuss cozy games weekly. Recommendations, reviews, and game industry news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1755072372": {
       "topics": [
@@ -163949,7 +164439,29 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "30-year retrospective of Britpop era through interviews with Steve Lamacq and Jo Whiley.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1755770502": {
       "topics": [
@@ -163986,7 +164498,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with everyday runners sharing marathon training, running tips, and race experiences.",
+      "display_title": "The Average Runner",
+      "blurb": "Shayla interviews runners about marathons, ultras, and training journeys. Practical advice for runners of all levels.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1755975308": {
       "topics": [
@@ -164039,7 +164570,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with musicians and cultural figures; includes music and international stories.",
+      "display_title": "Live Wire Network",
+      "blurb": "International stories and music interviews from musicians and personalities. Covers 80s icons and contemporary artists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1756322834": {
       "topics": [
@@ -164069,7 +164615,22 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Calming bedtime stories featuring animal adventures with relaxation and breathing exercises.",
+      "display_title": "Cozy Critters",
+      "blurb": "Dougie Pickles and Miss Meow Meow guide children through animal-themed bedtime stories. Includes relaxation and breathing exercises.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1756571551": {
       "topics": [
@@ -164295,17 +164856,57 @@
     },
     "1757539273": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Snarky reality TV recap with neurodivergent perspective on drama and relationship dynamics.",
+      "display_title": "Surviving Reality",
+      "blurb": "Corey and Carly recap reality TV with humor and insight. Analysis of relationships, drama, and cultural moments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1757646055": {
       "topics": [
-        "comedy/interviews"
+        "comedy/interviews",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Twin brothers explore cultural differences between gay and straight experiences through humor.",
+      "display_title": "Twinnuendo",
+      "blurb": "Drew (drag queen) and Grant (former pastor) discuss their diverging lives and perspectives. Gay culture meets straight culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1757686789": {
       "topics": [
@@ -164400,7 +165001,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama about a vivid dreaming app that becomes a nightmare for users.",
+      "display_title": "Elucidity",
+      "blurb": "Journalist Jessica Suzuki investigates a vivid dreaming app gone wrong. A suspenseful audio drama about technology and consciousness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1757979012": {
       "topics": [
@@ -164449,10 +165065,33 @@
     },
     "1758435793": {
       "topics": [
-        "philosophy"
+        "philosophy/ideas",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Essays and discussions on philosophy, psychology, politics, and consciousness.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1758531943": {
       "topics": [
@@ -164552,10 +165191,29 @@
     "1759012057": {
       "topics": [
         "health/nutrition",
-        "food"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-backed nutrition strategies for endurance athletes; covers fueling, hydration, and performance.",
+      "display_title": "Endurance Eats",
+      "blurb": "Registered dietitian Alex Larson covers nutrition for endurance athletes. Topics include fueling strategies and body composition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1759055273": {
       "topics": [
@@ -164701,10 +165359,30 @@
     },
     "1759858765": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Collection of original sci-fi and horror stories narrated by creator Ryan Weiler.",
+      "display_title": "Rule of Nines",
+      "blurb": "Ryan Weiler narrates original horror and sci-fi stories. Ranges from psychological horror to speculative fiction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-2fcbf178",
+      "classified_at": "2026-08-11T08:30:09.226Z"
     },
     "1759876087": {
       "topics": [
