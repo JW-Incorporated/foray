@@ -60595,13 +60595,1091 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-11-5747b083",
       "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1723090226": {
+      "topics": [
+        "nature/earth-science",
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sustainable living podcast covering permaculture, foraging, and practical skills for resilience.",
+      "display_title": "Reskillience",
+      "blurb": "Weekly conversations on sustainable skills—permaculture, foraging, and living beyond modern systems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1723245542": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focus on USPSA competition, practical shooting, hunting, and precision rifle sports.",
+      "display_title": "Not Another Shooting Show",
+      "blurb": "Hosted by competitive shooters; covers USPSA, practical rifle, hunting, and shooting culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1723780280": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dedicated to women's tennis (WTA) with feminist and queer perspective on the sport.",
+      "display_title": "Out Wide Podcast",
+      "blurb": "Feminist, queer-centered commentary on women's tennis; covers Grand Slams and WTA culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1724209160": {
+      "topics": [
+        "health",
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mayo Clinic medical advice covering health topics from ADHD to chronic inflammation.",
+      "display_title": "Mayo Clinic Health Matters",
+      "blurb": "Medical experts address common health questions: ADHD, bunions, inflammation, cancer topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1724481206": {
+      "topics": [
+        "music/theory-production",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Musicians discussing production, harmony, composition, and vocal performance techniques.",
+      "display_title": "Dead Wax",
+      "blurb": "Musician hosts break down production, harmony, composition, and theory with guest friends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1724529434": {
+      "topics": [
+        "science/physics",
+        "paranormal",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.75
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.7
+        },
+        {
+          "node": "space",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "UFO/UAP exploration through science and physics lens; credible sightings and disclosure.",
+      "display_title": "Dear People of Earth",
+      "blurb": "Examines UFO/UAP phenomena through physics and credible accounts from witnesses and experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1724729558": {
+      "topics": [
+        "sports",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Behind-the-scenes look at sports life; couple (golfer and cricketer) discussing travel and careers.",
+      "display_title": "Chatting Balls",
+      "blurb": "Golf content creator and England cricketer share honest insights on sports, travel, and couples life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1724804420": {
+      "topics": [
+        "news/daily",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily agriculture news and commodity market updates for farmers and agribusiness.",
+      "display_title": "Successful Farming Daily",
+      "blurb": "Daily ag headlines, commodity market moves, and weather for farmers and agribusiness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1724954936": {
+      "topics": [
+        "sports/golf",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf instruction and fundamentals for beginners covering swing, handicap, and course management.",
+      "display_title": "Golf For Beginners Podcast",
+      "blurb": "Beginner golf instruction covering swing basics, handicap, chipping, and course management.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1725228050": {
+      "topics": [
+        "religion/spirituality",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Spirituality and consciousness focused on energy fields, meditation, and higher awareness.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1725552098": {
+      "topics": [
+        "news/tech",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI news and developments covering tools, research, and industry trends.",
+      "display_title": "AI Space",
+      "blurb": "Keeps you current on AI news, tools, research, and industry trends shaping technology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1725597608": {
+      "topics": [
+        "craft/woodworking"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Knife making techniques, tools, testing, and craftspeople conversations.",
+      "display_title": "Triple-T for Knife Makers",
+      "blurb": "Tools, tips, and shop talk from knifemakers covering techniques and craft traditions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1725642176": {
+      "topics": [
+        "hobbies",
+        "culture/design",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Watch industry operations, retail, manufacturing, and luxury goods business.",
+      "display_title": "Openwork: Inside the Watch Industry",
+      "blurb": "Unfiltered look at watch industry business, design, manufacturing, and retail strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1725911780": {
+      "topics": [
+        "nature/pets",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Retriever training, field trials, working tests, and hunting dog education.",
+      "display_title": "Global Retriever Podcast",
+      "blurb": "Honest conversations on retriever training, field trials, and hunting culture globally.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1726080800": {
+      "topics": [
+        "kids-family/parenting",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Evidence-based parenting strategies and psychology covering child behavior and development.",
+      "display_title": "The Whole Parent Podcast",
+      "blurb": "Evidence-based parenting strategies; covers behavior, mental health, and family dynamics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1726147844": {
+      "topics": [
+        "culture/books",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Writing process and techniques; two friends attempting to finish their first novels.",
+      "display_title": "Lazy Girls Writing Club",
+      "blurb": "Two friends navigate writing craft and finish their debut novels with humor and honesty.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1726209584": {
+      "topics": [
+        "medicine",
+        "medicine/biology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with researchers about diabetes research from American Diabetes Association journal.",
+      "display_title": "DiabetesBio",
+      "blurb": "Interviews with diabetes researchers on latest findings in the ADA's flagship journal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1726289174": {
+      "topics": [
+        "business/marketing",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Social media marketing, personal branding, and growth strategies for female entrepreneurs.",
+      "display_title": "Call Her Creator",
+      "blurb": "Social media strategy and personal branding for ambitious women building influence and income.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1726467548": {
+      "topics": [
+        "education/how-to",
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tarot card meanings and symbolism taught through structured, bite-sized lessons.",
+      "display_title": "Learn and Memorize Tarot Cards",
+      "blurb": "Quick tarot lessons on card symbolism, meanings, and intuitive interpretation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1726663850": {
+      "topics": [
+        "craft",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fussy cutting, quilting, patchwork design, and fiber arts community.",
+      "display_title": "Fussy Cutters Club",
+      "blurb": "Quilting and fussy cutting conversations with designers and fellow fiber artists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1726825538": {
+      "topics": [
+        "business/founders",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coaching business strategy, lead generation, and personal development for entrepreneurs.",
+      "display_title": "Coaching Inc with Tom Krol",
+      "blurb": "Business strategies for coaches and consultants: leads, sales, marketing, and mindset.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1726944872": {
+      "topics": [
+        "business/non-profit",
+        "health",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Healthcare patient advocacy, access barriers, and policy impact on patient outcomes.",
+      "display_title": "Patient Advocacy Voices",
+      "blurb": "Patient advocacy leaders discuss healthcare access, policy, and patient-centered care.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1726947236": {
+      "topics": [
+        "education/language-learning",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "BBC English language instruction for workplace communication and professional settings.",
+      "display_title": "Learning English For Work",
+      "blurb": "BBC teaching business English for international workplaces: emails, pitching, feedback.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1727186270": {
+      "topics": [
+        "science",
+        "medicine/neuroscience",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientists sharing career paths, research experiences, and challenges in biomedical work.",
+      "display_title": "The Lab Coats & Life Podcast",
+      "blurb": "Scientists discuss careers, research challenges, burnout, and thriving in life sciences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1727260478": {
+      "topics": [
+        "religion/judaism",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish culture, identity, and contemporary issues through engaging conversations.",
+      "display_title": "Wondering Jews with Mijal and Noam",
+      "blurb": "Thought-provoking Jewish culture, identity, and ideas for curious and seasoned minds.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1727568614": {
+      "topics": [
+        "relationships",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motherhood, relationships, and cultural issues; unfiltered conversations between friends.",
+      "display_title": "Ok Mom Podcast",
+      "blurb": "Two moms discuss motherhood, culture, relationships, and life with humor and honesty.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1727688128": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional Women's Hockey League (PWHL) coverage and player interviews.",
+      "display_title": "Jocks in Jills",
+      "blurb": "PWHL coverage by Olympic gold medalist and broadcaster; player and coach interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1727953772": {
+      "topics": [
+        "nature/pets",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog behavior and training; trust-based methods for anxious, reactive, and fearful dogs.",
+      "display_title": "Beyond Obedience",
+      "blurb": "Trust-based dog training for reactive, anxious dogs; behavior understanding and bonding.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1728186194": {
+      "topics": [
+        "culture/pop-culture",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment gossip and celebrity culture discussion in Spanish.",
+      "display_title": "CON TODA PAZ",
+      "blurb": "Spanish-language entertainment and celebrity gossip with cultural commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1728315608": {
+      "topics": [
+        "religion/spirituality",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations with spiritually awakening people; non-dualism and contemplative practice.",
+      "display_title": "Buddha at the Gas Pump",
+      "blurb": "Conversations with spiritually awakening people exploring non-duality and consciousness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1728487244": {
+      "topics": [
+        "tv-film/interviews",
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film/TV industry leaders discussing storytelling, faith, and creative process.",
+      "display_title": "The Storytellers with Andrew Erwin",
+      "blurb": "Award-winning filmmaker interviews artists on storytelling, faith, and redemption themes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1728521150": {
+      "topics": [
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game reviews, previews, and industry news across PlayStation, Xbox, Nintendo.",
+      "display_title": "Kinda Funny Gamescast",
+      "blurb": "Weekly game reviews and analysis; covers PlayStation, Xbox, Nintendo, and indie games.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1728575834": {
+      "topics": [
+        "tv-film/reviews",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV and film recaps centered on Black creators and representation in media.",
+      "display_title": "Recap Kickback",
+      "blurb": "Witty TV and film recaps highlighting Black media and underrepresented creators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1728690254": {
+      "topics": [
+        "music",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep dives into Tori Amos' musical legacy, albums, and cultural impact.",
+      "display_title": "Introverted But Willing to Discuss Tori Amos",
+      "blurb": "Three lifelong fans analyze Tori Amos' music, albums, and cultural legacy in depth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1728724856": {
+      "topics": [
+        "medicine/neuroscience",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neurology clinical education and CME from American Academy of Neurology.",
+      "display_title": "Continuum Audio",
+      "blurb": "Neurology CME conversations covering stroke, sleep disorders, and neurological conditions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1728921446": {
+      "topics": [
+        "science",
+        "medicine/neuroscience"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Salk Institute research across neuroscience, genetics, immunology, and plant biology.",
+      "display_title": "Beyond Lab Walls",
+      "blurb": "Salk scientists discuss cutting-edge research in neuroscience, genetics, and biology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1729024382": {
+      "topics": [
+        "culture/performing-arts",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adult ballet training; technique, artistry, and mindset for returning or new dancers.",
+      "display_title": "After Class: The Adult Ballet Podcast",
+      "blurb": "For adult ballet dancers: technique, artistry, pointe journey, and mindset topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1729031630": {
+      "topics": [
+        "tv-film/animation",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Anime Haikyuu analyzed through intersectional and queer perspective.",
+      "display_title": "Fly: A Queer Haikyuu Podcast",
+      "blurb": "Deep analysis of anime Haikyuu through intersectional and queer critical lenses.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1729034774": {
+      "topics": [
+        "sports/fantasy",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "UFC betting analytics and predictions using data-driven model grades and matchup analysis.",
+      "display_title": "Fighting with Numbers",
+      "blurb": "UFC betting through analytics; data-driven predictions and fighter performance analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1729251944": {
+      "topics": [
+        "health/nutrition",
+        "kids-family/parenting"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.95
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Postpartum nutrition, breastfeeding, and health for mothers.",
+      "display_title": "Nutrition for Mamas",
+      "blurb": "Registered dietitian covers postpartum nutrition, breastfeeding, and maternal wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-d7771941",
+      "classified_at": "2026-08-11T16:51:13.863Z"
     }
   },
-  "built_at": "2026-08-11T08:51:38.693Z",
+  "built_at": "2026-08-11T16:51:13.863Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-11-5747b083",
+    "last_batch_id": "fresh-2026-08-11-d7771941",
     "last_batch_tier": 1
   }
 }
