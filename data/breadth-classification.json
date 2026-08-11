@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-11T00:23:54.868Z",
+  "built_at": "2026-08-11T08:24:10.048Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-11-25e67a91",
+    "last_batch_id": "fresh-2026-08-11-ca77de48",
     "last_batch_tier": 1
   },
   "entries": {
@@ -162952,7 +162952,23 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused Cubs coverage; analysis and insider info on team trades, players, playoff contention.",
+      "display_title": null,
+      "blurb": "Chicago Cubs analysis, trades, and playoff coverage.",
+      "display_copy_ok": true,
+      "display_copy_notes": [],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1745786646": {
       "topics": [
@@ -162978,10 +162994,31 @@
     },
     "1745980011": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ancient stoic philosophy applied to modern mental resilience and tranquility.",
+      "display_title": "The Stoic Podcast",
+      "blurb": "Ancient stoic wisdom and techniques for mental resilience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z",
+      "display_copy_notes": []
     },
     "1746040424": {
       "topics": [
@@ -163069,10 +163106,36 @@
     },
     "1746228093": {
       "topics": [
-        "philosophy"
+        "paranormal",
+        "history",
+        "culture/mythology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.7
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Conspiracy and alternative history; blends paranormal, conspiracies, hidden histories.",
+      "display_title": "Six Sensory Podcast",
+      "blurb": "Conspiracies, alternative history, and speculative theories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z",
+      "display_copy_notes": []
     },
     "1746240694": {
       "topics": [
@@ -163157,17 +163220,52 @@
     },
     "1746480567": {
       "topics": [
-        "craft"
+        "craft/woodworking"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused woodworking craft podcast.",
+      "display_title": "Woodwork Wizardry",
+      "blurb": "Woodworking projects, techniques, and craftsman insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1746527331": {
       "topics": [
-        "music"
+        "music",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Series about 100 notable guitarists; music interviews and analysis.",
+      "display_title": "100 Guitarists",
+      "blurb": "Profiles and stories of significant guitarists across music history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1746533244": {
       "topics": [
@@ -163230,10 +163328,31 @@
     },
     "1746656703": {
       "topics": [
-        "food"
+        "food",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coffee-focused podcast; culture, science, and appreciation of coffee.",
+      "display_title": "It's Just Coffee",
+      "blurb": "Coffee culture, brewing science, and stories behind the beverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z",
+      "display_copy_notes": []
     },
     "1746776326": {
       "topics": [
@@ -163352,17 +163471,57 @@
     },
     "1747586511": {
       "topics": [
-        "religion/islam"
+        "religion/islam",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.2
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic spiritual development for adults; teachings on faith, resilience, character.",
+      "display_title": "Thirty & Up",
+      "blurb": "Islamic spiritual teachings and personal development guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1747587639": {
       "topics": [
-        "religion/islam"
+        "religion/islam",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quran study and exploration specifically for women; religious education.",
+      "display_title": "Exploring the Quran for Women",
+      "blurb": "Islamic education and Quranic interpretation tailored for women.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1747587869": {
       "topics": [
@@ -163395,10 +163554,30 @@
     },
     "1747624455": {
       "topics": [
-        "sports/wrestling"
+        "sports/wrestling",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling-themed action figures and collectibles; hobby and fan culture.",
+      "display_title": "The FigGuys",
+      "blurb": "Wrestling action figures, collectibles, and memorabilia discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1747668918": {
       "topics": [
@@ -163434,8 +163613,23 @@
       "topics": [
         "nature"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Limited English content available to assess; appears nature-focused.",
+      "display_title": "恰恰小报",
+      "blurb": "Nature-related content in Chinese.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1747873448": {
       "topics": [
@@ -163505,17 +163699,57 @@
     },
     "1747994475": {
       "topics": [
+        "personal-journals",
         "philosophy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.6
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Limited signal; appears to be personal/conversational with philosophical bent.",
+      "display_title": "The Nathan Jacobs Podcast",
+      "blurb": "Personal conversations and reflections on life and ideas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1748126205": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion and beauty discussions; cultural commentary.",
+      "display_title": "Mess World",
+      "blurb": "Fashion, beauty, and lifestyle commentary and discussions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1748200085": {
       "topics": [
@@ -163573,7 +163807,22 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual hangout comedy; improv and unscripted banter.",
+      "display_title": "We Didn't Read It",
+      "blurb": "Unscripted comedy and casual conversations between friends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1748452441": {
       "topics": [
@@ -163681,10 +163930,30 @@
     },
     "1749169659": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime cases and commentary by journalist; news-focused.",
+      "display_title": "Drop Dead Serious",
+      "blurb": "True crime cases and investigation analysis with news commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1749170557": {
       "topics": [
@@ -163711,10 +163980,30 @@
     },
     "1749365349": {
       "topics": [
-        "fiction/drama"
+        "fiction/drama",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic radio drama series; western fiction narratives.",
+      "display_title": "Gunsmoke",
+      "blurb": "Classic western drama and storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1749378115": {
       "topics": [
@@ -163795,10 +164084,30 @@
     },
     "1749770019": {
       "topics": [
-        "gaming"
+        "gaming",
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Portable gaming hardware, consoles, and gaming tech discussion.",
+      "display_title": "NPC: Next Portable Console",
+      "blurb": "Portable gaming hardware, consoles, and gaming technology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1749816300": {
       "topics": [
@@ -163956,10 +164265,29 @@
     "1750539873": {
       "topics": [
         "tv-film/history",
-        "history"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film history analysis; retrospective look at best films across decades.",
+      "display_title": "The 5 Best Films of Every Year",
+      "blurb": "Retrospective film criticism and analysis across cinema history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1750544728": {
       "topics": [
@@ -164009,10 +164337,30 @@
     },
     "1750781223": {
       "topics": [
+        "hobbies",
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "LEGO collecting, building, and fan culture.",
+      "display_title": "London Calling - LEGO Podcast",
+      "blurb": "LEGO collecting, construction, and fan community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1750792597": {
       "topics": [
@@ -164164,11 +164512,30 @@
     },
     "1751285685": {
       "topics": [
-        "news",
-        "business"
+        "news/commentary",
+        "economics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and finance news analysis in Chinese.",
+      "display_title": "经济财经新闻洞察",
+      "blurb": "Financial news and economic analysis in Chinese.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1751292386": {
       "topics": [
@@ -164337,10 +164704,30 @@
     },
     "1751988993": {
       "topics": [
-        "music"
+        "music",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Folk music interviews and artist profiles.",
+      "display_title": "Basic Folk",
+      "blurb": "Folk music interviews and artist conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1752020494": {
       "topics": [
@@ -164487,12 +164874,35 @@
     },
     "1752486249": {
       "topics": [
-        "medicine/biology",
         "science",
+        "medicine/biology",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Life sciences, biology, and scientific research discussion.",
+      "display_title": "Giants Shoulder",
+      "blurb": "Science, biology, and natural world research and discovery.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1752507039": {
       "topics": [
@@ -164500,7 +164910,26 @@
         "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship and building thriving communities.",
+      "display_title": "People Magic",
+      "blurb": "Building communities and entrepreneurship strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1752518860": {
       "topics": [
@@ -164519,10 +164948,30 @@
     },
     "1752578523": {
       "topics": [
-        "automotive"
+        "automotive",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive discussion and car culture.",
+      "display_title": "The Reckon Yard Podcast",
+      "blurb": "Automotive talk and car culture discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1752596006": {
       "topics": [
@@ -164536,7 +164985,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket-related stories and analysis.",
+      "display_title": "Stories After Stumps",
+      "blurb": "Cricket stories and analysis from the sport.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1752639453": {
       "topics": [
@@ -164813,10 +165277,31 @@
     },
     "1753920321": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/education",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "History education for kids using cultural references.",
+      "display_title": "History Ignited",
+      "blurb": "History education for young audiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z",
+      "display_copy_notes": []
     },
     "1754023689": {
       "topics": [
@@ -164870,10 +165355,30 @@
     },
     "1754392239": {
       "topics": [
+        "nature/ocean-science",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ocean science and marine life discussion.",
+      "display_title": "The Podcast Aquatic",
+      "blurb": "Ocean science and marine life exploration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1754416156": {
       "topics": [
@@ -164922,10 +165427,30 @@
     },
     "1754569605": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist spiritual teachings and conversations.",
+      "display_title": "Dakini Conversations",
+      "blurb": "Buddhist philosophy and spiritual teachings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1754592060": {
       "topics": [
@@ -165102,10 +165627,30 @@
     },
     "1755648129": {
       "topics": [
-        "sports/volleyball"
+        "sports/volleyball",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball coaching and organization podcast.",
+      "display_title": "The MNVBCA Pod",
+      "blurb": "Volleyball coaching and development discussions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1755707344": {
       "topics": [
@@ -165132,10 +165677,30 @@
     },
     "1755803199": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book history, literary culture, and book-related discussions.",
+      "display_title": "Secret Life of Books",
+      "blurb": "Book history, literary culture, and stories behind literature.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1755859718": {
       "topics": [
@@ -165246,7 +165811,26 @@
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedic fantasy storytelling and humor.",
+      "display_title": "G.O.B.L.I.N.S",
+      "blurb": "Comedic fantasy stories and humorous storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1756398416": {
       "topics": [
@@ -165479,7 +166063,22 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth football analysis and tactical discussion.",
+      "display_title": "Football 301",
+      "blurb": "Advanced football analysis and tactical breakdown.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1757750771": {
       "topics": [
@@ -165490,10 +166089,35 @@
     },
     "1757803155": {
       "topics": [
-        "tv-film/interviews"
+        "culture/art",
+        "culture/performing-arts",
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Creative process discussion and artistic interviews.",
+      "display_title": "The Sandbox",
+      "blurb": "Creative process discussion and interviews with artists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1757806781": {
       "topics": [
@@ -165553,10 +166177,30 @@
     },
     "1757987469": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "American Choral Directors Association; choral music and singing.",
+      "display_title": "ACDA Podcast",
+      "blurb": "Choral music, singing, and vocal performance discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1758062954": {
       "topics": [
@@ -165594,10 +166238,34 @@
     "1758195111": {
       "topics": [
         "music",
+        "music/classical",
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "music/classical",
+          "confidence": 0.4
+        },
+        {
+          "node": "history",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jazz music history and analysis.",
+      "display_title": "The Gone Sounds of Jazz",
+      "blurb": "Jazz history, music analysis, and artist profiles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1758386238": {
       "topics": [
@@ -165645,10 +166313,30 @@
     },
     "1758761679": {
       "topics": [
-        "relationships"
+        "relationships",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships and mental health discussion in Chinese.",
+      "display_title": "周慕姿放心說",
+      "blurb": "Relationships and mental wellness discussion in Chinese.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1758825060": {
       "topics": [
@@ -165787,10 +166475,30 @@
     },
     "1759446975": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scams and fraud investigation; true crime focused.",
+      "display_title": "Scamtown",
+      "blurb": "Investigation of scams, fraud, and criminal deception.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1759449594": {
       "topics": [
@@ -165845,10 +166553,30 @@
     },
     "1759727127": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "culture/mythology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu devotional and spiritual content.",
+      "display_title": "Divya Stotralu",
+      "blurb": "Hindu devotional and spiritual teachings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1759848794": {
       "topics": [
@@ -165899,7 +166627,22 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball coaching, technique, and sports analysis.",
+      "display_title": "That Volleyball Guy",
+      "blurb": "Volleyball technique, coaching, and sports analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ca77de48",
+      "classified_at": "2026-08-11T08:22:56.195Z"
     },
     "1760056996": {
       "topics": [
