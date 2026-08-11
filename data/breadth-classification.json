@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-11T08:57:35.224Z",
+  "built_at": "2026-08-11T16:58:04.777Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-11-acafdf91",
+    "last_batch_id": "fresh-2026-08-11-9a75b39f",
     "last_batch_tier": 1
   },
   "entries": {
@@ -170310,16 +170310,52 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Torah portion recitations using Haftorah texts, traditional Jewish liturgical content.",
+      "display_title": "Torat Imecha Haftorah",
+      "blurb": "Weekly Haftorah recitations exploring Torah portions and Jewish scripture study.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1784797151": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "medicine",
+        "business/startups",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations on AI-driven drug discovery, pharma innovation, autonomous labs, molecular design.",
+      "display_title": "Tech and Drugs",
+      "blurb": "Expert interviews on AI, data, and automation transforming pharmaceutical and biotech R&D.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1784834834": {
       "topics": [
@@ -170425,7 +170461,21 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep analysis of stand-up comedy craft: joke writing, workshopping, performance technique.",
+      "display_title": "Messed-Up to Set-Ups",
+      "blurb": "Stand-up comedians dissecting joke writing, repair, and the mechanics of their craft.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1785440343": {
       "topics": [
@@ -170458,10 +170508,29 @@
     },
     "1785673013": {
       "topics": [
-        "sports/rugby"
+        "sports/rugby",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coaching insights, player development, tactics, decision-making in rugby at all levels.",
+      "display_title": "The Rugby Institute Coaching Podcast",
+      "blurb": "Expert coaches share rugby tactics, skill development, and team management strategies.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1785675041": {
       "topics": [
@@ -170527,7 +170596,25 @@
         "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Raw recovery stories, addiction, incarceration, mental health from lived-experience perspectives.",
+      "display_title": "Get a Grip Podcast",
+      "blurb": "Candid stories of addiction recovery, mental health struggles, and transformation with humor.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1786184277": {
       "topics": [
@@ -170569,10 +170656,29 @@
     },
     "1786362161": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.88
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's health expert discussing hormones, inflammation, autoimmune conditions, burnout, wellness.",
+      "display_title": "The Dr. Brighten Show",
+      "blurb": "Women's health conversations covering hormones, inflammation, ADHD, autism, and wellbeing.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1786395086": {
       "topics": [
@@ -170670,7 +170776,25 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.92
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marathon legend Paula Radcliffe hosts energetic weekly running community and training.",
+      "display_title": "Paula's Run Club",
+      "blurb": "World-record marathoner Paula Radcliffe leads engaging weekly running conversations and training.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1786780832": {
       "topics": [
@@ -170761,7 +170885,21 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep tennis analysis covering tournaments, players, rankings, match breakdowns, and drama.",
+      "display_title": "Christian's Court",
+      "blurb": "Comprehensive tennis news and analysis covering tournaments, players, and WTA/ATP action.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1787361016": {
       "topics": [
@@ -170773,24 +170911,81 @@
     },
     "1787395763": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.92
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Media criticism and royal news analysis with fearless examination of narratives.",
+      "display_title": "Off With Their Headlines",
+      "blurb": "Fresh media criticism and royal news dissection with incisive cultural commentary.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1787402411": {
       "topics": [
-        "tv-film/animation"
+        "tv-film/animation",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.88
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic anime series retrospectives in Arabic, covering nostalgia-driven shows from childhood.",
+      "display_title": "dez podcast",
+      "blurb": "Classic anime reviews and discussions in Arabic, celebrating beloved shows from previous generations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1787457449": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.92
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real estate agents learn social media marketing, personal branding, client attraction strategies.",
+      "display_title": "Modern Agent Marketing Girls",
+      "blurb": "Social media and personal branding strategies for real estate agents to attract clients.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1787472224": {
       "topics": [
@@ -170819,7 +171014,21 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis legend Boris Becker and player Andrea Petkovic analyze tournaments, rankings, players.",
+      "display_title": "Becker Petkovic",
+      "blurb": "Tennis legends Boris Becker and Andrea Petkovic provide expert analysis of Grand Slams and professional tennis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1787567460": {
       "topics": [
@@ -170858,7 +171067,25 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language instruction through theatrical performance, grammar, vocabulary, dialogue, immersion.",
+      "display_title": "French for Beginners",
+      "blurb": "French language instruction through theatrical scenes featuring conversational lessons and grammar.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1787679618": {
       "topics": [
@@ -170913,21 +171140,73 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "12-hour ambient ocean sound recordings for meditation, sleep, relaxation, focus.",
+      "display_title": "Ocean Sounds - 12 Hours",
+      "blurb": "12 hours of soothing ocean wave recordings perfect for meditation, sleep, or focus.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1787771513": {
       "topics": [
-        "nature/pets"
+        "health",
+        "nature/pets",
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.72
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Functional medicine nurse discusses natural health for people and pets, holistic healing.",
+      "display_title": "Raw Remedies",
+      "blurb": "Functional health approach covering natural remedies, nutrition, and wellness for people and pets.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1787796281": {
       "topics": [
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime deep dives covering notorious cases, serial killers, mysteries, investigations.",
+      "display_title": "Crime, Conspiracy, Cults and Murder",
+      "blurb": "True crime investigations covering murders, conspiracies, cults, and unsolved mysteries.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1787800910": {
       "topics": [
@@ -171023,22 +171302,68 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DC United focused soccer commentary and analysis, MLS discussion, transfer news.",
+      "display_title": "Capital City Soccer Show",
+      "blurb": "DC United analysis and MLS discussion from fans passionate about the soccer team.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1788064883": {
       "topics": [
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Colorguard sport coverage: performers, instructors, judges, DCI and WGI competitions.",
+      "display_title": "Flags in a Gym: A Colorguard Podcast",
+      "blurb": "Colorguard sport discussions featuring performers, instructors, and competition coverage.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1788081065": {
       "topics": [
         "tv-film/history",
-        "history"
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic film analysis and retrospectives covering iconic movies, makeup, acting, special effects.",
+      "display_title": "Rewind Classic Movies",
+      "blurb": "Classic film analysis and retrospectives exploring iconic movies, acting, and production history.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1788131395": {
       "topics": [
@@ -171081,14 +171406,47 @@
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Couples' intimate conversations on connection, communication, trust, and lifestyle exploration.",
+      "display_title": "Two Plus Two: The Swinger Podcast",
+      "blurb": "Couples discuss intimacy, communication, trust, and deeper connections in relationships.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1788200711": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.88
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Curly hairstylists share salon insights, business advice, industry trends, niche strategies.",
+      "display_title": "Curl Talk Unfiltered",
+      "blurb": "Curly hairstylists discuss salon business, trends, niche specialization, and industry advice.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1788204294": {
       "topics": [
@@ -171139,7 +171497,21 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hanuman Chalisa sacred text recitation in Telugu, devotional Hindu spiritual practice.",
+      "display_title": "Hanuman Chalisa by Samavedham Shanmukha Sharma",
+      "blurb": "Recitation and study of the Hanuman Chalisa, a central devotional text in Hinduism.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1788293348": {
       "topics": [
@@ -171150,10 +171522,29 @@
     },
     "1788335471": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.88
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert analysis on science communication, public health trust, vaccines, COVID, policy.",
+      "display_title": "Why Should I Trust You?",
+      "blurb": "Critical examination of science communication, public health trust, and institutional credibility.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1788370236": {
       "topics": [
@@ -171493,7 +171884,21 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ospreys rugby fans discuss team performance, transfers, regional competition, signings.",
+      "display_title": "The Ospreys Rugby Supporter Podcast",
+      "blurb": "Welsh rugby team analysis and fan commentary on Ospreys performance and transfers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1789397163": {
       "topics": [
@@ -171554,10 +171959,29 @@
     },
     "1789625045": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.92
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NHL wives discuss player life, travel, family dynamics, exclusive behind-the-scenes access.",
+      "display_title": "Never Offside with Julie & Cat",
+      "blurb": "NHL wives share candid stories of player life, travel challenges, and family dynamics.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1789631604": {
       "topics": [
@@ -171666,7 +172090,21 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Shiv Puran sacred text recitation and study in Hindi, detailed mythological narratives.",
+      "display_title": "Shiv Puran Katha in Hindi",
+      "blurb": "Chapter-by-chapter recitation and study of the Shiv Puran Hindu sacred text in Hindi.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1790408466": {
       "topics": [
@@ -171803,7 +172241,21 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "LA improv duo experimenting with different improvisational forms, live performances, comedy.",
+      "display_title": "Anna and Isabella Do Improv",
+      "blurb": "LA-based improv duo experimenting with varied comedy forms and live performance.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1790724880": {
       "topics": [
@@ -172049,7 +172501,21 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigations, serial killers, unsolved cases, limited series, cold cases.",
+      "display_title": "Crime House 24/7",
+      "blurb": "Daily true crime investigations covering serial killers, cold cases, and unsolved mysteries.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1791817752": {
       "topics": [
@@ -172107,10 +172573,29 @@
     },
     "1791819389": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.92
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horticulturist tells plant stories, history, care tips, gardening techniques, botanical knowledge.",
+      "display_title": "Stories from the Garden",
+      "blurb": "Award-winning horticulturist shares plant history, care advice, and gardening stories.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1791832041": {
       "topics": [
@@ -172163,7 +172648,25 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.92
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversational Japanese lessons through dialogue, grammar explanations, pronunciation practice.",
+      "display_title": "Coffee Break Japanese",
+      "blurb": "Conversational Japanese language instruction through dialogue, grammar, and cultural immersion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1792018785": {
       "topics": [
@@ -172200,7 +172703,21 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.94
+        }
+      ],
+      "needs_review": false,
+      "rationale": "San Diego Padres coverage: game analysis, trades, roster moves, playoff preparation.",
+      "display_title": "Friar Territory",
+      "blurb": "San Diego Padres analysis covering trades, games, roster decisions, and MLB action.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1792177284": {
       "topics": [
@@ -172246,14 +172763,46 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly stock picks, market analysis, economic outlook, dividend stocks, investor guidance.",
+      "display_title": "The Morning Filter",
+      "blurb": "Weekly market strategy, stock recommendations, and economic insights for investors.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1792283951": {
       "topics": [
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigations, missing persons, serial cases, forensic analysis, cold cases.",
+      "display_title": "Clues",
+      "blurb": "True crime investigations uncovering details, evidence, and mysteries in notable cases.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1792288235": {
       "topics": [
@@ -172382,7 +172931,21 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis podcast with match analysis, player gossip, tournament coverage, humor, opinions.",
+      "display_title": "Cherry Tennis Podcast",
+      "blurb": "Tennis news, match analysis, and player commentary with a humorous, casual perspective.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1792925325": {
       "topics": [
@@ -172397,7 +172960,21 @@
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.94
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paramahansa Yogananda teachings on meditation, spirituality, Kriya Yoga, inner peace.",
+      "display_title": "The Wisdom of Paramahansa Yogananda",
+      "blurb": "Spiritual teachings on meditation, inner peace, and self-realization from Yogananda's wisdom.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1793077667": {
       "topics": [
@@ -172502,10 +173079,29 @@
     },
     "1793447201": {
       "topics": [
-        "medicine"
+        "medicine",
+        "medicine/neuroscience"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cardiac anesthesia video education, TEE ultrasound, case studies, surgical applications.",
+      "display_title": "TEE Time",
+      "blurb": "Medical video education on transesophageal echocardiography for anesthesia and cardiac care.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1793498810": {
       "topics": [
@@ -172531,10 +173127,29 @@
     },
     "1793616053": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.82
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Local TV weatherperson discusses beauty, thrifting, local culture, lifestyle topics informally.",
+      "display_title": "Leslie's Lowedown on Life",
+      "blurb": "Local broadcaster discusses beauty trends, lifestyle, and community stories informally.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1793644263": {
       "topics": [
@@ -172585,12 +173200,29 @@
     },
     "1793802899": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "medicine/neuroscience",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.88
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neurologist discusses migraine genetics, treatment protocols, precision medicine approaches.",
+      "display_title": "Migraine Relief Code",
+      "blurb": "Neurologist shares genetic testing and precision medicine approaches to migraine management.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1793806969": {
       "topics": [
@@ -172663,14 +173295,42 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "12-hour ambient rain and thunder sound recordings for meditation, sleep, relaxation.",
+      "display_title": "Rain and Thunder Storms Podcast",
+      "blurb": "Soothing rain and thunder recordings for meditation, sleep, and stress relief.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1794012065": {
       "topics": [
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Theoretical physics and mathematics discussions with leading researchers on fundamental science.",
+      "display_title": "Phymaths podcast",
+      "blurb": "Interviews with theoretical physicists on cutting-edge physics and mathematical research.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-9a75b39f",
+      "classified_at": "2026-08-11T16:58:04.777Z"
     },
     "1794015324": {
       "topics": [
