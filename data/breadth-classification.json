@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-11T08:30:09.226Z",
+  "built_at": "2026-08-11T16:33:34.941Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-11-2fcbf178",
+    "last_batch_id": "fresh-2026-08-11-7dcb7a0a",
     "last_batch_tier": 1
   },
   "entries": {
@@ -165427,10 +165427,30 @@
     },
     "1760044789": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion and pageantry coaching with competitive interview preparation and stage presence.",
+      "display_title": "The Pageant Master Class",
+      "blurb": "Expert guidance on pageant competition strategy, stage presence, and interview techniques from a former Miss South Carolina USA.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1760045595": {
       "topics": [
@@ -165556,10 +165576,30 @@
     },
     "1760462215": {
       "topics": [
-        "tv-film/animation"
+        "personal-journals",
+        "culture/pop-culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal monologue podcast on culture, lifestyle, and life lessons in Tamil/Malayalam.",
+      "display_title": "Jannal Veliye Japan",
+      "blurb": "Conversational podcast exploring culture, kindness, and personal growth through the host's reflections.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1760521161": {
       "topics": [
@@ -165672,7 +165712,22 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Complete audiobook of classic children's story with timeless themes of friendship.",
+      "display_title": "Winnie the Pooh",
+      "blurb": "Audiobook of A.A. Milne's classic children's story about a bear and friends in the Hundred Acre Wood.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1761335684": {
       "topics": [
@@ -165734,24 +165789,79 @@
     },
     "1761471463": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.75
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form interviews on UFOs, consciousness, mysticism, and fringe philosophy topics.",
+      "display_title": "Neon Galactic with James Faulk",
+      "blurb": "Interviews exploring UAPs, consciousness, psychedelics, NDEs, and alternative perspectives on reality.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1761538111": {
       "topics": [
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "South African rugby commentary and analysis with player interviews and tournament coverage.",
+      "display_title": "The Good, The Bad & The Rugby",
+      "blurb": "South African rugby podcast with expert analysis, player interviews, and championship coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1761659461": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese RPG game discussion, tropes, recommendations, and voice acting interviews.",
+      "display_title": "The JRPG Pursuit",
+      "blurb": "Podcast exploring Japanese RPGs: gameplay, design, tropes, voice acting, and classic games.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1761788008": {
       "topics": [
@@ -165804,10 +165914,29 @@
     "1762037899": {
       "topics": [
         "nature/earth-science",
-        "science"
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Regenerative farming, climate solutions, and sustainable gardening with expert guests.",
+      "display_title": "Digging In The Dirt with Kevin Gallagher",
+      "blurb": "Climate-focused discussions on regenerative farming, organic gardening, and sustainable food practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1762089135": {
       "topics": [
@@ -165887,10 +166016,30 @@
     },
     "1762458121": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Executive coaching on career advancement, leadership, emotional intelligence, and workplace dynamics.",
+      "display_title": "Psychology at Work",
+      "blurb": "Career coaching from a therapist on leadership, emotional intelligence, and workplace success.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1762523696": {
       "topics": [
@@ -165998,7 +166147,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional golfer teaching mental strategy, course management, and performance optimization.",
+      "display_title": "Hasegawa Golf Score Up",
+      "blurb": "Golf instruction from a former major league player and touring pro on mental strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1762830230": {
       "topics": [
@@ -166033,10 +166197,25 @@
     },
     "1763015773": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/drama"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Original horror fiction and dramatic audio narratives with multiple story arcs.",
+      "display_title": "SADISTIC",
+      "blurb": "Original audio dramas and horror fiction produced and written by Jon Saks.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1763048673": {
       "topics": [
@@ -166056,10 +166235,25 @@
     },
     "1763094823": {
       "topics": [
-        "religion/spirituality"
+        "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian faith discussions and gospel music conversations.",
+      "display_title": "Gospel Chats",
+      "blurb": "Conversations exploring Christian faith, gospel music, and spiritual topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1763113032": {
       "topics": [
@@ -166118,11 +166312,30 @@
     },
     "1763475643": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "gaming/design",
+        "fiction/sci-fi"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hypothetical survival scenario in Pokémon world without game mechanics.",
+      "display_title": "Real Pokémon World Survival",
+      "blurb": "Hypothetical exploration of surviving in a realistic Pokémon world setting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1763517669": {
       "topics": [
@@ -166144,7 +166357,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly women's soccer league news, analysis, and commentary.",
+      "display_title": "NWSL This Week Podcast",
+      "blurb": "Weekly news and analysis of the National Women's Soccer League.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1763633798": {
       "topics": [
@@ -166298,15 +166526,49 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dallas/Texas Rangers baseball team news and commentary.",
+      "display_title": "DLLS Texas Rangers Podcast",
+      "blurb": "Texas Rangers baseball team news, analysis, and game commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1764322591": {
       "topics": [
         "music",
-        "history"
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Documentary-style storytelling about the chaotic 1999 music festival.",
+      "display_title": "Break Stuff: Woodstock '99",
+      "blurb": "Documentary exploring the story and impact of the chaotic Woodstock '99 music festival.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:34.941Z"
     },
     "1764379132": {
       "topics": [
@@ -166517,10 +166779,25 @@
     },
     "1765253005": {
       "topics": [
-        "craft"
+        "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily gratitude and prayer practice meditation.",
+      "display_title": "Morning Gratitude Prayer",
+      "blurb": "Daily guided gratitude and prayer practices for spiritual centering.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1765262255": {
       "topics": [
@@ -166545,10 +166822,30 @@
     },
     "1765349203": {
       "topics": [
-        "automotive"
+        "automotive/racing",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motorcycle riding culture, safety, and lifestyle discussions.",
+      "display_title": "Highside/Lowside",
+      "blurb": "Motorcycle culture, riding, safety, and lifestyle conversations and stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1765372856": {
       "topics": [
@@ -166690,11 +166987,30 @@
     },
     "1766128405": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "health/fitness",
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness training and athletic performance for adults over 50.",
+      "display_title": "The Faster Beyond 50",
+      "blurb": "Fitness guidance and athletic performance training for people over age fifty.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1766166071": {
       "topics": [
@@ -166852,10 +167168,30 @@
     },
     "1767148249": {
       "topics": [
-        "aviation"
+        "travel",
+        "culture/pop-culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Airport experiences and culture; scope unclear without hearing episodes.",
+      "display_title": "The Voices of Airports",
+      "blurb": "Stories and perspectives from people who work and travel through airports.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1767162518": {
       "topics": [
@@ -166874,10 +167210,30 @@
     },
     "1767227653": {
       "topics": [
-        "sports/golf"
+        "hobbies",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Golf cart culture and lifestyle; uncertain genre boundaries.",
+      "display_title": "The Cart Barn Podcast",
+      "blurb": "Podcast about golf cart culture, modifications, and lifestyle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1767312237": {
       "topics": [
@@ -166917,7 +167273,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby news, analysis, and player interviews.",
+      "display_title": "Rugby Rodeo",
+      "blurb": "Rugby news, analysis, and interviews with players and coaches worldwide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1767439365": {
       "topics": [
@@ -167024,10 +167395,30 @@
     },
     "1767941101": {
       "topics": [
-        "relationships"
+        "paranormal",
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.6
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Paranormal and metaphysical topics; confidence scores below 0.6.",
+      "display_title": "More Than Reality",
+      "blurb": "Conversations exploring paranormal, metaphysical, and unexplained phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1767945890": {
       "topics": [
@@ -167213,11 +167604,25 @@
     },
     "1768643695": {
       "topics": [
-        "music",
-        "history"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Persian/Iranian music showcase and artist conversations.",
+      "display_title": "Inak Ahang",
+      "blurb": "Persian music podcast featuring artists, songs, and cultural commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1768651631": {
       "topics": [
@@ -167229,10 +167634,30 @@
     },
     "1768659721": {
       "topics": [
-        "news/daily"
+        "relationships",
+        "health/mental"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Advice and conversations for women on relationships and self-empowerment.",
+      "display_title": "Listen Up Girl",
+      "blurb": "Advice podcast for women on relationships, empowerment, and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1768756904": {
       "topics": [
@@ -167268,11 +167693,30 @@
     },
     "1768832305": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "health/fitness",
+        "sports/biomechanics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Athletic injury recovery and endurance sports medicine.",
+      "display_title": "The Infirmary",
+      "blurb": "Injury treatment and recovery advice for endurance athletes and runners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1768840277": {
       "topics": [
@@ -167309,7 +167753,22 @@
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physics education and science content in Russian language.",
+      "display_title": "Физика Наоборот",
+      "blurb": "Physics education and science discussions in Russian language.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1769012015": {
       "topics": [
@@ -167463,10 +167922,30 @@
     },
     "1769449489": {
       "topics": [
-        "sports/hockey"
+        "comedy/casual-hangs",
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Casual conversation format; genre unclear below 0.6 threshold.",
+      "display_title": "Isles House",
+      "blurb": "Casual conversations and hanging out with comedians and friends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1769462923": {
       "topics": [
@@ -167510,11 +167989,29 @@
     "1769618065": {
       "topics": [
         "medicine/biology",
-        "science",
-        "nature"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Molecular biology science education and research discussions.",
+      "display_title": "Molecular biology Podcast",
+      "blurb": "Science education podcast covering molecular biology research and concepts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1769653026": {
       "topics": [
@@ -167592,10 +168089,30 @@
     },
     "1770026917": {
       "topics": [
-        "philosophy"
+        "medicine/biology",
+        "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Genetics, inheritance, and heredity science topics.",
+      "display_title": "Inherited",
+      "blurb": "Podcast exploring genetic inheritance, family history, and biology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1770136136": {
       "topics": [
@@ -167683,10 +168200,25 @@
     },
     "1770380137": {
       "topics": [
-        "kids-family/parenting"
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and television criticism, analysis, and in-depth commentary.",
+      "display_title": "Screen Deep",
+      "blurb": "In-depth analysis and criticism of films and television shows.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1770393529": {
       "topics": [
@@ -167760,10 +168292,29 @@
     "1770678127": {
       "topics": [
         "sports",
-        "news"
+        "psychology/decision-making"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports psychology and athletic performance optimization.",
+      "display_title": "In the Zone Podcast",
+      "blurb": "Sports psychology and peak performance strategies for athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1770710481": {
       "topics": [
@@ -167907,10 +168458,30 @@
     },
     "1771296517": {
       "topics": [
-        "aviation"
+        "personal-journals",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Flight attendant professional stories and aviation industry insights.",
+      "display_title": "Back-2-Base",
+      "blurb": "True stories and experiences from flight attendants in the aviation industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1771312490": {
       "topics": [
@@ -168005,10 +168576,30 @@
     },
     "1771769107": {
       "topics": [
-        "science/physics"
+        "science/physics",
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.7
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physics of time, parallel universes, and scientific philosophy.",
+      "display_title": "Echos In Time",
+      "blurb": "Exploration of time, physics, and the science of branching possibilities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1771789047": {
       "topics": [
@@ -168135,17 +168726,47 @@
     },
     "1772339269": {
       "topics": [
-        "sports/fantasy"
+        "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily fantasy football news, analysis, and player updates.",
+      "display_title": "Footballguys Daily Update",
+      "blurb": "Daily fantasy football analysis, news, and player insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1772346505": {
       "topics": [
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "New York Rangers hockey team news and analysis.",
+      "display_title": "Blueshirt Bandwidth",
+      "blurb": "New York Rangers hockey team news, analysis, and game commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1772360235": {
       "topics": [
@@ -168188,10 +168809,30 @@
     },
     "1772486215": {
       "topics": [
-        "music"
+        "music",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast by a guitarist discussing music and humor.",
+      "display_title": "The Bad Guitarist",
+      "blurb": "Comedy podcast featuring music discussions and casual hang-out conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-7dcb7a0a",
+      "classified_at": "2026-08-11T16:33:27.494Z"
     },
     "1772489427": {
       "topics": [
