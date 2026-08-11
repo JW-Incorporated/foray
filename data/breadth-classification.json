@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-11T01:00:28.831Z",
+  "built_at": "2026-08-11T08:57:35.224Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-11-f86e9800",
+    "last_batch_id": "fresh-2026-08-11-acafdf91",
     "last_batch_tier": 1
   },
   "entries": {
@@ -166228,11 +166228,29 @@
     },
     "1769088311": {
       "topics": [
-        "sports",
-        "news"
+        "sports/football",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Pittsburgh Steelers analysis and commentary with columnists covering roster moves and games.",
+      "display_title": "DK's Double Shot of Steelers",
+      "blurb": "Award-winning sports columnists deliver daily analysis of Pittsburgh Steelers games, trades, and roster news.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1769093906": {
       "topics": [
@@ -166297,10 +166315,29 @@
     },
     "1769244707": {
       "topics": [
-        "science/physics"
+        "science/physics",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scholarly conversations with physicists and policy experts on nuclear weapons and geopolitical implications.",
+      "display_title": "Twelve Thousand Bombs",
+      "blurb": "Scholars and policymakers discuss the history and current threats of nuclear weapons and war scenarios.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1769251679": {
       "topics": [
@@ -166362,10 +166399,29 @@
     },
     "1769385179": {
       "topics": [
-        "philosophy"
+        "philosophy/ideas",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Solo philosophy podcast on acceptance, mindfulness, and mental peace using Stoic principles.",
+      "display_title": "Accepting the Universe",
+      "blurb": "Philosophical essays on acceptance, letting go, and finding peace in everyday life.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1769400256": {
       "topics": [
@@ -166376,10 +166432,29 @@
     },
     "1769426915": {
       "topics": [
-        "math"
+        "math",
+        "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Detailed mathematical analysis of geometric patterns in spheres and sacred geometry.",
+      "display_title": "The Geometry of Closed Packed Spheres",
+      "blurb": "Episodes on mathematical geometry, Platonic solids, and the Fibonacci sequence grounded in spatial design.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1769449489": {
       "topics": [
@@ -166439,7 +166514,21 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Canadian hockey podcast focused on Calgary Flames roster, prospects, and season analysis.",
+      "display_title": "The Red Mile Rundown",
+      "blurb": "Calgary Flames fans and writers discuss trades, draft picks, and season performance weekly.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1769753590": {
       "topics": [
@@ -166548,24 +166637,86 @@
     },
     "1770317795": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Veteran international journalists report from conflict zones and analyze geopolitical events.",
+      "display_title": "The World with Richard Engel and Yalda Hakim",
+      "blurb": "NBC and Sky News correspondents share frontline reporting and analysis from global conflict zones.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1770329009": {
       "topics": [
-        "tv-film/after-shows"
+        "paranormal",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "First-person accounts of paranormal encounters from celebrities and everyday people.",
+      "display_title": "PARANORMAL IMPACT",
+      "blurb": "Real-life paranormal encounter stories from ordinary people and celebrities who faced unexplainable events.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1770360755": {
       "topics": [
-        "math"
+        "math",
+        "science",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biographical storytelling about mathematicians and scientists who shaped modern discovery.",
+      "display_title": "Math! Science! History!",
+      "blurb": "Behind-the-scenes stories of mathematicians and scientists and their contributions to modern knowledge.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1770380137": {
       "topics": [
@@ -166584,17 +166735,50 @@
     },
     "1770405815": {
       "topics": [
-        "sports/wrestling"
+        "sports/wrestling",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Veteran pro wrestlers discuss wrestling history, behind-the-scenes stories, and industry dynamics.",
+      "display_title": "Four Horsemen Network: ARN & Straight Talk",
+      "blurb": "Wrestling legends share stories from WCW, WWE, and pro wrestling history with fans.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1770467033": {
       "topics": [
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dutch women's volleyball analysis and game recaps from the Eredivisie professional league.",
+      "display_title": "Eredivisie Dames Podcast",
+      "blurb": "Expert coverage of Dutch women's professional volleyball league with match analysis and player news.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1770582816": {
       "topics": [
@@ -166711,10 +166895,29 @@
     },
     "1771034813": {
       "topics": [
-        "health/alternative"
+        "health/sexuality",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host Melyssa Ford discusses wellness topics including menopause, sexual health, and relationships.",
+      "display_title": "Hot & Bothered",
+      "blurb": "Candid conversations about wellness, intimacy, and sexual health with celebrity guests.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1771047001": {
       "topics": [
@@ -166770,10 +166973,29 @@
     },
     "1771340795": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Screenwriters analyze screenplay award-winners, discussing craft and writing techniques.",
+      "display_title": "The Writer's Cut",
+      "blurb": "Screenwriters analyze Academy Award-winning screenplays, discussing craft and storytelling structure.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1771401634": {
       "topics": [
@@ -166898,17 +167120,55 @@
     },
     "1771947545": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep hockey analysis of Bruins, NHL, and emerging leagues with player and coach interviews.",
+      "display_title": "The Hockey Hub",
+      "blurb": "In-depth NHL hockey coverage with player interviews and analysis of Bruins and league trends.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1771975205": {
       "topics": [
-        "automotive"
+        "automotive",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reviews and industry news on electric vehicles, EV technology, and charging infrastructure.",
+      "display_title": "EV Geek Podcast",
+      "blurb": "Electric vehicle reviews, charging news, and tech updates for EV owners and enthusiasts.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1771982812": {
       "topics": [
@@ -167040,10 +167300,28 @@
     "1772528471": {
       "topics": [
         "music",
-        "history"
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese ambient and healing music podcast designed for sleep and meditation.",
+      "display_title": "Deep Sleep | Alpha Meditation",
+      "blurb": "Ambient soundscapes and meditation music for sleep, relaxation, and mindfulness.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1772577837": {
       "topics": [
@@ -167066,7 +167344,25 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with mothers who run marathons, discussing training, motherhood, and personal achievement.",
+      "display_title": "The Mother Runners Podcast",
+      "blurb": "Interviews with mothers who are serious runners, discussing marathon training and motherhood.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1772674689": {
       "topics": [
@@ -167251,7 +167547,21 @@
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Recordings of Al-Anon support meetings and conferences for families of alcoholics.",
+      "display_title": "Al-Anon Family Groups",
+      "blurb": "Support group meetings and recovery stories for families affected by alcoholism.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1773449331": {
       "topics": [
@@ -167385,21 +167695,77 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "European Portuguese language lessons with cultural content and transcripts for learners.",
+      "display_title": "Beginner Portuguese Podcast",
+      "blurb": "Portuguese language lessons with cultural stories and authentic content for beginners.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1773982991": {
       "topics": [
+        "business/management",
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beauty industry leaders and salon owners discuss business strategy and scaling practices.",
+      "display_title": "Beauty Business Matters",
+      "blurb": "Interviews with beauty salon and skin clinic owners on business strategy and industry innovation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1774005791": {
       "topics": [
-        "business/management"
+        "business/management",
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership speaker shares personal stories on integrity, accountability, and character.",
+      "display_title": "Paul Butler Leadership for a Lifetime",
+      "blurb": "Leadership lessons on integrity, accountability, and personal development from a veteran trainer.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1774030140": {
       "topics": [
@@ -167456,10 +167822,29 @@
     },
     "1774203959": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hosts review campy and queer-coded films with cultural analysis and humor.",
+      "display_title": "Camp Classics",
+      "blurb": "Discussions of queer cinema and camp classic films with cultural and historical analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1774212179": {
       "topics": [
@@ -167467,7 +167852,25 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ultramarathon runners share training strategies, race experiences, and performance advice.",
+      "display_title": "Blueprint to Ultra",
+      "blurb": "Ultramarathon runners discuss training plans and racing strategies for long-distance running.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1774224904": {
       "topics": [
@@ -167583,14 +167986,51 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language learning podcast with authentic stories and cultural content for learners.",
+      "display_title": "Andrea La Mexicana",
+      "blurb": "Spanish language lessons with authentic stories and cultural topics for learners.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1775421491": {
       "topics": [
-        "aviation"
+        "aviation",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "PPL syllabus training guide with practical breakdowns of flight training exercises.",
+      "display_title": "The PPL Pilot's Guide",
+      "blurb": "Private pilot training guide breaking down flight exercises and certification requirements.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1775479604": {
       "topics": [
@@ -167739,10 +168179,29 @@
     },
     "1776111995": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion industry coverage with designer interviews and analysis of collections and trends.",
+      "display_title": "Monocle on Fashion",
+      "blurb": "Fashion industry interviews and trend analysis with leading designers and brands.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1776188322": {
       "topics": [
@@ -167894,10 +168353,29 @@
     },
     "1776584891": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental toughness and strategic thinking strategies for competitive tennis players.",
+      "display_title": "Tennis Mental Mastery",
+      "blurb": "Mental training strategies for competitive tennis players focusing on pressure and decision-making.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1776603688": {
       "topics": [
@@ -167917,10 +168395,28 @@
     "1776626855": {
       "topics": [
         "tv-film/history",
-        "history"
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film podcast covering action movies and director interviews across multiple genres.",
+      "display_title": "Action for Everyone",
+      "blurb": "Discussions of action films and conversations with directors about filmmaking craft.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1776684580": {
       "topics": [
@@ -168113,10 +168609,28 @@
     "1777361885": {
       "topics": [
         "tv-film/history",
-        "history"
+        "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Analysis of films condemned by the Catholic Church, examining outrage and censorship history.",
+      "display_title": "Morally Offensive",
+      "blurb": "Films condemned by the Legion of Decency analyzed for outrage, censorship, and cultural shifts.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1777363835": {
       "topics": [
@@ -168155,10 +168669,29 @@
     },
     "1777397093": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based fitness, nutrition, and habit coaching for busy professionals.",
+      "display_title": "The Fitness League",
+      "blurb": "Science-based fitness coaching covering training, nutrition, mindset, and healthy habits.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1777404772": {
       "topics": [
@@ -168196,7 +168729,21 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Canadian cricket fans cover international matches and analyze player performances.",
+      "display_title": "In Between Overs - A Cricket Fan's Podcast",
+      "blurb": "Cricket match analysis and player performance discussion from passionate Canadian fans.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1777714874": {
       "topics": [
@@ -168311,10 +168858,29 @@
     },
     "1778091761": {
       "topics": [
+        "fiction",
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Restored archive recordings of classic radio mystery dramas from 1970s CBS series.",
+      "display_title": "CBS Radio Mystery Theater - 1975",
+      "blurb": "Restored classic radio drama episodes featuring mystery and suspense stories from 1975.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1778156098": {
       "topics": [
@@ -168477,10 +169043,29 @@
     },
     "1778702915": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity and designer interviews discussing personal style, fashion choices, and shopping habits.",
+      "display_title": "The Good Buy",
+      "blurb": "Interviews with celebrities and designers about personal style and fashion choices.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1778711501": {
       "topics": [
@@ -168664,10 +169249,29 @@
     },
     "1779547487": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis commentary podcast with female-forward perspective on Grand Slams and player stories.",
+      "display_title": "What's The Call?",
+      "blurb": "Tennis coverage and commentary with sharp cultural analysis of Grand Slam tournaments.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1779614078": {
       "topics": [
@@ -168685,10 +169289,29 @@
     },
     "1779627377": {
       "topics": [
-        "music"
+        "music",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Electronic dance music radio show featuring new tracks and producer interviews.",
+      "display_title": "Afrojack - Jacked Radio",
+      "blurb": "Electronic dance music radio hosted by DJ/producer Afrojack with new tracks weekly.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1779660108": {
       "topics": [
@@ -168713,11 +169336,29 @@
     },
     "1779783413": {
       "topics": [
-        "news/tech",
-        "computing"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Data and AI strategy conversations with C-suite leaders on organizational transformation.",
+      "display_title": "Data & AI Mastery",
+      "blurb": "Interviews with data and AI leaders on organizational strategy and AI implementation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1779813806": {
       "topics": [
@@ -168743,10 +169384,29 @@
     },
     "1779969371": {
       "topics": [
-        "craft"
+        "craft",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Epoxy resin crafting tutorials, artist interviews, and business advice for makers.",
+      "display_title": "Resin Mastery",
+      "blurb": "Epoxy resin crafting techniques, artist features, and business tips for makers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1779981260": {
       "topics": [
@@ -168810,10 +169470,28 @@
     "1780465049": {
       "topics": [
         "fiction/comedy",
-        "comedy"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improvised comedy podcast about two castaways on an island with mysterious boxes.",
+      "display_title": "Cartoon Island",
+      "blurb": "Improvised comedy about two castaways navigating strange events on a surreal island.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1780522639": {
       "topics": [
@@ -169079,10 +169757,31 @@
     "1782075047": {
       "topics": [
         "tv-film/history",
-        "history"
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chronological reviews of 1980s horror films with guest discussion and filmmaker interviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1782117048": {
       "topics": [
@@ -169337,7 +170036,25 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running gear reviews and marathon training coverage from YouTube running personality.",
+      "display_title": "The Mileage Podcast",
+      "blurb": "Running shoe reviews and marathon training advice from competitive runner and YouTuber.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1783661409": {
       "topics": [
@@ -169431,10 +170148,29 @@
     },
     "1784367929": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/history",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Production team commentary tracks on films and TV shows with cast and crew interviews.",
+      "display_title": "Hey, That's Me!",
+      "blurb": "Audio commentaries on films and TV shows with cast and production crew interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1784392987": {
       "topics": [
@@ -169469,10 +170205,29 @@
     },
     "1784540477": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog behavior analysis with certified consultant covering training, triggers, and psychology.",
+      "display_title": "Holistic Dog Behavior The Podcast",
+      "blurb": "Dog behavior and training advice from certified consultant with science-based techniques.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-acafdf91",
+      "classified_at": "2026-08-11T08:57:35.224Z"
     },
     "1784549779": {
       "topics": [
