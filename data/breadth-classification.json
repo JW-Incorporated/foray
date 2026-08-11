@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-11T08:13:24.806Z",
+  "built_at": "2026-08-11T16:18:53.970Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-11-f0058c24",
+    "last_batch_id": "fresh-2026-08-11-ccfa0da8",
     "last_batch_tier": 1
   },
   "entries": {
@@ -169108,10 +169108,33 @@
     },
     "1772288268": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.95
+        },
+        {
+          "node": "craft",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "British Vogue conversations about cherished garments, sustainable shopping, and personal wardrobe stories.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1772336162": {
       "topics": [
@@ -169169,10 +169192,30 @@
     },
     "1772485434": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.92
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly expert advice on freshwater fishkeeping, tank setup, species care, and aquarium hobby troubleshooting.",
+      "display_title": "The Aquarist's Edge",
+      "blurb": "Expert guidance for freshwater fishkeeping—tank setup, species care, disease treatment, and hobbyist community from beginner to advanced.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1772486215": {
       "topics": [
@@ -169273,10 +169316,34 @@
     "1772690370": {
       "topics": [
         "health/mental",
-        "psychology"
+        "psychology",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.88
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.78
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.52
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College mental health conversations addressing anxiety, resilience, addiction, and student wellbeing.",
+      "display_title": "Normalize It Forward",
+      "blurb": "College transitions bring mental health challenges. Experts discuss anxiety, resilience, addiction recovery, and student wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1772719946": {
       "topics": [
@@ -169290,7 +169357,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedian Michelle Wolf shares new jokes and unfiltered thoughts on current events weekly.",
+      "display_title": "Michelle Wolf's Thought Box",
+      "blurb": "Weekly stand-up material and topical commentary from comedian Michelle Wolf on politics, life, and current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1772756019": {
       "topics": [
@@ -169330,10 +169412,30 @@
     },
     "1773063180": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two gardening experts discuss horticulture, garden design, and listener questions with wit and irreverence.",
+      "display_title": "The James & Joe Garden Show",
+      "blurb": "Sharp-opinionated gardeners tackle topics from naps to parties, answering listener questions with humor and expertise.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1773104705": {
       "topics": [
@@ -169375,10 +169477,30 @@
     },
     "1773197394": {
       "topics": [
-        "philosophy"
+        "religion/spirituality",
+        "philosophy/ideas"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.65
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Blends stoicism with new-age spirituality (kundalini, energy healing, astral projection)—genre boundaries unclear.",
+      "display_title": "Stoicism Philosophy",
+      "blurb": "Philosophical content mixing stoic wisdom with contemporary spirituality, meditation, and self-improvement coaching.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1773328879": {
       "topics": [
@@ -169397,10 +169519,30 @@
     },
     "1773331014": {
       "topics": [
-        "sports/rugby"
+        "sports/rugby",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form interviews with rugby players (New Zealand and Australia) discussing careers, adversity, and personal stories.",
+      "display_title": "What a Lad",
+      "blurb": "Rugby interviews with Oceania's elite players—career stories, resilience, and personal journeys beyond the field.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1773334458": {
       "topics": [
@@ -169444,7 +169586,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.88
+        },
+        {
+          "node": "science",
+          "confidence": 0.78
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NASA ambassador shares interviews with space scientists and current mission updates from Mendocino radio.",
+      "display_title": "Cosmic Radio",
+      "blurb": "NASA-focused interviews covering current space missions, astronomers, planetary science, and night-sky observation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1773569173": {
       "topics": [
@@ -169475,7 +169636,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.94
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Detroit Tigers analysis from beat reporter and co-host covering season, trades, and playoff race.",
+      "display_title": "Tiger Territory: A Detroit Tigers Podcast",
+      "blurb": "Detroit Tigers coverage with insider analysis of roster moves, trade deadline strategy, and playoff contention.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1773703211": {
       "topics": [
@@ -169490,7 +169666,22 @@
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Behind-the-scenes interviews with cast and crew of the Emmy-nominated series Reservation Dogs.",
+      "display_title": "Behind the Rez with Sterlin Harjo",
+      "blurb": "Inside look at the acclaimed series Reservation Dogs through unscripted cast and crew interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1773837183": {
       "topics": [
@@ -169735,11 +169926,30 @@
     },
     "1775300814": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business/founders",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.88
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mortgage industry leaders discuss business systems, client retention, team building, and company strategy.",
+      "display_title": "The Way with Dino Katsiametis",
+      "blurb": "Mortgage industry leaders share tactical business systems—recruiting, retention, and wealth-building strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1775326379": {
       "topics": [
@@ -169811,10 +170021,30 @@
     },
     "1775666184": {
       "topics": [
+        "culture/pop-culture",
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Italian celebrity interview show with long-form conversations on life, work, and personal experiences.",
+      "display_title": "SUPERNOVA",
+      "blurb": "Long-form Italian celebrity interviews covering life, career, quirks, and personal reflection.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1775675742": {
       "topics": [
@@ -169861,17 +170091,52 @@
     },
     "1775791962": {
       "topics": [
-        "nature"
+        "nature/pets",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beekeeping interviews, news, gadgets, and stories from hobby and commercial beekeepers.",
+      "display_title": "Bee Love Beekeeping",
+      "blurb": "Beekeeping interviews, techniques, and community for hobbyists and professionals managing honey bee colonies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1775799744": {
       "topics": [
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf interviews exploring player journeys, personal growth, and lessons from the game and life.",
+      "display_title": "The Inward Nine with Chandler Withington",
+      "blurb": "Golf interviews with PGA pros and thought leaders on personal growth, resilience, and character.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1775839058": {
       "topics": [
@@ -169900,17 +170165,52 @@
     },
     "1776015924": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "education/courses"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry lecture series and interviews with educators and scientists on STEM research and teaching.",
+      "display_title": "\"Lecture-casts\"- A Lecture Series on General Chemistry",
+      "blurb": "Chemistry lectures and science interviews covering fundamentals, research, and STEM education.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1776066552": {
       "topics": [
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.94
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice for families raising neurodivergent kids, addressing motivation, anxiety, and behavioral cycles.",
+      "display_title": "Brain First Parenting with Eileen Devine",
+      "blurb": "Parenting strategies for neurodivergent children, covering anxiety, motivation, and behavioral de-escalation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1776111995": {
       "topics": [
@@ -169921,10 +170221,30 @@
     },
     "1776188322": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "science/materials"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.88
+        },
+        {
+          "node": "science/materials",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Princeton polymer scientists explain plastic types, recycling strategies, and chemical upcycling methods.",
+      "display_title": "Polymers Unchained",
+      "blurb": "Polymer science made accessible: plastic types, recycling challenges, and innovative upcycling techniques.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1776212282": {
       "topics": [
@@ -170039,7 +170359,22 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mother-daughter upcycling, thrifting, and DIY crafting adventures with business and personal stories.",
+      "display_title": "Our Upcycled Life",
+      "blurb": "Thrifting and upcycling tutorials from a mother-daughter team building a creative business.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1776404389": {
       "topics": [
@@ -170065,10 +170400,30 @@
     },
     "1776579546": {
       "topics": [
-        "science/physics"
+        "science/physics",
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.92
+        },
+        {
+          "node": "space",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI hosts explain astrophysics and cosmology—black holes, time dilation, universe expansion—with humor.",
+      "display_title": "SpaceTime Conversations",
+      "blurb": "Physics and astrophysics explained accessibly: gravity, black holes, cosmology, and relativity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1776584891": {
       "topics": [
@@ -170137,7 +170492,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rotating complete science fiction audiobooks from classic and contemporary speculative fiction authors.",
+      "display_title": "Science Fiction Book Collection",
+      "blurb": "Complete science fiction audiobooks spanning alien encounters, time travel, and philosophical speculation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1776886526": {
       "topics": [
@@ -170177,10 +170547,30 @@
     },
     "1777074804": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Law firm growth strategies covering revenue, AI automation, client acquisition, and profitability.",
+      "display_title": "The Law Firm Growth Acceleration Podcast",
+      "blurb": "Law firm business strategies: revenue growth, AI implementation, client generation, and profitability.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1777077679": {
       "topics": [
@@ -170214,17 +170604,57 @@
     },
     "1777129194": {
       "topics": [
-        "science/chemistry"
+        "science/materials",
+        "engineering/precision-mfg"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/materials",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/precision-mfg",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Materials science and manufacturing processes—carbon fiber, graphite, polymers, batteries, and advanced techniques.",
+      "display_title": "Material Science and Advance Manufacturing",
+      "blurb": "Materials science fundamentals and manufacturing innovation—carbon fiber, batteries, 3D printing, and advanced processes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1777148814": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.92
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist meditation teacher Kevin Griffin explores dharma, recovery from addiction, and spiritual practice.",
+      "display_title": "Kevin Griffin: Dharma and Recovery",
+      "blurb": "Buddhist teachings on meditation, addiction recovery, and mindfulness from an experienced dharma teacher.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1777171478": {
       "topics": [
@@ -170260,14 +170690,44 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice for moms raising teenage sons—communication, boundaries, emotional regulation strategies.",
+      "display_title": "Raising Boys Building Men®/Parenting Solutions",
+      "blurb": "Parenting strategies for raising teenage sons: communication, boundaries, and emotional connection.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1777357872": {
       "topics": [
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.94
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Big Bash League (Australian T20 cricket) coverage with player interviews and expert analysis.",
+      "display_title": "The Surge | Big Bash Podcast",
+      "blurb": "Australian Big Bash cricket with player interviews, match analysis, and league coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1777361885": {
       "topics": [
@@ -170318,10 +170778,29 @@
     "1777470018": {
       "topics": [
         "space",
-        "science"
+        "education/courses"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy for development: interviews with educators making astronomy accessible globally for STEM education.",
+      "display_title": "Big Impact Astronomy",
+      "blurb": "Astronomy educators worldwide using telescope science to inspire STEM learning and community development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1777612676": {
       "topics": [
@@ -170357,7 +170836,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA player interviews with hosts Zach Randolph and Tony Allen discussing careers, resilience, life lessons.",
+      "display_title": "Out the Mud",
+      "blurb": "NBA player interviews with Zach Randolph and Tony Allen discussing careers, perseverance, and life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1777801648": {
       "topics": [
@@ -170372,7 +170866,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.92
+        },
+        {
+          "node": "science",
+          "confidence": 0.82
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Earth science researchers discuss personal journeys, climate, geology, and atmospheric science over drinks.",
+      "display_title": "Earth on the Rocks",
+      "blurb": "Earth and atmospheric scientists discuss research, career paths, and the human side of earth science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1777852260": {
       "topics": [
@@ -170528,10 +171041,30 @@
     },
     "1778324382": {
       "topics": [
-        "food"
+        "food",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Restaurant industry insider conversations—chefs, operators discussing challenges, stories, and culinary culture.",
+      "display_title": "In the Weeds Podcast with Chef Spike Mendelsohn",
+      "blurb": "Restaurant industry interviews with chefs and operators discussing kitchen culture, business, and craft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1778324613": {
       "topics": [
@@ -170559,10 +171092,29 @@
     "1778364834": {
       "topics": [
         "fiction/comedy",
-        "comedy"
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror-comedy fiction podcast with full cast dramatizing strange apocalyptic scenarios in surreal settings.",
+      "display_title": "GUTTER",
+      "blurb": "Horror-comedy fiction series with full cast exploring supernatural scenarios in a warped apocalyptic world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1778442969": {
       "topics": [
@@ -170602,18 +171154,57 @@
     },
     "1778573232": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "paranormal",
+        "fiction/comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Blurs UFO/alien encounter stories (presented as true) with comedy—genre and truth claims unclear.",
+      "display_title": "TRUE ALIEN 👽 🛸 UNSOLVED MYSTERIES",
+      "blurb": "Alien encounters and paranormal mysteries with skeptical humor and story evaluation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1778600244": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.88
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Zen koans, meditation, and creative life from Pacific Zen Institute teachers and artists.",
+      "display_title": "Meeting the Inconceivable | Zen Koans",
+      "blurb": "Zen practice, koans, and meditation for creative seekers from an active contemplative community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1778675397": {
       "topics": [
@@ -170666,7 +171257,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.88
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational astronomy podcast covering stars, dark matter, comets, planets, and space science basics.",
+      "display_title": "Aliens space education",
+      "blurb": "Astronomy education covering stars, planets, dark matter, nebulae, and space phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1778968081": {
       "topics": [
@@ -170726,7 +171336,22 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy improv and casual banter between two comedians discussing absurd scenarios and pop culture.",
+      "display_title": "Will & Rusty's Playdate",
+      "blurb": "Comedy improv and casual hang between two comedians riffing on random topics and pop culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1779295100": {
       "topics": [
@@ -170740,7 +171365,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis analysis from multiple perspectives—player profiles, tactical breakdowns, career trajectories.",
+      "display_title": "Best Of Three",
+      "blurb": "Tennis analysis covering player development, tactics, and career arcs from professional experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1779346028": {
       "topics": [
@@ -170783,10 +171423,29 @@
     "1779518592": {
       "topics": [
         "sports/endurance",
-        "health/fitness"
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College swimming recruitment and coaching from elite NCAA Division 1 and 2 program heads.",
+      "display_title": "SwimIntel Spotlight",
+      "blurb": "College swimming coaching and recruitment insights from elite NCAA program directors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1779547487": {
       "topics": [
@@ -170821,7 +171480,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "South African rugby journalism covering Springboks, school rugby, and regional competitions.",
+      "display_title": "Rapport Praat Sport",
+      "blurb": "South African rugby news and analysis covering Springboks and provincial competitions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1779741097": {
       "topics": [
@@ -170906,10 +171580,30 @@
     },
     "1780307706": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.93
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sci-fi audio drama anthology—multiple apocalyptic scenarios across time; full cast and narrative storytelling.",
+      "display_title": "Ten Apocalypses",
+      "blurb": "Science fiction audio drama exploring ten apocalyptic scenarios across time with full cast narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1780384916": {
       "topics": [
@@ -170928,10 +171622,30 @@
     },
     "1780431192": {
       "topics": [
-        "sports/wrestling"
+        "sports/wrestling",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.92
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pro wrestling and sports media commentary from journalist Jonathan Coachman and Vince Russo.",
+      "display_title": "Before My Head Explodes with Vince Russo",
+      "blurb": "Pro wrestling analysis and commentary with ESPN veteran and wrestling insiders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1780465049": {
       "topics": [
@@ -171036,7 +171750,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.88
+        },
+        {
+          "node": "science",
+          "confidence": 0.82
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Thai-language astronomy education covering space science, planets, stars, and cosmic phenomena.",
+      "display_title": "อวกาศคาดไม่ถึง",
+      "blurb": "Thai-language astronomy covering planets, stars, space missions, and cosmic science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-ccfa0da8",
+      "classified_at": "2026-08-11T16:18:53.970Z"
     },
     "1781339868": {
       "topics": [
