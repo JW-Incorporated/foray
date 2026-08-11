@@ -59416,13 +59416,1192 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-11-0a1d2d08",
       "classified_at": "2026-08-11T00:53:34.260Z"
+    },
+    "1715463842": {
+      "topics": [
+        "comedy/interviews",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daniel Tosh interviews diverse guests weekly; casual, unfiltered conversations with comedic focus.",
+      "display_title": "Tosh Show",
+      "blurb": "Daniel Tosh interviews interesting guests weekly, discussing current events and personal stories in conversational format.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1715599754": {
+      "topics": [
+        "tv-film/after-shows",
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stay-at-home mom recaps Bravo reality shows with research and commentary on personal dynamics.",
+      "display_title": "Bravo Tea With A Stay At Home Mom",
+      "blurb": "Host recaps Bravo reality shows including The Valley, Real Housewives, and Summerhouse with research and commentary.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1715894000": {
+      "topics": [
+        "news/politics",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scott Detrow curates NPR reporting on Trump administration actions and policy impacts.",
+      "display_title": "Trump's Terms",
+      "blurb": "Scott Detrow analyzes Trump administration policies and political implications, drawing on NPR reporting.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1716105920": {
+      "topics": [
+        "nature/earth-science",
+        "science",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "NPR documentary tracking Everglades restoration—decades-long environmental and political effort.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1716119168": {
+      "topics": [
+        "education/self-improvement",
+        "psychology",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided meditations using somatic techniques and Havening to regulate nervous systems and heal trauma.",
+      "display_title": "Somatic Healing Meditations",
+      "blurb": "Guided meditations using somatic techniques to regulate the nervous system and release trapped emotions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1716447116": {
+      "topics": [
+        "tv-film/reviews",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sidney reviews horror films in-depth, covering slashers, body horror, and classic franchises.",
+      "display_title": "The Hello, Sidney Podcast",
+      "blurb": "Sidney reviews horror films in detail for fellow enthusiasts, covering classics and recent releases.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1716638186": {
+      "topics": [
+        "kids-family/stories",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Short bedtime stories featuring superheroes and pop culture characters for young children.",
+      "display_title": "Superhero Bedtime Stories",
+      "blurb": "Short bedtime stories featuring superheroes and popular characters to help children fall asleep.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1716831716": {
+      "topics": [
+        "craft",
+        "business/founders",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with jewelry makers and artists about creative journeys, business building, and artistic growth.",
+      "display_title": "Heart and Hands of a Maker",
+      "blurb": "Host Tamara Honaman interviews craft makers about artistic journeys, entrepreneurship, and creative challenges.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1716961184": {
+      "topics": [
+        "music",
+        "history",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly updates on music producer Rick Rubin's career, collaborations, and cultural legacy.",
+      "display_title": "Rick Rubin - Biography Flash",
+      "blurb": "Weekly biography series on legendary music producer Rick Rubin and his influence on popular music.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1717106678": {
+      "topics": [
+        "medicine",
+        "health",
+        "medicine/neuroscience"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Dr. Tania Dempsey leads expert discussions on mast cell activation syndrome diagnosis, treatment, and comorbidities.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: banned /deep[\\s-]dive/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1717262936": {
+      "topics": [
+        "economics/markets",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Michael Nadeau and Ryan Sean Adams discuss cryptocurrency portfolio management and DeFi market trends.",
+      "display_title": "The DeFi Report",
+      "blurb": "Hosts discuss cryptocurrency portfolio management, market data, and DeFi trends for educational purposes.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1717269602": {
+      "topics": [
+        "gaming",
+        "hobbies",
+        "gaming/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Rob and Val discuss Warhammer: The Old World tabletop game, lore, rules, and competitive play.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1717276976": {
+      "topics": [
+        "tv-film/after-shows",
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians research and recap reality TV shows with humor and analytical depth.",
+      "display_title": "Bravo Breakdowns",
+      "blurb": "Comedians Lauren Davis and Michele Baber research and recap reality TV with humor and analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1717650326": {
+      "topics": [
+        "medicine/biology",
+        "science",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers biopharma industry stories including layoffs, pipeline updates, M&A, and FDA decisions.",
+      "display_title": "BioSpace",
+      "blurb": "Industry analysis of biopharma business including layoffs, mergers, pipeline updates, and FDA decisions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1718387588": {
+      "topics": [
+        "news/tech",
+        "computing",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brief daily summaries of cryptocurrency market news, Bitcoin, Ethereum, blockchain developments.",
+      "display_title": "Crypto News Daily",
+      "blurb": "Daily briefings on cryptocurrency news, Bitcoin, Ethereum, and blockchain developments in under ten minutes.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1718699612": {
+      "topics": [
+        "true-crime",
+        "culture/books",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime anthology of women's stories—killers, activists, lawyers—at the intersection of justice and society.",
+      "display_title": "The Greatest True Crime Stories Ever Told",
+      "blurb": "Mary Kay McBrayer presents true crime stories of women across society, exploring justice and human nature.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1718851160": {
+      "topics": [
+        "craft/diy-home",
+        "nature",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Alysse Gallagher discusses gardening, permaculture practices, and sustainable living strategies.",
+      "display_title": "Practical Permaculture | Gardening and Intentional Living",
+      "blurb": "Alysse Gallagher shares gardening and permaculture tips for sustainable, intentional living practices.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1718916536": {
+      "topics": [
+        "sports/soccer",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nottingham Forest FC podcast with ex-players discussing matches, transfers, and strategy.",
+      "display_title": "Forest Focus",
+      "blurb": "Nottingham Forest fan podcast featuring ex-players analyzing matches, transfers, and club strategy.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1718942984": {
+      "topics": [
+        "culture",
+        "history",
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "L'ÉCOLE explores stories, history, and cultural significance of famous jewels and collections.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1718949350": {
+      "topics": [
+        "news/tech",
+        "computing",
+        "engineering/ai-robotics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brief daily summaries of AI developments including machine learning, robotics, and AI ethics.",
+      "display_title": "AI News Daily",
+      "blurb": "Daily briefings on AI developments including machine learning, robotics, and AI ethics in under ten minutes.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1719095006": {
+      "topics": [
+        "news",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV anchors Amy Robach and T.J. Holmes discuss current events and pop culture trends.",
+      "display_title": "Amy & T.J.",
+      "blurb": "TV anchors Amy Robach and T.J. Holmes discuss current events, pop culture, and headlines conversationally.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1719280670": {
+      "topics": [
+        "health/nutrition",
+        "health/fitness",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Amy Bryan teaches fat loss and health strategies for women over 50 using intermittent fasting.",
+      "display_title": "Fat Loss School for Women Over 50",
+      "blurb": "Certified coach Amy Bryan teaches fat loss and nutrition strategies for women over 50 post-menopause.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1719454802": {
+      "topics": [
+        "education/self-improvement",
+        "psychology",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Damesha Craig interviews entrepreneurs and leaders about their journeys from pain to purpose.",
+      "display_title": "Sunday SoulDay",
+      "blurb": "Damesha Craig interviews entrepreneurs and leaders weekly about their journeys from challenges to purpose.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1719547118": {
+      "topics": [
+        "tv-film/reviews",
+        "psychology",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dr. Adam analyzes relationship dynamics in Sister Wives using communication and family theory.",
+      "display_title": "The Sister Wives Professor",
+      "blurb": "Communication professor analyzes relationship dynamics in Sister Wives using academic communication theory.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1719625868": {
+      "topics": [
+        "science",
+        "philosophy",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Dennis McKenna discusses psychedelics, plant medicine, consciousness, and ethnobotany with experts.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1719657632": {
+      "topics": [
+        "news/commentary",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tucker Carlson hosts commentary on politics, government actions, media, and current events.",
+      "display_title": "The Tucker Carlson Show",
+      "blurb": "Tucker Carlson provides commentary on politics, government actions, and current events with guests.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1719776348": {
+      "topics": [
+        "sports/cricket",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers ECB Premier Leagues cricket with weekly recaps, updates, and guest interviews.",
+      "display_title": "The Premier League Cricket Club",
+      "blurb": "Covers English cricket with weekly recaps of ECB Premier Leagues and guest interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1720413938": {
+      "topics": [
+        "business/management",
+        "business",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nicholas Webb delivers actionable insights on innovation, leadership, and business strategy.",
+      "display_title": "Innovation, Leadership, and Enterprise Trends",
+      "blurb": "Nicholas Webb delivers actionable insights on innovation and leadership for business executives weekly.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1720447202": {
+      "topics": [
+        "sports/basketball",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bob and Mike analyze college basketball trends, recruiting, coaching, and strategy.",
+      "display_title": "X's and Joe's",
+      "blurb": "Bob Moats and Mike Wiemuth analyze college basketball trends and coaching with Indiana focus.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1720765874": {
+      "topics": [
+        "kids-family/parenting",
+        "psychology",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Keltie Maguire interviews diverse voices about the decision to have or remain childfree.",
+      "display_title": "The Kids or Childfree Podcast",
+      "blurb": "Keltie Maguire interviews people about the decision to have or remain childfree, exploring perspectives.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1721113418": {
+      "topics": [
+        "education/language-learning",
+        "linguistics/language"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Elisa teaches French through cultural topics, conversations, and learning strategies.",
+      "display_title": "French Mornings with Elisa",
+      "blurb": "Elisa teaches French through cultural discussions and learning tips for intermediate learners.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1721256764": {
+      "topics": [
+        "music",
+        "culture",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Damian Abraham interviews guests about how punk music influenced their lives and careers.",
+      "display_title": "Turned Out A Punk",
+      "blurb": "Damian Abraham interviews people about how punk music influenced their lives and creative paths.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1721587586": {
+      "topics": [
+        "sports/football",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Washington Commanders official podcast with ex-players analyzing team news and NFL developments.",
+      "display_title": "Command Center Podcast",
+      "blurb": "Official Washington Commanders podcast featuring ex-players analyzing team news and NFL developments.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1722154700": {
+      "topics": [
+        "music",
+        "culture",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Jake Shears explores music and cultural moments that shaped LGBTQ+ lives and identity.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1722322040": {
+      "topics": [
+        "news/tech",
+        "computing",
+        "engineering/ai-robotics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "In-depth analysis of AI advancements, trends, and impacts across industries and society.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1722479780": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coaches Christine and Toni discuss running training, racing, and lifestyle for all levels.",
+      "display_title": "The Relentless Runners Podcast",
+      "blurb": "Coaches discuss running training, racing, and runner lifestyle for all experience levels.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1722685826": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jeff Korhan provides science-based running training and longevity guidance for 40+ runners.",
+      "display_title": "Running Longevity with Jeff Korhan",
+      "blurb": "Jeff Korhan shares science-based running strategies and longevity insights for 40+ age group.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1722783794": {
+      "topics": [
+        "religion",
+        "religion/christianity",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dr. Barbara Morgan Gardner leads discussions supplementing LDS Come Follow Me curriculum.",
+      "display_title": "Grounded",
+      "blurb": "Dr. Barbara Morgan Gardner leads discussions supplementing LDS Come Follow Me scripture study weekly.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1722995018": {
+      "topics": [
+        "religion/buddhism",
+        "philosophy",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Master YongHua teaches the Vajra Sutra, a foundational Mahayana Buddhist text, across multiple lectures.",
+      "display_title": "Master YongHua's Vajra Sutra Lectures",
+      "blurb": "Master YongHua teaches the Vajra Sutra, a foundational Mahayana Buddhist text, in detailed lectures.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
+    },
+    "1723058888": {
+      "topics": [
+        "relationships",
+        "health/sexuality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Adult erotic audio stories by MoodCrest designed to enhance intimacy between partners.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-11-5747b083",
+      "classified_at": "2026-08-11T08:51:38.693Z"
     }
   },
-  "built_at": "2026-08-11T00:53:34.260Z",
+  "built_at": "2026-08-11T08:51:38.693Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-11-0a1d2d08",
+    "last_batch_id": "fresh-2026-08-11-5747b083",
     "last_batch_tier": 1
   }
 }
