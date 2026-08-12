@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-12T08:22:07.575Z",
+  "built_at": "2026-08-12T16:27:02.972Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-12-a5e39daa",
+    "last_batch_id": "fresh-2026-08-12-284a7e42",
     "last_batch_tier": 1
   },
   "entries": {
@@ -177309,10 +177309,30 @@
     },
     "1797583113": {
       "topics": [
-        "automotive"
+        "automotive",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Histories of legendary automotive brands and vehicles from Porsche to Mercedes.",
+      "display_title": "Car History",
+      "blurb": "Deep histories of iconic car brands, from Porsche's legacy to Mercedes' motorsport dominance across 120+ years.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1797618096": {
       "topics": [
@@ -177379,7 +177399,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf instruction, player analysis, major championship coverage and mental game strategy.",
+      "display_title": "The Golf Asylum Podcast",
+      "blurb": "Weekly golf analysis covering player strategy, major championships, technique, and the mental game.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1797862560": {
       "topics": [
@@ -177422,8 +177457,23 @@
       "topics": [
         "science/physics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Episode titles malformed (template placeholders); description vague and episodes mostly unreliable signal.",
+      "display_title": "Quantum Quarks",
+      "blurb": "Physics podcast covering quantum mechanics and astrophysics for enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1798073854": {
       "topics": [
@@ -177540,10 +177590,30 @@
     },
     "1798334619": {
       "topics": [
-        "travel"
+        "travel",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert Hawaii travel planning advice covering islands, budgeting, and cultural insights.",
+      "display_title": "Hawaii Travel Made Easy",
+      "blurb": "Hawaii travel planning from a certified destination expert, covering budget tips, island guides, and itineraries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1798344388": {
       "topics": [
@@ -177823,7 +177893,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Torah teachings, Jewish law, and religious topics from Rabbi Yosef Mizrachi.",
+      "display_title": "Rabbi Yosef Mizrachi",
+      "blurb": "Torah teachings and Jewish law from Rabbi Mizrachi, reaching thousands of seekers and students.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1799597600": {
       "topics": [
@@ -177852,7 +177937,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Boston Bruins news, trades, player analysis, and game coverage.",
+      "display_title": "Bruins Digest",
+      "blurb": "Boston Bruins coverage including game analysis, player performance, and trade updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1799751008": {
       "topics": [
@@ -177967,17 +178067,57 @@
     },
     "1800065901": {
       "topics": [
-        "music"
+        "music",
+        "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Musicians and music industry figures discuss careers, touring, and creative struggles.",
+      "display_title": "Late For Load In",
+      "blurb": "Musicians discuss touring life, creative process, and mental health in the music industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1800125115": {
       "topics": [
-        "relationships"
+        "relationships",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two hosts and celebrity guests discuss friendship, dating, and life advice.",
+      "display_title": "Here to Make Friends",
+      "blurb": "Celebrity guests join hosts for frank conversations about friendship, dating, and life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1800125192": {
       "topics": [
@@ -178095,7 +178235,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket training, performance psychology, fitness, and injury prevention from coach Jason Cox.",
+      "display_title": "The High Performance Cricket Podcast",
+      "blurb": "Cricket training and performance coaching covering technique, fitness, and mental strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1800587742": {
       "topics": [
@@ -178208,7 +178363,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "England national football team coverage from Euro 2024 and World Cup tournaments.",
+      "display_title": "The England Pod",
+      "blurb": "England national football coverage including match analysis, player debates, and tournament updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1801077842": {
       "topics": [
@@ -178301,11 +178471,30 @@
     },
     "1801355295": {
       "topics": [
-        "economics/markets",
-        "business"
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Commercial real estate deals, market trends, and insider stories from industry leaders.",
+      "display_title": "The Promote Podcast",
+      "blurb": "Commercial real estate market coverage with insider dealmakers and major transaction analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1801356817": {
       "topics": [
@@ -178349,7 +178538,22 @@
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content strategy and personal branding for real estate agents, not just templates.",
+      "display_title": "Above Asking",
+      "blurb": "Content strategy and personal branding for real estate agents building differentiated careers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1801579797": {
       "topics": [
@@ -178409,10 +178613,30 @@
     },
     "1801755747": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unfiltered conversations about fashion, relationships, dating, and content creation.",
+      "display_title": "Not So Silent",
+      "blurb": "Unfiltered conversations covering fashion, dating, social media, and content creation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1801803563": {
       "topics": [
@@ -178778,10 +179002,30 @@
     },
     "1803151893": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/interviews",
+        "tv-film/history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Behind-the-scenes film and TV careers: producers, stunt coordinators, photographers, etc.",
+      "display_title": "Out of Frame",
+      "blurb": "Behind-the-scenes look at film and TV careers: photographers, stunt coordinators, prop buyers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1803182928": {
       "topics": [
@@ -178896,10 +179140,30 @@
     },
     "1803625221": {
       "topics": [
-        "culture/books"
+        "health",
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Vaccine information companion podcast from Dr. Bob Sears (controversial subject).",
+      "display_title": "The Vaccine Book",
+      "blurb": "Vaccine information and safety discussion from Dr. Bob Sears' book companion podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1803648054": {
       "topics": [
@@ -178921,7 +179185,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MLB season coverage, trade analysis, and quirky baseball stories.",
+      "display_title": "Podcast Doesn't Exist",
+      "blurb": "MLB coverage including season recaps, trade deadline analysis, and unusual baseball stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1803837535": {
       "topics": [
@@ -179074,17 +179353,57 @@
     },
     "1804328337": {
       "topics": [
-        "health/alternative"
+        "adventure/exploration",
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hunting, ultramarathon racing, and backcountry adventure from outdoor enthusiasts.",
+      "display_title": "Run The Rack Outdoors",
+      "blurb": "Outdoor adventure including hunting, ultramarathon racing, and mountain expedition stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1804414647": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional dog training techniques, behavior, and reliability from top trainers.",
+      "display_title": "Nate Schoemer Dog Training",
+      "blurb": "Professional dog training from elite trainers covering behavior, reliability, and methods.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1804438960": {
       "topics": [
@@ -179119,14 +179438,49 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "LGBTQ+ rugby community news and international gay rugby event coverage.",
+      "display_title": "The Gay Rugby Podcast",
+      "blurb": "International LGBTQ+ rugby community coverage including tournaments and player interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1804613409": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.95
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Broadway shows and interviews with cast and creative team members.",
+      "display_title": "The Playbill Podcast",
+      "blurb": "Broadway show coverage featuring interviews with cast and creative teams.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1804625352": {
       "topics": [
@@ -179192,7 +179546,22 @@
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Infidelity stories from all perspectives: the unfaithful, the betrayed, and others involved.",
+      "display_title": "The Affair",
+      "blurb": "Real infidelity stories told from multiple perspectives exploring causes and consequences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1804967882": {
       "topics": [
@@ -179248,10 +179617,30 @@
     },
     "1805231145": {
       "topics": [
+        "business/startups",
         "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Startup founders discussing entrepreneurship, financial literacy, and young professional life.",
+      "display_title": "The Burnouts with Phoebe & Sophia",
+      "blurb": "Startup founders discuss entrepreneurship, careers, and financial literacy with industry experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1805244700": {
       "topics": [
@@ -179356,7 +179745,22 @@
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home care agency operations, strategy, and leadership best practices.",
+      "display_title": "Home Care Strategy Lab",
+      "blurb": "Home care agency management covering operations, strategy, and industry best practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1805677403": {
       "topics": [
@@ -179399,18 +179803,57 @@
     },
     "1805898975": {
       "topics": [
-        "news",
-        "business"
+        "business",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Healthcare benefits trends, cost containment, and employee benefits advisor insights.",
+      "display_title": "Beyond Benefits",
+      "blurb": "Healthcare benefits landscape trends including design, cost containment, and compliance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1805927133": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "kids-family"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Calming bedtime stories designed for dogs to ease separation anxiety.",
+      "display_title": "Bark To Bed",
+      "blurb": "Calming bedtime stories for dogs to ease separation anxiety and create soothing environment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1805933912": {
       "topics": [
@@ -179512,7 +179955,26 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaelic Athletic Association (GAA) football, hurling, and camogie analysis and coverage.",
+      "display_title": "The 42 GAA Weekly",
+      "blurb": "Weekly GAA coverage analyzing Gaelic football, hurling, and camogie at highest level.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1806373282": {
       "topics": [
@@ -179526,14 +179988,44 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf technique, tournament analysis, and casual conversation about the game.",
+      "display_title": "The Swing of It",
+      "blurb": "Golf technique, course reviews, and tournament analysis from Australian golf enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1806554289": {
       "topics": [
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "San Francisco Giants team coverage, trades, rebuilding strategy, and season analysis.",
+      "display_title": "Giants Postcards",
+      "blurb": "San Francisco Giants coverage including trade analysis, season recap, and rebuild strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1806592287": {
       "topics": [
@@ -179541,14 +180033,48 @@
         "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.95
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neurodivergence, identity, work, grief, anxiety from perspective of being different.",
+      "display_title": "Different, Not Broken",
+      "blurb": "Honest conversations on neurodivergence, identity, mental health, and being authentically yourself.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1806628839": {
       "topics": [
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist meditation teachings comparing primitive and developed Buddhism traditions.",
+      "display_title": "Thiền Phật Giáo",
+      "blurb": "Buddhist meditation teachings comparing primitive and developed traditions of Buddhism.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1806665471": {
       "topics": [
@@ -179595,7 +180121,26 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.95
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Plant-predominant nutrition, heart health, and chronic disease prevention through diet.",
+      "display_title": "Eat Meat Sparingly",
+      "blurb": "Nutrition science covering plant-based diet, heart health, and chronic disease prevention.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1806946421": {
       "topics": [
@@ -179610,14 +180155,53 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Remote sensing, GIS technology, and geospatial applications from academic researchers.",
+      "display_title": "Spatial Signals",
+      "blurb": "Remote sensing and GIS technology featuring academics applying geospatial tools to research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1806987909": {
       "topics": [
-        "relationships"
+        "relationships",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal growth, wellness, culture, and relationships from best friends navigating life.",
+      "display_title": "Everything's Perfect",
+      "blurb": "Personal growth and wellness conversations about relationships, careers, and life changes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1807110548": {
       "topics": [
@@ -179631,7 +180215,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese stand-up comedy and storytelling performances from various comedians.",
+      "display_title": "满庭芳",
+      "blurb": "Chinese stand-up comedy and traditional storytelling performances from talented comedians.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1807130821": {
       "topics": [
@@ -179836,10 +180435,29 @@
     "1807981869": {
       "topics": [
         "tv-film/history",
-        "history"
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Banned horror films from 60s-80s Britain; plot details and cultural history of censorship.",
+      "display_title": "Let's Get The Banned Back Together",
+      "blurb": "Banned horror films from 1960s-80s Britain with plot details and censorship history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1808020289": {
       "topics": [
@@ -179909,10 +180527,30 @@
     },
     "1808470731": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Genuine conversations on politics, patriotism, sovereignty, and philosophy.",
+      "display_title": "The Ian Wendt Show",
+      "blurb": "Conversations on politics, philosophy, patriotism, and contemporary issues with various guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-284a7e42",
+      "classified_at": "2026-08-12T16:27:02.972Z"
     },
     "1808485483": {
       "topics": [
