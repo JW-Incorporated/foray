@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-12T08:31:04.153Z",
+  "built_at": "2026-08-12T16:42:14.814Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-12-fd041e1d",
+    "last_batch_id": "fresh-2026-08-12-a7290643",
     "last_batch_tier": 1
   },
   "entries": {
@@ -173382,10 +173382,30 @@
     },
     "1789802875": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical podcast about growing and selling cut flowers as a small business from an experienced grower.",
+      "display_title": "Becoming a Cut Flower Grower",
+      "blurb": "A working cut flower grower shares practical advice on production, selling, sustainability, and building a farm business on a budget.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1789827802": {
       "topics": [
@@ -173468,10 +173488,30 @@
     },
     "1790136775": {
       "topics": [
-        "aviation"
+        "aviation",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Innovation-focused aerospace show featuring pilots, engineers, and business leaders discussing drones, helicopters, and aviation technology.",
+      "display_title": "Hangar X Studios",
+      "blurb": "Expert interviews on aerospace innovation, drone technology, supply chains, and the future of aviation and autonomous systems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1790294385": {
       "topics": [
@@ -175449,10 +175489,29 @@
     "1795796281": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship podcast with coaches helping founders escape survival mode through systems, mental agility, and decision-making.",
+      "display_title": "Total Disruption Podcast",
+      "blurb": "Coaches guide entrepreneurs past burnout using systems thinking and psychological resilience rather than hustle culture tactics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1795797191": {
       "topics": [
@@ -175481,7 +175540,22 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Community podcast celebrating thrift store finds and secondhand shopping treasures across garage sales and flea markets.",
+      "display_title": "Thrift Quest",
+      "blurb": "Listeners share their best thrift store hauls and secondhand finds from flea markets, garage sales, and vintage shops.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1795868216": {
       "topics": [
@@ -175575,10 +175649,25 @@
     },
     "1796213059": {
       "topics": [
-        "gaming"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Video game industry women host casual hangout podcast on games, stories, and life advice with MinnMax network.",
+      "display_title": "Pew Pew Bang",
+      "blurb": "Four women from gaming discuss video games, stories, and life advice in a relaxed slumber-party conversational format.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1796235204": {
       "topics": [
@@ -175605,10 +175694,33 @@
     },
     "1796361115": {
       "topics": [
-        "culture/design"
+        "craft",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Annie Sloan and guests discuss the creative inspiration, art, and color theory behind her iconic Chalk Paint colors monthly.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1796458292": {
       "topics": [
@@ -175619,10 +175731,25 @@
     },
     "1796575729": {
       "topics": [
-        "tv-film/animation"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Monthly anime reviews with guest hosts discussing classic and contemporary series with analysis and fandom perspective.",
+      "display_title": "Anime Field Guide",
+      "blurb": "In-depth anime reviews with guest hosts exploring classic series, production, and fan perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1796580956": {
       "topics": [
@@ -175655,10 +175782,25 @@
     },
     "1796608543": {
       "topics": [
-        "comedy/stand-up"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedian Clint Coley documents tour process and life's challenges while writing new material for his comedy special.",
+      "display_title": "Rent's Due",
+      "blurb": "Comedian Clint Coley shares his tour, comedy writing process, and life behind building a comedy special.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1796619688": {
       "topics": [
@@ -175813,7 +175955,22 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Colorado news briefing covering state politics, education, water, law enforcement, and community impact.",
+      "display_title": "Colorado Today",
+      "blurb": "15-minute daily briefing on Colorado news including politics, education, water crises, and law enforcement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1796896599": {
       "topics": [
@@ -175850,7 +176007,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep analysis of romance media including Bridgerton, Heated Rivalry, Outlander with witty discussion and swoony takes.",
+      "display_title": "Rational Romantics",
+      "blurb": "Romance media analysis covering Bridgerton, Heated Rivalry, Outlander, and romance novels with witty banter.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1797237315": {
       "topics": [
@@ -175868,10 +176040,25 @@
     },
     "1797353563": {
       "topics": [
-        "science/physics"
+        "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Physics podcast covering quantum mechanics and astrophysics; some episodes show questionable content quality.",
+      "display_title": "Quantum Quarks",
+      "blurb": "Physics topics from quantum mechanics to astrophysics; episode quality and sourcing inconsistent.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1797384835": {
       "topics": [
@@ -176003,11 +176190,25 @@
     },
     "1797654595": {
       "topics": [
-        "space",
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy enthusiasts host live weekly discussions with guests on night sky photography, space missions, and stargazing.",
+      "display_title": "The Galactic Window Space Podcast",
+      "blurb": "Live astronomy conversations with experts on night sky photography, space missions, and celestial events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1797671063": {
       "topics": [
@@ -176077,10 +176278,25 @@
     },
     "1798103479": {
       "topics": [
-        "business/careers"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ex-corporate hosts share career advice, workplace culture stories, and support for anyone navigating corporate life.",
+      "display_title": "The Corporate Burnouts Podcast",
+      "blurb": "Former corporate professionals discuss workplace culture, career challenges, and strategies for managing burnout.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1798123380": {
       "topics": [
@@ -176092,11 +176308,33 @@
     },
     "1798144003": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "science",
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "business",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Japanese entrepreneur discusses space habitation, AI, art, and singularity with futurist perspective and diverse guests.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1798154776": {
       "topics": [
@@ -176108,10 +176346,25 @@
     },
     "1798180273": {
       "topics": [
-        "health/alternative"
+        "health"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Alternative health podcast covering parasite cleansing, natural healing, and wellness with anecdotal field trip experiences.",
+      "display_title": "What's Eating U?!",
+      "blurb": "Wellness and alternative health content covering parasites, natural remedies, and healing modalities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1798209377": {
       "topics": [
@@ -176133,7 +176386,22 @@
         "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Four-person news commentary podcast on politics, justice system, and social issues affecting Black community.",
+      "display_title": "The JAAM",
+      "blurb": "News commentary on politics, justice, and social issues from four hosts discussing current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1798264288": {
       "topics": [
@@ -176164,7 +176432,22 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Married couple share unfiltered stories and banter about marriage, parenting, and life with humor and vulnerability.",
+      "display_title": "Appropriately Inappropriate with Tara and Brian",
+      "blurb": "Married couple Tara and Brian share funny, unfiltered stories about marriage, parenting, and daily life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1798307834": {
       "topics": [
@@ -176239,10 +176522,25 @@
     },
     "1798502905": {
       "topics": [
-        "medicine"
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "GLP-1 medication support podcast with dietitian covering science, strategies, and real user experiences on weight loss.",
+      "display_title": "GLP-1 Hub: Support, Community, and Weight Loss",
+      "blurb": "Expert-backed support community for GLP-1 users covering science, strategies, and real weight loss experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1798513895": {
       "topics": [
@@ -176264,7 +176562,25 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Top food content creator documents culinary adventures, world records, celebrity cooking, and creative food challenges.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1798758638": {
       "topics": [
@@ -176307,21 +176623,66 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improv experts Wayne Brady and Jonathan Mangum create spontaneous scenes and songs with guests exploring hypothetical scenarios.",
+      "display_title": "Wayne Brady's What If?!",
+      "blurb": "Improv masters Wayne Brady and Jonathan Mangum create spontaneous comedy scenes and songs with guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1798950745": {
       "topics": [
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Award-winning dog trainer Lisa Burton shares practical strategies and psychology behind dog training and behavior.",
+      "display_title": "Listen Dog Training: The Walk & Talk",
+      "blurb": "Dog trainer Lisa Burton shares practical strategies for dog behavior and training without fluff.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1798982875": {
       "topics": [
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized cyberpunk audio drama following racer Theo forced into heist amid crime, AI, and addiction in dystopian city.",
+      "display_title": "Burnout: A Cyberpunk Thriller",
+      "blurb": "Serialized cyberpunk audio drama about a disgraced racer on a dangerous heist in a crime-filled city.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1799006786": {
       "topics": [
@@ -176335,7 +176696,22 @@
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Broadway gossip and culture podcast host asks irreverent questions while celebrating theater community and shows.",
+      "display_title": "It's Broadway Bitch",
+      "blurb": "Broadway community podcast with gossip, behind-the-scenes stories, and casual talk with theater professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1799034638": {
       "topics": [
@@ -176416,10 +176792,25 @@
     },
     "1799242189": {
       "topics": [
-        "health/fitness"
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Doctors explain health topics including vitamins, exercise, organic food, gut health, and nutrition in accessible format.",
+      "display_title": "Talking With Docs Podcast",
+      "blurb": "Doctors explain complex health topics including vitamins, fitness, nutrition, and medical conditions clearly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1799362003": {
       "topics": [
@@ -176496,7 +176887,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Country duo Love and Theft interview artists, hunters, and entertainers in unfiltered artist-to-artist conversations.",
+      "display_title": "In The Blind Podcast",
+      "blurb": "Country music artists interview fellow musicians and entertainers in candid artist-to-artist conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1799743323": {
       "topics": [
@@ -176684,7 +177090,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hosts analyze classic TV by watching worst and best-rated episodes, exploring what makes good and bad television.",
+      "display_title": "The Best Worst",
+      "blurb": "TV analysis comparing the lowest and highest-rated episodes of classic shows to understand what works.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1800302028": {
       "topics": [
@@ -176803,11 +177224,30 @@
     },
     "1800936253": {
       "topics": [
-        "sports/endurance",
+        "sports",
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swim coach with 27 years experience shares training tips and real talk for triathletes and open water swimmers.",
+      "display_title": "Tri Swim Coach Podcast",
+      "blurb": "Swim coach Kevin Koskella shares practical training strategies and coaching insights for triathletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1800959644": {
       "topics": [
@@ -176922,11 +177362,25 @@
     },
     "1801287523": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dietitian Cassie Black shares weight loss strategies that avoid diet culture and obsessive tracking patterns.",
+      "display_title": "Not Your Mama's Diet",
+      "blurb": "Dietitian shares practical weight loss strategies without diet culture messaging or obsessive tracking.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1801320532": {
       "topics": [
@@ -176945,18 +177399,47 @@
     },
     "1801356817": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ADHD therapist Jenna Free teaches regulation-based care helping adults move from survival mode to thriving.",
+      "display_title": "ADHD with Jenna Free",
+      "blurb": "ADHD therapist teaches nervous system regulation strategies helping adults manage ADHD without willpower.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1801412689": {
       "topics": [
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Award-winning journalist tells Sudanese folktales for families using music, sound design, and immersive storytelling.",
+      "display_title": "Folktales from Sudan",
+      "blurb": "Sudanese folktales for families with original music and sound design bringing cultural heritage to life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1801493366": {
       "topics": [
@@ -177030,10 +177513,25 @@
     },
     "1801708081": {
       "topics": [
-        "science/physics"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "University of Luxembourg physics podcast features Nobel laureate and experts explaining quantum mechanics and modern physics.",
+      "display_title": "Physics for Future",
+      "blurb": "Physics experts and Nobel laureate explain quantum computing, symmetry, and laser cooling accessibly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1801748172": {
       "topics": [
@@ -177058,10 +177556,25 @@
     },
     "1801866979": {
       "topics": [
-        "math"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese mathematics education podcast explores history, misconceptions, and real-world applications of mathematics.",
+      "display_title": "數學通識局",
+      "blurb": "Mathematics education podcast in Chinese exploring math history, theory, and applications.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1801867202": {
       "topics": [
@@ -177185,7 +177698,22 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Telugu-language recitation and commentary on Bhagavatham, Hindu scripture, with traditional approach to sacred text.",
+      "display_title": "Bhagavatham by Chaganti Koteshwara Rao Garu",
+      "blurb": "Telugu-language Bhagavatham recitation and spiritual commentary on Hindu scripture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a7290643",
+      "classified_at": "2026-08-12T16:42:14.814Z"
     },
     "1802390261": {
       "topics": [
