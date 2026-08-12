@@ -84,3 +84,261 @@ Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 - **Founder decisions locked in**: `needs_review` output is never auto-applied, always held for a human pass (principle #2); international (121,786 shows) is out of scope, US breadth only; curated tier (`data/catalog.json`/`data/discover.json`) always wins over breadth reclassification — enforced structurally here, since this pipeline's tooling has no write path to either curated file at all.
 - **Two new copy-rule constants added to the single source of truth** (`backend/src/copy/rules.js`/`.d.ts`): `MAX_DISPLAY_TITLE_WORDS` (8) and `MAX_BLURB_WORDS` (30), for the new Foray-authored tile fields — additive, no existing export changed.
 - **Explicitly not done in this pass**: no classification batch was run (fresh or escalate), no `docs/agents/runners.md` registration, no cron schedule configured — the orchestrator runs the first test batches and decides pacing/cadence using this tooling, per the commissioning instructions.
+
+## 2026-07-30 (home page: subject queues instead of single-episode cards)
+
+- **Product call (Joey), Wyatt sign-off given verbally, not yet reviewed against the actual diff.** Motivation: four individual episode titles on the home screen don't differentiate Foray from any other podcast app's recommendation row, and read as exactly the failure mode `03_CURATION_SPEC.md` names ("your 3 usual shows + 1 random thing, a subscription list with extra steps"). Requested shape: 4 subject-level cards (already-interested or adjacent topics) plus a Continue card for the in-progress episode.
+- **Turned out to be a client-only change, not a data-model change** — corrects what was described to Wyatt beforehand. The live home page (`app.js`'s `buildCards()`) does its own lightweight per-branch ranking client-side and only borrows episode *records* from `data/session.json`'s `episodes` map; it never reads the backend's curated `cards[]` (archetype/why-line/alternates from `sessionBuilder.ts`). So this change doesn't touch `sessionBuilder.ts`, `data/session.json`'s schema, or anything the iOS client codes against — it's scoped entirely to `app.js`.
+- **Implementation**: `buildCards()` now keeps each ranked branch's whole candidate chain (`items`, capped at 3) instead of just the top pick (`item`, kept for backward-compat lookups). `miniCard()` renders the branch's taxonomy label (`subjectLabel()`, `data/taxonomy.json` top-level node label) + episode count + total duration, and links to a new in-app route (`#/subject/<branch>`) instead of linking straight out to the episode. `renderPlaylistDetail()` is generalized to resolve either a saved playlist (`cp_playlists`, existing) or a subject queue (`subjectQueueById()` — reads live from `state.cardSlots`, never persisted, no remove button) — same list/queue UI serves both, since a subject card behaves like an auto-built, one-day playlist. Continue (`bannerHtml()`/`currentContinue()`) is unchanged — it was already a separate element above the 4-card grid, already satisfying "plus where I left off" before this change.
+- **Not done in this pass**: the `sessionBuilder.ts` archetype-slotting system (deep-learn/stretch/narrative/comfort scoring, why-lines, alternates) still runs and still produces `data/session.json`'s `cards[]`, but nothing in the web client consumes it for the home page grid anymore beyond opportunistic why-line reuse (`whyFor()`). Whether to wire the real archetype-scored picks into subject-card selection (vs. the current simpler client-side branch ranking) is an open follow-up, not resolved here.
+
+## 2026-07-30 (subject-card selection: real exploration floor, not a live backend)
+
+- **Explicit product delegation (Joey): "solve that now... make smart decisions."** Investigated wiring `sessionBuilder.ts`'s real archetype scoring into subject-card selection, as flagged in the prior entry. **Decided against standing up a live per-user backend to do it** — deliberately, not by default. The deployed web client (`vercel.json`: static build, `node tools/web/prepare-dist.mjs`, no serverless functions) has no live backend today; `data/session.json` is a single hand-authored fixture shared by every visitor, never regenerated on a schedule (`build-session` is a manual CLI script, not called from any CI workflow or cron). Standing up real per-user session-serving would mean provisioning/wiring the already-designed-but-unbuilt Postgres/Supabase `UserInterestsProvider` (`createUserInterestsProvider.ts`, gated on `DATABASE_URL`) behind a new deployed API surface — a genuine infra/secrets change. That stays outside what gets decided in a chat aside even under an explicit delegation; it needs its own scoping pass and is Wyatt's call per `docs/roles.md`, not bundled into this one.
+- **What shipped instead, entirely client-side in `app.js`** (no backend/schema touched, consistent with the prior entry's scope): `buildCards()` now assigns real archetype-style **roles**, not just ranks branches. One of the 4 slots is a structural **stretch** pick — deliberately drawn from outside the user's top ~60%-by-interest branches (real signal: `state.interests`, seeded from `data/taxonomy.json`'s authored weights, refined by local overrides and observed history), preferring one not shown recently. This replaces the prior implementation's only exploration mechanism (a `Math.random()` jitter term that could land on a low-interest branch or could just as easily not) with a guaranteed floor — actually enforcing product principle #1's "hard ~30% exploration floor" for the first time on the live web client, instead of approximating it by chance. Verified via 8 rebuilds in a live session: stretch count was `1` every time, never `0` or `2`.
+- **Freshness, the one other scoring.ts component honestly portable client-side**, now orders each branch's candidate queue by `release_date` recency instead of pure shuffle — `quality`/`depth`/`evergreen` from the real formula are not portable (discover.json's ~1080 items carry `release_date`/`topics`/`duration` but zero `depth`/`format`, confirmed by direct inspection; only the ~27-episode curated `session.json` pool has those fields, too small a slice to run the full formula meaningfully against the real live pool).
+- **UI**: the stretch card gets a visible "Stretch" badge (`.mc-stretch`, `styles.css`) — the home page previously gave no indication which of the 4 picks (if any) was the deliberate outlier, silently breaking the "one deliberately outside what you already like" promise from the product principles. It's now honestly labeled.
+- **Follow-up still open, now narrower**: real per-user server-side scoring (the full `relevance + freshness + quality − fatigue` formula, `sessionBuilder.ts`'s why-lines/alternates) remains unused by the live client. Wiring it in requires the live-backend decision above, which is intentionally not made here.
+
+## 2026-08-06 (home page: explainer + card hierarchy fix)
+
+- **Direct user feedback on the live deployed site** (jw-incorporated.github.io/foray, first visit after PR #82 merged): "I don't have any clue what this app does," and separately, on a subject card: "it's certainly not clear that it's more than one podcast... I have no clue how they relate, what subject I'm about to learn, or that the 3 podcasts overlap in any way." Both confirmed directly against the live page — the header was bare (`☰ Foray ↻`, no tagline anywhere) and `miniCard()`'s h3 rendered the lead episode's title as the headline, with the subject label demoted to small kicker text above it — so a subject queue visually read as one episode with a stray metadata line, not a themed group.
+- **Fix scoped to legibility, not aesthetics** (the user separately deferred a full visual-identity pass to a later, bigger conversation — this is not that). Two changes, both `app.js`/`styles.css` only:
+  1. `miniCard()`'s heading is now the subject label (`subjectLabel()`), not the lead episode's title. A new `subjectBlurb()` states plainly what actually connects the queue's episodes — the real fact (they share a taxonomy branch), expressed as the real shows involved ("All from The War on Cars." / "From X, Y, and N more.") — instead of implying a curatorial narrative the grouping doesn't have. The lead episode's title survives as a secondary "Starts with ..." clause.
+  2. A dismissible intro block (`introHtml()`, `cp_intro_dismissed` in localStorage) explains the model in two sentences above the card grid on first visit: what the four queues are, and that one is a deliberate stretch pick. Dismissal persists; returning visitors don't see it again.
+- **Not done here, on purpose**: no visual/theme redesign (colors, type system, overall look) — flagged by the user as real ("what makes this any different... other than it looks shitty") but explicitly deferred to a separate pass since it's a bigger, more subjective, more Joey's-call project than a copy/hierarchy fix.
+
+## 2026-08-06 (first visual design pass)
+
+- **Explicit go-ahead**: "begin working on making it look better, please." First real design pass on `styles.css`, no `app.js` structural changes. CSP stays untouched (`style-src 'self'`, no inline styles anywhere in `app.js` — confirmed via direct grep before starting, kept that discipline) and no web fonts (CSP has no permissive `font-src`) — typography differentiation comes from a system-font serif stack (`Georgia, "Iowan Old Style", "Palatino Linotype", ui-serif, serif`) for headlines only, paired with the existing sans body copy.
+- **Root cause of "looks bare/flat" partly identified**: the dark theme (`:root`) was already reasonably considered (navy `#0d1117`, blue accent, gold accent), but the `@media (prefers-color-scheme: light)` override was a lazy gray inversion with zero elevation — flat white-bordered cards on off-white read as bare. Every screenshot taken this session rendered in light mode (the automation browser's default), so what looked "generic" was specifically the under-designed half of an already-half-decent system.
+- **Changes**: warm off-white light palette (was cold gray) with theme-aware shadow tokens (`--shadow`) for real card elevation in both themes; serif headlines on card subject names, the subject-queue page header, and the topbar wordmark; branch color moved from a full-height card border (read as a spreadsheet row) to a small dot on the kicker line; consistent shadow applied to cards, episode rows, and the playlist-search input/button for visual cohesion.
+- **Verified in both card and queue-detail views** via browser automation, light mode (dark mode not independently verified this pass — same token system, should track, but not confirmed pixel-by-pixel).
+- **Not done here**: no icon/illustration system, no motion beyond the existing tap-scale, no changes to the in-app player UI (`#foray-player`) or drawer — this pass touched only the home page and subject-queue page, where the user's feedback was specifically pointed.
+
+## 2026-08-11 (segment anchoring, the chapters investigation, and a starter-kit merge)
+
+- **Playback ruling (Wyatt), resolving #63 §3's open fork:** a Foray plays
+  **seek-and-stop against the publisher's original enclosure**. It never
+  produces a concatenated or otherwise derived audio artefact. This was the
+  posture `docs/marketing/05-legal-risk-memo.md` §1 and #63 already argued for;
+  it is now decided rather than assumed, because a product mockup under
+  consideration described the feature as "clipping" and "stitching," which reads
+  as the rejected Stitcher/Luminary behaviour even though the same UX is
+  buildable the compliant way. Copy must follow the mechanism: no user-facing
+  language implying we produce a new audio file.
+- **Chapters were investigated as a DAI workaround and rejected on two
+  independent grounds** (`docs/adr/0007-segment-anchoring.md` option 2).
+  *Structurally*: a `<podcast:chapters>` tag points at a static JSON file at a
+  fixed URL — the same bytes for every listener, with no per-listener mechanism
+  in Podcasting 2.0 and no way for a stitcher to correlate the chapters fetch
+  with a particular stitch. So chapter offsets are authored against the
+  un-stitched master and drift exactly like our own timestamps.
+  `player/seek-policy.js` already names this precise case as its canonical
+  `FOREIGN` example. *Empirically*: probed all 213 curated shows' live feeds
+  (209 fetched) — only **10 (4.8%)** publish chapters at all, and the split is
+  **7/136 (5.1%) of DAI shows** vs 3/73 (4.1%) of non-DAI. The seven are small
+  indie shows on Buzzsprout/Transistor/Captivate, several of them thin (Acquired
+  publishes chapters on 1 of 216 episodes). There is no version of this that
+  unlocks a meaningful catalogue. The same probe found `<podcast:transcript>` at
+  roughly 3× chapter coverage on DAI shows (23/136, 16.9%), which is what
+  pointed at the accepted option.
+- **ADR-0007 accepted: segments are dual-anchored.** Every segment carries a
+  timeline cache (`start_sec`/`end_sec` + `reference_duration_sec`) *and*
+  content anchors (`start_anchor`/`end_anchor`, verbatim transcript text at each
+  edge). Timestamps are an optimisation; the anchor is the truth. At playback,
+  a drifted duration triggers anchor re-resolution rather than a bad cut, and an
+  unresolvable anchor skips the segment rather than playing the wrong place.
+  The load-bearing reason is **durability of extraction output**: a segment
+  stored as bare timestamps is scoped to one copy of one file and rots when a
+  publisher re-uploads, re-encodes, or changes ad load. This was decided *before*
+  any bulk extraction ran, because getting it wrong invalidates every segment
+  produced. Consequence for #65: the validator's hard `dai_suspected: false`
+  requirement relaxes to "a DAI source is permitted iff both anchors are present."
+  It does **not** make DAI sources v1-playable — that still needs downloads (#29).
+- **Also recorded (DAI exposure is growing):** 903 of 1,309 playable items in
+  `data/discover.json` are now `dai_suspected` — 69%, up from the 64% recorded
+  when #63 was written. The timestamp-only eligible pool is shrinking, which is
+  an independent argument for anchoring.
+- **Segment-extraction architecture written** (`docs/curation/segment-extraction-pipeline.md`),
+  reusing `tools/classify/`'s proven prepare → agent → merge shape rather than
+  inventing a second one. Two findings shaped it: full-corpus Whisper is ≈$20k
+  (73,719 episodes) and is *dollar*-bound not token-bound, so the fan-out routes
+  to free `<podcast:transcript>` only; and the merge validator must exist before
+  extraction runs, since an LLM paraphrasing an anchor produces a boundary that
+  can never be resolved and fails silently at playback.
+- **`data/segments.json` schema + `tools/segments/merge-segments.mjs` shipped
+  (#106).** The durable output of the extraction pipeline, and its validator,
+  built before any extraction runs. Two calls worth recording because they are
+  expensive to change once a fan-out has written thousands of records:
+  - **What "verbatim" means for an anchor.** Both sides are canonicalised —
+    NFKC, lowercased, apostrophes elided, every other non-alphanumeric run
+    collapsed to a single space — and compared as a whole-word subsequence.
+    That forgives only artefacts of *how text was written down* (case, doubled
+    spaces, hyphenation, smart quotes, `that's` == `thats`) and rejects every
+    artefact of *rewriting* (`that is` for `that's`, `30` for `thirty`,
+    synonyms, tense). Punctuation becomes a space so `hand-waving` matches
+    `hand waving`; apostrophes are deleted rather than spaced so contractions
+    do not split. Digits are deliberately not spelled out: the test that
+    matters is whether a resolver could find the anchor in the *listener's*
+    transcript, and it could not. Two extra guards, free once the transcript
+    is indexed: an anchor under 4 words is not a location, and an anchor whose
+    every occurrence is >120s from the timestamp it claims means the timeline
+    cache is junk even though the words are real.
+  - **Provenance lives in the record.** Each segment stores
+    `transcript_source` (`publisher` | `asr-local`) and `dai_suspected`, so
+    the file is self-validating: `merge-segments.mjs --check` re-enforces
+    everything except verbatim-ness offline, which is what lets CI reject a
+    malformed or hand-edited `data/segments.json` without refetching a single
+    transcript. ADR-0007's DAI relaxation is enforced there too — both anchors
+    required on a DAI item; a non-DAI item may omit them but merges
+    `needs_review: true`, because a publisher can re-upload a static file too.
+  - Idempotency is byte-level: an unchanged merge writes nothing at all, not
+    even a fresh `built_at`. 39 tests, one deliberate violation per check;
+    mutation-verified (see the PR) rather than assumed.
+- **Starter-kit merge** (`JW-Incorporated/starter-kit`, reviewed 2026-08-11).
+  Foray was missing several hard-won items:
+  - **`CLAUDE.md` had no "never babysit your own PR" rule** — the kit's #1
+    lesson (~69% of Swift2's scheduled agent spend) and marked KEEP VERBATIM.
+    Foray had it only as a checklist item for *new routines* in
+    `routine-invariants.md`, which interactive sessions never read — and
+    interactive sessions are where the loops were armed. Now in `CLAUDE.md`.
+  - Added: never-discard-uncommitted-work (with the Windows/CRLF false-alarm
+    note), don't-stop-to-ask, definition of done, the PR TL;DR convention, and
+    the instruction to propose lessons back to the starter kit.
+  - **`.github/workflows/automerge-nightly.yml` gated on branch name, not
+    path** — the kit is explicit that the safety model must be path-based. This
+    was wrong in both directions: any PR from a `nightly/*` branch auto-merged
+    on green *regardless of what it touched* (app.js, CI workflows, backend/),
+    and the `classify/*` runners' PRs never auto-merged at all, which is why
+    PR #86 sat open for 8 days. Now path-gated to `data/`, with a `hold` /
+    `founder-decision` label escape hatch and an `AUTOMERGE_FREEZE` repo
+    variable as an instant kill switch — both of which matter materially more
+    with a large fan-out about to run.
+  - **`docs/agents/runners.md` was fiction**: it listed two runners, both
+    "pending", while seven were live. This is verbatim the kit's lesson *"a
+    registry that is not enforced becomes fiction."* Rewritten with the real
+    fleet, plus the model-tiering section `routine-invariants.md` referenced
+    but which did not exist.
+- **Flowing back to the kit** (not done in this pass, owed): Foray's
+  `routine-invariants.md` documents a gotcha the kit's copy lacks — the API
+  accepts `mcp_connections: []` with a 200 and silently keeps the
+  `Claude_Code_Remote` connector, so removing it is UI-only. That belongs in
+  the starter kit, per its own "keeping it alive" rule.
+- **Auto-merge widened to tiers 1–4 (Wyatt, 2026-08-11).** Goal stated
+  directly: *"get to the point where I pretty much never approve a PR and we
+  merge most items just after autonomous checks."* The governing principle is
+  the starter kit's — *removing a human gate raises the bar on whatever is
+  upstream of it* — so the allowlist was widened only where a mechanical check
+  already catches the bad version of the change, and the gap was built where it
+  didn't.
+  - **T1 `data/`** — already covered by `ci.yml`'s data invariants (session
+    refs, cross-file dupes, taxonomy coverage, `audio_url` scheme, tokened-URL
+    secret leaks, DAI flags in both directions) plus `copyRules.test.ts`.
+  - **T2 `docs/`** — low blast radius, with governance paths denied.
+  - **T3 `player/`, `tools/`, `test/`** — already have `node --test` suites in
+    a required check.
+  - **T4 `app.js`, `styles.css`, `search-engine.js`** — gated on new coverage
+    built in this change (below), because `node --check` is a *syntax* check
+    and would have passed an XSS regression, a CSP violation, or a
+    `javascript:` URL.
+- **A DENIED list now overrides the allowlist**, containing the files that
+  define the gates and the operating rules: `.github/`, `.claude/`, `CLAUDE.md`,
+  `docs/DECISIONS.md`, `docs/adr/`, `docs/roles.md`,
+  `docs/agents/routine-invariants.md`, `backend/src/config/`. The reasoning is
+  structural, not stylistic: **a bot that can auto-merge a change to its own
+  checks has no checks** — one PR widens the allowlist or rewrites the standing
+  instructions every future session reads, and every downstream guarantee is
+  gone. Same shape as keeping `Claude_Code_Remote` off every routine but the
+  auditor. `.github/`/`.claude/` are denied *and* absent from ALLOWED, so a
+  careless future widening still cannot expose them. Verified against 12 path
+  cases including the mixed one (a single denied file blocks an otherwise
+  allowed PR).
+- **`test/app-security.test.js` (new, 18 tests)**: `esc()` behaviour (all five
+  entities, script-tag and attribute-breakout payloads, ampersand-first
+  ordering, null/undefined coercion), `safeUrl()` scheme rejection
+  (`javascript:` incl. mixed case, `data:`, `vbscript:`, `file:`, `blob:`,
+  protocol-relative, malformed), and static invariants that were previously
+  enforced by nothing: every interpolated `href`/`src` passes through
+  `safeUrl`, no inline `style=`, no `<script`, no `javascript:` in source, and
+  localStorage keys keep the `cp_` prefix. Dependency-free — loads `app.js` in
+  a `node:vm` with a stub whose `fetch` never settles, which parks the
+  top-level `init()` at its first await so the hoisted declarations are
+  reachable with no DOM work. **Mutation-tested**: an unguarded `href`, an
+  injected inline `style`, and a weakened `esc()` were each confirmed to fail
+  the suite before `app.js` was restored byte-identical.
+- **`test/suite-integrity.test.js` (new)**: committed per-suite test-count
+  floors. `test/` and `player/` being allowlisted means a PR could otherwise
+  gut a suite and still pass CI — a suite with nothing in it passes trivially,
+  and the two-step version (weaken the gate, then land what it would have
+  caught) involves no human at any point. Also fails when a new suite appears
+  with no floor. Verified by truncating the security suite and confirming the
+  build breaks. Honest limit, documented in the file: it cannot distinguish a
+  real test from an empty one, and gutting the gate now requires editing two
+  files rather than one — it makes deletion loud, not impossible.
+- **Audit found while writing the above**: `${query}` and `subjectBlurb()` both
+  looked like unescaped injection sites on grep. Neither is — `${query}` is
+  assigned via `textContent`, and `subjectBlurb()`'s whole return value is
+  wrapped in `esc()` at its single call site. No XSS existed; recorded so the
+  next reader doesn't re-investigate.
+- **Still open, and required before "never approve a PR" is honest**: nothing
+  currently watches *what merged*. The account-wide auditor checks routine
+  invariants, not merge outcomes. A weekly digest — what auto-merged, which
+  paths, what landed with zero human eyes, as one evolving issue rather than
+  one per run — is the missing complement. Also noted: `ios-kit` is not a
+  required check in `protect-main`, which is harmless while `ios/` stays off
+  the allowlist (it does) but would not be if that changed.
+- **Deliberately not adopted: the `autonomous-templates/` Fable-orchestrator
+  set.** It is a workflow change (orchestrator model, five agent roles, four
+  enforcement hooks, `STATE.md`/`MAP.md`/`PLAN.md`), not a docs merge, and its
+  hooks require `bash` + `python3` — the kit's own README flags Windows as
+  needing WSL or a port. Its §9 guidance is adopted in spirit here regardless:
+  *autonomy is bought with verification, not permission*, which is exactly why
+  the segment merge validator is sequenced before the fan-out.
+
+## 2026-08-12 (Lane B: the free-transcript corpus is now a list, not a guess)
+
+- **`tools/segments/sweep-transcripts.mjs` shipped and run over all 213 curated
+  shows** (issue #104), emitting `data/transcript-availability.json`. Nothing in
+  the repo previously recorded where free transcripts are: the nightly pipeline
+  never reads `<podcast:transcript>` and `data/discover.json` carries no
+  transcript field. Every downstream lane — segment extraction, Joey's topic
+  selection (A10) — now reads one file instead of re-probing feeds.
+- **`has_timestamps` is a first-class recorded field, not a derivation left to
+  callers.** `text/vtt`, `application/srt`, `application/x-subrip` and
+  `application/json` carry a timeline; `text/plain` and `text/html` are prose
+  and cannot anchor a boundary (ADR-0007). Plain text is the third most
+  published format in the wild, so this distinction decides the usable corpus:
+  of 8,012 transcribed episodes, **7,515 are anchorable and ~500 are not**. The
+  preference order is deliberately duplicated from
+  `backend/src/feeds/parser.ts`'s `TIMED_TRANSCRIPT_TYPES` (#103) rather than
+  imported, because `tools/` is dependency-free and unbuilt while `backend/` is
+  TypeScript; the sweep's test suite pins the copy so the two cannot drift
+  silently.
+- **The index stores availability, never bodies.** 8,012 transcripts at ~50KB
+  is ~400MB against a 44MB `data/`. The script has no code path that fetches a
+  `transcript_url`, a test asserts that structurally, and CI fails on any
+  body-sized string reaching the file. Episode rows are kept only for episodes
+  with a transcript or chapters (counts cover all 82,043) — 5.4MB instead of
+  ~20MB of rows no lane can act on. `--all-episodes` overrides.
+- **Measured coverage, 82,043 episodes across 212 fetched feeds: 9.8% carry a
+  transcript — 13.3% of DAI episodes vs 0.2% of non-DAI.** This reproduces
+  epic #102's finding on an independent run (its probe measured 13.4% / 0.7%;
+  the non-DAI number is lower here because this sweep resolves each show's
+  enclosure host live, and the disagreement is one or two shows changing
+  bucket). The corpus is extremely concentrated: **30 of 213 shows publish any
+  transcript at all, 25 publish a timed one**, and Stuff You Should Know
+  (2,850) plus Odd Lots (1,251) are half of it. Chapters remain negligible at
+  0.9%, consistent with the 2026-08-11 rejection of chapters as a DAI
+  workaround.
+- **Resumability is the design, not a nicety.** The run checkpoints atomically
+  after every show to a gitignored `data/transcript-progress.json`; a SIGKILL
+  mid-run was verified to resume at the next unswept show. The curated tier
+  takes minutes, but the 19,787-show breadth tier is hours, and that run is
+  only affordable if a crash costs one show rather than a day.
+- **Failures are named, never a silent empty result.** Every failure mode
+  carries a code (`HTTP_404`, `TIMEOUT`, `EMPTY_FEED`, `NOT_RSS`, `NETWORK`,
+  `BAD_CHECKPOINT`) into the show record and the run summary, a corrupt
+  checkpoint refuses to start rather than quietly restarting, and a run where
+  no show succeeded writes nothing and exits non-zero. One real failure this
+  run: omega tau (`CERT_HAS_EXPIRED`).

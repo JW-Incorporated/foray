@@ -327,6 +327,30 @@ function rememberSeen(ids) {
   lsSet("cp_seen", seen.slice(-SEEN_WINDOW));
 }
 
+/* Freshness-ordered, unseen-first chain for one branch's candidate queue.
+   Real release_date recency (present on 100% of the pool) replaces pure
+   shuffle — a small honest slice of 03_CURATION_SPEC.md's real "freshness"
+   scoring component, not faked from fields the client doesn't have (depth/
+   format/evergreen only exist on the ~27-episode curated set, not the
+   1000+-item discover pool — see docs/DECISIONS.md 2026-07-30). */
+function branchChain(items, history, seen) {
+  const byRecency = (a, b) => new Date(b.release_date || 0) - new Date(a.release_date || 0);
+  const unseen = items.filter(it => !history.has(it.id) && !seen.has(it.id)).sort(byRecency);
+  const seenNotPlayed = items.filter(it => !history.has(it.id) && seen.has(it.id)).sort(byRecency);
+  const played = items.filter(it => history.has(it.id)).sort(byRecency);
+  return unseen.concat(seenNotPlayed, played);
+}
+
+/* The 4-slot menu: variety by construction (03_CURATION_SPEC.md), not by
+   chance. One slot is a structural exploration floor — a branch the user
+   hasn't weighted highly, picked deliberately rather than left to random
+   jitter possibly landing on it or not. The other 3 come from the user's
+   real highest-interest branches (state.interests: taxonomy defaults,
+   refined by local overrides and observed signal). No live backend exists
+   for this static site (docs/DECISIONS.md 2026-07-30), so this runs
+   entirely client-side on data the client actually has — it is not the
+   full relevance+freshness+quality-fatigue formula in scoring.ts, which
+   needs depth/format/evergreen fields the discover pool doesn't carry. */
 function buildCards() {
   const pool = poolFiltered();
   const history = new Set(pickedHistory());
@@ -335,26 +359,62 @@ function buildCards() {
   pool.forEach(i => { (byBranch[branchOf(i)] = byBranch[branchOf(i)] || []).push(i); });
 
   const recentBranches = lsGet("cp_recent_branches", []);
-  const ranked = Object.keys(byBranch)
-    .map(b => {
-      const avg = byBranch[b].reduce((s, i) => s + interestScore(i), 0) / byBranch[b].length;
-      const penalty = recentBranches.includes(b) ? 0.35 : 0;
-      return { b, s: avg + (Math.random() - 0.5) * 0.7 - penalty };
-    })
+  const branches = Object.keys(byBranch)
+    .map(b => ({
+      b,
+      avgInterest: byBranch[b].reduce((s, i) => s + interestScore(i), 0) / byBranch[b].length,
+      recentlyShown: recentBranches.includes(b)
+    }));
+
+  const byInterestDesc = [...branches].sort((x, y) => y.avgInterest - x.avgInterest);
+  const topCount = Math.max(1, Math.ceil(byInterestDesc.length * 0.6));
+  const topBranchIds = new Set(byInterestDesc.slice(0, topCount).map(x => x.b));
+
+  // Stretch: pick from branches outside the user's top interest tier,
+  // preferring one not shown recently, breaking ties toward higher signal
+  // among that lower tier (better-than-random exploration, not top-tier).
+  const stretchCandidates = byInterestDesc
+    .filter(x => !topBranchIds.has(x.b))
+    .sort((x, y) => (x.recentlyShown === y.recentlyShown ? y.avgInterest - x.avgInterest : x.recentlyShown ? 1 : -1));
+  const stretchBranch = stretchCandidates[0]?.b ?? null;
+
+  const topRanked = byInterestDesc
+    .filter(x => x.b !== stretchBranch)
+    .map(x => ({ b: x.b, s: x.avgInterest + (Math.random() - 0.5) * 0.5 - (x.recentlyShown ? 0.35 : 0) }))
     .sort((x, y) => y.s - x.s)
     .map(x => x.b);
 
-  state.cardSlots = ranked.slice(0, 4).map((branch, i) => {
-    const items = byBranch[branch];
-    const unseen = items.filter(it => !history.has(it.id) && !seen.has(it.id)).sort(() => Math.random() - 0.5);
-    const seenNotPlayed = items.filter(it => !history.has(it.id) && seen.has(it.id)).sort(() => Math.random() - 0.5);
-    const played = items.filter(it => history.has(it.id));
-    const chain = unseen.concat(seenNotPlayed, played);
-    return { slot: i + 1, branch, item: chain[0] || null };
+  const chosenBranches = (stretchBranch ? [stretchBranch] : []).concat(topRanked).slice(0, 4);
+
+  const QUEUE_SIZE = 3;
+  state.cardSlots = chosenBranches.map((branch, i) => {
+    const chain = branchChain(byBranch[branch], history, seen);
+    return {
+      slot: i + 1,
+      branch,
+      role: branch === stretchBranch ? "stretch" : "top",
+      item: chain[0] || null,
+      items: chain.slice(0, QUEUE_SIZE)
+    };
   }).filter(sl => sl.item);
 
   lsSet("cp_recent_branches", recentBranches.concat(state.cardSlots.map(sl => sl.branch)).slice(-BRANCH_MEMORY));
-  rememberSeen(state.cardSlots.map(sl => sl.item.id));
+  rememberSeen(state.cardSlots.flatMap(sl => sl.items.map(it => it.id)));
+}
+
+function subjectLabel(branch) {
+  return (state.taxonomy?.nodes || []).find(n => n.id === branch && n.parent === null)?.label || branch;
+}
+
+/* Subject queues are today's auto-built groupings (state.cardSlots), distinct
+   from user-saved playlists (cp_playlists) — same shape so renderPlaylistDetail
+   can render either, but not persisted and not removable. */
+function subjectQueueById(id) {
+  const m = /^subject-(.+)$/.exec(id);
+  if (!m) return null;
+  const slot = (state.cardSlots || []).find(sl => sl.branch === m[1]);
+  if (!slot) return null;
+  return { id, title: subjectLabel(slot.branch), item_ids: slot.items.map(it => it.id), sparse: false, isSubject: true };
 }
 
 /* Hand-crafted why-lines survive where they exist. */
@@ -539,20 +599,41 @@ function bannerHtml() {
   </a>`;
 }
 
+/* What actually connects the episodes in a subject queue is one fact: they
+   share a taxonomy branch. Say that plainly via the real shows involved,
+   rather than implying a curatorial narrative ("the fusion reactor tour")
+   the grouping doesn't actually have. */
+function subjectBlurb(slot) {
+  const shows = [...new Set(slot.items.map(it => it.show))];
+  if (shows.length === 1) return `All from ${shows[0]}.`;
+  if (shows.length === 2) return `From ${shows[0]} and ${shows[1]}.`;
+  return `From ${shows[0]}, ${shows[1]}, and ${shows.length - 2} more.`;
+}
+
 function miniCard(slot) {
   const item = slot.item;
-  const why = whyFor(item.id, item);
+  const totalMin = slot.items.reduce((s, it) => s + (it.duration_min || 0), 0);
+  const stretchTag = slot.role === "stretch"
+    ? `<span class="mc-stretch" title="Outside your usual topics, on purpose">Stretch</span>` : "";
   return `<a class="mini-card" data-branch="${esc(slot.branch)}"
-      href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
-      data-ev="picked" data-ep="${item.id}" data-ctx="card-${esc(slot.branch)}">
+      href="#/subject/${esc(slot.branch)}">
     ${item.artwork_url ? `<img src="${esc(safeUrl(item.artwork_url))}" alt="" loading="lazy">` : `<div class="art-ph"></div>`}
     <div class="mc-info">
-      <p class="mc-show">${esc(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
-      <h3>${esc(item.title)}</h3>
-      <p class="mc-hook">${esc(why)}</p>
+      <p class="mc-kicker">${stretchTag}${slot.items.length} episode${slot.items.length === 1 ? "" : "s"}${totalMin ? ` · ${fmtDur(totalMin)}` : ""}</p>
+      <h3>${esc(subjectLabel(slot.branch))}</h3>
+      <p class="mc-hook">${esc(subjectBlurb(slot))} Starts with "${esc(item.title)}."</p>
     </div>
-    ${playBtn(item)}${starBtn(item.id)}
+    ${starBtn(item.id)}
   </a>`;
+}
+
+function introHtml() {
+  if (lsGet("cp_intro_dismissed", false)) return "";
+  return `<div class="intro" id="home-intro">
+    <button class="intro-close" id="intro-close" aria-label="Dismiss">✕</button>
+    <p class="intro-tag">Foray picks podcast episodes for you, grouped into 4 topic queues below — not one long feed to scroll.</p>
+    <p class="intro-body">Three queues are topics you're already into. One is deliberately something else, on purpose. Tap a card to open its queue and see what's in it.</p>
+  </div>`;
 }
 
 function renderHome() {
@@ -561,6 +642,7 @@ function renderHome() {
   $("#view").innerHTML = `
     <div class="home">
       <div id="banner-slot">${bannerHtml()}</div>
+      ${introHtml()}
       <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
       <form id="pl-form" autocomplete="off">
         <input id="pl-input" type="text" maxlength="120" placeholder="build me a playlist…">
@@ -568,6 +650,11 @@ function renderHome() {
       </form>
       <p id="pl-note" class="note" hidden></p>
     </div>`;
+
+  $("#intro-close")?.addEventListener("click", () => {
+    lsSet("cp_intro_dismissed", true);
+    $("#home-intro").remove();
+  });
 
   const done = $("#banner-done");
   if (done) {
@@ -621,13 +708,14 @@ function epRow(item, idx, ctx, nextIdx) {
 
 function renderPlaylistDetail(id) {
   document.body.className = "view-page";
-  const p = playlistById(id);
+  const p = playlistById(id) || subjectQueueById(id);
   if (!p) { $("#view").innerHTML = `<div class="page"><p class="note">Playlist not found.</p></div>`; return; }
   fullPool(); // populate itemIndex
   const items = p.item_ids.map(i => state.itemIndex[i]).filter(Boolean);
   const history = new Set(pickedHistory());
   const nextIdx = items.findIndex(i => !history.has(i.id));
   const played = items.filter(i => history.has(i.id)).length;
+  const ctx = (p.isSubject ? "subject-" : "playlist-") + p.id;
 
   $("#view").innerHTML = `
     <div class="page">
@@ -635,15 +723,15 @@ function renderPlaylistDetail(id) {
         <a class="back" href="#/">‹</a>
         <div>
           <h2>${esc(p.title)}</h2>
-          <p class="sub">${items.length}-part playlist · ${played} played</p>
+          <p class="sub">${items.length} episode${items.length === 1 ? "" : "s"}${p.isSubject ? " · today's queue" : " playlist"} · ${played} played</p>
         </div>
       </div>
       ${p.sparse ? `<p class="note">Only found a few on this — here's what we've got.</p>` : ""}
-      ${items.map((item, i) => epRow(item, i, "playlist-" + p.id, nextIdx)).join("")}
-      <button class="danger" id="pl-remove">remove this playlist</button>
+      ${items.map((item, i) => epRow(item, i, ctx, nextIdx)).join("")}
+      ${p.isSubject ? "" : `<button class="danger" id="pl-remove">remove this playlist</button>`}
     </div>`;
 
-  $("#pl-remove").addEventListener("click", () => {
+  if (!p.isSubject) $("#pl-remove")?.addEventListener("click", () => {
     savePlaylists(playlists().filter(x => x.id !== p.id));
     logEvent("playlist_removed", { playlist_id: p.id });
     location.hash = "#/playlists";
@@ -701,6 +789,7 @@ function route() {
   const h = location.hash || "#/";
   let m;
   if ((m = /^#\/playlist\/(.+)$/.exec(h))) renderPlaylistDetail(m[1]);
+  else if ((m = /^#\/subject\/(.+)$/.exec(h))) renderPlaylistDetail("subject-" + m[1]);
   else if (h === "#/playlists") renderPlaylists();
   else renderHome();
 }

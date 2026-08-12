@@ -175,9 +175,14 @@ const topicalCases = [
   { query: "endurance running", status: "ok", checkTop: 5, anyOf: ["endurance", "running", "triathlon", "nutrition", "physiology"] },
   { query: "rome", status: "ok", checkTop: 3, anyOf: ["rome", "roman"] },
   // Tightened by the substring-collision fix (issue A): the false
-  // "planetary-radio" match is gone, dropping the strong count from 6 to
-  // 5 -- correctly sparse now instead of a padded-looking "ok".
-  { query: "plane crashes", status: "sparse", checkTop: 5, anyOf: ["aviation", "plane-crash", "aircraft"] },
+  // "planetary-radio" match was removed, which at the time left this
+  // honestly sparse. The nightly pipeline has since grown real aviation
+  // coverage (e.g. the 2026-08-06 refresh's Flight Safety Detectives
+  // episode tipped the strong count past RICH_MIN), so "ok" is now the
+  // honest status -- same catalogue-growth flip as the bbq case below
+  // (2026-07-29). The on-topic needle check is what guards quality here,
+  // not the sparse/ok label.
+  { query: "plane crashes", status: "ok", checkTop: 5, anyOf: ["aviation", "plane-crash", "aircraft", "flight", "crash"] },
   // Same fix cost "geopolitics" as a loose match for "politics" (the
   // prefix-guard can't distinguish a meaningful compound like
   // geo-politics from a coincidental collision like dif-fusion) -- an

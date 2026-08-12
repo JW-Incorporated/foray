@@ -10,6 +10,23 @@ data/catalog-breadth-intl.json
 *.checkpoint
 data-local/
 
+# Sweep checkpoint (tools/segments/sweep-transcripts.mjs). Machine state for
+# resuming a killed run, not content — the committed artefact is
+# data/transcript-availability.json.
+data/transcript-progress.json
+data/*.json.tmp
+
+# Downloaded episode audio (tools/transcribe/fetch-audio.mjs, issue #120).
+# A streaming pipeline, not an archive: files exist only between download and
+# transcription and are deleted by cleanup(). Committing one would be tens of
+# MB that no history rewrite gets back — fetch-audio.test.mjs asserts nothing
+# under here is tracked.
+audio-cache/
+*.mp3
+*.m4a
+*.opus
+*.flac
+
 # Vercel build output (tools/web/prepare-dist.mjs)
 dist/
 .vercel/
