@@ -1,0 +1,11 @@
+{
+  "results": {
+    "segments": [
+      { "speakerName": "A", "start": "00:00:01.000", "end": "00:00:04.000", "text": "Timestamps as strings, and the array is one level down." },
+      { "speakerName": "B", "start": 4, "text": "No end time on this one at all." },
+      { "speakerName": "A", "start_time": 8.5, "end_time": 11, "content": "And a third set of key names again." },
+      { "start": 11, "end": 13, "text": "" },
+      { "note": "a segment with no time or text at all" }
+    ]
+  }
+}

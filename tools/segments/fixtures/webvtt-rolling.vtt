@@ -1,0 +1,23 @@
+WEBVTT
+
+NOTE
+Rolling captions: each cue re-emits the tail of the previous one, and the
+window sometimes stalls so a cue repeats verbatim. Concatenated naively this
+excerpt reads every clause two or three times.
+
+00:00:01.000 --> 00:00:04.000
+the thing about a caldera is that
+
+00:00:03.500 --> 00:00:07.000
+the thing about a caldera is that
+it is not a crater
+
+00:00:07.000 --> 00:00:10.000
+it is not a crater at all
+it is a collapse
+
+00:00:10.000 --> 00:00:13.000
+at all it is a collapse
+
+00:00:13.000 --> 00:00:16.000
+and the collapse is the whole story
