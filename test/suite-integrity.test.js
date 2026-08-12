@@ -57,9 +57,13 @@ const FLOORS = {
   "player/queue-state.test.js": 43,
   "player/seek-policy.test.js": 17,
   "test/app-security.test.js": 18,
+  // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
+  // so suites under it need the same floor.
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
   "tools/segments/sweep-transcripts.test.mjs": 26,
+  "tools/segments/transcript-normalize.test.mjs": 24,
+  "tools/segments/merge-segments.test.mjs": 39,
 };
 
 for (const [rel, floor] of Object.entries(FLOORS)) {

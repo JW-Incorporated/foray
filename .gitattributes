@@ -1,0 +1,18 @@
+# Test fixtures are DATA, not source. Their exact bytes — including line
+# endings — are what the parser under test is asserted against, so git must
+# never rewrite them.
+#
+# Why this exists: this repo is developed on Windows, where git's autocrlf
+# converts LF to CRLF at checkout. `tools/segments/fixtures/*.vtt` were
+# committed as LF and arrived as CRLF, which broke a test that constructs a
+# CRLF variant from a fixture it assumed was LF (it produced "\r\r\n"). CI runs
+# on Linux, so the failure was invisible there and only appeared on a developer
+# checkout — the worst combination.
+#
+# `-text` disables all end-of-line conversion for these paths in both
+# directions. Scoped deliberately to fixtures rather than applied repo-wide:
+# a blanket normalisation pass on a Windows checkout is its own well-known
+# trap, and nothing here needs one.
+tools/segments/fixtures/** -text
+tools/transcribe/fixtures/** -text
+backend/fixtures/** -text
