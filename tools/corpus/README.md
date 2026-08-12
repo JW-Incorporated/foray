@@ -42,6 +42,27 @@ Dependencies are scoped to this directory (own `package.json`, like
 Node ≥22.5 (`node:sqlite`; run tests with `--experimental-sqlite` on 22.x —
 unflagged on ≥23.4, which local dev and the DB layer assume).
 
+## CLI
+
+```
+node tools/corpus/corpus.mjs init                    # create/migrate the db
+node tools/corpus/corpus.mjs load-manifest           # parse dossier → sources
+node tools/corpus/corpus.mjs ingest --all            # fetch+extract+chunk
+node tools/corpus/corpus.mjs ingest --area 4         # one dossier area
+node tools/corpus/corpus.mjs search "server test"    # FTS5 keyword search
+node tools/corpus/corpus.mjs stats                   # per-area coverage
+node tools/corpus/corpus.mjs refetch 12              # force re-ingest one source
+node tools/corpus/corpus.mjs report --write          # coverage.md + dead-links.md
+```
+
+Schema (migrations/): `sources` (the parsed dossier — the dossier markdown IS
+the manifest), `documents` (append-only fetch history; the newest 2xx row is
+the current document), `chunks` (current document only, ~500–1000 est. tokens,
+heading-path tagged, `embedding` NULL until the backfill pass), `chunks_fts`
+(FTS5, trigger-synced). Parallel area ingestion is safe: WAL + busy_timeout
+on the DB, and a cross-process host gate (`hostgate.mjs`) keeps sibling
+processes from co-hammering a shared host.
+
 ## Tests
 
 ```
