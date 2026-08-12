@@ -41,17 +41,26 @@ function parseArgs(argv) {
   return args;
 }
 
+/* A flag given without a value parses as boolean true, and Number(true)
+ * is 1 — so "--area" with the value forgotten must throw, not ingest area 1. */
+function numFlag(value, name, { min = 1, max = Infinity } = {}) {
+  if (typeof value !== "string" || !/^\d+$/.test(value)) {
+    throw new Error(`${name} needs a numeric value (got ${JSON.stringify(value)})`);
+  }
+  const n = Number(value);
+  if (n < min || n > max) throw new Error(`${name} must be ${min}–${max === Infinity ? "…" : max}, got ${n}`);
+  return n;
+}
+
 function selectSources(db, args) {
   if (args.source !== undefined) {
-    const id = Number(args.source);
-    if (!Number.isInteger(id) || id <= 0) throw new Error(`--source must be a positive id, got ${args.source}`);
+    const id = numFlag(args.source, "--source");
     const row = db.prepare("SELECT * FROM sources WHERE id = ?").get(id);
     if (!row) throw new Error(`no source with id ${id} — run load-manifest first?`);
     return [row];
   }
-  if (args.area) {
-    const area = Number(args.area);
-    if (!Number.isInteger(area) || area < 1 || area > 9) throw new Error(`--area must be 1–9, got ${args.area}`);
+  if (args.area !== undefined) {
+    const area = numFlag(args.area, "--area", { min: 1, max: 9 });
     return db.prepare("SELECT * FROM sources WHERE area = ? ORDER BY id").all(area);
   }
   if (args.all) return db.prepare("SELECT * FROM sources ORDER BY area, id").all();
@@ -105,7 +114,7 @@ async function main() {
       const db = openMigrated();
       const query = args._[0];
       if (!query) throw new Error(`usage: corpus search "query" [--limit N]`);
-      const limit = Number(args.limit ?? 8);
+      const limit = args.limit === undefined ? 8 : numFlag(args.limit, "--limit", { min: 1, max: 100 });
       const rows = db.prepare(`
         SELECT s.id AS source_id, s.title, s.area, c.heading_path,
                snippet(chunks_fts, 0, '»', '«', ' … ', 18) AS snip,

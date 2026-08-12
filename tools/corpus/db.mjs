@@ -41,8 +41,13 @@ export function migrate(db, migrationsDir = MIGRATIONS_DIR) {
     const version = Number(file.slice(0, 4));
     if (version <= current) continue;
     const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
-    db.exec("BEGIN");
+    // BEGIN IMMEDIATE serializes concurrent migrators under busy_timeout,
+    // and re-reading user_version inside the write lock means the losers of
+    // the race skip cleanly instead of dying on "table already exists".
+    db.exec("BEGIN IMMEDIATE");
     try {
+      const v = db.prepare("PRAGMA user_version").get().user_version;
+      if (version <= v) { db.exec("COMMIT"); continue; }
       db.exec(sql);
       db.exec(`PRAGMA user_version = ${version}`);
       db.exec("COMMIT");

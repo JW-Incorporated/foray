@@ -45,11 +45,18 @@ export function createHostGate({
         try {
           const age = now() - fs.statSync(lockDir).mtimeMs;
           if (age > STALE_MS) {
-            fs.rmdirSync(lockDir); // break a dead process's lock
+            // Break the dead lock via rename: rename is atomic, so exactly
+            // one breaker wins; a raced loser throws and re-loops. A plain
+            // rmdir here has an ABA race that can evict a LIVE lock (two
+            // breakers both stat stale; the slower one removes the winner's
+            // fresh lock).
+            const tomb = `${lockDir}.tomb-${process.pid}-${Math.random().toString(36).slice(2)}`;
+            fs.renameSync(lockDir, tomb);
+            fs.rmdirSync(tomb);
             continue;
           }
         } catch {
-          continue; // lock vanished between check and stat — retry
+          continue; // lock vanished / rename lost the race — retry
         }
         await sleep(LOCK_POLL_MS);
       }

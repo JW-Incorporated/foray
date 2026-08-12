@@ -170,6 +170,30 @@ test("chunk: trailing sliver merges into its predecessor", () => {
   assert.ok(chunks[chunks.length - 1].token_count > 60, "sliver did not stay alone");
 });
 
+test("chunk: skipped heading levels never turn siblings into ancestors", () => {
+  const body = "Content sentence for this section. ".repeat(40);
+  const md = `# A\n\n### B\n\n${body}\n\n### C\n\n${body}`;
+  const chunks = chunkMarkdown(md);
+  const cChunks = chunks.filter((c) => c.heading_path.includes("C"));
+  assert.ok(cChunks.length >= 1);
+  for (const c of cChunks) {
+    assert.equal(c.heading_path, "A > C", `sibling leaked into path: ${c.heading_path}`);
+  }
+});
+
+test("dossier: near-miss entry lines surface a warning instead of vanishing", () => {
+  const md = `### 2. Speech Processing
+
+- **Broken Entry** https://x.example.com/missing-dashes — note without the first dash.
+- **Good Entry** — https://x.example.com/good — a proper note.
+`;
+  const warnings = [];
+  const entries = parseDossier(md, { onWarn: (w) => warnings.push(w) });
+  assert.equal(entries.length, 1);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /Broken Entry/);
+});
+
 test("chunk: ordinals are dense and start at zero", () => {
   const md = Array.from({ length: 12 }, (_, i) => `## H${i}\n\n${"text sentence. ".repeat(60)}`).join("\n\n");
   const chunks = chunkMarkdown(md);

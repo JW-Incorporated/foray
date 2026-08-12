@@ -186,7 +186,7 @@ test("ingest: github issue route fetches comments and stores markdown", async ()
   const fetcher = {
     async fetchUrl(url) {
       calls.push(url);
-      if (url.endsWith("/comments")) {
+      if (url.includes("/comments")) {
         return { ok: true, status: 200, finalUrl: url, contentType: "application/json", body: Buffer.from(JSON.stringify([{ user: { login: "z" }, created_at: "2024-01-01T0:0:0Z", body: "a comment" }])), notes: [] };
       }
       return { ok: true, status: 200, finalUrl: url, contentType: "application/json", body: Buffer.from(JSON.stringify({ number: 9, title: "Issue Nine", state: "open", html_url: url, created_at: "2024-01-01T0:0:0Z", user: { login: "a" }, body: "issue body text", comments: 1 })), notes: [] };
@@ -195,9 +195,33 @@ test("ingest: github issue route fetches comments and stores markdown", async ()
   const r = await ingestSource(db, fetcher, s);
   assert.equal(r.outcome, "ok");
   assert.ok(calls[0].includes("api.github.com/repos/o/r/issues/9"));
-  assert.ok(calls[1].endsWith("/comments"));
+  assert.match(calls[1], /\/comments\?per_page=100&page=1$/);
   const doc = db.prepare("SELECT * FROM documents WHERE source_id = ?").get(s.id);
   assert.match(doc.fetch_notes, /github issue→REST API/);
+});
+
+test("ingest: issue comments paginate past 100 and stop on a short page", async () => {
+  const db = openMigrated(tmpDb());
+  const s = seedSource(db, { url: "https://github.com/o/r/issues/1", title: "Big Thread", source_type: "issue" });
+  const pageCalls = [];
+  const mkComment = (i) => ({ user: { login: `u${i}` }, created_at: "2024-01-01T0:0:0Z", body: `comment ${i}` });
+  const fetcher = {
+    async fetchUrl(url) {
+      if (url.includes("/comments")) {
+        const page = Number(new URL(url).searchParams.get("page"));
+        pageCalls.push(page);
+        const batch = page === 1 ? Array.from({ length: 100 }, (_, i) => mkComment(i))
+                    : Array.from({ length: 30 }, (_, i) => mkComment(100 + i));
+        return { ok: true, status: 200, finalUrl: url, contentType: "application/json", body: Buffer.from(JSON.stringify(batch)), notes: [] };
+      }
+      return { ok: true, status: 200, finalUrl: url, contentType: "application/json", body: Buffer.from(JSON.stringify({ number: 1, title: "Big Thread", state: "open", html_url: url, created_at: "2024-01-01T0:0:0Z", user: { login: "a" }, body: "body", comments: 130 })), notes: [] };
+    },
+  };
+  const r = await ingestSource(db, fetcher, s);
+  assert.equal(r.outcome, "ok");
+  assert.deepEqual(pageCalls, [1, 2]);
+  const doc = db.prepare("SELECT * FROM documents WHERE source_id = ?").get(s.id);
+  assert.doesNotMatch(doc.fetch_notes, /truncated/);
 });
 
 /* --------------------------------------------------------------- report */

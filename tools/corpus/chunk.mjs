@@ -59,7 +59,7 @@ export function chunkMarkdown(markdown, { minTokens = MIN_TOKENS, maxTokens = TA
 
   const flushBuf = () => {
     const text = buf.join("\n").trim();
-    if (text) blocks.push({ text, headingPath: headingStack.join(" > ") });
+    if (text) blocks.push({ text, headingPath: headingStack.filter(Boolean).join(" > ") });
     buf = [];
   };
 
@@ -75,11 +75,16 @@ export function chunkMarkdown(markdown, { minTokens = MIN_TOKENS, maxTokens = TA
     if (h) {
       flushBuf();
       const level = h[1].length;
+      // The stack stays SPARSE at its true levels: compacting holes (h1→h3
+      // leaves index 1 empty) would break the level↔index correspondence and
+      // turn siblings into ancestors. Holes are skipped only at join time.
       headingStack = headingStack.slice(0, level - 1);
       headingStack[level - 1] = h[2].trim();
-      // headings between levels may be skipped (h1 → h3); compact holes
-      headingStack = headingStack.filter((x) => x !== undefined);
-      blocks.push({ text: line.trim(), headingPath: headingStack.join(" > "), isHeading: true });
+      blocks.push({
+        text: line.trim(),
+        headingPath: headingStack.filter(Boolean).join(" > "),
+        isHeading: true,
+      });
       continue;
     }
     if (line.trim() === "") { flushBuf(); continue; }

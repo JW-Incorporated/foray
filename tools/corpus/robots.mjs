@@ -16,13 +16,14 @@
  */
 
 function patternToRegex(pattern) {
-  // Escape regex chars except our two metacharacters, then translate.
-  const escaped = pattern.replace(/[.+?^{}()|[\]\\]/g, "\\$&");
+  // Only a TRAILING '$' is an end-anchor (RFC 9309); anywhere else it is a
+  // literal character. Peel the anchor off first, then escape everything
+  // including '$', then translate '*'.
+  const anchored = pattern.endsWith("$");
+  const body = anchored ? pattern.slice(0, -1) : pattern;
+  const escaped = body.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
   const translated = escaped.replace(/\*/g, ".*");
-  const anchored = translated.endsWith("$")
-    ? `^${translated.slice(0, -1)}$`
-    : `^${translated}`;
-  return new RegExp(anchored);
+  return new RegExp(anchored ? `^${translated}$` : `^${translated}`);
 }
 
 export function parseRobots(text, agentToken) {

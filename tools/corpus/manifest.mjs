@@ -48,7 +48,7 @@ function cleanUrl(url) {
  * @param {string} markdown dossier content
  * @returns {Array<{area, area_name, title, url, source_type, why_it_matters, read_first}>}
  */
-export function parseDossier(markdown) {
+export function parseDossier(markdown, { onWarn = (msg) => console.warn(`manifest: ${msg}`) } = {}) {
   const byUrl = new Map();
   let mode = null; // 'read-first' | {area, name} | null
 
@@ -65,7 +65,15 @@ export function parseDossier(markdown) {
     if (!mode) continue;
 
     const m = line.match(ENTRY_RE);
-    if (!m) continue;
+    if (!m) {
+      // A line that LOOKS like an entry but doesn't parse is a silently
+      // dropped source — the exact failure the floor test can't see when
+      // it's a single line. Surface it.
+      if (/^(?:\d+\.|-)\s+\*\*/.test(line)) {
+        onWarn(`entry-shaped line did not parse (check em-dashes): ${line.slice(0, 100)}`);
+      }
+      continue;
+    }
     const [, title, rawUrl, note] = m;
     const url = cleanUrl(rawUrl);
 

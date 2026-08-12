@@ -72,6 +72,12 @@ test("robots: wildcard and end-anchor patterns", () => {
   assert.equal(r.isAllowed("/paper.pdf.html"), true);
 });
 
+test("robots: non-terminal $ is a literal, not an anchor (fails closed)", () => {
+  const r = parseRobots("User-agent: *\nDisallow: /a$b", AGENT_TOKEN);
+  assert.equal(r.isAllowed("/a$b/page"), false);
+  assert.equal(r.isAllowed("/ab"), true);
+});
+
 test("robots: specific agent group beats star group", () => {
   const r = parseRobots(
     "User-agent: *\nDisallow: /\n\nUser-agent: foraycorpusbot\nDisallow:",

@@ -77,10 +77,20 @@ export async function ingestSource(db, fetcher, source, { force = false } = {}) 
       const issue = JSON.parse(body.toString("utf8"));
       let comments = [];
       if (route.commentsUrl && (issue.comments ?? 0) > 0) {
-        const cres = await fetcher.fetchUrl(route.commentsUrl);
-        notes.push(...cres.notes);
-        if (cres.ok) comments = JSON.parse(cres.body.toString("utf8"));
-        else notes.push(`comments fetch failed (${cres.status})`);
+        // Paginate: the API defaults to 30/page and long standards threads
+        // (the DAI issue) run far past that. Page count is bounded to keep a
+        // pathological thread from eating the unauthenticated rate limit.
+        for (let page = 1; page <= 5; page++) {
+          const cres = await fetcher.fetchUrl(`${route.commentsUrl}?per_page=100&page=${page}`);
+          notes.push(...cres.notes);
+          if (!cres.ok) { notes.push(`comments page ${page} fetch failed (${cres.status})`); break; }
+          const batch = JSON.parse(cres.body.toString("utf8"));
+          comments.push(...batch);
+          if (batch.length < 100) break;
+        }
+        if (comments.length < (issue.comments ?? 0)) {
+          notes.push(`comments truncated: ${comments.length}/${issue.comments}`);
+        }
       }
       extracted = issueToMarkdown(issue, comments);
     } else if (effectiveKind === "github-readme") {

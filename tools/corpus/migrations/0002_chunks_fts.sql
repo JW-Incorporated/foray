@@ -14,6 +14,11 @@ CREATE VIRTUAL TABLE chunks_fts USING fts5(
   tokenize='porter unicode61'
 );
 
+-- Unconditional correctness for pre-populated DBs (restored dumps, future
+-- migration re-splits): index whatever chunks already exist. A no-op on the
+-- normal fresh-DB path.
+INSERT INTO chunks_fts(chunks_fts) VALUES('rebuild');
+
 CREATE TRIGGER chunks_ai AFTER INSERT ON chunks BEGIN
   INSERT INTO chunks_fts(rowid, text, heading_path)
   VALUES (new.id, new.text, new.heading_path);
