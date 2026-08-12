@@ -7,7 +7,17 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
-### corpus — research corpus ingestion (Joey's Claude, started 2026-08-12)
+(none — see completed below)
+
+## Completed workstreams
+
+### corpus — research corpus ingestion (Joey's Claude, 2026-08-12, COMPLETE)
+
+Done same day: 52/54 dossier sources ingested (480 chunks, ~272k est. tokens),
+searchable via `node tools/corpus/corpus.mjs search "..."`. Reports:
+`docs/research/corpus/coverage.md` + `dead-links.md`. Retro in the plan doc.
+One open item for Wyatt: PR #149 (ci.yml step to execute the corpus suites —
+CI/CD is his call). The embedding backfill is a future, separate pass.
 
 - **What:** scrape + archive every source in `docs/research/foray-research-dossier.md`
   (~57 sources, 9 areas) into a migration-managed SQLite corpus with FTS5

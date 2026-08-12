@@ -105,6 +105,40 @@ Each branch: `git fetch origin && git rebase origin/main` immediately before
 PR/merge; conflicts in shared files resolve in Wyatt's favor, mine layered on
 top.
 
-## Retro
+## Retro (2026-08-12 — workstream complete)
 
-(to be written when the ingestion pass completes)
+**Outcome:** 52/54 sources ingested (480 chunks, ~272k est. tokens) in one
+day: announce (#146) → scraper infra (#147) → DB+CLI (#148) → 9 parallel
+area-ingestion subagents → this reports PR. The two failures are genuine and
+recorded in `dead-links.md`: the AES TD1004 PDF 301s to a 404 (AES moved its
+document tree), and ScienceDirect bot-walls (403). The three definition-of-done
+smoke queries ("reciprocal rank fusion", "dynamic ad insertion", "server
+test") all return correctly-attributed, on-topic chunks.
+
+**What went differently than planned:**
+- PR #147 was auto-merged by `automerge-nightly.yml` the moment checks went
+  green (tools/+test/ are allowlisted) — before the planned pre-merge review.
+  The reviewer subagent therefore ran post-merge for infra and pre-push for
+  the schema branch; all 9 findings (1 MUST-FIX: chunker heading-stack
+  corruption on skipped heading levels) were fixed in #148. Lesson for the
+  next workstream: on this repo, "review before merge" means review before
+  PUSH for anything on an allowlisted path.
+- The kickoff assumed root STATE.md/MAP.md/PLAN.md; none existed. STATE.md
+  was created as a cross-session announcement board, this doc serves as
+  PLAN, and the repo map stays in CLAUDE.md § Layout — no separate MAP.md.
+- Per-area report branches were collapsed into this single reports PR: the
+  DB is gitignored, so area runs produce no committable diff.
+
+**Before the embedding backfill pass:**
+1. Land PR #149 (Wyatt) so the 80 corpus tests actually run in CI — until
+   then they're floored but never executed there.
+2. Thin extractions are flagged in fetch_notes ("thin extraction") — 6
+   JS-rendered pages (Apple forums ×2, Podcast Index API docs, HF TTS Arena,
+   NotebookLM blog, OpenAI community) yielded 1–2 chunks. If those sources
+   matter for retrieval experiments, a headless-browser fetch pass is the
+   fix; a manual paste-in is cheaper for the two Apple forum threads.
+3. The chars/4 token heuristic is deliberately crude; the backfill pass
+   should re-chunk if its embedding model's tokenizer disagrees badly.
+4. `sources.url` for the AES standard should be repointed if a new canonical
+   AES URL is found (use `corpus refetch 12` after a manifest edit — the
+   loader is idempotent by URL, so edit the dossier, reload, refetch).
