@@ -115,6 +115,12 @@ jobs:
         run: node --test "test/*.test.js"
       - name: Refresh-pipeline helper tests
         run: node --test "tools/refresh/*.test.mjs"
+      - name: Transcription-pipeline tests
+        # Same job for the same reason as the two above: `data-and-site` is the
+        # required check, so a suite in a new job would gate nothing. Includes
+        # the assertion that no downloaded audio is git-tracked (issue #120),
+        # which is only meaningful when it runs on every PR.
+        run: node --test "tools/transcribe/*.test.mjs"
       - name: Validate semantic-index.json
         run: node tools/validate-semantic-index.mjs
       - name: Search-quality battery
