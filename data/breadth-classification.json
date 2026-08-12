@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-12T00:22:37.329Z",
+  "built_at": "2026-08-12T08:22:07.575Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-12-f7b16bb0",
+    "last_batch_id": "fresh-2026-08-12-a5e39daa",
     "last_batch_tier": 1
   },
   "entries": {
@@ -174343,10 +174343,30 @@
     },
     "1788563985": {
       "topics": [
-        "comedy/interviews"
+        "comedy",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "The Truth (In My Opinion)",
+      "blurb": "The podcast where comedian Cody Dahler puts his guests in charge of the news. Created by Cody Dahler and Becky Carewe Jeffries Hosted on Acast. See acast.com/privacy for more information.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1788576960": {
       "topics": [
@@ -174410,11 +174430,30 @@
     },
     "1788809253": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "psychology",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Sober Sunrise - AA Speaker Podcast",
+      "blurb": "Sober Sunrise brings you AA Speaker Tapes from around the world. Rather than an AA discussion podcast, Sober Sunrise brings you speakers who share step-work, workshops, and general fellowship discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1788810180": {
       "topics": [
@@ -174425,18 +174464,47 @@
     },
     "1788815085": {
       "topics": [
-        "education/language-learning",
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics/language",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "English Learning Podcast",
+      "blurb": "Welcome to English Learning Podcast, the podcast created for the followers of EnglishPod and all English language learners. Our website has moved to: https://www.englishpod.cc By subscribing on website, you can.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1788824745": {
       "topics": [
-        "tv-film/animation"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Delusional Boyfriend Book Club",
+      "blurb": "Welcome to the Delusional Boyfriend Book Club — a romance-obsessed podcast and channel devoted to BL, manhwa, manga, anime, live-action dramas, and romance novels. We overanalyze relationships, obsess over the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1788854878": {
       "topics": [
@@ -174552,10 +174620,25 @@
     },
     "1789333407": {
       "topics": [
-        "sports/rugby"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Rucks, Mauls & Oval Balls",
+      "blurb": "Welcome to Rucks Mauls & Oval Balls , the ultimate podcast for all things English rugby! Hosted by two former university teammates who shared the pitch and forged a lasting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1789358485": {
       "topics": [
@@ -174603,10 +174686,30 @@
     },
     "1789397931": {
       "topics": [
+        "nature",
         "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "This Week in Yellowstone National Park",
+      "blurb": "\"This Week in Yellowstone\" is your go-to podcast for everything you need to plan your next trip to America’s first national park. Each week, I bring you up-to-date weather forecasts,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1789462931": {
       "topics": [
@@ -174694,7 +174797,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "The Black Box Aviation Podcast",
+      "blurb": "Aviation related topics brought to you by airline pilots, military pilots and professional aviation experts. Discussions including personal experience involving life as a professional aviator, the airline industry and everything.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1790108248": {
       "topics": [
@@ -174872,10 +174990,25 @@
     },
     "1790642193": {
       "topics": [
-        "comedy/interviews"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Unseriously",
+      "blurb": "I'm Holly Mackle - join me as I ask quirky questions of notable normals. Maybe you've heard what your favorite creatives are working on, but it's outright fun to hear.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1790716733": {
       "topics": [
@@ -175003,10 +175136,30 @@
     },
     "1791289515": {
       "topics": [
-        "nature/pets"
+        "nature/animal-cognition",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "CatCog: Cat Science & Psychology",
+      "blurb": "CatCog is the podcast for people who don’t just love their cats—they want to understand them. Hosted by Adam, a psychologist who treats feline behavior with the seriousness it deserves,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1791306475": {
       "topics": [
@@ -175040,10 +175193,25 @@
     },
     "1791540993": {
       "topics": [
-        "nature/pets"
+        "sports/biomechanics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Equestrian Fitness for the Long Ride with The",
+      "blurb": "Want to keep endurance riding for a lifetime? Equestrian Fitness for the Long Ride is all about helping riders perform their best now, plus stay fit for the distance trail.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1791561704": {
       "topics": [
@@ -175160,11 +175328,30 @@
     },
     "1791832041": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "food/cooking-science",
+        "sports/biomechanics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Truth Serum with Tyler Minton",
+      "blurb": "Truth Serum is a podcast hosted by Tyler Minton: Master of Science in Human Nutrition, Registered Dietitian, Nutritionist to Elite Athletes, Former Pro Fighter & BJJ Black Belt. Tyler is.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1791855880": {
       "topics": [
@@ -175213,10 +175400,25 @@
     },
     "1792018785": {
       "topics": [
-        "sports/rugby"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Rugby Coach Weekly",
+      "blurb": "Dan Cottrell and guests discuss all the hot topics in grass roots rugby coaching from managing concussion to dealing with parents.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1792057585": {
       "topics": [
@@ -175351,14 +175553,44 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "2025流行经典英文歌曲|好听又治愈越听越上瘾",
+      "blurb": "抖音最火欧美英文流行歌曲，好听又治愈亿遍循环优质欧美热歌越听越上瘾 经典怀旧百听不厌的英文老歌，众多欧美歌手的成名曲值得珍藏",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1792730583": {
       "topics": [
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Notes With Jack",
+      "blurb": "NOTES WITH JACK is a weekly check-in between theater legend Jack O'Brien and up-and-coming screenwriter Alan Fox. Two artists, separated by fifty years, just trying to figure it out... For.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1792745659": {
       "topics": [
@@ -175472,10 +175704,25 @@
     },
     "1793182041": {
       "topics": [
-        "sports/wrestling"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Ring Champs with Ak & Barak",
+      "blurb": "Bringing you the newest series from ATS Fight, RING CHAMPS with Ak & Barak. Weekly episodes of RING CHAMPS will feature exclusive interviews with top fighters, trainers, and luminaries in.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1793186494": {
       "topics": [
@@ -175519,7 +175766,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "How to Be a Jew",
+      "blurb": "Hosted by Courtney Hazlett, Rabbi Diana Fersko, and Josh Kross, each episode of How to Be a Jew takes a look at a current, cultural topic and what it means.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1793414650": {
       "topics": [
@@ -175566,10 +175828,25 @@
     },
     "1793602593": {
       "topics": [
-        "sports/rugby"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Ziggo Sport: Rugby Round-up",
+      "blurb": "In de rugby podcast Ziggo Sport: Rugby Round-up krijg je elke speelronde alle ins- en outs van de Six Nations te horen. Presentatrice Tessa Veldhuis ontvangt experts, zoals Zeno Kieft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1793616053": {
       "topics": [
@@ -175580,10 +175857,30 @@
     },
     "1793644263": {
       "topics": [
-        "sports/baseball"
+        "sports",
+        "economics/markets"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.65
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "The Sports Card CEO Podcast",
+      "blurb": "The Sports Card CEO Podcast is your ultimate destination for everything sports cards! Whether you&#39;re a seasoned collector, an investor seeking market insights, or just starting your journey in the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1793661078": {
       "topics": [
@@ -175667,7 +175964,22 @@
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "International Brotherhood of Magicians Podcast",
+      "blurb": "The official podcast of the International Brotherhood of Magicians. We talk about the art of magic (the entertaining kind) and all things I.B.M. For more information about the I.B.M., please.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1793904402": {
       "topics": [
@@ -175821,7 +176133,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "The Irish Cricket Podcast",
+      "blurb": "The only podcast dedicated to all things Irish cricket. Featuring analysis, interviews and explainers of all the sport's talking points.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1794372591": {
       "topics": [
@@ -175931,11 +176258,25 @@
     },
     "1794622545": {
       "topics": [
-        "business/startups",
         "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Women Advancing",
+      "blurb": "WomenAdvancing brings you into a world that will leave you feeling so much better. Anxiety be gone! Why? Because we’ll be speaking to real women who have faced real opportunities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1794636493": {
       "topics": [
@@ -176033,17 +176374,52 @@
     },
     "1795029339": {
       "topics": [
-        "nature"
+        "nature/animal-cognition",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "The Spark Bird Podcast",
+      "blurb": "The Spark Bird Project is an ongoing community science initiative designed to gather, share, and study the stories of people's passion for birds. Research findings go directly back to community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1795032531": {
       "topics": [
         "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "The Jim Acosta Show",
+      "blurb": "Don't give into the lies. Don't give into fear. Hold on to the truth. And hope. www.jimacosta.com",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1795041554": {
       "topics": [
@@ -176092,10 +176468,25 @@
     },
     "1795344405": {
       "topics": [
-        "sports/hockey"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Canucks Insider Podcast",
+      "blurb": "You heard it first, straight from the locker room. Canucks Insider’s Chris Faber sits down with your favourite players, coaches, and staff to bring you Canucks-centric conversations about hockey and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1795415142": {
       "topics": [
@@ -176393,11 +176784,25 @@
     },
     "1796247723": {
       "topics": [
-        "education/language-learning",
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics/language",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Miss Honey: Slow English Podcast",
+      "blurb": "Learn English Naturally! :) Welcome to the Slow English Podcast, where I speak clearly, naturally, and SLOW—so you can really understand and enjoy English. Each episode is made with real.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1796341484": {
       "topics": [
@@ -176437,10 +176842,25 @@
     },
     "1796590299": {
       "topics": [
-        "comedy/stand-up"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Quik Draw Comedy",
+      "blurb": "Quik Draw Comedy Live Show & Podcast Step into the world of \"Quik Draw Comedy,\" your weekly dose of laughter recorded live every Sunday night at Emmets Tavern in Omaha,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1796598706": {
       "topics": [
@@ -176505,24 +176925,77 @@
     },
     "1796712147": {
       "topics": [
-        "science/chemistry"
+        "science",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Innovate and React",
+      "blurb": "Talking to scientist about their innovations in chemistry",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1796716989": {
       "topics": [
-        "sports/rugby"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1796719029": {
       "topics": [
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Charlie Cooke Cricket Podcast",
+      "blurb": "Charlie Cooke Cricket Podcast is your go-to source for everything cricket! Hosted by Charlie Cooke, this podcast dives deep into the world of cricket, offering insightful commentary, match analysis, player.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1796721639": {
       "topics": [
@@ -176530,7 +177003,26 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Tech Brief",
+      "blurb": "🚀 Tech Brief with DuinxTech🔥 Daily, bringing you the latest breaking tech news, innovations, and trends! From AI breakthroughs to cutting-edge gadgets, I break down the stories that shape our.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1796730401": {
       "topics": [
@@ -176548,17 +177040,47 @@
     },
     "1796755509": {
       "topics": [
-        "travel"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "SubwayTakes Uncut with Kareem Rahma",
+      "blurb": "SubwayTakes but longer. Also, it's podcasts. A co-creation of Kareem Rahma and Andrew Kuo. In partnership with Talkhouse Network.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1796757459": {
       "topics": [
-        "culture/design"
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Cube Engineers",
+      "blurb": "A podcast about Magic: The Gathering Cube, Game Design, and more by TrainmasterGT cubeengineers.substack.com",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1796780573": {
       "topics": [
@@ -176588,11 +177110,29 @@
     "1796836887": {
       "topics": [
         "medicine/biology",
-        "science",
-        "nature"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "BiotechTV - News",
+      "blurb": "This is the primary news channel of BiotechTV where you will find on the ground reporting by our journalists from biotech hubs throughout the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1796849755": {
       "topics": [
@@ -176603,11 +177143,25 @@
     },
     "1796896599": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "DNF Diaries",
+      "blurb": "Every other week we bring you a wonderfully entertaining, low stakes, Absolutely no shame story of a DNF in the ultramarathon, sub ultra, FKT, or thru hike world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1797010898": {
       "topics": [
@@ -176643,7 +177197,22 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "Shrimad Bhagavatam 4th Canto in Bengali",
+      "blurb": "The Fourth Canto of the Śrīmad-Bhāgavatam is titled The Creation of the Fourth Order. It contains profound narratives, including the genealogical table of the daughters of Manu. Our mission is.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1797240996": {
       "topics": [
@@ -176711,10 +177280,25 @@
     },
     "1797536295": {
       "topics": [
-        "relationships"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified from description and recent episodes.",
+      "display_title": "What's the Reality?",
+      "blurb": "What’s The Reality is your all-access backstage pass into the wild and unpredictable world of your favorite TV personalities and influencers. Hosted by Amber Desiree (AD) from Love Is Blind.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a5e39daa",
+      "classified_at": "2026-08-12T08:22:07.575Z"
     },
     "1797582989": {
       "topics": [
