@@ -1,34 +1,105 @@
-# Auto-merge the nightly content PRs once their required checks pass.
+# Auto-merge bot CONTENT PRs once their required checks pass.
 #
-# The Claude Cloud agent (foray-nightly-enrich) opens a PR from a `nightly/<date>`
-# branch. This enables GitHub's native auto-merge on it, so the PR merges itself
-# the moment the required checks (`backend`, `data-and-site`) go green — no human
-# in the loop for routine content. It does NOT bypass anything: auto-merge waits
-# for the same `protect-main` checks every other PR must pass; a red check simply
-# means the PR never merges.
+# Why this exists (2026-07-24): content PRs used to sit open awaiting a human
+# merge, and in Swift2 the cloud agents babysat them with hourly self-check-in
+# sessions — ~69% of ALL scheduled agent token spend, ~144 sessions/day whose
+# entire output was "still open, still green, re-arm in 1h". Auto-merge deletes
+# the thing they were waiting for, at zero token cost. See CLAUDE.md § Never
+# babysit your own PR.
 #
-# Scoped to `nightly/*` head branches ONLY — human PRs are never auto-merged.
-# Requires the repo's "Allow auto-merge" setting (enabled 2026-07-24).
+# THE SAFETY MODEL IS PATH-BASED, NOT BRANCH-NAME-BASED (starter-kit, 2026-08-11).
+# This file previously gated on `startsWith(github.head_ref, 'nightly/')` alone,
+# which was wrong in two directions and both mattered:
+#   - Too loose: a bot can name its branch anything. Any PR from a `nightly/*`
+#     branch auto-merged on green REGARDLESS of what it touched — app.js, CI
+#     workflows, backend/. A bot cannot make app code look like a data file,
+#     but it can absolutely name a branch `nightly/`.
+#   - Too tight: the classification runners open `classify/*` branches, so their
+#     PRs never auto-merged at all. PR #86 sat open for 8 days for this reason.
+# Gating on paths fixes both. If a PR touches even one file outside
+# ALLOWED_PREFIXES, this job does nothing and the PR waits for a human — the
+# fail-safe direction.
+#
+# This only ENABLES auto-merge. `protect-main` still requires `backend` and
+# `data-and-site` to pass, so a red PR never merges.
+#
+# Two escape hatches, both needed before a large fan-out:
+#   - Label a PR `hold` or `founder-decision` to stop that one.
+#   - Set repo variable AUTOMERGE_FREEZE to halt ALL of it instantly, with no
+#     PR and no deploy needed. This is the kill switch for a runaway army.
 
 name: automerge-nightly
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, labeled, unlabeled, ready_for_review]
 
 permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   enable-automerge:
-    if: startsWith(github.head_ref, 'nightly/')
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
+    # NOTE: no actions/checkout anywhere in this job. It only calls `gh`
+    # against the API and never executes PR-authored code.
     steps:
-      - name: Enable auto-merge (squash)
+      - name: Decide and enable
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          FREEZE: ${{ vars.AUTOMERGE_FREEZE }}
         run: |
-          gh pr merge "${{ github.event.pull_request.number }}" \
-            --repo "${{ github.repository }}" \
-            --auto --squash --delete-branch
+          set -euo pipefail
+
+          if [ -n "${FREEZE:-}" ] && [ "$FREEZE" != "false" ] && [ "$FREEZE" != "0" ]; then
+            echo "AUTOMERGE_FREEZE is set (\"$FREEZE\") — not enabling auto-merge."
+            exit 0
+          fi
+
+          # Paths a bot content run is allowed to touch. Anything else -> human.
+          # data/ is the generated-content tree: catalogue, classifications,
+          # tags, segments. Code, CI, docs and backend/ are deliberately absent.
+          ALLOWED_PREFIXES='
+          data/
+          '
+
+          labels=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name')
+          for blocker in hold founder-decision; do
+            if grep -qx "$blocker" <<<"$labels"; then
+              echo "PR #$PR carries the '$blocker' label — leaving it for a human."
+              exit 0
+            fi
+          done
+
+          files=$(gh pr view "$PR" --repo "$REPO" --json files --jq '.files[].path')
+          if [ -z "$files" ]; then
+            echo "No files reported for PR #$PR — refusing to auto-merge."
+            exit 0
+          fi
+
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            ok=0
+            while IFS= read -r prefix; do
+              [ -z "$prefix" ] && continue
+              case "$f" in
+                "$prefix"*) ok=1; break ;;
+              esac
+            done <<<"$(echo "$ALLOWED_PREFIXES" | tr -d ' ')"
+            if [ "$ok" -eq 0 ]; then
+              echo "PR #$PR touches non-content path '$f' — leaving it for a human."
+              exit 0
+            fi
+          done <<<"$files"
+
+          echo "PR #$PR is content-only and unlabelled for hold — enabling auto-merge."
+          gh pr merge "$PR" --repo "$REPO" --squash --auto --delete-branch
