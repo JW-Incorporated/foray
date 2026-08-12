@@ -50,11 +50,44 @@ node tools/corpus/corpus.mjs load-manifest           # parse dossier → sources
 node tools/corpus/corpus.mjs ingest --all            # fetch+extract+chunk
 node tools/corpus/corpus.mjs ingest --area 4         # one dossier area
 node tools/corpus/corpus.mjs search "server test"    # FTS5 keyword search
+node tools/corpus/corpus.mjs search "x" --explain    # show the MATCH built
+node tools/corpus/corpus.mjs search "x" --raw        # literal FTS5 syntax
+node tools/corpus/corpus.mjs rechunk                 # re-chunk offline from archives
+node tools/corpus/corpus.mjs eval                    # score retrieval on the gold set
 node tools/corpus/corpus.mjs stats                   # per-area coverage
 node tools/corpus/corpus.mjs refetch 12              # force re-ingest one source
 node tools/corpus/corpus.mjs report --write          # coverage.md + dead-links.md
 node tools/corpus/corpus.mjs export-index --write    # corpus-index.json (committed)
 ```
+
+## Search quality
+
+`search` takes ordinary questions. It used to take only FTS5 syntax, which
+meant `search "what is DAI?"` died on the `?`, `diarization: who is speaking`
+died interpreting `diarization:` as a column filter, and any question long
+enough to be natural got implicitly ANDed into zero results. `ftsquery.mjs`
+now turns user text into quoted, ORed phrase arms — the user's bytes become
+data, never grammar — and `--raw` is the escape hatch for deliberate FTS5.
+
+`eval` scores a committed gold set (`eval/gold-queries.json`: 15 questions,
+expected source ids) on Recall@5 / MRR@10 / nDCG@10, per query and aggregate.
+It exists so that no claim about retrieval quality has to be taken on faith.
+The answer key was cross-checked by a second, fresh-context agent working
+only from the dossier and coverage.md; where the two disagreed the file
+records the disagreement instead of resolving it. Measured on this corpus:
+
+| retrieval | found | Recall@5 | MRR@10 | nDCG@10 |
+|---|---|---|---|---|
+| raw passthrough (previous behaviour) | 3/15 | 0.200 | 0.200 | 0.160 |
+| built query | **15/15** | **1.000** | **0.902** | **0.865** |
+
+The whole gain is the query builder; re-chunking contributes exactly zero to
+these numbers (it is correctness hygiene, and it matters for the embedding
+pass, not for bm25).
+
+`rechunk` rebuilds every chunk from the archived markdown — no network, no
+refetch. That is what `data-local/corpus/markdown/` is for: when a chunking
+rule changes, the corpus rebuilds offline in seconds.
 
 Schema (migrations/): `sources` (the parsed dossier — the dossier markdown IS
 the manifest), `documents` (append-only fetch history; the newest 2xx row is

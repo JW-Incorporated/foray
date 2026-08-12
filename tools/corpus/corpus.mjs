@@ -4,7 +4,9 @@
  *   node tools/corpus/corpus.mjs init
  *   node tools/corpus/corpus.mjs load-manifest [--dossier <path>]
  *   node tools/corpus/corpus.mjs ingest (--all | --area N | --source ID) [--force]
- *   node tools/corpus/corpus.mjs search "query" [--limit N]
+ *   node tools/corpus/corpus.mjs search "query" [--limit N] [--raw] [--explain]
+ *   node tools/corpus/corpus.mjs rechunk
+ *   node tools/corpus/corpus.mjs eval [--gold <path>] [--json]
  *   node tools/corpus/corpus.mjs stats
  *   node tools/corpus/corpus.mjs refetch <source_id>
  *   node tools/corpus/corpus.mjs report [--write]
@@ -20,10 +22,12 @@ import { openMigrated } from "./db.mjs";
 import { parseDossierFile, loadManifest } from "./manifest.mjs";
 import { createFetcher } from "./fetcher.mjs";
 import { createHostGate } from "./hostgate.mjs";
-import { ingestMany } from "./ingest.mjs";
+import { ingestMany, rechunkAll } from "./ingest.mjs";
 import { coverageMarkdown, deadLinksMarkdown, coverageData } from "./report.mjs";
 import { parseDigests, buildIndex, serializeIndex, diffIndexAgainstDigests, checkVerbatimOverlap } from "./export-index.mjs";
 import { CORPUS_ROOT } from "./paths.mjs";
+import { keywordSearch } from "./search.mjs";
+import { runEval, formatEval } from "./eval.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -31,6 +35,7 @@ const DEFAULT_DOSSIER = path.join(REPO_ROOT, "docs", "research", "foray-research
 const REPORT_DIR = path.join(REPO_ROOT, "docs", "research", "corpus");
 const DIGESTS_PATH = path.join(REPORT_DIR, "digests.md");
 const INDEX_PATH = path.join(REPORT_DIR, "corpus-index.json");
+const DEFAULT_GOLD = path.join(HERE, "eval", "gold-queries.json");
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -118,24 +123,42 @@ async function main() {
     case "search": {
       const db = openMigrated();
       const query = args._[0];
-      if (!query) throw new Error(`usage: corpus search "query" [--limit N]`);
+      if (!query) throw new Error(`usage: corpus search "query" [--limit N] [--raw] [--explain]`);
       const limit = args.limit === undefined ? 8 : numFlag(args.limit, "--limit", { min: 1, max: 100 });
-      const rows = db.prepare(`
-        SELECT s.id AS source_id, s.title, s.area, c.heading_path,
-               snippet(chunks_fts, 0, '»', '«', ' … ', 18) AS snip,
-               bm25(chunks_fts) AS score
-        FROM chunks_fts
-        JOIN chunks c ON c.id = chunks_fts.rowid
-        JOIN documents d ON d.id = c.document_id
-        JOIN sources s ON s.id = d.source_id
-        WHERE chunks_fts MATCH ?
-        ORDER BY score LIMIT ?
-      `).all(query, limit);
+      const { rows, match } = keywordSearch(db, query, {
+        limit,
+        raw: Boolean(args.raw),
+        bigrams: args.bigrams !== "off",
+      });
+      if (args.explain) console.log(`match: ${match ?? "(nothing indexable in that query)"}`);
+      if (match === null) { console.log("nothing to search for — the query has no indexable words"); break; }
       if (!rows.length) { console.log("no matches"); break; }
       for (const r of rows) {
         console.log(`\n[${r.source_id}] ${r.title} (area ${r.area})${r.heading_path ? ` — ${r.heading_path}` : ""}`);
         console.log(`  ${r.snip.replace(/\s+/g, " ")}`);
       }
+      break;
+    }
+
+    case "rechunk": {
+      const db = openMigrated();
+      const r = rechunkAll(db);
+      console.log(`rechunked ${r.documents} documents from archived markdown: ${r.before} → ${r.after} chunks`);
+      if (r.missing.length) console.log(`  ${r.missing.length} markdown file(s) missing: ${r.missing.join(", ")}`);
+      break;
+    }
+
+    case "eval": {
+      const db = openMigrated();
+      const goldPath = args.gold ?? DEFAULT_GOLD;
+      const gold = JSON.parse(fs.readFileSync(goldPath, "utf8"));
+      const result = runEval(db, gold, {
+        mode: args.mode ?? "keyword",
+        bigrams: args.bigrams !== "off",
+        raw: Boolean(args.raw),
+      });
+      console.log(formatEval(result));
+      if (args.json) console.log("\n" + JSON.stringify(result, null, 2));
       break;
     }
 
@@ -211,11 +234,15 @@ async function main() {
 
     default:
       console.error(
-        `usage: corpus <init|load-manifest|ingest|search|stats|refetch|report|export-index>\n` +
+        `usage: corpus <init|load-manifest|ingest|search|rechunk|eval|stats|refetch|report|export-index>\n` +
         `  init                                create/migrate the db\n` +
         `  load-manifest [--dossier p]         parse the dossier into sources\n` +
         `  ingest --all|--area N|--source ID   fetch + extract + chunk\n` +
         `  search "query" [--limit N]          FTS5 keyword search\n` +
+        `        [--raw]                       pass literal FTS5 syntax through\n` +
+        `        [--explain]                   print the MATCH expression built\n` +
+        `  rechunk                             re-chunk from archived markdown (offline)\n` +
+        `  eval [--gold f] [--json]            score the gold set (retrieval quality)\n` +
         `  stats                               per-area coverage\n` +
         `  refetch <source_id>                 force re-ingest one source\n` +
         `  report [--write]                    coverage + dead-links markdown\n` +
