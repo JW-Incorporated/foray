@@ -141,10 +141,50 @@ instead.
   AVFoundation behavior.
 - `docs/brief/`: original product spec (read first). `docs/adr/`,
   `docs/DECISIONS.md`: decisions. `docs/agents/`: runner prompts + registry.
-  `docs/roles.md`: who owns what. `docs/marketing/`, `docs/research/`.
+  `docs/roles.md`: who owns what. `docs/marketing/`, `docs/research/` (incl.
+  the searchable corpus — see below).
   `docs/ux/foray-m3-prototype.html`: current interactive UX reference for M3
   (onboarding, today menu, player, transitions, library, settings, etc.) — see
   `docs/ux/README.md`.
+
+## Research corpus (local-only) — search it before reasoning from memory
+
+The 54 curated sources in `docs/research/foray-research-dossier.md` are scraped
+into a searchable SQLite+FTS5 corpus (52 ingested, 480 chunks; the two failures
+are named in `docs/research/corpus/dead-links.md`). Nine areas: podcast
+infrastructure, speech processing/ASR, topic segmentation, retrieval and
+recommendation, audio assembly, TTS, prior art, legal/policy, LLM pipeline
+engineering.
+
+```
+node tools/corpus/corpus.mjs search "dynamic ad insertion"   # keyword search
+node tools/corpus/corpus.mjs stats                           # per-area coverage
+node tools/corpus/corpus.mjs report                          # coverage + dead links
+```
+
+Full CLI and schema: `tools/corpus/README.md`.
+
+**When to search it.** Before reasoning from memory on: segment anchoring and
+DAI offset drift (`docs/adr/0007-segment-anchoring.md`,
+`docs/curation/segment-extraction-pipeline.md`), transcript acquisition,
+loudness normalization of stitched audio, retrieval/ranking design, and
+anything touching product principle #3 ("legally boring"). It holds the primary
+documents themselves — the 9th Circuit's *Hunley* opinion, the AES loudness
+recommendation, the WhisperX and TREC papers, Podcast Namespace issue #254 —
+and a model's recollection of what a court or a standards body actually said is
+confidently wrong often enough that one search is cheaper than the rework.
+
+**It exists only on the machine that built it.** The DB lives in
+`data-local/corpus/`, which is gitignored, so cloud runners (nightly refresh,
+classification agents on GitHub Actions) and other checkouts do not have it and
+cannot query it — never write a runner prompt or doc that tells them to. It is
+regenerable from the committed dossier plus the network:
+
+```
+node tools/corpus/corpus.mjs init
+node tools/corpus/corpus.mjs load-manifest
+node tools/corpus/corpus.mjs ingest --all
+```
 
 ## Conventions
 
