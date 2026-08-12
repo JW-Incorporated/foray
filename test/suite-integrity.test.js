@@ -42,6 +42,7 @@ const FLOORS = {
   // only walks player/ and test/ — the older tools/refresh suites predate this
   // guard and are not floored yet.
   "tools/segments/transcript-normalize.test.mjs": 24,
+  "tools/segments/merge-segments.test.mjs": 39,
 };
 
 for (const [rel, floor] of Object.entries(FLOORS)) {

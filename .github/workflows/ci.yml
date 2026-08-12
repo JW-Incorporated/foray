@@ -40,7 +40,7 @@ jobs:
       - name: Validate JSON data files
         run: |
           node -e "
-            const files = ['data/session.json','data/taxonomy.json','data/validated-links.json','data/discover.json','data/catalog.json','data/personas.json','data/ladders.json','data/top-topics.json','data/topic-coverage-report.json','manifest.json'];
+            const files = ['data/session.json','data/taxonomy.json','data/validated-links.json','data/discover.json','data/catalog.json','data/personas.json','data/ladders.json','data/top-topics.json','data/topic-coverage-report.json','data/segments.json','manifest.json'];
             for (const f of files) { require('./' + f); console.log('ok', f); }
             const s = require('./data/session.json');
             const refs = [...s.cards.flatMap(c=>[c.episode_id,...(c.alternates||[])]), ...s.categories.flatMap(c=>c.groups.flatMap(g=>g.episode_ids))];
@@ -119,6 +119,12 @@ jobs:
         # Transcript normaliser (#105). Same job as everything above for the
         # same reason: `data-and-site` is the required check in protect-main.
         run: node --test "tools/segments/*.test.mjs"
+      - name: Validate data/segments.json
+        # Schema gate on the segment pool (#106, ADR-0007). Every record
+        # carries the provenance it was validated against, so everything
+        # except verbatim-ness — which needs the transcript — is re-checkable
+        # offline. A hand-edited or half-written segments file fails here.
+        run: node tools/segments/merge-segments.mjs --check
       - name: Validate semantic-index.json
         run: node tools/validate-semantic-index.mjs
       - name: Search-quality battery
