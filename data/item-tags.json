@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-12T05:20:38.779Z",
+  "built_at": "2026-08-12T11:43:31.381Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -12189,6 +12189,271 @@
       "personal-stories",
       "true-stories",
       "podcasting"
+    ],
+    "catalyst-shayle-kann--critical-capital-senator-tillis-case-for": [
+      "energy",
+      "energy-demand",
+      "policy",
+      "electricity",
+      "politics",
+      "ai",
+      "china"
+    ],
+    "stuff-you-should-know--bonnie-and-clyde": [
+      "crime",
+      "true-crime",
+      "history",
+      "criminal",
+      "1930s",
+      "legend"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3399": [
+      "weather",
+      "language",
+      "nature",
+      "science",
+      "atmosphere",
+      "etymology",
+      "meteorology"
+    ],
+    "techsurge-deep-tech-podcast--intel-ceo-lip-bu-tan-on": [
+      "semiconductors",
+      "chips",
+      "ceo",
+      "venture-capital",
+      "ai",
+      "hardware",
+      "tech-industry"
+    ],
+    "good-hang-amy-poehler--rosie-o-donnell": [
+      "comedy",
+      "interview",
+      "talk-show",
+      "celebrity",
+      "lgbtq",
+      "entertainment"
+    ],
+    "the-bbq-central-show--cigar-wrapper-talk-with-mr-j": [
+      "bbq",
+      "cigars",
+      "food",
+      "tasting",
+      "craft",
+      "interview"
+    ],
+    "the-allusionist--tranquillusionist-cheesy-cheesybobs": [
+      "language",
+      "linguistics",
+      "etymology",
+      "relaxation",
+      "food",
+      "britain",
+      "words"
+    ],
+    "99-percent-invisible--bamboo-is-innocent": [
+      "architecture",
+      "building-materials",
+      "construction",
+      "design",
+      "fire",
+      "hong-kong"
+    ],
+    "spycast--cuba-s-spies-defectors-and-the": [
+      "espionage",
+      "cold-war",
+      "cuba",
+      "fbi",
+      "intelligence",
+      "soviet-union"
+    ],
+    "software-engineering-daily--sed-news-the-kimi-moment-runaway": [
+      "ai",
+      "ai-safety",
+      "cybersecurity",
+      "openai",
+      "anthropic",
+      "tech-industry",
+      "ai-agents"
+    ],
+    "planet-money--currency-chaos-in-argentina-summer-school": [
+      "economics",
+      "inflation",
+      "argentina",
+      "currency",
+      "markets",
+      "travel"
+    ],
+    "freakonomics-radio--what-if-being-a-stranger-is": [
+      "religion",
+      "judaism",
+      "interview",
+      "faith",
+      "identity",
+      "spirituality"
+    ],
+    "business-wars--warby-parker-vs-luxottica-the-empire": [
+      "business",
+      "business-history",
+      "entrepreneurship",
+      "founders",
+      "retail",
+      "fashion"
+    ],
+    "masters-of-scale--rapid-recap-google-s-exodus-spider": [
+      "business",
+      "tech-industry",
+      "startups",
+      "news",
+      "recap",
+      "leadership"
+    ],
+    "unauthorized-history-pacific-war--the-end-on-bataan-april-1942": [
+      "military-history",
+      "world-war-2",
+      "pacific-theater",
+      "pacific-war",
+      "bataan",
+      "history"
+    ],
+    "tiny-matters--bonus-fairy-tale-evolution-and-the": [
+      "fairy-tales",
+      "evolutionary-biology",
+      "folklore",
+      "sharks",
+      "longevity",
+      "science",
+      "dating-methods"
+    ],
+    "game-design-round-table--the-great-contraction-navigating-the-video": [
+      "game-design",
+      "game-industry",
+      "layoffs",
+      "labor-markets",
+      "video-games",
+      "business"
+    ],
+    "experimental-brewing--episode-211-8211-homebrewcon-8211-asheville": [
+      "homebrewing",
+      "beer",
+      "beer-competition",
+      "craft-beer",
+      "brewing",
+      "live"
+    ],
+    "weather-geeks--new-executive-director-of-ams": [
+      "weather",
+      "meteorology",
+      "weather-forecasting",
+      "ai",
+      "science",
+      "leadership"
+    ],
+    "myths-and-legends--441-celtic-folklore-deerly-beloved": [
+      "celtic-folklore",
+      "folklore",
+      "mythology",
+      "cryptid",
+      "ohio",
+      "legend"
+    ],
+    "physiology-endurance-running--the-future-of-sport-science": [
+      "sports-science",
+      "endurance",
+      "endurance-sports",
+      "running",
+      "training",
+      "nutrition",
+      "prediction"
+    ],
+    "shipwrecks-and-sea-dogs--the-open-boat-facts-into-fiction": [
+      "shipwrecks",
+      "maritime",
+      "maritime-history",
+      "literature",
+      "survival",
+      "19th-century"
+    ],
+    "ten-percent-happier--the-non-bs-science-of-manifestation": [
+      "psychology",
+      "mental-health",
+      "athletes",
+      "chronic-pain",
+      "recovery",
+      "nervous-system",
+      "visualization"
+    ],
+    "happier-gretchen-rubin--ep-599-treat-your-home-like": [
+      "happiness",
+      "self-improvement",
+      "home",
+      "relationships",
+      "habits",
+      "productivity"
+    ],
+    "armchair-expert--marc-brackett-on-emotional-intelligence": [
+      "psychology",
+      "emotional-intelligence",
+      "interview",
+      "trauma",
+      "mental-health",
+      "education",
+      "kids"
+    ],
+    "handsome--kerri-kenney-silver-asks-about-embarrassing": [
+      "comedy",
+      "interview",
+      "celebrity",
+      "funny",
+      "pop-culture"
+    ],
+    "criminal--how-a-volcanic-eruption-led-to": [
+      "true-crime",
+      "criminal",
+      "trial",
+      "courtroom",
+      "disaster",
+      "safety",
+      "new-zealand"
+    ],
+    "astonishing-legends--s2-ep30-dlo-230-a-finger": [
+      "paranormal",
+      "ghost-stories",
+      "supernatural",
+      "listener-stories",
+      "history",
+      "spooky"
+    ],
+    "dateline--suspicion-in-silver-city": [
+      "true-crime",
+      "murder-investigation",
+      "cold-case",
+      "dateline",
+      "society-law",
+      "investigation"
+    ],
+    "circle-round--summer-camp-the-salmon-famine": [
+      "folktale",
+      "storytelling",
+      "live",
+      "philippines",
+      "stories-for-kids",
+      "kids"
+    ],
+    "dissect--don-t-tap-the-glass-b": [
+      "music",
+      "music-analysis",
+      "hip-hop",
+      "music-theory",
+      "album",
+      "tyler-the-creator"
+    ],
+    "broken-record--alabama-shakes-brittany-howard": [
+      "music",
+      "interview",
+      "soul",
+      "rock",
+      "album",
+      "songwriting"
     ]
   }
 }
