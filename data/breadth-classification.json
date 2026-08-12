@@ -64146,13 +64146,818 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-12-e0b1e666",
       "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1743448724": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical homesteading guide covering meat goat breeding, genetics, nutrition, infrastructure.",
+      "display_title": "Goat Wise",
+      "blurb": "Practical guide to raising meat goats with expert advice on genetics, nutrition, fencing, and production systems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1743689222": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby analysis and officiating discussion examining laws, matches, and refereeing in men's and women's play.",
+      "display_title": "Play On",
+      "blurb": "Rugby podcast from referee perspective analyzing officiating, laws, and match dynamics in professional play.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1744058438": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home electrical systems, lighting design, interior design advice from electricians and design professionals.",
+      "display_title": "Watts Up with Winlectric",
+      "blurb": "Lighting and electrical design podcast covering home upgrades, smart systems, and expert DIY advice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1744274540": {
+      "topics": [
+        "nature/animal-cognition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Green tree python husbandry, breeding techniques, and care practices for reptile enthusiasts.",
+      "display_title": "The Chondro Lounge",
+      "blurb": "Reptile podcast focused on breeding and raising green tree pythons with expert interviews on husbandry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1744800092": {
+      "topics": [
+        "business",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real estate industry advocacy covering housing policy, legislation, and political strategy.",
+      "display_title": "Advocacy Scoop",
+      "blurb": "Inside the National Association of REALTORS' advocacy operation and legislative strategy on housing policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1744967324": {
+      "topics": [
+        "music",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.82
+        },
+        {
+          "node": "history",
+          "confidence": 0.78
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese City Pop music history through artist profiles, cultural context, and album exploration.",
+      "display_title": "Primer",
+      "blurb": "Music history podcast exploring Japanese City Pop through artist interviews and cultural context.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1745145932": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation of notable and unsolved murders with historical research and narrative depth.",
+      "display_title": "Murder: True Crime Stories",
+      "blurb": "True crime analysis covering notable and unsolved murder cases with historical investigation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1745599466": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "New York Mets baseball analysis covering minor league prospects, farm system, and team performance.",
+      "display_title": "Why Am I a Mets Fan?",
+      "blurb": "Baseball podcast exploring the New York Mets organization, minor league prospects, and team performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1745792666": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional tennis news and player interviews covering ATP and WTA competition and athlete perspectives.",
+      "display_title": "The Tennis Letter",
+      "blurb": "Professional tennis podcast with newsworthy coverage and exclusive interviews with ATP and WTA players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1746040424": {
+      "topics": [
+        "science",
+        "engineering"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.82
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biopharma commercial innovation, technology adoption, AI, and data strategies in life sciences.",
+      "display_title": "What Pharma Needs Next",
+      "blurb": "Life sciences podcast on biopharma commercial innovation, technology adoption, and customer experience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1746379562": {
+      "topics": [
+        "aviation",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.87
+        },
+        {
+          "node": "history",
+          "confidence": 0.62
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Malaysia Airlines Flight 370 disappearance investigation exploring aviation technology and mystery.",
+      "display_title": "Vanished Skies",
+      "blurb": "Investigative podcast into Malaysia Airlines Flight 370's disappearance exploring aviation systems and mystery.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1746394640": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Youth soccer development, coaching strategies, and player rankings from experienced coaching perspectives.",
+      "display_title": "The Next Level Training",
+      "blurb": "Youth soccer training and coaching discussion from Division 1 and varsity coaching perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1746433334": {
+      "topics": [
+        "psychology/decision-making"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal emotional mysteries and individual case studies exploring human psychology and relationships.",
+      "display_title": "Proxy",
+      "blurb": "Podcast investigating hyper-specific emotional mysteries through case studies and personal reporting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1746537704": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.87
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science communication and thought leadership in chemistry, pharma, and research through expert interviews.",
+      "display_title": "The New Chemist",
+      "blurb": "Science podcast featuring thought leaders in chemistry, pharma, and research innovation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1746560024": {
+      "topics": [
+        "craft/filmmaking"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and television awards analysis, entertainment industry business, and interviews with industry players.",
+      "display_title": "Prestige Junkie",
+      "blurb": "Awards industry podcast covering Oscar and Emmy races, business, and interviews with entertainment contenders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1746567248": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.78
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science education for children covering diverse topics from animals to physics with expert interviews.",
+      "display_title": "Smologies",
+      "blurb": "Kid-friendly science podcast covering animals, physics, and natural world topics through expert interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1746784916": {
+      "topics": [
+        "science",
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.78
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Global health policy, epidemiology, pandemic risk, and public health systems through expert discussion.",
+      "display_title": "The Global Health Politics",
+      "blurb": "Global health policy podcast featuring epidemiologists and public health scholars on pandemics and systems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1746814118": {
+      "topics": [
+        "craft/filmmaking"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Twin Peaks television series rewatch with episode analysis and reflections from fan and newcomer perspectives.",
+      "display_title": "The Detective and the Log Lady",
+      "blurb": "Twin Peaks rewatch podcast with detailed episode analysis from both seasoned fan and newcomer views.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1747559084": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football strategy combining advanced analytics and film analysis for competitive draft decisions.",
+      "display_title": "Stealing Signals",
+      "blurb": "Fantasy football podcast analyzing advanced data and film to inform draft and betting strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1747765430": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football connecting film breakdowns with statistical analysis for strategic decision-making.",
+      "display_title": "NFL First Read",
+      "blurb": "Fantasy football analysis bridging film breakdown and analytics to inform strategic play.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1747873448": {
+      "topics": [
+        "space",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.87
+        },
+        {
+          "node": "science",
+          "confidence": 0.78
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Space exploration, astronomy, and celestial discoveries curated from multiple astronomy podcast sources.",
+      "display_title": "Space News Today",
+      "blurb": "Space and astronomy news covering celestial discoveries, SpaceX, and exploration from multiple sources.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1747935218": {
+      "topics": [
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Latin American leadership stories and entrepreneurial transformation from Central America leaders.",
+      "display_title": "Inflexión",
+      "blurb": "Spanish-language podcast featuring transformation and leadership stories from Central American entrepreneurs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1747957658": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dynasty fantasy football strategy, portfolio management, and roster construction through multiple analytical lenses.",
+      "display_title": "Dynasty Points",
+      "blurb": "Dynasty fantasy football podcast examining roster construction, market inefficiencies, and strategic frameworks.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1748663426": {
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "UK political and social commentary through humorous interviews with politicians, journalists, cultural figures.",
+      "display_title": "Trash Talk",
+      "blurb": "Political and social commentary podcast with comedic interviews featuring UK politicians and cultural figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1749154088": {
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": false,
+      "rationale": "LGBTQ+ culture, sexuality, and relationships through expert interviews and personal storytelling.",
+      "display_title": "Cruising Confessions",
+      "blurb": "LGBTQ+ podcast exploring sexuality, relationships, and queer culture through personal stories and expert insight.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1749336746": {
+      "topics": [
+        "history/military-ancient"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.78
+        }
+      ],
+      "needs_review": false,
+      "rationale": "World War 2 D-Day Normandy landings narrative through participant perspectives and historical depth.",
+      "display_title": "D-Day: The Tide Turns",
+      "blurb": "World War 2 narrative podcast chronicling the D-Day Normandy landings from participant perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1749397172": {
+      "topics": [
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.82
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Environmental sustainability, biodiversity, land stewardship, and ecological resilience building.",
+      "display_title": "The Ground Up",
+      "blurb": "Environmental podcast on building biodiversity, sustainability, and resilience through land stewardship.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1749596510": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.94
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's sports analysis and pop culture commentary focusing on WNBA with sharp insider perspective.",
+      "display_title": "Good Follow",
+      "blurb": "Women's sports and pop culture podcast with sharp commentary on WNBA and trending cultural topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1749892784": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.78
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonprofit fundraising strategy, donor relationships, and development practices from experienced practitioners.",
+      "display_title": "Let's Talk Fundraising",
+      "blurb": "Nonprofit fundraising podcast covering donor strategies, development practices, and practical advice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1750047932": {
+      "topics": [
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.78
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gratitude, mental health, personal wellness, and emotional growth through guest conversations.",
+      "display_title": "Funjelah",
+      "blurb": "Wellness podcast exploring gratitude, mental health, and emotional growth through guest conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1750133042": {
+      "topics": [
+        "food/cooking-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.82
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Holistic nutrition, wellness, food as medicine, and mind-body health from nutritionist expertise.",
+      "display_title": "Rooted in Wellness",
+      "blurb": "Holistic nutrition and wellness podcast exploring food as medicine and health optimization strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1750278386": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation of Indigenous deaths, systemic racism, and social injustice in Canadian city.",
+      "display_title": "Thunder Bay",
+      "blurb": "Investigative podcast examining systemic racism and Indigenous deaths in a Canadian city.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1750736528": {
+      "topics": [
+        "computing",
+        "engineering"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.87
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and machine learning technology development from venture capital perspective on innovation.",
+      "display_title": "Training Data",
+      "blurb": "AI and machine learning podcast from venture investors discussing cutting-edge technologies and impact.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1750848914": {
+      "topics": [
+        "psychology/decision-making"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Divorce process support, emotional guidance, mediation advice, and relationship navigation.",
+      "display_title": "Divorce Happens",
+      "blurb": "Divorce podcast providing practical and emotional support through mediation and healing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1750931834": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic old-time radio drama featuring detective fiction and vintage audio storytelling.",
+      "display_title": "Johnny Dollar",
+      "blurb": "Classic old-time radio detective drama featuring a freelance insurance investigator in period stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-a9521203",
+      "classified_at": "2026-08-12T16:51:43.022Z"
     }
   },
-  "built_at": "2026-08-12T08:50:40.519Z",
+  "built_at": "2026-08-12T16:51:43.022Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-12-e0b1e666",
+    "last_batch_id": "fresh-2026-08-12-a9521203",
     "last_batch_tier": 1
   }
 }
