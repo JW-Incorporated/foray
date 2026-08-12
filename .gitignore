@@ -10,6 +10,12 @@ data/catalog-breadth-intl.json
 *.checkpoint
 data-local/
 
+# Sweep checkpoint (tools/segments/sweep-transcripts.mjs). Machine state for
+# resuming a killed run, not content — the committed artefact is
+# data/transcript-availability.json.
+data/transcript-progress.json
+data/*.json.tmp
+
 # Vercel build output (tools/web/prepare-dist.mjs)
 dist/
 .vercel/

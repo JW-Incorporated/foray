@@ -266,3 +266,50 @@ Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
   needing WSL or a port. Its §9 guidance is adopted in spirit here regardless:
   *autonomy is bought with verification, not permission*, which is exactly why
   the segment merge validator is sequenced before the fan-out.
+
+## 2026-08-12 (Lane B: the free-transcript corpus is now a list, not a guess)
+
+- **`tools/segments/sweep-transcripts.mjs` shipped and run over all 213 curated
+  shows** (issue #104), emitting `data/transcript-availability.json`. Nothing in
+  the repo previously recorded where free transcripts are: the nightly pipeline
+  never reads `<podcast:transcript>` and `data/discover.json` carries no
+  transcript field. Every downstream lane — segment extraction, Joey's topic
+  selection (A10) — now reads one file instead of re-probing feeds.
+- **`has_timestamps` is a first-class recorded field, not a derivation left to
+  callers.** `text/vtt`, `application/srt`, `application/x-subrip` and
+  `application/json` carry a timeline; `text/plain` and `text/html` are prose
+  and cannot anchor a boundary (ADR-0007). Plain text is the third most
+  published format in the wild, so this distinction decides the usable corpus:
+  of 8,012 transcribed episodes, **7,515 are anchorable and ~500 are not**. The
+  preference order is deliberately duplicated from
+  `backend/src/feeds/parser.ts`'s `TIMED_TRANSCRIPT_TYPES` (#103) rather than
+  imported, because `tools/` is dependency-free and unbuilt while `backend/` is
+  TypeScript; the sweep's test suite pins the copy so the two cannot drift
+  silently.
+- **The index stores availability, never bodies.** 8,012 transcripts at ~50KB
+  is ~400MB against a 44MB `data/`. The script has no code path that fetches a
+  `transcript_url`, a test asserts that structurally, and CI fails on any
+  body-sized string reaching the file. Episode rows are kept only for episodes
+  with a transcript or chapters (counts cover all 82,043) — 5.4MB instead of
+  ~20MB of rows no lane can act on. `--all-episodes` overrides.
+- **Measured coverage, 82,043 episodes across 212 fetched feeds: 9.8% carry a
+  transcript — 13.3% of DAI episodes vs 0.2% of non-DAI.** This reproduces
+  epic #102's finding on an independent run (its probe measured 13.4% / 0.7%;
+  the non-DAI number is lower here because this sweep resolves each show's
+  enclosure host live, and the disagreement is one or two shows changing
+  bucket). The corpus is extremely concentrated: **30 of 213 shows publish any
+  transcript at all, 25 publish a timed one**, and Stuff You Should Know
+  (2,850) plus Odd Lots (1,251) are half of it. Chapters remain negligible at
+  0.9%, consistent with the 2026-08-11 rejection of chapters as a DAI
+  workaround.
+- **Resumability is the design, not a nicety.** The run checkpoints atomically
+  after every show to a gitignored `data/transcript-progress.json`; a SIGKILL
+  mid-run was verified to resume at the next unswept show. The curated tier
+  takes minutes, but the 19,787-show breadth tier is hours, and that run is
+  only affordable if a crash costs one show rather than a day.
+- **Failures are named, never a silent empty result.** Every failure mode
+  carries a code (`HTTP_404`, `TIMEOUT`, `EMPTY_FEED`, `NOT_RSS`, `NETWORK`,
+  `BAD_CHECKPOINT`) into the show record and the run summary, a corrupt
+  checkpoint refuses to start rather than quietly restarting, and a run where
+  no show succeeded writes nothing and exits non-zero. One real failure this
+  run: omega tau (`CERT_HAS_EXPIRED`).
