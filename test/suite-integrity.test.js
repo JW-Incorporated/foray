@@ -67,6 +67,8 @@ const FLOORS = {
   "tools/transcribe/fetch-audio.test.mjs": 64,
   "tools/corpus/fetcher.test.mjs": 22,
   "tools/corpus/extract.test.mjs": 21,
+  "tools/corpus/db.test.mjs": 16,
+  "tools/corpus/manifest.test.mjs": 17,
 };
 
 for (const [rel, floor] of Object.entries(FLOORS)) {
