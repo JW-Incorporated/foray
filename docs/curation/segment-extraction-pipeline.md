@@ -97,6 +97,12 @@ never captures `podcast:transcript` at all, and `data/discover.json` items
 carry no transcript field. `backend/src/feeds/parser.ts` parses
 `transcriptUrl`, but that path is not what produces the live catalogue.
 
+The parser now also exposes `timedTranscriptUrl` / `timedTranscriptType`
+(issue #103): `transcriptUrl` prefers `text/plain`, which is right for
+Tier-1 enrichment and useless for anchoring, since plain text carries no
+timestamps. Anything in this pipeline that needs a boundary reads the
+timed pair, never `transcriptUrl`.
+
 This is a deterministic fetch job — **not** agent work. Codify it
 (`CLAUDE.md` rule 6):
 
