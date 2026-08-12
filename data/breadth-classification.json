@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-12T00:31:27.299Z",
+  "built_at": "2026-08-12T08:31:04.153Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-12-c55a6e5a",
+    "last_batch_id": "fresh-2026-08-12-fd041e1d",
     "last_batch_tier": 1
   },
   "entries": {
@@ -172429,17 +172429,52 @@
     },
     "1787104573": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Darkly imaginative fiction anthology with suspense and supernatural elements.",
+      "display_title": "Strange Tales of the Unexplained",
+      "blurb": "Welcome to Strange Tales of the Unexplained, a podcast where the boundaries of reality blur, and the pursuit of forbidden knowledge comes at a price. Each episode delivers a chilli",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1787188273": {
       "topics": [
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interactive trivia and games designed for children aged 6-12.",
+      "display_title": "Club Bubble Kids Trivia",
+      "blurb": "Club Bubble The Ultimate Trivia and Game Show Adventure for Kids.  Welcome to Club Bubble, the most exciting kids show where fun never stops, and the bubbles are always poppin",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1787211629": {
       "topics": [
@@ -172570,10 +172605,30 @@
     },
     "1787700619": {
       "topics": [
-        "philosophy"
+        "philosophy/ideas",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stoic philosophy teachings applied to modern daily life and mindfulness.",
+      "display_title": "Estoico Hoy",
+      "blurb": "Listo para transformar tu vida. En nuestro canal de Estoicismo te traemos las claves para dominar tu mente y vivir con prop sito Aprende de los grandes pensadores como Zen.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1787720684": {
       "topics": [
@@ -172712,10 +172767,30 @@
     },
     "1788131395": {
       "topics": [
-        "tv-film/animation"
+        "culture/books",
+        "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Editorial perspectives and industry stories from top manga editors and creators.",
+      "display_title": "林士平のイナズマフラッシュ",
+      "blurb": "SPY FAMILY Podcast 6 HP https //inazumaflash. com/ agraph X inzmflash",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1788154607": {
       "topics": [
@@ -172864,10 +172939,25 @@
     },
     "1788420727": {
       "topics": [
-        "gaming"
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming culture and esports commentary.",
+      "display_title": "gl;hf",
+      "blurb": "the world's first podcast in video games Podcast YouTube channel https //www. youtube",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1788429185": {
       "topics": [
@@ -172939,10 +173029,30 @@
     },
     "1788671281": {
       "topics": [
-        "math"
+        "math/puzzles",
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math/puzzles",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Logic puzzles and probabilistic thinking applied to risk and uncertainty.",
+      "display_title": "The Logic of Risk",
+      "blurb": "A podcast about risk, probability, philosophy and data science.  Become a supporter of this podcast https //www",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1788695376": {
       "topics": [
@@ -173024,7 +173134,22 @@
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal narratives and relationship-centered storytelling.",
+      "display_title": "Story Time Society",
+      "blurb": "Welcome to Story Time Society.  Join me every weekday morning at 8 AM EST for a wild ride through the craziest, coolest, funniest, and most bizarre Reddit stories",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1788967966": {
       "topics": [
@@ -173058,11 +173183,25 @@
     },
     "1789028689": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports commentary and athlete interviews.",
+      "display_title": "Spin Cycle",
+      "blurb": "All the cycling news, analysis, and banter you need.  Become a member to get premium content, extra episodes, and ad free listening at escapecollective",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1789064361": {
       "topics": [
@@ -173132,7 +173271,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf lifestyle, instruction, and tournament commentary.",
+      "display_title": "Pine Talk",
+      "blurb": "Pine Talk Exploring Carolina Golf.  Join us on Pine Talk, the ultimate interview series that dives into the heart of golf in the Carolinas",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1789364731": {
       "topics": [
@@ -173243,10 +173397,30 @@
     },
     "1789911793": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "craft/diy-home"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.7
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Plant science and botanical chemistry for enthusiasts.",
+      "display_title": "技術者かねまるの「プラントライフ」",
+      "blurb": "A podcast covering specialized topics and interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1789985790": {
       "topics": [
@@ -173330,10 +173504,30 @@
     },
     "1790442943": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Urban design and architectural culture perspectives.",
+      "display_title": "Boulevard Beat",
+      "blurb": "The lines of design and style are blurred.  Boulevard Beat proves the one you should take",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1790458615": {
       "topics": [
@@ -173405,7 +173599,22 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and current events commentary.",
+      "display_title": "Murph & Andy",
+      "blurb": "The duo of Keith Murphy and Andy Fales has for decades been an institution for sports fans looking for thoughtful discourse in the state of Iowa. For 15 years, Murph.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1790593065": {
       "topics": [
@@ -173459,10 +173668,30 @@
     },
     "1790780905": {
       "topics": [
-        "food"
+        "food/cooking-science",
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Food culture, cooking techniques, and culinary storytelling.",
+      "display_title": "goodtaste for the Soul",
+      "blurb": "A podcast with relevant content for its audience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1790824401": {
       "topics": [
@@ -173499,22 +173728,71 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physical fitness training, wellness, and athletic performance.",
+      "display_title": "The Judd Lienhard Podcast",
+      "blurb": "The Judd Lienhard Podcast delivers raw, unfiltered conversations with elite athletes, military leaders, top coaches, and industry disruptors, diving deep into performance, mindset,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1790986843": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutritional science, diet strategies, and sports fueling.",
+      "display_title": "The Fueling Forward Podcast",
+      "blurb": "Hosted by Maddie Alm, sports dietitian and elite runner, The Fueling Forward Podcast is the place to go for all things running and sports nutrition. Learn from other runners as.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1791033289": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "culture/mythology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Devotional stories from Hindu religious tradition with modern interpretation.",
+      "display_title": "The Ramayan – Stories of Dharm and Devotion",
+      "blurb": "A captivating journey through Valmiki s Ramayan, filled with stories of honor, sacrifice, devotion, and righteousness, narrated by Sandeep. Each episode unfolds the timeless epic t",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1791132317": {
       "topics": [
@@ -173526,18 +173804,57 @@
     },
     "1791132943": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/interviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity interviews and entertainment industry behind-the-scenes conversations.",
+      "display_title": "Reality Nightcap",
+      "blurb": "Are you a die hard fan of all things reality TV.  Can't get enough of the drama, the friendships, and the fabulous lifestyles of your favorite reality TV stars",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1791150637": {
       "topics": [
         "economics/markets",
-        "business"
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investment markets, trading strategies, and financial analysis.",
+      "display_title": "1000x",
+      "blurb": "1000x is a crypto markets podcast hosted by professional traders Avi Felman and Jonah Van Bourg. We bring on experts to dive deep into the macro and micro factors that.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1791201574": {
       "topics": [
@@ -173558,7 +173875,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Boston Red Sox fan perspectives, game analysis, and team commentary.",
+      "display_title": "Monster Territory: a Boston Red Sox Podcast",
+      "blurb": "A Boston Red Sox podcast hosted by Robbie Hyde and part of the Foul Territory Network. This is your go to spot for the Sox, including postgame shows and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1791330204": {
       "topics": [
@@ -173599,10 +173931,30 @@
     },
     "1791628237": {
       "topics": [
-        "nature"
+        "nature/ocean-science",
+        "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Marine science and fishery topics with scientific exploration.",
+      "display_title": "Under the Finfluence",
+      "blurb": "Shark Science Podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1791658345": {
       "topics": [
@@ -173793,7 +174145,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby sport analysis, player interviews, and match commentary.",
+      "display_title": "Stick to Rugby",
+      "blurb": "Welcome to The Overlap Rugby.  This is Stick to Rugby, brought to you by Defender",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1791992520": {
       "topics": [
@@ -174101,10 +174468,30 @@
     },
     "1793189341": {
       "topics": [
-        "business/management"
+        "business/management",
+        "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Organizational change management strategies and corporate transformation.",
+      "display_title": "Change Signal: Modern Change Management that Works",
+      "blurb": "Change management is harder than ever.  Organizations face more complexity, more uncertainty, and more pressure to deliver successful change than at any point in recent memory",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1793196422": {
       "topics": [
@@ -174174,10 +174561,30 @@
     },
     "1793571091": {
       "topics": [
-        "sports/golf"
+        "sports/golf",
+        "craft/diy-home"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.7
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf course management, turf maintenance, and golf industry.",
+      "display_title": "TurfNet Podcasts",
+      "blurb": "TurfNet personalities Frank Rossi, Randy Wilson, John Reitman, Tony Pioppi, Brad Klein, Dave Wilber and Peter McCormick interview a variety of turfies on a multitude of subjects. o",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1793602593": {
       "topics": [
@@ -174269,17 +174676,57 @@
     },
     "1793806969": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Actor interviews and performing arts industry conversations.",
+      "display_title": "JAWBONE with Martin Shaw",
+      "blurb": "Acclaimed storyteller and author MARTIN SHAW invites us into his study where he freewheels his ferocious imagination into everything he's learnt about life over half a century. He ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1793832955": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dermatology and pharmaceutical treatments in skin medicine.",
+      "display_title": "Derms on Drugs",
+      "blurb": "Derms on Drugs is where cutting edge dermatology meets mediocre comedy. Each week three dermatologists Matt Zirwas, Laura Ferris and Tim Patton discuss, debate, and dissect the hot",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1793834826": {
       "topics": [
@@ -174363,10 +174810,30 @@
     },
     "1794061753": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Professional tennis analysis, lifestyle, and sport regulations.",
+      "display_title": "Questionable Calls - The Tennis Lifestyle Podcast",
+      "blurb": "Tennis is life. Seattle based tennis players David Leong, Rishi Tekriwal, and Adam Zhu and friends talk all things tennis, from memorable match experiences to gear to trivia to str",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1794142697": {
       "topics": [
@@ -174378,10 +174845,30 @@
     },
     "1794162325": {
       "topics": [
-        "business/management"
+        "business/management",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial planning and analysis for business professionals.",
+      "display_title": "The FP&A Guy Network",
+      "blurb": "Welcome to the FP A Guy Podcast Network your one stop destination for insightful conversations and expert perspectives at the forefront of finance, hosted by Paul Barnhurst, aka Th",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1794164180": {
       "topics": [
@@ -174562,7 +175049,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Portland Timbers fan perspective with match analysis and team news.",
+      "display_title": "The Timber Review — A Portland Timbers Podcast",
+      "blurb": "The Timber Review is a twice weekly podcast covering the latest news, views, and match reviews from the world of the Portland Timbers. Founded in February of 2025 by Timbers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1794653705": {
       "topics": [
@@ -174750,10 +175252,32 @@
     "1795505299": {
       "topics": [
         "sports/endurance",
-        "health/fitness"
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Ultramarathon running stories, training, and athletic endurance challenges.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1795521498": {
       "topics": [
@@ -174765,17 +175289,57 @@
     },
     "1795524715": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design leadership, strategy, and creative management for executives.",
+      "display_title": "Design Executive Council Podcast",
+      "blurb": "Design Executive Council Podcast is where the sharpest minds in strategic design leadership converge to tackle the industry's most pressing challenges. From strategy, ethics, polic",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1795533637": {
       "topics": [
-        "music"
+        "music",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music curation and album reviews with seasonal thematic focus.",
+      "display_title": "Summer Album/Winter Album",
+      "blurb": "One of The Atlantic's 20 Best Podcasts On this podcast we believe that all albums are either summer albums or winter albums.  But what defines them",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1795534746": {
       "topics": [
@@ -174857,10 +175421,30 @@
     },
     "1795790713": {
       "topics": [
-        "aviation"
+        "aviation",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Aviation crew perspectives, flying, and aerospace operations.",
+      "display_title": "Valor Flight Crew",
+      "blurb": "Produced in partnership with ECHO Every Coast Helicopter Operations , the Valor Flight Crew Podcast promotes the personnel and life saving equipment behind helicopter air ambulance",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-fd041e1d",
+      "classified_at": "2026-08-12T08:31:04.153Z"
     },
     "1795796281": {
       "topics": [
