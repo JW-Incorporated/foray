@@ -143,6 +143,12 @@ deleted later by a PR that auto-merges, and a deleted suite passes CI.
 
 - Root: static site (index.html, app.js, styles.css) + `data/*.json` (session
   doc v1, taxonomy, discover pool, catalog)
+- Root `STATE.md`: the cross-session announcement board. **Read it during
+  recon**, before starting anything long-running — another session may already
+  own the files you were about to touch. **Post to it** when you start a
+  workstream (one entry: what, branch prefix, owned directories, what's out of
+  scope), and move the entry to "completed" when it lands. Full plans live in
+  `docs/`; STATE.md stays short enough to read every time.
 - `tools/refresh/`: the committed nightly pipeline (scan → resolve → merge).
   See its README; cloud topology in `docs/nightly-refresh-cloud.md`.
 - `backend/`: Node/TS — ingest, dedup, cost metering, curation engine,
