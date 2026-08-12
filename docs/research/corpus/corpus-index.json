@@ -1,0 +1,2176 @@
+{
+  "schema": "foray.research-corpus-index/1",
+  "generated_at": "2026-08-12T23:15:51.888Z",
+  "generator": "node tools/corpus/corpus.mjs export-index --write",
+  "policy": "Index + our own digests only. No third-party source text is committed to this public repo: the corpus's raw bytes and markdown extractions stay in data-local/corpus/ (gitignored). license.redistribution records, per source, whether republishing that source's text would be permitted.",
+  "regeneration": {
+    "note": "Any machine can rebuild the full corpus from the committed dossier plus the network; content_sha256 lets you check your rebuild against this snapshot.",
+    "commands": [
+      "cd tools/corpus && npm install",
+      "node tools/corpus/corpus.mjs init",
+      "node tools/corpus/corpus.mjs load-manifest",
+      "node tools/corpus/corpus.mjs ingest --all",
+      "node tools/corpus/corpus.mjs export-index --write"
+    ]
+  },
+  "totals": {
+    "sources": 54,
+    "ingested": 52,
+    "chunks": 480,
+    "estimated_tokens": 271418,
+    "redistribution_allowed": 16,
+    "redistribution_denied": 38
+  },
+  "sources": [
+    {
+      "id": 1,
+      "area": 1,
+      "area_name": "Podcast Infrastructure",
+      "title": "Podcast Namespace — Transcript tag",
+      "url": "https://podcasting2.org/docs/podcast-namespace/tags/transcript",
+      "source_type": "standard",
+      "read_first": true,
+      "why_it_matters": "Spec for `<podcast:transcript>`, supporting multiple formats including time-coded captions (SRT/VTT/JSON). *Why it matters:* when publishers ship transcripts you can skip ASR and use forced alignment instead — cheaper and more accurate.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:46:57.335Z",
+        "http_status": 200,
+        "content_sha256": "e8989ccf1c4c5d763f8ce5565fc5d1a5c27bb22089d2132ff1469444656d751a",
+        "estimated_tokens": 460,
+        "chunks": 2,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/001-podcast-namespace-transcript-tag.html",
+        "markdown": "markdown/001-podcast-namespace-transcript-tag.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "CC BY 4.0",
+        "redistribution": "allow",
+        "evidence_url": "https://podcasting2.org/docs/podcast-namespace/tags/transcript",
+        "note": "Site-wide footer on this exact page reads that all content is licensed under CC BY 4.0, linking creativecommons.org/licenses/by/4.0/ with rel=\"license\"; confirmed in the raw HTML this session.",
+        "verified": "web"
+      },
+      "digest": "A single spec page defining how an RSS item advertises machine-readable transcripts. The element is repeatable, so one episode can point at several parallel files. Two attributes are mandatory: a URL and a MIME type, with recognized types spanning plain text, HTML, WebVTT, JSON and SubRip. Two optional attributes matter for pipeline logic: a language code that falls back to the feed's own declared language, and a rel flag which, when set to captions, promises the file carries time codes regardless of what its MIME type says. For a curation product this is the cheapest possible ingest shortcut. When a publisher already ships a time-coded caption file, the pipeline can skip ASR entirely and either trust the publisher timings or run forced alignment against them, which is both faster and more accurate than transcribing from scratch. The page also tallies adoption across podcast apps, hosting tools and other services, indicating the tag is widely implemented rather than aspirational.",
+      "key_facts": [
+        "Element is <podcast:transcript>, parent <item>, cardinality Multiple (several transcripts per episode allowed)",
+        "Required attributes: url and type; documented MIME types include text/plain, text/html, text/vtt, application/json, application/x-subrip",
+        "Optional language attribute defaults to the value of the feed's RSS <language> element",
+        "rel=\"captions\" signals the linked file contains time codes irrespective of its declared MIME type",
+        "Adoption tallies on the page: 33 podcast apps/services, 38 publishing/hosting tools, 11 miscellaneous"
+      ]
+    },
+    {
+      "id": 2,
+      "area": 1,
+      "area_name": "Podcast Infrastructure",
+      "title": "Podcast Index API (OpenAPI docs)",
+      "url": "https://podcastindex-org.github.io/docs-api/",
+      "source_type": "docs",
+      "read_first": true,
+      "why_it_matters": "Free, open API for search, episodes-by-feed, recent additions; Amazon-style request auth with key+secret. *Why it matters:* your primary corpus discovery and metadata backbone for 300-500 curated shows.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:46:59.718Z",
+        "http_status": 200,
+        "content_sha256": "852ac9302616ab0bbf20a868e488dd244e6533820e9a7939202e455e8c230d6d",
+        "estimated_tokens": 20,
+        "chunks": 1,
+        "notes": "body-fallback; thin extraction (79 chars) — page may be JS-rendered"
+      },
+      "local_archive": {
+        "raw": "raw/002-podcast-index-api-openapi-docs.html",
+        "markdown": "markdown/002-podcast-index-api-openapi-docs.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "MIT",
+        "redistribution": "allow",
+        "evidence_url": "https://github.com/Podcastindex-org/docs-api/blob/master/LICENSE",
+        "note": "GitHub licenses API for Podcastindex-org/docs-api returns spdx_id MIT with LICENSE at repo root, and this URL is that repo's GitHub Pages deployment; moot in practice since the captured extraction contains no source prose.",
+        "verified": "web"
+      },
+      "digest": "The captured extraction is effectively empty: the crawl retrieved only a logo image reference and a stray interface control label, roughly 79 characters of text. The documentation published at this URL is a JavaScript-rendered OpenAPI browser, so a static HTML fetch followed by a readability pass yields no endpoint definitions, no description of the authentication scheme, and no schemas. Nothing in the stored artifact establishes anything substantive about the API. The finding that matters for a curation product is therefore operational rather than technical: any corpus source that is a single-page API reference rendered client-side needs a different acquisition path, either the underlying OpenAPI specification file from the documentation repository or a headless-browser render, before it can be treated as evidence of anything. Until that re-fetch happens, every Podcast Index API detail the corpus might want to rely on, including the request-signing scheme, endpoint shapes and rate limits, remains unverified here.",
+      "key_facts": [
+        "Stored markdown is 258 bytes; fetch notes recorded a thin extraction of 79 characters",
+        "http_status was 200 but the page is JS-rendered, so the static fetch captured no API content",
+        "The URL is a GitHub Pages project site served from the Podcastindex-org/docs-api repository",
+        "No endpoints, authentication scheme, or rate limits are recoverable from the stored artifact",
+        "Re-fetch via the raw OpenAPI spec or a headless render is required before citing this source"
+      ]
+    },
+    {
+      "id": 5,
+      "area": 1,
+      "area_name": "Podcast Infrastructure",
+      "title": "IAB Podcast Measurement Technical Guidelines v2.2",
+      "url": "https://iabtechlab.com/wp-content/uploads/2024/02/PodcastMeasurement_v2.2_pc.pdf",
+      "source_type": "standard",
+      "read_first": true,
+      "why_it_matters": "Defines an IAB download as ≥60 seconds requested, server-log-based, with bot filtering (AWS IPs excluded). *Why it matters:* your range-request client behavior determines whether the publisher's analytics count you as a listener — an ethical and relationship issue with publishers.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:02.323Z",
+        "http_status": 200,
+        "content_sha256": "06430cbc699d930d3a7c322280e77c94d0f767b56943bd06469756e077ac222a",
+        "estimated_tokens": 16063,
+        "chunks": 26,
+        "notes": ""
+      },
+      "local_archive": {
+        "raw": "raw/005-iab-podcast-measurement-technical-guidelines-v2-2.pdf",
+        "markdown": "markdown/005-iab-podcast-measurement-technical-guidelines-v2-2.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "none-found",
+        "redistribution": "deny",
+        "evidence_url": "https://iabtechlab.com/standards/podcast-measurement-guidelines/",
+        "note": "The standards landing page carries only an all-rights-reserved style copyright notice for IAB Technology Laboratory with no Creative Commons or redistribution grant, and the PDF's own front matter is a copyright notice plus liability and patent disclaimers rather than any license.",
+        "verified": "web"
+      },
+      "digest": "The IAB Tech Lab's public-comment draft of the technical rules defining what counts as a podcast download, aimed at publishers, hosting platforms and measurement vendors seeking certification. It prescribes a five-step server-log process (filter, apply file thresholds, aggregate uniques, generate metrics, audit) computed over either a fixed calendar day or a rolling twenty-four hour window, with the choice disclosed in a corporate methodology document. The filtering rules are where any automated client is directly implicated: tiny probe range requests are discarded outright, HEAD and not-modified responses are never counted, and partial-content responses count only when reassembled requests cover a full minute of playable content, deduplicated by address and user agent. Requests originating from data centres and cloud providers are classed as invalid traffic and filtered. The draft also separates general from sophisticated invalid traffic and deliberately withholds detection specifics for the latter. The consequence for a server-side ingest fetcher is concrete: it will be filtered out of publisher analytics rather than inflating them.",
+      "key_facts": [
+        "Valid download threshold: header bytes plus enough podcast content to play for one minute must have been transferred",
+        "Measurement runs over a 24-hour window, either fixed or rolling; the method chosen must be disclosed in a document of methodology (DOM)",
+        "HTTP handling: HEAD excluded, GET 200 counted, GET 206 counted only if the one-minute rule is met with IP/user-agent dedup, GET 304 not counted",
+        "Two-byte range requests (Range: 0-1) used to probe byte-range support are explicitly disregarded",
+        "Data-centre and AWS IP addresses are filtered as invalid traffic; known-safe IP inclusion lists must be re-validated at least every 90 days",
+        "Distinguishes general invalid traffic (GIVT) from sophisticated invalid traffic (SIVT) and withholds SIVT detection specifics from the public draft; v2.2 additions include patent-diligence disclaimer language and clarification of URL-prefix versus full server-log measurement (28 pages, copyright 2024)"
+      ]
+    },
+    {
+      "id": 16,
+      "area": 1,
+      "area_name": "Podcast Infrastructure",
+      "title": "Podcast Namespace — Chapters tag",
+      "url": "https://podcasting2.org/docs/podcast-namespace/tags/chapters",
+      "source_type": "standard",
+      "read_first": false,
+      "why_it_matters": "Official spec for `<podcast:chapters>` linking to an external JSON chapters file. *Why it matters for Foray:* chapters are pre-segmented topic boundaries you can exploit as free candidate segment cues.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:02.756Z",
+        "http_status": 200,
+        "content_sha256": "05ddf2b83de12d960d348343db299cb6d2d8c67c53bea1ddb2a074247e5c9b5b",
+        "estimated_tokens": 434,
+        "chunks": 2,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/016-podcast-namespace-chapters-tag.html",
+        "markdown": "markdown/016-podcast-namespace-chapters-tag.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "CC BY 4.0",
+        "redistribution": "allow",
+        "evidence_url": "https://podcasting2.org/docs/podcast-namespace/tags/chapters",
+        "note": "Same site-wide podcasting2.org footer grant observed on this page's sibling: all content licensed under CC BY 4.0 with a rel=\"license\" link to creativecommons.org/licenses/by/4.0/, confirmed in raw HTML this session.",
+        "verified": "web"
+      },
+      "digest": "Spec page for the element that points an episode at an externally hosted chapter file. Cardinality is one per item, unlike the transcript element, and both attributes are required: the file location and its MIME type, with a JSON-flavoured type preferred. The rationale section is the genuinely useful part. Keeping chapters in a side file rather than embedded in audio metadata frames means they can be corrected after publication without re-encoding the enclosure, they can be rendered by clients that cannot read embedded tags at all (browsers in particular), and chapter artwork can be fetched lazily at playback instead of inflating the audio file. The data model is described as compatible with conventional embedded chapter tags, so publishers incur no extra authoring work. For a segmentation product, publisher-supplied chapters are free, human-authored topic boundaries that can seed or validate automatic segmentation, and the adoption counts on the page suggest a meaningful minority of shows already ship them.",
+      "key_facts": [
+        "Element is <podcast:chapters>, parent <item>, cardinality Single (one chapters file per episode)",
+        "Required attributes: url and type; preferred MIME type is application/json+chapters",
+        "Chapter data lives in an external file, so it is editable after publication without touching the audio",
+        "Stated benefits: rendering by clients with no ID3 access such as web browsers, and images retrieved at playback rather than embedded in the enclosure",
+        "Data model described as compatible with normal ID3 chapter tags, requiring no extra publisher work",
+        "Adoption tallies on the page: 34 podcast apps/services, 25 publishing/hosting tools, 11 miscellaneous"
+      ]
+    },
+    {
+      "id": 17,
+      "area": 1,
+      "area_name": "Podcast Infrastructure",
+      "title": "Podcast Namespace GitHub repo",
+      "url": "https://github.com/Podcastindex-org/podcast-namespace",
+      "source_type": "repo",
+      "read_first": false,
+      "why_it_matters": "CC0-licensed full spec with all tags (soundbite, person, season, value, etc.). *Why it matters:* `<podcast:soundbite>` is a publisher-sanctioned clip primitive.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:06.955Z",
+        "http_status": 200,
+        "content_sha256": "92a14cbd5a1d3e829bdb4586e439fdb5e21525be35825d8783cda17ac2f598c8",
+        "estimated_tokens": 2006,
+        "chunks": 6,
+        "notes": "github repo→raw README; raw README"
+      },
+      "local_archive": {
+        "raw": "raw/017-podcast-namespace-github-repo.md",
+        "markdown": "markdown/017-podcast-namespace-github-repo.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "redistribution": "allow",
+        "evidence_url": "https://github.com/Podcastindex-org/podcast-namespace/blob/main/COPYING.txt",
+        "note": "GitHub licenses API returns spdx_id CC0-1.0 pointing at COPYING.txt, and the captured README itself states the namespace is dedicated to the public domain using CC0 v1.0.",
+        "verified": "web"
+      },
+      "digest": "Top-level README for the community-run RSS namespace maintained by the Podcasting 2.0 project. It sets out governance more than syntax. Tags advance through numbered comment phases; adoption requires either demonstrated real-world usage or a commitment from at least one hosting company and one app; nothing is adopted while open questions remain, and delaying a tag to a later phase is treated as the normal, encouraged outcome. The project explicitly disclaims standards-body status and cites Dave Winer's rules for standards makers as its philosophy. Stated design goals are eliminating redundancy across competing podcast namespaces, keeping required tags and attributes minimal, and preserving existing conventions rather than reinventing them. The README enumerates every formalized element by phase. Two things matter for a curation product. First, the namespace is dedicated to the public domain, which removes licensing friction from building on it. Second, the element list includes a soundbite tag beside transcript and chapters, meaning some publishers already declare sanctioned excerpt ranges in the feed itself.",
+      "key_facts": [
+        "The namespace is dedicated to the public domain under CC0 v1.0, recorded in the repository's COPYING.txt",
+        "Adoption bar: consensus on usefulness plus commitment from at least one host and one app, or recognition that a tag is already used in the wild",
+        "Phase timeline runs from Phase 1 (comment closed 2020-11-15, 5 tags) through Phase 7 (closed 2024-07-01, 2 tags); Phase 8 is open",
+        "Formalized elements include podcast:transcript, podcast:chapters, podcast:soundbite, podcast:person, podcast:season, podcast:guid, podcast:alternateEnclosure and podcast:liveItem",
+        "podcast:images is marked DEPRECATED in the element list",
+        "Project self-describes as a community-driven open-source effort rather than a standards body, with discussion on podcastindex.social"
+      ]
+    },
+    {
+      "id": 18,
+      "area": 1,
+      "area_name": "Podcast Infrastructure",
+      "title": "IAB Podcast Technical Measurement Guidelines v2.3 (public comment)",
+      "url": "https://podnews.net/press-release/iab-tech-lab-v23-public",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "July 2026 update clarifying server-side log measurement for RSS and apps. *Why it matters:* current direction of measurement standards; note \"most podcast applications do not provide client-side playback confirmation yet.\"",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:10.779Z",
+        "http_status": 200,
+        "content_sha256": "8ee449a759ba62c86f586049ab28c13b2b0da9fb3034a167d29bfc10d41ad2f3",
+        "estimated_tokens": 1090,
+        "chunks": 2,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/018-iab-podcast-technical-measurement-guidelines-v2-3-public-com.html",
+        "markdown": "markdown/018-iab-podcast-technical-measurement-guidelines-v2-3-public-com.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "none-found",
+        "redistribution": "deny",
+        "evidence_url": "https://podnews.net/press-release/iab-tech-lab-v23-public",
+        "note": "The page carries a Podnews LLC copyright notice (2017-2026) in both the footer and its structured-data copyrightNotice field, with no open license; the underlying text is also a third-party IAB Tech Lab press release that Podnews states it may edit.",
+        "verified": "web"
+      },
+      "digest": "A press release, republished by a podcast-industry newsletter, announcing that IAB Tech Lab opened version 2.3 of its podcast measurement guidelines for public comment in July 2026, with a thirty-day window. The substance is a change list rather than the standard itself. Terminology moves away from framing the counted party as a listener toward a consumer-oriented term, and new guidance covers URL-prefix measurement, changes to enclosure URLs in feeds, invalid-traffic considerations, and how the different measurement-window approaches should be applied. It also signals a roadmap, with a 3.0 revision aimed at streaming video podcasts planned for the following year. The release restates the structural fact underlying the entire framework: measurement rests on server-side log analysis because podcast clients generally do not report playback back to publishers. For a curation product this dates the current standards baseline and confirms that enclosure-URL churn is now a recognised measurement problem, which is simultaneously an ingest problem for stored episode references.",
+      "key_facts": [
+        "IAB Tech Lab announced Podcast Technical Measurement Guidelines v2.3 on 21 July 2026, open for public comment 30 days until 19 August 2026",
+        "v2.3 changes terminology from listener to podcast consumer",
+        "New guidance covers URL prefix measurement, RSS enclosure URL changes, invalid traffic considerations, and measurement window approaches",
+        "A v3.0 focused on streaming video podcasts is in development by the Podcast Technical Working Group, targeted at 2027",
+        "Stated rationale: most podcast applications still offer no client-side playback confirmation, so server-side log data remains the basis of measurement",
+        "Quoted participants include IAB Tech Lab CEO Anthony Katsur, Hugo Martel of Triton Digital, and Robert Freeland of Podtrac"
+      ]
+    },
+    {
+      "id": 19,
+      "area": 1,
+      "area_name": "Podcast Infrastructure",
+      "title": "Dynamic Ad Insertion mechanics (Castos)",
+      "url": "https://castos.com/dynamic-ad-insertion-for-podcasts/",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "Explains DAI and confirms timestamps differ per listener: what happens at 15:35 for one listener happens at 15:57 for another. *Why it matters:* directly quantifies the offset-drift problem for your stored segment boundaries.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:14.073Z",
+        "http_status": 200,
+        "content_sha256": "7040a60916153516971e28dc8ce23abde80f482741543675e3d871eb7939423e",
+        "estimated_tokens": 3168,
+        "chunks": 8,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/019-dynamic-ad-insertion-mechanics-castos.html",
+        "markdown": "markdown/019-dynamic-ad-insertion-mechanics-castos.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "none-found",
+        "redistribution": "deny",
+        "evidence_url": "https://castos.com/dynamic-ad-insertion-for-podcasts/",
+        "note": "Page footer reads as a Castos, Inc. 2026 copyright with all rights reserved and no open license anywhere in the markup; it is a company marketing blog post.",
+        "verified": "web"
+      },
+      "digest": "A vendor explainer covering how dynamic ad insertion works and why publishers adopt it. It distinguishes two delivery mechanisms: pre-rendered episode variants selected per request by a decision engine keyed on signals like geography, cookies and link parameters, versus true request-time stitching where the creative is assembled into the delivered file as the download is served. The piece is commercially motivated and lists the author's own product beside competing platforms, but its drawbacks section contains the fact a segment-boundary product needs. Because inserted creatives differ in length between listeners, a byte or time position in one listener's file does not correspond to the same content in another's, and the article gives a worked example where the same moment lands about twenty-two seconds apart for two people. That is the offset-drift problem stated plainly by an industry participant. It also asserts dynamic delivery has long since become dominant, so drift cannot be treated as an edge case affecting a small slice of the catalogue.",
+      "key_facts": [
+        "Two DAI mechanisms described: multiple pre-stitched episode versions selected by a decision engine, and real-time stitching at download",
+        "Ads can be placed pre-roll, mid-roll or post-roll, and can be inserted into back-catalogue episodes long after publication",
+        "Worked drift example: a moment occurring at 15 minutes 35 seconds for one listener occurs at 15 minutes 57 seconds for another, a 22 second shift",
+        "Cites an IAB study putting dynamic ads at almost 42% of podcast ads as far back as 2017, with dominance since",
+        "Named DAI platforms: Castos Ads and Campaigns, Art19, Podbean, Megaphone",
+        "Notes NPR has used dynamic ad insertion since at least 2008"
+      ]
+    },
+    {
+      "id": 3,
+      "area": 2,
+      "area_name": "Speech Processing",
+      "title": "WhisperX paper (arXiv 2303.00747)",
+      "url": "https://arxiv.org/abs/2303.00747",
+      "source_type": "paper",
+      "read_first": true,
+      "why_it_matters": "Time-accurate long-form ASR with VAD cut-and-merge + forced phoneme alignment, ~70x real-time batched; word-segmentation benchmarks in Table 2 (Switchboard 93.2%/65.4%, AMI 84.1%/60.3%). *Why it matters:* this is essentially your ingest ASR pipeline described in a paper.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:04.136Z",
+        "http_status": 200,
+        "content_sha256": "796e7f6c47c4bf98dbfec88cd73abe07dc546e3a96550964d7b910a9e0c7a85c",
+        "estimated_tokens": 7402,
+        "chunks": 15,
+        "notes": "arXiv abs→pdf"
+      },
+      "local_archive": {
+        "raw": "raw/003-whisperx-paper-arxiv-2303-00747.pdf",
+        "markdown": "markdown/003-whisperx-paper-arxiv-2303-00747.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "CC BY 4.0",
+        "redistribution": "allow",
+        "evidence_url": "https://arxiv.org/abs/2303.00747",
+        "note": "The arXiv abstract page carries a Creative Commons Attribution 4.0 license line rather than the default arXiv distribution license; verified by reading creativecommons.org/licenses/by/4.0/ out of the raw abs page HTML this session.",
+        "verified": "web"
+      },
+      "digest": "An INTERSPEECH 2023 system paper from Oxford's Visual Geometry Group describing how to make Whisper usable on hours-long recordings. The core observation is that Whisper's utterance timestamps drift badly and its buffered long-audio mode is inherently sequential, so it cannot be batched. The authors bolt three stages around the model: voice-activity detection to locate speech; a cut-and-merge step that splits over-long active regions at the point of lowest voice-activity score and then recombines neighbours up to roughly the model's 30-second training window; and forced alignment of the resulting text against an external phoneme classifier, using dynamic time warping to recover per-word start and end times. Chunk boundaries therefore land in silence rather than mid-word. Evaluation spans TED-LIUM, Kincaid46, AMI and Switchboard, reporting both word error rate and word-segmentation precision and recall at a fixed timing tolerance. For a segmentation product this is effectively the reference ingest architecture: word-accurate timing is the prerequisite for cutting clean segment boundaries, and batching makes back-catalogue transcription affordable.",
+      "key_facts": [
+        "Architecture: VAD pre-segmentation, min-cut and merge into ~30s chunks, batched Whisper, then wav2vec2 forced phoneme alignment via DTW",
+        "Table 2 results: WhisperX 11.8x speed and 9.7 WER on TED-LIUM; AMI word segmentation precision 84.1 / recall 60.3; Switchboard 93.2 / 65.4",
+        "Word-segmentation true positives scored with a 200 millisecond collar",
+        "VAD plus batching yields roughly twelvefold speedup; batching without VAD collapses quality (78.78 WER on TED-LIUM at batch size 32)",
+        "Default configuration: pyannote VAD (onset 0.767, offset 0.377), Whisper large-v2 greedy decoding, wav2vec2.0 BASE 960H phoneme model",
+        "Forced-alignment overhead measured at under roughly 10% of runtime; arXiv v2 dated 11 July 2023"
+      ]
+    },
+    {
+      "id": 4,
+      "area": 2,
+      "area_name": "Speech Processing",
+      "title": "pyannote.audio GitHub",
+      "url": "https://github.com/pyannote/pyannote-audio",
+      "source_type": "repo",
+      "read_first": true,
+      "why_it_matters": "Neural diarization building blocks; community-1 open model + precision-2 premium API. *Why it matters:* speaker labels let you cut on speaker turns and attribute segments.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:34:06.336Z",
+        "http_status": 200,
+        "content_sha256": "fb790724a0d1768fd0f0654d0f687a778812b6c6a9642a1ff2956debaf492f89",
+        "estimated_tokens": 3106,
+        "chunks": 7,
+        "notes": "github repo→raw README; raw README"
+      },
+      "local_archive": {
+        "raw": "raw/004-pyannote-audio-github.md",
+        "markdown": "markdown/004-pyannote-audio-github.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "MIT",
+        "redistribution": "allow",
+        "evidence_url": "https://github.com/pyannote/pyannote-audio/blob/main/LICENSE",
+        "note": "GitHub licenses API for pyannote/pyannote-audio returns spdx_id MIT with a LICENSE file at the repository root, which governs the README that was captured.",
+        "verified": "web"
+      },
+      "digest": "README for the PyTorch-based open-source speaker diarization toolkit, now positioned alongside a commercial service from the same team. It documents two paths: an open pipeline that runs locally but is gated behind accepting model conditions on Hugging Face and supplying an access token, and a premium hosted pipeline that sends audio to the vendor's servers in exchange for an API key. Both expose the same short Python surface, where you load a pipeline, apply it to an audio file, and iterate over turn and speaker pairs carrying float start and stop times in seconds. A twelve-dataset benchmark table gives diarization error rates for the legacy pipeline, the current open one, and the premium one, plus throughput figures measured on an H100. An opt-in telemetry channel and its disable switches are documented. For a curation product the practical points are that speaker turns arrive as timestamped intervals that can be intersected with word timings to attribute segments, that the local path avoids shipping publisher audio to a third party, and that error rates on conversational material remain substantial.",
+      "key_facts": [
+        "MIT-licensed Python/PyTorch toolkit; pretrained pipelines and models distributed through Hugging Face",
+        "Two pipelines: community-1 (open, runs locally, needs an HF token and accepted user conditions) and precision-2 (pyannoteAI hosted API)",
+        "Diarization error rates as of 2025-09: AMI IHM 18.8 legacy / 17.0 community-1 / 12.9 precision-2; CALLHOME 28.5 / 26.7 / 16.6; VoxConverse v0.3 11.2 / 11.2 / 8.5",
+        "Self-hosted throughput on an NVIDIA H100: community-1 about 31s per hour of audio on AMI IHM, precision-2 about 14s, roughly 2.2x faster",
+        "Output shape is a sequence of (turn.start, turn.end, speaker_label) triples with times in seconds",
+        "Telemetry is optional and controlled via the PYANNOTE_METRICS_ENABLED environment variable or Python setters"
+      ]
+    },
+    {
+      "id": 15,
+      "area": 2,
+      "area_name": "Speech Processing",
+      "title": "Chromaprint / AcoustID (official)",
+      "url": "https://acoustid.org/chromaprint",
+      "source_type": "docs",
+      "read_first": true,
+      "why_it_matters": "Open-source acoustic fingerprinting; ~100ms to fingerprint a 2-minute file into 2.5KB. *Why it matters:* fingerprinting a stable landmark near your segment lets you realign offsets when DAI shifts them. *Caveat:* tuned for near-identical/music matching, may need adaptation for short spoken clips.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:12.608Z",
+        "http_status": 200,
+        "content_sha256": "52a94e463af0a5e24ec67e61a49f5206f16d1cb5acac921d522502ec0281be16",
+        "estimated_tokens": 825,
+        "chunks": 2,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/015-chromaprint-acoustid-official.html",
+        "markdown": "markdown/015-chromaprint-acoustid-official.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "none-found",
+        "redistribution": "deny",
+        "evidence_url": "https://acoustid.org/chromaprint",
+        "note": "Fetched the page this session and searched its markup for any Creative Commons link, license statement or copyright line and found none; the footer only credits the author and host, so there is no grant permitting third-party republication of the page text.",
+        "verified": "web"
+      },
+      "digest": "The project's official landing page for the fingerprinting library underpinning AcoustID. It is a distribution and integration page rather than an algorithm description: current release number and dated source tarball, prebuilt command-line binaries for Linux, macOS and Windows across several architectures, build instructions requiring a C++ toolchain and CMake, and pointers to the Python binding. The most operationally important statement is a scoping limitation. The library consumes only raw uncompressed samples and performs no container or codec handling whatsoever, so any caller must supply its own decoding layer; the page recommends the bundled command-line utility with JSON output as the simplest path for callers that only need fingerprints. For a product trying to realign timestamps after ad insertion shifts them, this defines the shape of the component: decode a short window of episode audio, fingerprint it, compare. It also flags a real cost, since a full decode dependency sits in front of any fingerprint-based offset recovery.",
+      "key_facts": [
+        "Chromaprint is the fingerprint-extraction library behind AcoustID; latest release listed as 1.6.1, dated 2026-07-28",
+        "Exposes a C API declared in chromaprint.h; accepts only raw uncompressed audio and does no file-format or codec handling",
+        "The fpcalc utility emits JSON and is the recommended integration route when only fingerprints are needed; FFmpeg is required to build it",
+        "Prebuilt fpcalc binaries published for linux-arm64, linux-x86_64, macos-arm64, macos-x86_64, macos-universal and windows-x86_64",
+        "pyacoustid provides a Python wrapper plus higher-level file-to-fingerprint helpers",
+        "Building the library requires a C++ compiler and CMake"
+      ]
+    },
+    {
+      "id": 20,
+      "area": 2,
+      "area_name": "Speech Processing",
+      "title": "WhisperX GitHub",
+      "url": "https://github.com/m-bain/whisperx",
+      "source_type": "repo",
+      "read_first": false,
+      "why_it_matters": "Reference implementation with diarization via pyannote. *Why it matters:* the code your coding agent will actually adapt.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:12.898Z",
+        "http_status": 200,
+        "content_sha256": "d68ee671da04b2f2c8a1242bb129f4ac72ab6e42f8eb6ba8ef3e53c6d2c03a11",
+        "estimated_tokens": 3869,
+        "chunks": 8,
+        "notes": "github repo→raw README; raw README"
+      },
+      "local_archive": {
+        "raw": "raw/020-whisperx-github.md",
+        "markdown": "markdown/020-whisperx-github.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "BSD-2-Clause",
+        "redistribution": "allow",
+        "evidence_url": "https://github.com/m-bain/whisperX/blob/main/LICENSE",
+        "note": "GitHub licenses API returns spdx_id BSD-2-Clause and the raw LICENSE file opens with a BSD 2-Clause header copyright Max Bain 2024, permitting redistribution with notice retention.",
+        "verified": "web"
+      },
+      "digest": "The reference implementation README for the system described in the WhisperX paper, and the more practically useful of the two artifacts for actually building an ingest pipeline. It documents the runtime rather than the method: install from PyPI, a CUDA toolkit prerequisite for GPU use, a faster-whisper and CTranslate2 backend that fits the large model into modest VRAM at a moderate beam size, and a CPU fallback via integer compute. The three-stage Python surface is spelled out explicitly, namely batched transcription, loading a language-specific alignment model and aligning, then running diarization and assigning speaker labels onto individual words. Alignment models are language-specific, with defaults for a handful of languages and Hugging Face fallbacks beyond them. The limitations section is the honest part and directly bounds what a product can promise: tokens outside the alignment model's character inventory receive no timing at all, overlapping speech is handled poorly, and the maintainer describes diarization as far from perfect.",
+      "key_facts": [
+        "BSD 2-Clause licensed; claims roughly 70x realtime transcription using Whisper large-v2 with batched inference",
+        "Pipeline stages: batched Whisper transcription, wav2vec2 forced alignment, pyannote diarization, then word-level speaker assignment",
+        "Requires CUDA toolkit 12.8 for GPU acceleration; large-v2 needs under 8GB GPU memory at beam_size=5; CPU path via --compute_type int8 --device cpu",
+        "Diarization uses the pyannote speaker-diarization-community-1 model and requires a Hugging Face read token plus accepted user agreement",
+        "Default alignment models provided for en, fr, de, es, it via torchaudio pipelines, with many other languages via Hugging Face",
+        "Documented limitations: tokens lacking characters in the alignment dictionary (e.g. numerals, currency amounts) get no timestamps, and overlapping speech and diarization quality are weak; runs with condition_on_prev_text False and without timestamps during batching to curb hallucination"
+      ]
+    },
+    {
+      "id": 21,
+      "area": 2,
+      "area_name": "Speech Processing",
+      "title": "MURMUR: Efficient Inference for Long-Form ASR (arXiv 2606.01483)",
+      "url": "https://arxiv.org/pdf/2606.01483",
+      "source_type": "paper",
+      "read_first": false,
+      "why_it_matters": "Benchmarks WhisperX large-v3 on long-form audio. *Why it matters:* a recent competitive baseline and cost/latency comparison for batch ASR at scale.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:25.720Z",
+        "http_status": 200,
+        "content_sha256": "f8b493c142eb82be817e4fc7a259c404777107d798157033683bd78b58cd7cd2",
+        "estimated_tokens": 11070,
+        "chunks": 19,
+        "notes": ""
+      },
+      "local_archive": {
+        "raw": "raw/021-murmur-efficient-inference-for-long-form-asr-arxiv-2606-0148.pdf",
+        "markdown": "markdown/021-murmur-efficient-inference-for-long-form-asr-arxiv-2606-0148.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "CC BY 4.0",
+        "redistribution": "allow",
+        "evidence_url": "https://arxiv.org/abs/2606.01483",
+        "note": "The arXiv abstract page for 2606.01483 carries a Creative Commons Attribution 4.0 license line rather than the default arXiv distribution license; verified by reading creativecommons.org/licenses/by/4.0/ out of the raw abs page HTML this session.",
+        "verified": "web"
+      },
+      "digest": "A 2026 systems paper from the University of Washington arguing that the chunk-based approach to long-form speech recognition, with WhisperX as the named exemplar, trades accuracy for latency, while newer single-pass long-context speech models invert that trade. The authors measure both on meeting audio and show the gap is large in each direction: the chunked pipeline is roughly an order of magnitude faster but substantially worse on a metric that jointly penalises transcription errors, speaker misattribution and timing drift. Their system keeps chunking but treats chunk length as a tunable parameter rather than pinning it to the model's input window, finding an intermediate value that recovers most of the accuracy, then adds a sliding-window cache eviction policy exploiting the finding that speech tokens are extremely sparse in attention. For a curation product the value is an independent, current baseline: it quantifies what chunked pipelines actually cost in speaker and boundary quality, and shows one knob buys much of that back before changing models.",
+      "key_facts": [
+        "Reported on AMI-IHM: WhisperX at 22.5% WER, 23.6% DER, 35.5% tcpWER and 38.8s latency, versus single-pass VibeVoice-ASR at 19.2% / 9.4% / 25.7% / 370.7s",
+        "MURMUR matches single-pass accuracy while cutting latency 4.2x; speech-token eviction adds further gains at under 1% relative tcpWER degradation",
+        "Identifies a 300 second chunk size as the accuracy/latency balance point, versus the roughly 30 second windows used by chunk-based pipelines",
+        "Attention sparsity finding: fewer than 25% of speech tokens retain 99% of total attention weight on 24 of 28 layers",
+        "Primary metric is tcpWER (time-constrained minimum-permutation WER); evaluated on AMI, TED-LIUM 3 and Earnings21",
+        "arXiv 2606.01483, submitted 31 May 2026; code released at github.com/uw-syfi/Murmur"
+      ]
+    },
+    {
+      "id": 22,
+      "area": 2,
+      "area_name": "Speech Processing",
+      "title": "How Chromaprint works (creator blog)",
+      "url": "https://oxygene.sk/2011/01/how-does-chromaprint-work/",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "Author's own explanation of chroma-feature extraction and bit-error-rate comparison. *Why it matters:* primary technical reference for building offset realignment.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:28.360Z",
+        "http_status": 200,
+        "content_sha256": "602c4cb2cd158457b232ab35c4358a8da411a9465cfd0534c4051b28e819bf5f",
+        "estimated_tokens": 1371,
+        "chunks": 2,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/022-how-chromaprint-works-creator-blog.html",
+        "markdown": "markdown/022-how-chromaprint-works-creator-blog.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "none-found",
+        "redistribution": "deny",
+        "evidence_url": "https://oxygene.sk/2011/01/how-does-chromaprint-work/",
+        "note": "Fetched the post this session; neither the page nor its footer states any copyright notice, Creative Commons license or terms of use, so there is no affirmative grant permitting republication and default all-rights-reserved copyright applies.",
+        "verified": "web"
+      },
+      "digest": "The library author's own walkthrough of how the fingerprint is computed, and the only place the pipeline is laid out end to end. Audio is downsampled and converted into a spectrogram by short-time Fourier transform, then frequency content is folded into twelve pitch-class bins so octave information is discarded and only note identity survives, a representation the author credits to earlier music-retrieval work. That image is then compressed: a small window slides across it one column at a time, a fixed set of learned filters compares summed intensity across regions of each sub-image, and each filter output is quantised to two bits, packing sixteen filters into a single 32-bit integer per window position. Fingerprints are compared by bit error rate. Robustness is illustrated with lossy-codec and instrumental-version examples. For an offset-realignment use case the limits are visible in the design itself: the representation is pitch-oriented and tuned for near-identical music matching, so applying it to short spoken passages is an adaptation rather than a drop-in use.",
+      "key_facts": [
+        "Input is resampled to 11025 Hz; STFT frame size is 4096 samples (about 0.371 seconds) with 2/3 overlap",
+        "Spectrogram frequencies are folded into 12 chroma bins representing note classes, discarding octave information",
+        "A 16x12 sliding window with 16 filters, each quantised to 2 bits via Gray code, yields one 32-bit sub-fingerprint per window position",
+        "Filters and their quantisation coefficients were chosen by a machine learning algorithm over a training set of audio files",
+        "Fingerprints are compared by bit error rate; FLAC versus 32 kbps MP3 of the same track differ far less than two different tracks",
+        "Design derives from the Computer Vision for Music Identification work plus a pairwise-boosted audio fingerprint paper; post dated January 2011"
+      ]
+    },
+    {
+      "id": 6,
+      "area": 3,
+      "area_name": "Topic Segmentation",
+      "title": "TREC 2020 Podcasts Track Overview (arXiv 2103.15953)",
+      "url": "https://arxiv.org/abs/2103.15953",
+      "source_type": "paper",
+      "read_first": true,
+      "why_it_matters": "Segment retrieval + summarization tasks on 100k+ Spotify episodes. *Why it matters:* the definitive academic framing of your exact problem (retrieving 2-min segments answering a query).",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:38.221Z",
+        "http_status": 200,
+        "content_sha256": "a58c0bbd976d3b657d36ff67e0bd170c5e236568239d6f97843b3c6a9ac25792",
+        "estimated_tokens": 11377,
+        "chunks": 19,
+        "notes": "arXiv abs→pdf"
+      },
+      "local_archive": {
+        "raw": "raw/006-trec-2020-podcasts-track-overview-arxiv-2103-15953.pdf",
+        "markdown": "markdown/006-trec-2020-podcasts-track-overview-arxiv-2103-15953.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "arXiv.org perpetual non-exclusive license v1.0",
+        "redistribution": "deny",
+        "evidence_url": "https://arxiv.org/abs/2103.15953",
+        "note": "The abs page shows only the default arXiv non-exclusive distribution license (link to arxiv.org/licenses/nonexclusive-distrib/1.0), which grants arXiv distribution rights and not third-party redistribution.",
+        "verified": "web"
+      },
+      "digest": "Organizers' report on the first TREC podcast evaluation, run by Spotify with Dublin City University and CLARIN. Two shared tasks ran over a corpus of roughly 100,000 English episodes shipped with audio, machine transcripts (Google STT, early 2020) and creator RSS metadata. Task one framed retrieval at sub-episode granularity: candidates are fixed two-minute windows beginning on each minute and overlapping their neighbours by a minute, yielding about 3.4 million candidates averaging some 340 words. NIST judges graded each on a five-point entry-point scale, scored primarily by mean nDCG. Task two asked for a short readable episode summary, judged against filtered creator descriptions plus manual grading. For Foray the useful result is the ablation showing transcript indexing roughly doubles retrieval quality over title-and-description indexing, and that relevance was defined as being a good place for a listener to start, not merely topical overlap. Caveats: only one team used audio at all, participation was far below registration, and the underlying dataset is no longer distributed.",
+      "key_facts": [
+        "Corpus: just over 100,000 English-language episodes with audio, ASR transcripts and RSS metadata; transcripts carry word timestamps at 0.1s granularity",
+        "Segment definition produced ~3.4M two-minute overlapping candidates, average word count 340 +/- 70",
+        "8 training topics plus 50 test topics in three types: topical, refinding, known-item; graded Perfect/Excellent/Good/Fair/Bad",
+        "Best submitted retrieval run 0.67 mean nDCG (UMD) vs BM25 and QL baselines at 0.52; BERT reranking baselines led on precision@10 (0.57)",
+        "Episode-level ablation: transcript text 0.58 nDCG vs episode title+description 0.36; both combined 0.61",
+        "Participation: 7 teams / 24 runs in retrieval, 8 teams / 22 runs in summarization; summarization ground-truth proxy was a 66,245-description filtered subset"
+      ]
+    },
+    {
+      "id": 7,
+      "area": 3,
+      "area_name": "Topic Segmentation",
+      "title": "TreeSeg (arXiv 2407.12028)",
+      "url": "https://arxiv.org/pdf/2407.12028",
+      "source_type": "paper",
+      "read_first": true,
+      "why_it_matters": "Hierarchical topic segmentation of large transcripts, building on embedding-based TextTiling variants (BertSeg, HyperSeg). *Why it matters:* your ingest-time segmentation into self-contained 3-15 min candidates.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:48:10.050Z",
+        "http_status": 200,
+        "content_sha256": "6130218ee1a8ab5fd6b16403cf042a9d7f9f42b269fd83e0fbf656f61e72430b",
+        "estimated_tokens": 7674,
+        "chunks": 12,
+        "notes": ""
+      },
+      "local_archive": {
+        "raw": "raw/007-treeseg-arxiv-2407-12028.pdf",
+        "markdown": "markdown/007-treeseg-arxiv-2407-12028.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "CC BY-SA 4.0",
+        "redistribution": "allow",
+        "evidence_url": "https://arxiv.org/abs/2407.12028",
+        "note": "The abs page carries the CC BY-SA 4.0 license badge (icon by-sa-4.0.png) linking to creativecommons.org/licenses/by-sa/4.0/, which permits third-party redistribution with attribution and share-alike on derivatives.",
+        "verified": "web"
+      },
+      "digest": "Industry paper from Augmend proposing an unsupervised way to cut long ASR transcripts into nested topics. Rather than scanning for local similarity dips like TextTiling and its embedding-era descendants, it embeds sliding blocks of utterances (each utterance plus a fixed window of preceding ones) with an off-the-shelf embedding model, then recursively splits the timeline by minimising within-segment squared distance to segment means. Splits are chosen greedily across current leaves via a min-heap, producing a binary partition tree, so a caller can pick segmentation granularity after the fact instead of committing to a segment count up front. Evaluation covers ICSI and AMI meeting corpora plus a 21-transcript in-house set, scored with Pk and WindowDiff at each annotation depth against the ground-truth segment count. It beats BertSeg, HyperSeg and random/equidistant baselines everywhere. For Foray this is directly usable at ingest: one hyperparameter, no training, and the hierarchy maps naturally onto choosing 3-15 minute candidate clips. Limitations: results rest on one embedding model, corpora are meetings rather than podcasts, and the segment count must still be supplied.",
+      "key_facts": [
+        "Method: block-wise utterance embeddings (text-embedding-ada-002 in the paper) plus divisive one-dimensional clustering into a binary partition tree; single hyperparameter (block width W)",
+        "No trainable components; minimum segment size enforced, sub-threshold segments merged forward",
+        "Datasets: ICSI (75 annotated transcripts, up to 4 annotation levels), AMI (139 at level 1, up to 3 levels), and TinyRec, a new 21-transcript self-recorded corpus released with the paper",
+        "Averaged Pk: 0.31 (ICSI), 0.355 (AMI), 0.367 (TinyRec) vs BertSeg 0.388 / 0.443 / 0.473 and random baseline ~0.46",
+        "Averaged WindowDiff: 0.353 / 0.396 / 0.382 vs BertSeg 0.432 / 0.480 / 0.486",
+        "arXiv v1 posted June 2024; stated limitations are single-embedding-model evaluation and no comparison against M3Seg (no public code)"
+      ]
+    },
+    {
+      "id": 23,
+      "area": 3,
+      "area_name": "Topic Segmentation",
+      "title": "TREC Podcasts Track site",
+      "url": "https://trecpodcasts.github.io/",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "Task definitions, data description; notes the Spotify dataset is no longer distributed as of Dec 2023. *Why it matters:* task design and evaluation methodology to reuse.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:48:12.462Z",
+        "http_status": 200,
+        "content_sha256": "3fa0d1c9e8984abcb6743cc6cc872ed1e3c7f36dcf6be742fd9e2a8732f77b4f",
+        "estimated_tokens": 1423,
+        "chunks": 5,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/023-trec-podcasts-track-site.html",
+        "markdown": "markdown/023-trec-podcasts-track-site.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "none stated",
+        "redistribution": "deny",
+        "evidence_url": "https://github.com/trecpodcasts/trecpodcasts.github.io",
+        "note": "The GitHub Pages source repo has no LICENSE file and GitHub's About sidebar lists no license, and the site itself carries no license statement, so no redistribution grant exists.",
+        "verified": "web"
+      },
+      "digest": "The organizers' landing page for the TREC Podcasts Track, hosted on GitHub Pages. It is short but operationally dense: it states the track ran in 2020 and 2021, did not run in 2022, and that the Spotify English podcast dataset behind it stopped accepting access requests in December 2023, which means the benchmark is effectively unreproducible from scratch today. It gives the precise segment definition used for retrieval (two-minute chunks starting on the minute), the five-point relevance scale NIST assessors applied while consulting both transcript and audio, and the evolution of query types: 2020 used topical, known-item and refinding queries, while 2021 folded the latter two together and added non-topical intents like wanting something entertaining, opinionated, or discussion-heavy. It also states the summarization objective, framed as a snippet a listener reads while deciding whether to press play. Crucially it links the still-downloadable evaluation artifacts: topic files and qrels for 2020 train, 2020 test and 2021 test.",
+      "key_facts": [
+        "Track ran 2020 and 2021; skipped 2022; the Spotify dataset is unmaintained and closed to new access requests as of December 2023",
+        "Segment unit: two-minute chunk starting on the minute; judged on Perfect/Excellent/Good/Fair/Bad, with Perfect reserved for target-item queries",
+        "2020 query types: topical, known-item, refinding; 2021 merged known-item and refinding and added entertaining / opinionated / discussion intents",
+        "Downloadable artifacts remain: topics XML for queries 1-8 (train), 9-58 (2020 test), 59-108 (2021 test), plus matching qrels lists",
+        "Summarization judged both by NIST assessors on a four-point scale and by ROUGE against creator-written episode descriptions",
+        "Organizing team was predominantly Spotify, with Dublin City University and CLARIN ERIC"
+      ]
+    },
+    {
+      "id": 24,
+      "area": 3,
+      "area_name": "Topic Segmentation",
+      "title": "Spotify at TREC 2020: Segment Retrieval (NIST)",
+      "url": "https://trec.nist.gov/pubs/trec29/papers/Spotify.P.pdf",
+      "source_type": "paper",
+      "read_first": false,
+      "why_it_matters": "BM25/QL + BERT reranking baselines with Pyserini/Anserini. *Why it matters:* concrete first-party retrieval recipes for podcast segments.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:48:16.399Z",
+        "http_status": 200,
+        "content_sha256": "5d42ef130f0bfb96baaaaa1634fa381d61a416da52fc3ab50ff288a8ec393292",
+        "estimated_tokens": 5558,
+        "chunks": 8,
+        "notes": ""
+      },
+      "local_archive": {
+        "raw": "raw/024-spotify-at-trec-2020-segment-retrieval-nist.pdf",
+        "markdown": "markdown/024-spotify-at-trec-2020-segment-retrieval-nist.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "none stated (author copyright retained)",
+        "redistribution": "deny",
+        "evidence_url": "https://trec.nist.gov/pubs/trec29/trec2020.html",
+        "note": "The TREC 2020 proceedings index carries only a NIST disclaimer about endorsement and author opinions, with no copyright assignment or redistribution grant for the participant papers, which remain the corporate authors' work.",
+        "verified": "web"
+      },
+      "digest": "Spotify's own notebook paper describing the baseline and experimental retrieval systems it contributed to the 2020 podcast segment task. The stack is conventional and reproducible: Pyserini over Anserini/Lucene for BM25 and query-likelihood first-stage retrieval on transcript-only and transcript-plus-metadata indexes, then a BERT-large cross-encoder pretrained on MS MARCO reranking the top fifty candidates. The interesting part is three attempts at domain adaptation, all of which essentially failed to beat the untuned reranker: crowdsourced relevance labels on thirty extra development topics, synthetic query generation with docTTTTTquery over retrieved segments, and weak supervision derived from cleaned episode titles and descriptions. The authors attribute the flat results to a shallow rerank depth and a naive negative-sampling scheme. For Foray the takeaways are practical: neural reranking gives a large lift over lexical retrieval alone, verbose query descriptions do not raise the mean but do reduce variance across hard queries, and cheap synthetic fine-tuning is not a free win.",
+      "key_facts": [
+        "First stage: BM25 (k=0.9, b=0.4) and query likelihood (Dirichlet mu=1000) via Pyserini/Anserini with Porter stemming; top 1000 passages per topic",
+        "Reranker: BERT-LARGE binary classifier fine-tuned on MS MARCO (400M triples), query truncated to 128 tokens, pair capped at 512 tokens, rerank depth 50",
+        "Test results (50 topics): BM25 nDCG@20 0.386, QL 0.380, RERANK-QUERY 0.469, RERANK-DESC 0.469, best fine-tuned run BERT-DESC-S 0.473",
+        "Fine-tuning data: 919 crowdsourced Excellent/Good/Fair/Bad labels over 30 new topics; docTTTTTquery synthetic questions (5 per segment); ~100K title/description-derived examples",
+        "Document-level ablation: transcript 0.58 nDCG vs episode title 0.22 and title+description 0.36; transcript plus metadata 0.61",
+        "Same segment definition as the track: 3.4M two-minute overlapping segments, average 340 +/- 70 words; NIST annotation depth 20"
+      ]
+    },
+    {
+      "id": 25,
+      "area": 3,
+      "area_name": "Topic Segmentation",
+      "title": "Recent Trends in Linear Text Segmentation: A Survey (ACL 2024)",
+      "url": "https://aclanthology.org/2024.findings-emnlp.174.pdf",
+      "source_type": "paper",
+      "read_first": false,
+      "why_it_matters": "Survey from TextTiling through neural approaches. *Why it matters:* one-stop literature map for choosing a segmentation approach.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:48:20.465Z",
+        "http_status": 200,
+        "content_sha256": "3f58afbdc9b6f106c48ca0b274a72631fc7f39eeb333f0588d8eac3581b19db9",
+        "estimated_tokens": 13357,
+        "chunks": 30,
+        "notes": ""
+      },
+      "local_archive": {
+        "raw": "raw/025-recent-trends-in-linear-text-segmentation-a-survey-acl-2024.pdf",
+        "markdown": "markdown/025-recent-trends-in-linear-text-segmentation-a-survey-acl-2024.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "CC BY 4.0",
+        "redistribution": "allow",
+        "evidence_url": "https://aclanthology.org/2024.findings-emnlp.174/",
+        "note": "The ACL Anthology landing page shows the CC BY 4.0 badge linking to creativecommons.org/licenses/by/4.0/ and states that materials published in or after 2016 carry that license.",
+        "verified": "web"
+      },
+      "digest": "A current literature map of linear topic segmentation from Queen Mary University of London with a BBC R&D co-author, covering the arc from counting-based sliding windows through supervised transformers to early LLM prompting. It organizes the field by basic unit (word, sentence, speaker turn), then by approach family, and supplies two comparison tables that put published Pk numbers for representative systems side by side on written-text and dialogue benchmarks. Its most useful contribution for a builder is diagnostic rather than algorithmic: it argues the field has no agreed benchmark, that reported numbers rarely transfer to real deployments, that supervised systems may be memorizing domain-specific cue phrases rather than learning coherence, and that the dominant metric is known to be flawed yet still crowds out newer alternatives. It also flags spoken and media-domain data as the thinnest resource area and explicitly names podcast segmentation as a place new resources are needed. Limitations it declares: no multimodal, graph-based, or niche-domain coverage, and an English-centric view.",
+      "key_facts": [
+        "Published as Findings of EMNLP 2024, pages 3084-3095, November 2024",
+        "Dataset table spans choi (920 docs), wiki-727k (727,746 docs), en_city (19,500), en_disease (3,600), ICSI (25), QMSUM (232), SuperDialSeg (9,468), Non-News BBC (54)",
+        "Written-text Pk comparison: TextTiling 44 and C99 12 on Choi vs supervised Cross-segment BERT 0.04; on wiki-727k, TextSeg 22.13 vs Longformer+TSSP+CSSL 13.89",
+        "Dialogue Pk comparison: TextTiling 38.2 on ICSI; on SuperDialSeg, TextTiling 44.1, TextTiling+BERT 49.9, zero-shot ChatGPT 31.8, supervised TextSeg 19.9",
+        "Metric usage survey of post-2020 papers: Pk in 15 works, F1 in 11, WindowDiff in 5, Boundary Similarity in 3, SegReFree in 2",
+        "Named open challenges: no standard benchmark dataset, documented flaws in Pk, and poor cross-domain generalizability of supervised models"
+      ]
+    },
+    {
+      "id": 26,
+      "area": 3,
+      "area_name": "Topic Segmentation",
+      "title": "SEGBOT (IJCAI 2018)",
+      "url": "https://www.ijcai.org/proceedings/2018/0579.pdf",
+      "source_type": "paper",
+      "read_first": false,
+      "why_it_matters": "Neural pointer-network segmentation outperforming C99/TextTiling on the Choi dataset. *Why it matters:* a strong supervised baseline if you fine-tune.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:48:23.049Z",
+        "http_status": 200,
+        "content_sha256": "7d5b0702aa120ec8cbe7541ba87da8fd4bcfcfde6b3fa538578db3d45b1ec9d9",
+        "estimated_tokens": 10024,
+        "chunks": 20,
+        "notes": ""
+      },
+      "local_archive": {
+        "raw": "raw/026-segbot-ijcai-2018.pdf",
+        "markdown": "markdown/026-segbot-ijcai-2018.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "none stated",
+        "redistribution": "deny",
+        "evidence_url": "https://www.ijcai.org/proceedings/2018/579",
+        "note": "The IJCAI proceedings page for this paper shows no license terms at all, only a site-wide IJCAI copyright footer, so there is no open grant permitting third-party redistribution.",
+        "verified": "web"
+      },
+      "digest": "An NTU Singapore paper recasting text segmentation as sequence prediction with a pointer network instead of per-position boundary tagging. A bidirectional GRU encodes the input units; a unidirectional GRU decoder, fed the current segment's start unit, attends over remaining positions and points directly at the next boundary. That framing sidesteps two problems the authors identify with tagging approaches: boundary labels are extremely sparse, and the set of legal outputs changes with input length. The same architecture handles both granularities, with sentences as units for topic segmentation and words as units for discourse-unit segmentation, using pretrained embeddings and teacher forcing during training. Results are strong on both tasks. The catch for Foray is the evaluation data: the topic-segmentation benchmark is synthetic, built by concatenating unrelated document excerpts, so boundaries are lexically obvious in a way real conversational audio never is, and the model is supervised, requiring labeled boundaries in whatever domain you deploy it. Treat the near-zero error rate as a ceiling artifact, not a transfer estimate.",
+      "key_facts": [
+        "Architecture: bidirectional GRU encoder plus GRU decoder with a pointer/attention mechanism; GloVe 300d word vectors (kept frozen) and Arora et al. sentence embeddings; trained with teacher forcing and Adam",
+        "Topic segmentation benchmark: Choi dataset, 700 documents each concatenating 10 excerpts from the Brown corpus",
+        "Choi results (Pk %, lower is better): SEGBOT 0.33 and 0.11 in the two comparison groups vs TopicTiling 0.88, BiLSTM-CRF 0.67, C99 10.50, TextTiling 45.25",
+        "Reported relative Pk reductions: 87.5% over TopicTiling and 83.6% over BiLSTM-CRF (p < 0.01)",
+        "EDU segmentation on RST-DT (347 train articles / 38 test articles): F-score 92.2 vs F&R 90.5, DS 90.1, BiLSTM-CRF 88.5",
+        "Freezing GloVe vectors beat fine-tuning them (F-score 92.2 vs 87.9); published at IJCAI-18, pages 4166 onward"
+      ]
+    },
+    {
+      "id": 27,
+      "area": 3,
+      "area_name": "Topic Segmentation",
+      "title": "Spotify: What Makes a Good Podcast Summary?",
+      "url": "https://research.atspotify.com/publications/what-makes-a-good-podcast-summary",
+      "source_type": "paper",
+      "read_first": false,
+      "why_it_matters": "Studies correlation of automatic metrics with human judgments of podcast summaries. *Why it matters:* informs your LLM-as-judge evaluation of bridge quality.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:48:25.762Z",
+        "http_status": 200,
+        "content_sha256": "709711564b5578e1ff9ed75fb1ecfa1f865442afab301493a6e56b14119b7032",
+        "estimated_tokens": 186,
+        "chunks": 1,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/027-spotify-what-makes-a-good-podcast-summary.html",
+        "markdown": "markdown/027-spotify-what-makes-a-good-podcast-summary.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "proprietary, (c) Spotify AB",
+        "redistribution": "deny",
+        "evidence_url": "https://research.atspotify.com/publications/what-makes-a-good-podcast-summary",
+        "note": "The page footer reads copyright Spotify AB with standard Terms of Use and no open license, and the full text sits behind an ACM Digital Library DOI.",
+        "verified": "web"
+      },
+      "digest": "This is a publication landing page on Spotify's research site, not the paper itself; the extraction contains only the abstract and a link out to the ACM Digital Library version. The abstract describes a study that reuses the TREC 2020 podcast summarization outputs, pairing summaries generated by many different participant systems with the human quality judgments collected during that evaluation, then measuring how well automatic metrics agree with those judgments and what linguistic properties characterize summaries humans rated highly. The premise is that podcasts differ enough from news, the domain most summarization metrics were validated on, that the qualities of a good podcast summary are not yet established. For Foray this is a pointer to prior work on judging generated text about podcast content, which is the same evaluation problem as scoring segment bridges or hooks. Because only the abstract was captured, the actual correlation figures, metric list, and per-metric conclusions are not available from this source and would have to be read at the ACM version.",
+      "key_facts": [
+        "Landing page only: the captured extraction is the abstract plus an outbound link, roughly 1KB of text, not the full paper",
+        "Full paper is hosted at ACM Digital Library, DOI 10.1145/3477495.3531802",
+        "Study reuses summaries from multiple algorithms plus human quality judgments collected in the TREC 2020 Podcasts Track",
+        "Research question: correlation between automatic summarization metrics and human judgments, plus linguistic traits of highly-rated summaries",
+        "Framing claim: podcasts differ from news and other commonly studied summarization domains, so metric validity does not automatically transfer"
+      ]
+    },
+    {
+      "id": 28,
+      "area": 3,
+      "area_name": "Topic Segmentation",
+      "title": "Spotify: Genre-Aware Abstractive Podcast Summarization (arXiv 2104.03343)",
+      "url": "https://arxiv.org/abs/2104.03343",
+      "source_type": "paper",
+      "read_first": false,
+      "why_it_matters": "Genre + named-entity-aware summarization. *Why it matters:* narrative-arc curation and bridge generation.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:48:55.389Z",
+        "http_status": 200,
+        "content_sha256": "14df683a585a451a500a7d1dc4fbe5883b62731bda8b710441318d521b529ef5",
+        "estimated_tokens": 7093,
+        "chunks": 13,
+        "notes": "arXiv abs→pdf"
+      },
+      "local_archive": {
+        "raw": "raw/028-spotify-genre-aware-abstractive-podcast-summarization-arxiv.pdf",
+        "markdown": "markdown/028-spotify-genre-aware-abstractive-podcast-summarization-arxiv.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "CC BY 4.0",
+        "redistribution": "allow",
+        "evidence_url": "https://arxiv.org/abs/2104.03343",
+        "note": "The abs page shows the Creative Commons Attribution 4.0 International badge linking to creativecommons.org/licenses/by/4.0/, which permits redistribution with attribution.",
+        "verified": "web"
+      },
+      "digest": "Spotify's summarization entry to the same 2020 TREC podcast evaluation, arguing that summary style should follow show genre. Starting from BART already fine-tuned on news, the team continued training on filtered podcast transcripts, then tried two variants. The category-aware model simply prepends the show's iTunes-derived category labels to the transcript as special tokens, letting the decoder condition on genre; the second variant runs a TextRank-like extractive pass biased toward named-entity-dense chunks before abstractive generation. Genre conditioning worked and the extract-then-abstract pipeline did not: discontinuous extracted spans produced less coherent and more hallucinated output. The evaluation is instructive for anyone building generated copy over podcasts, because ROUGE against creator descriptions and NIST human grading disagree in places, and the human scores show the best model matched or beat the creators' own descriptions. Two limitations matter for Foray: the model reads only the first 1024 tokens of an episode, and the whole approach is supervised on creator descriptions, which are marketing copy rather than neutral summaries.",
+      "key_facts": [
+        "Base model: BART-large fine-tuned from the CNN/Daily Mail checkpoint; input capped at 1024 transcript tokens, output constrained to 50-250 tokens",
+        "Data: Spotify Podcast Dataset of 105,360 episodes filtered to 90,055; 88,055 used for training; official test set 1,027 episodes, 179 human-judged",
+        "Category conditioning used 22 collapsed iTunes/RSS genre labels prepended as special tokens",
+        "Human aggregate quality score: category-aware-2epochs 1.58 vs bartpodcasts baseline 1.49 and cleaned creator descriptions 1.49 (a 9% improvement); bartcnn 0.99, coarse2fine 1.30",
+        "ROUGE-L F1 on the full test set: category-aware-2epochs 18.42, category-aware-1epoch 17.62, bartpodcasts 16.64, coarse2fine 13.59, bartcnn 11.30",
+        "The named-entity-biased coarse2fine pipeline (top 7 segments by text centrality plus top 3 by entity centrality, ~60s each) raised entity counts but hurt coherence and induced hallucination"
+      ]
+    },
+    {
+      "id": 8,
+      "area": 4,
+      "area_name": "Retrieval & Recommendation",
+      "title": "Spotify: Recommending Podcasts for Cold-Start Users (arXiv 2007.13287)",
+      "url": "https://arxiv.org/abs/2007.13287",
+      "source_type": "paper",
+      "read_first": true,
+      "why_it_matters": "Uses music-listening behavior to infer podcast preferences for new users; Nazari et al. report \"significant improvements in consumption of up to 50% for both offline and online experiments\" across \"more than 200k podcasts.\" *Why it matters:* cold-start onboarding strategy.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:53.429Z",
+        "http_status": 200,
+        "content_sha256": "f9ed98daed6ec5ef2670de81ea2d46749ecb8cdefe26df6baa246634f4373e7b",
+        "estimated_tokens": 12784,
+        "chunks": 19,
+        "notes": "arXiv abs→pdf"
+      },
+      "local_archive": {
+        "raw": "raw/008-spotify-recommending-podcasts-for-cold-start-users-arxiv-200.pdf",
+        "markdown": "markdown/008-spotify-recommending-podcasts-for-cold-start-users-arxiv-200.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "arXiv.org perpetual non-exclusive license 1.0 (plus ACM copyright on the published version)",
+        "redistribution": "deny",
+        "evidence_url": "https://arxiv.org/abs/2007.13287",
+        "note": "The arXiv abs page links to http://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants arXiv distribution rights only, and the PDF's first page carries the standard ACM notice requiring prior permission to republish or post on servers.",
+        "verified": "web"
+      },
+      "digest": "Spotify's SIGIR 2020 paper on user cold-start: infer podcast taste for a listener who has never played a podcast by transferring their music history across domains. The model is an MLP trained as extreme multi-class classification (each show is a class) with softmax plus importance-sampled negatives, fed three grades of source representation: self-reported demographics, aggregated music metadata (top artists, genres, meta-genres, micro-genres), and dense playlist co-occurrence embeddings learned word2vec-style. Data: 17M podcast-following users, 700M playlists, a catalog above 200k shows. Offline, every cross-domain variant beat popularity baselines; the cheap metadata representation matched the expensive latent embedding, so the costly playlist model largely was not worth its compute. A one-week online test on 800k podcast-naive users showed roughly 50% lifts in listening minutes and shows followed. For Foray the transferable lessons are the onboarding architecture (bootstrap taste from an adjacent signal rather than a questionnaire) and the honest caveat: Spotify owned a rich in-house music graph, and the authors themselves flag bias propagation from music into podcast recommendations.",
+      "key_facts": [
+        "Nazari et al., SIGIR 2020; arXiv 2007.13287 submitted 27 Jul 2020; DOI 10.1145/3397271.3401101",
+        "Training data: 17M users following at least one podcast, mean 2.9 follows per user; ~200k users held out for test",
+        "Music-taste embeddings: 40-dimensional track vectors from ~700M user playlists (word2vec skip-gram); metadata covers 1.3M artists, 40 genres, 3,855 micro-genres",
+        "Offline nDCG@10: country popularity 0.12256, country+demographic popularity 0.15310, cross-domain CF 0.19029, demo+CF+metadata 0.22009",
+        "Online A/B: 800,000 users with no podcast history, one week, ~50% more podcast minutes and >50% more shows followed vs the demographic popularity baseline",
+        "Precision@10 upper bound is only ~0.29 because users follow 2.9 podcasts on average"
+      ]
+    },
+    {
+      "id": 29,
+      "area": 4,
+      "area_name": "Retrieval & Recommendation",
+      "title": "Reciprocal Rank Fusion (Cormack, Clarke & Büttcher, SIGIR 2009)",
+      "url": "https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf",
+      "source_type": "paper",
+      "read_first": false,
+      "why_it_matters": "Rank-based fusion of multiple retrieval lists (k=60 default, no tuning); shows RRF \"consistently yields better results than any individual system, and better results than the standard method Condorcet Fuse.\" *Why it matters:* the fusion algorithm for your hybrid retrieval, and the citation every vector DB uses.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:56.124Z",
+        "http_status": 200,
+        "content_sha256": "5c1f9f1fe0d80f67d82041bbe151ea17437bc7a7d9a920564cf122d1b09eafb5",
+        "estimated_tokens": 2393,
+        "chunks": 5,
+        "notes": ""
+      },
+      "local_archive": {
+        "raw": "raw/029-reciprocal-rank-fusion-cormack-clarke-b-ttcher-sigir-2009.pdf",
+        "markdown": "markdown/029-reciprocal-rank-fusion-cormack-clarke-b-ttcher-sigir-2009.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "ACM copyright (2009), all rights reserved",
+        "redistribution": "deny",
+        "evidence_url": "https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf",
+        "note": "The PDF's own first-page notice states the 2009 ACM copyright and requires prior specific permission or a fee to republish or post on servers; the author's personal page hosting it is not a grant to third parties, and the ACM Digital Library record returned HTTP 403 when checked.",
+        "verified": "inferred"
+      },
+      "digest": "The two-page SIGIR 2009 note that gave hybrid search its default fusion rule. The authors wanted an untrained baseline against which to measure learning-to-rank methods and found the baseline kept winning. Their rule ignores the raw scores each retriever emits and sums reciprocals of rank position, damped by a constant, so a BM25 score and a cosine similarity never have to be made commensurable. Validation runs on four TREC collections plus submitted TREC participant runs and the LETOR 3 learning-to-rank corpus show it beating Condorcet Fuse, CombMNZ, and the best single input system by roughly four to five percent MAP, with sign tests establishing significance. For Foray this is the citation behind the fusion step every vector database ships, and the reason a lexical index over segment text and a dense index over segment embeddings can be merged with no tuning and no score normalization. Caveats worth carrying: gains are modest, one TREC run with a human in the loop still beat it, and CombMNZ narrowly edged it on LETOR.",
+      "key_facts": [
+        "Fusion score for a document is the sum over input rankings of 1/(k + rank), with k = 60",
+        "k = 60 was chosen in a pilot and never retuned; pilot MAP is flat from k=10 (.2123) to k=100 (.2142), degrading at k=0 (.2072) and k=500 (.2098)",
+        "TREC MAP: Robust .3686, TREC 3 .4350, TREC 5 .3394, TREC 9 .2830 — beating Condorcet and CombMNZ in nearly every case",
+        "LETOR 3, 583,850 document-query pairs: RRF 0.6051 MAP vs ListNet 0.5846, RankSVM 0.5737, RankBoost 0.5622; CombMNZ 0.6107 was not significantly different (p ~ .2)",
+        "Reported average margin over Condorcet, CombMNZ and the best individual system is 4-5%",
+        "Ranks can be accumulated one system at a time, so no global state or full ranking must be held in memory"
+      ]
+    },
+    {
+      "id": 30,
+      "area": 4,
+      "area_name": "Retrieval & Recommendation",
+      "title": "Hybrid Search reference (Digital Applied)",
+      "url": "https://www.digitalapplied.com/blog/hybrid-search-bm25-vector-reranking-reference-2026",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "Complete reference on BM25 + dense + RRF + cross-encoder reranking, noting RRF is the default in Elasticsearch, OpenSearch, Weaviate, Qdrant, and Azure AI Search. *Why it matters:* an implementation checklist for hybrid retrieval.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:59.298Z",
+        "http_status": 200,
+        "content_sha256": "333bf681067d13710fee059d104942361d1033f3d7f1d1119e9b6cd9fb03434e",
+        "estimated_tokens": 5944,
+        "chunks": 15,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/030-hybrid-search-reference-digital-applied.html",
+        "markdown": "markdown/030-hybrid-search-reference-digital-applied.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved",
+        "redistribution": "deny",
+        "evidence_url": "https://www.digitalapplied.com/blog/hybrid-search-bm25-vector-reranking-reference-2026",
+        "note": "The page footer carries only a bare copyright line for Digital Applied dated 2026, with no Creative Commons mark or any stated reuse or republication permission anywhere on the page.",
+        "verified": "web"
+      },
+      "digest": "A consultancy's implementation reference for the full hybrid retrieval stack, published May 2026. Its useful contribution is not novel results but assembled defaults: BM25 parameter ranges and what they do, why naive weighted blending of BM25 and cosine scores collapses toward BM25 (unbounded versus bounded ranges), how rank-based fusion sidesteps that entirely, per-vendor implementation differences, and where a cross-encoder reranker belongs in the pipeline. It cites a third-party WANDS e-commerce benchmark showing lexical and dense retrieval statistically tied while fusion plus field boosting lifts NDCG meaningfully, and it flags its own single-dataset caveat. For Foray the directly actionable parts are the fusion constant and the staged pipeline shape (retrieve wide from both indexes, fuse on ranks, rerank a shortlist of roughly a hundred candidates), plus the warning that a Weaviate version upgrade silently changed the default fusion algorithm. Treat vendor-stated reranker accuracy numbers as marketing; the piece labels them as such. It is a checklist, not evidence.",
+      "key_facts": [
+        "BM25 parameters: k1 typically 1.2-2.0 (Lucene default 1.2), b default 0.75",
+        "Rank fusion constant k = 60 is the default in Elasticsearch and most implementations; rank 1 contributes about 0.0164 per list, rank 100 about 0.00625",
+        "WANDS benchmark NDCG means cited: BM25 0.6983, pure KNN 0.6953, basic fusion 0.7068, fusion + all-terms clause 0.7191, fusion + name boost 0.7497",
+        "Weaviate changed its hybrid default from rankedFusion to relativeScoreFusion at v1.24; fusionType must be pinned explicitly to keep rank fusion",
+        "SPLADE emits sparse vectors sized to the bert-base-uncased vocabulary (30,522 dims) and needs GPU inference, unlike inverted-index BM25",
+        "Voyage rerank-2.5 (released 11 Aug 2025): 32K context, up to 1,000 documents per call, 600K total token limit; its comparison figures are vendor-run",
+        "Published 26 May 2026, 11-minute read, self-described as sourced to 8 primary references"
+      ]
+    },
+    {
+      "id": 31,
+      "area": 4,
+      "area_name": "Retrieval & Recommendation",
+      "title": "Spotify: Optimizing for the Long-Term Without Delay",
+      "url": "https://research.atspotify.com/2023/07/optimizing-for-the-long-term-without-delay",
+      "source_type": "paper",
+      "read_first": false,
+      "why_it_matters": "Uses intermediate outcomes to address item cold-start when long-term signals are delayed. *Why it matters:* how to learn from implicit signals faster.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:48:02.173Z",
+        "http_status": 200,
+        "content_sha256": "42ef3d9e7c59272eccc5a9a8c13d890f078326a4d400282d5f908eedf2ec45b2",
+        "estimated_tokens": 3031,
+        "chunks": 4,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/031-spotify-optimizing-for-the-long-term-without-delay.html",
+        "markdown": "markdown/031-spotify-optimizing-for-the-long-term-without-delay.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved",
+        "redistribution": "deny",
+        "evidence_url": "https://research.atspotify.com/2023/07/optimizing-for-the-long-term-without-delay",
+        "note": "The page footer shows a 2026 Spotify AB copyright and links only to Spotify's user agreement, privacy and cookie policies; no Creative Commons or other open content license is stated for the post text.",
+        "verified": "web"
+      },
+      "digest": "Spotify's research blog summarizing its KDD 2023 Impatient Bandits work on item cold-start when the reward you actually care about arrives months late. The framing: optimizing for a long-horizon outcome (how many days a user keeps engaging with a newly discovered show over two months) creates an apparent choice between alignment and learning speed, because short-term proxies are fast but misaligned while the true reward is aligned but delayed. The fix is to stop treating the reward as a single delayed scalar and model it as a sequence of progressively revealed intermediate observations, folded into a per-action Bayesian filter that maintains a Gaussian belief over the expected sequence, with the filter's parameters learned from historical fully observed sequences of earlier content releases. Action selection is Thompson sampling over that belief. In simulation the approach lands much nearer a zero-delay oracle than the wait-and-see baseline. For Foray this maps onto rating a newly ingested episode from a handful of early listener signals rather than waiting weeks. Caveat: the study is non-contextual, so it says nothing about personalization.",
+      "key_facts": [
+        "Companion paper: Impatient Bandits: Optimizing for the Long-Term Without Delay, McDonald, Maystre, Lalmas, Russo and Ciosek, KDD 2023",
+        "Reward definition in the podcast application: number of days a user engages with a newly discovered show across a 60-day window",
+        "Intermediate observations (the 'trace') are combined via a per-action Bayesian filter maintaining a Gaussian belief, trained on full traces from prior content releases",
+        "Roughly 10-20 days of partial trace suffices for accurate predictions of the 60-day reward",
+        "Simulation pool was 200 podcast shows; the intermediate-outcome policy tracks close to a zero-delay oracle and far ahead of a 60-day-wait baseline",
+        "Setting is explicitly non-contextual: recommendations are not personalized in this formulation",
+        "Builds on Spotify's earlier RL work on long-term audio recommendation (arXiv 2302.03561)"
+      ]
+    },
+    {
+      "id": 32,
+      "area": 4,
+      "area_name": "Retrieval & Recommendation",
+      "title": "Spotify: Cold-Starting Podcast Ads and Promotions with Multi-Task Learning (arXiv 2601.02306)",
+      "url": "https://arxiv.org/html/2601.02306",
+      "source_type": "paper",
+      "read_first": false,
+      "why_it_matters": "Multi-task/transfer learning to mitigate cold-start. *Why it matters:* modern architecture for your recommendation engine.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:48:25.080Z",
+        "http_status": 200,
+        "content_sha256": "f9e220539467a8c575de5f2457bc39d3bc636048d3bc5f0bc80813d42a7368a4",
+        "estimated_tokens": 9712,
+        "chunks": 18,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/032-spotify-cold-starting-podcast-ads-and-promotions-with-multi.html",
+        "markdown": "markdown/032-spotify-cold-starting-podcast-ads-and-promotions-with-multi.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "CC BY 4.0",
+        "redistribution": "allow",
+        "evidence_url": "https://arxiv.org/abs/2601.02306",
+        "note": "The arXiv abstract page displays a Creative Commons Attribution 4.0 International license linking to creativecommons.org/licenses/by/4.0/, and the HTML full text itself carries a cc-license: by marker, so third-party redistribution with attribution is permitted.",
+        "verified": "web"
+      },
+      "digest": "Spotify's WSDM 2026 industry paper on collapsing separate ad-targeting and content-promotion models into one multi-task network so the data-rich channel can bootstrap the data-poor one. Architecture is a shared encoder over user, content, context and creative features feeding per-task MLP towers that predict five binary outcomes. Two training choices carry the result: a directional loss mask so ad impressions update only the ad towers while promotion impressions update everything, and mini-batches balanced roughly half and half across the two channels so the higher-volume source cannot dominate the gradient. Offline they report a small promotions gain and a large ads gain over a promotions-only baseline; a budget-split online test across many markets improved cost efficiency and stream rate simultaneously, with gains growing monotonically as show popularity falls. For Foray the transferable design is the shared-encoder, per-objective-tower shape for a curation ranker that must serve several objectives at once, and the empirical point that cross-objective transfer is exactly where cold-start items benefit most. Caveat: this is an advertising system, so its objectives are commercial, not curiosity-first.",
+      "key_facts": [
+        "WSDM 2026 (Boise, 22-26 Feb 2026), DOI 10.1145/3773966.3779388; arXiv 2601.02306 submitted 5 Jan 2026",
+        "Five binary tasks over a shared encoder: PromotionStream, AdStream, Click, and Like/Follow",
+        "Directional transfer via a loss mask (ad impressions update only ad towers) plus source-balanced sampling at roughly 50/50 promotions to ads; per-task loss weights all set to 1",
+        "Offline Average Precision vs the promotions-only baseline: +4.5% on promotions, +50.2% on ads; ancillary click/like/follow heads raise ads-only AP from +27% to +46.5%",
+        "Online budget-split A/B across 180+ markets: up to 22% effective cost-per-stream reduction and 18-24% higher podcast stream rates",
+        "Less-streamed creators defined as shows under 5,000 streams; they see 22% eCPS reduction and 27% more streams",
+        "Impression-to-stream gains scale with scarcity: about +7% at the highest stream tier up to about +60% at tier 5, with cost-per-stream down 17-38%",
+        "Context given: Spotify over 700M users, over 400M ad-supported"
+      ]
+    },
+    {
+      "id": 12,
+      "area": 5,
+      "area_name": "Audio Assembly & Playback",
+      "title": "AES TD1004.1.15-10 — Loudness for streaming/network playback",
+      "url": "https://www.aes.org/technical/documents/AESTD1004_1_15_10.pdf",
+      "source_type": "standard",
+      "read_first": true,
+      "why_it_matters": "Recommends target between -16 and -20 LUFS, -1 dBTP limiter, and explicitly to \"avoid loudness jumps when external material is inserted.\" *Why it matters:* the standard you apply per-segment so stitched clips don't jar.",
+      "fetch": {
+        "status": "failed",
+        "fetched_at": "2026-08-12T16:47:23.406Z",
+        "http_status": 404,
+        "content_sha256": null,
+        "estimated_tokens": 0,
+        "chunks": 0,
+        "notes": "redirect 301 → https://aes.org/technical/documents/AESTD1004_1_15_10.pdf"
+      },
+      "local_archive": null,
+      "license": {
+        "id": "All rights reserved (AES)",
+        "redistribution": "deny",
+        "evidence_url": "https://www.aes.org/technical/documents/AESTD1004_1_15_10.pdf",
+        "note": "Not fetched (301 to 404); AES technical documents carry no redistribution grant in any case.",
+        "verified": "inferred"
+      },
+      "digest": "Not in the corpus: the AES loudness recommendation for streaming and network playback was listed in the dossier as the normalization target to apply per segment, but the URL now redirects into a 404 — AES reorganised its technical-document tree. Nothing about this source was captured, so no number in this index comes from it, and the dossier note (a target near -16 LUFS with a -1 dBTP ceiling and a warning about loudness jumps where external material is spliced in) is the dossier author's recollection rather than a verified quotation. The nearest thing the corpus does hold is source 36, the AES loudness-normalization overview page, which cites the later TD1008 targets and links out rather than restating them. Anyone who needs the actual figures should find the current AES URL, repoint the dossier entry, and re-run `corpus refetch 12` — the manifest loader is idempotent by URL, so editing the dossier and reloading is the whole fix.",
+      "key_facts": [
+        "Fetch outcome: HTTP 301 to a URL that returns 404; recorded in dead-links.md, zero chunks indexed.",
+        "The loudness figures attributed to this document in the dossier are unverified — treat them as a lead, not a citation.",
+        "Closest captured substitute: source 36 (AES loudness-normalization overview), which references TD1008.",
+        "Fix path: locate the current AES URL, edit the dossier line, re-run load-manifest, then `corpus refetch 12`."
+      ]
+    },
+    {
+      "id": 13,
+      "area": 5,
+      "area_name": "Audio Assembly & Playback",
+      "title": "Apple AVFoundation Editing Guide",
+      "url": "https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/AVFoundationPG/Articles/03_Editing.html",
+      "source_type": "docs",
+      "read_first": true,
+      "why_it_matters": "AVMutableComposition composes tracks from multiple assets; AVMutableAudioMix for per-track volume. *Why it matters:* the core API for stitching multi-source segments client-side.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:26.155Z",
+        "http_status": 200,
+        "content_sha256": "9d68885c8cead553ef1d4695781fef4d5c9c25d82d618bf9be68e0c4a2bca8fc",
+        "estimated_tokens": 9100,
+        "chunks": 14,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/013-apple-avfoundation-editing-guide.html",
+        "markdown": "markdown/013-apple-avfoundation-editing-guide.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved",
+        "redistribution": "deny",
+        "evidence_url": "https://www.apple.com/legal/internet-services/terms/site.html",
+        "note": "Apple's website Terms of Use state that no part of the site and no content may be copied, reproduced, republished, posted, transmitted or distributed to any other server or website without Apple's express prior written consent; no such consent exists here.",
+        "verified": "web"
+      },
+      "digest": "This is the archived AVFoundation Programming Guide chapter on editing, and it is the canonical description of how Apple expects an app to assemble one timeline out of several separate media assets. The model it lays out is: a composition is a container of tracks; you add one mutable track per media type and then insert time ranges from source asset tracks into that track at explicit times, which is precisely the operation Foray needs to place a sequence of podcast segments (and AI-narrated bridges) end to end without re-encoding or rehosting the source audio. The guide is explicit that you should keep one composition track per media type where possible, and that same-type material presented serially belongs on the same track. Alongside that it covers the audio-processing layer, which is where per-source gain lives, and the export path that flattens a composition plus its mix into a file. Most of the chapter is video-oriented (orientation transforms, render size, frame duration, Core Animation overlays); the audio-relevant portion is a smaller slice. Note it is an archived document, so class-level detail should be re-confirmed against current AVFoundation reference docs before implementation.",
+      "key_facts": [
+        "AVMutableComposition holds AVMutableCompositionTrack objects; tracks are created with addMutableTrackWithMediaType and a preferred track ID, and kCMPersistentTrackID_Invalid auto-assigns a unique ID.",
+        "Segments are placed by calling insertTimeRange:ofTrack:atTime:error: on a composition track, so sequential concatenation is expressed as explicit CMTime offsets rather than a playlist.",
+        "AVMutableAudioMix carries AVMutableAudioMixInputParameters per track; documented audio capability is limited to a maximum volume and volume ramps (setVolumeRampFromStartVolume:toEndVolume:timeRange:) -- no LUFS-aware loudness processing.",
+        "mutableTrackCompatibleWithTrack: lets you query an existing composition track for compatibility, and Apple advises unifying compatible asset tracks onto one track to minimize resource usage.",
+        "AVAssetExportSession takes the composition plus an audioMix and/or videoComposition to render an output file; it exposes shouldOptimizeForNetworkUse and an async completion handler.",
+        "Archived Apple documentation: samples are Objective-C and reference deprecated APIs such as ALAssetsLibrary and UIAlertView."
+      ]
+    },
+    {
+      "id": 33,
+      "area": 5,
+      "area_name": "Audio Assembly & Playback",
+      "title": "Apple Developer Forum — AVQueuePlayer gapless playback",
+      "url": "https://developer.apple.com/forums/thread/111413",
+      "source_type": "forum",
+      "read_first": false,
+      "why_it_matters": "Practitioners note small gaps between remote MP3s in AVQueuePlayer. *Why it matters:* warns that naive queueing produces audible gaps; you likely need composition or buffered rendering.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:29.328Z",
+        "http_status": 200,
+        "content_sha256": "8fc3aa24973d7ae64bdda6a8b0b30a35cab3b93db4f5d7691874ec19f95dba48",
+        "estimated_tokens": 425,
+        "chunks": 1,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/033-apple-developer-forum-avqueueplayer-gapless-playback.html",
+        "markdown": "markdown/033-apple-developer-forum-avqueueplayer-gapless-playback.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved",
+        "redistribution": "deny",
+        "evidence_url": "https://www.apple.com/legal/internet-services/terms/site.html",
+        "note": "Apple's site Terms of Use forbid republishing or distributing site content without express written consent, and forum posts are additionally authored by third-party developers who granted no redistribution license to us.",
+        "verified": "web"
+      },
+      "digest": "A short Apple Developer Forums thread in which a developer queues remote MP3 files in AVQueuePlayer and hears a very short gap at each track transition, with a noticeably worse delay (around a second) when routing to AirPlay. The captured extraction is thin -- a single chunk containing the original question, a small Swift snippet, and what reads as the poster's own follow-up conclusion, without the surrounding thread structure or reply attribution. Its value to Foray is the diagnosis rather than the complaint: the poster reports that generated tone files in WAV played back seamlessly, while the same tones converted to MP3 acquired a comparable gap, and concludes the queue player itself is capable of gapless transitions when the underlying files genuinely are gapless. That points the blame at MP3 encoder/decoder padding rather than at the player class. For a product stitching third-party podcast enclosures -- which are overwhelmingly MP3 and were each encoded independently -- this is the warning that naive AVQueuePlayer queueing will expose encoder padding at every segment boundary, and that the fix has to address the audio data (composition, trimmed time ranges, or buffered rendering) rather than a player flag.",
+      "key_facts": [
+        "Reported symptom: millisecond-scale gaps between consecutive remote MP3 items in AVQueuePlayer, worsening to roughly one second over AirPlay.",
+        "The audio session in the reported setup used AVAudioSession category .playback with policy .longForm.",
+        "Poster's own test: WAV tone files played gaplessly; the same tones re-encoded to MP3 introduced a comparable gap, implicating MP3 encoder padding rather than AVQueuePlayer.",
+        "Stated conclusion: AVQueuePlayer performs gapless playback correctly when the source files themselves contain no leading/trailing silence.",
+        "Environment given is dated (Xcode 10.1, macOS 10.14.1, iOS 12.1), so behavior should be re-verified on current iOS.",
+        "Extraction is thin: one chunk, no reply-by-reply thread structure captured."
+      ]
+    },
+    {
+      "id": 34,
+      "area": 5,
+      "area_name": "Audio Assembly & Playback",
+      "title": "Apple Developer Forum — Multiple AVPlayer instances + AirPlay 2",
+      "url": "https://developer.apple.com/forums/thread/105877",
+      "source_type": "forum",
+      "read_first": false,
+      "why_it_matters": "Only one player can play through AirPlay 2; must mix via AVMutableComposition or AVSampleBufferAudioRenderer. *Why it matters:* a concrete architectural constraint for bridge+segment mixing.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:32.426Z",
+        "http_status": 200,
+        "content_sha256": "812630ae6aa3404576186f01f2a15bdeedcb227bf8a9c6aefd79f15beed46032",
+        "estimated_tokens": 793,
+        "chunks": 1,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/034-apple-developer-forum-multiple-avplayer-instances-airplay-2.html",
+        "markdown": "markdown/034-apple-developer-forum-multiple-avplayer-instances-airplay-2.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved",
+        "redistribution": "deny",
+        "evidence_url": "https://www.apple.com/legal/internet-services/terms/site.html",
+        "note": "Apple's site Terms of Use prohibit republishing or distributing site content without express written consent, and the thread's substance is third-party developer posts that carry no redistribution grant.",
+        "verified": "web"
+      },
+      "digest": "An Apple Developer Forums thread about apps that play two audio streams simultaneously through separate AVPlayer instances -- the original poster describes a foreground voice stream over a background music stream -- and the finding that this pattern breaks on AirPlay 2 even though it worked on AirPlay 1. Multiple developers confirm the same behavior, including one building a gapless music player where two players briefly overlap during a crossfade, and one testing against a Sonos speaker; the consistent report is that only one stream survives the route. The most load-bearing reply is from an Apple engineer, who states the streams have to be mixed rather than played by parallel players, and names AVSampleBufferAudioRenderer or a single AVPlayer driving an AVMutableComposition as the two supported routes. A workaround is also reported: avoid the long-form audio policy and set the duckOthers option, which restores simultaneous streaming to AirPlay 2 devices at the cost of losing lock screen and Control Center transport controls. For Foray this is a hard architectural constraint on any design that plays an AI-narrated interstitial over or alongside a podcast segment.",
+      "key_facts": [
+        "Two concurrent AVPlayer instances play correctly over AirPlay 1, Bluetooth and AirPods, but only one stream reaches AirPlay 2 targets such as HomePod or Sonos.",
+        "An Apple engineer's reply in-thread recommends mixing the streams, naming AVSampleBufferAudioRenderer or a single AVPlayer over an AVMutableComposition as the ways to do it.",
+        "Reported workaround: set AVAudioSession category .playback with options [.duckOthers] and do not use the .longFormAudio policy -- both streams then reach AirPlay 2.",
+        "Documented cost of that workaround: loss of lock screen / Control Center playback controls, which for a podcast app is effectively disqualifying.",
+        "Community observation that at least one major meditation app also does not support AirPlay with simultaneous narration plus music.",
+        "Extraction is thin: one chunk, replies run together without clear per-post attribution beyond the Apple engineer's."
+      ]
+    },
+    {
+      "id": 35,
+      "area": 5,
+      "area_name": "Audio Assembly & Playback",
+      "title": "StreamingKit (GitHub)",
+      "url": "https://github.com/asurasunil/StreamingKit",
+      "source_type": "repo",
+      "read_first": false,
+      "why_it_matters": "Gapless audio streaming library supporting HTTP progressive download and differing formats. *Why it matters:* an alternative to AVFoundation for gapless streaming of heterogeneous CDN sources.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:34.664Z",
+        "http_status": 200,
+        "content_sha256": "b55f3cea0a9953e91e3fc28cac238069f2517f9a3d476977af4353d06ce7299b",
+        "estimated_tokens": 801,
+        "chunks": 3,
+        "notes": "github repo→raw README; raw README"
+      },
+      "local_archive": {
+        "raw": "raw/035-streamingkit-github.md",
+        "markdown": "markdown/035-streamingkit-github.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "BSD-4-Clause",
+        "redistribution": "allow",
+        "evidence_url": "https://raw.githubusercontent.com/asurasunil/StreamingKit/master/LICENSE",
+        "note": "The repository's LICENSE file is the original 4-clause BSD license (Thong Nguyen, for Audjustable), which expressly permits redistribution of source and binary forms provided the copyright notice, condition list and disclaimer are retained -- and note the clause 3 advertising requirement to acknowledge software developed by Thong Nguyen must be honored if this text is reused.",
+        "verified": "web"
+      },
+      "digest": "README for StreamingKit (formerly Audjustable), an Objective-C audio playback and streaming library for iOS and macOS built directly on CoreAudio rather than on AVFoundation. Its stated design goal is to decouple the input data source from the player, so that where the bytes come from -- local file, plain HTTP progressive download, an auto-recovering HTTP source, or a custom source doing encryption or adaptive buffering -- is a pluggable concern. The headline claim, and the reason it is in this corpus, is gapless playback across queued items even when those items are in different formats; the README's own example queues an MP3 URL followed by an AAC URL. That maps almost exactly onto Foray's problem shape, where consecutive segments come from different publishers' CDNs at different bitrates and codecs, and where AVQueuePlayer is reported to expose encoder padding at each join. The library exposes two main types, an abstract data source and a queue-driven player, plus a PCM frame filter hook that would allow per-segment gain or metering to be applied in the render path. Caveats: it is an unmaintained-looking fork of an old project, the version referenced is 0.2.x, and the copyright line stops at 2014.",
+      "key_facts": [
+        "STKAudioPlayer is the queue-based player; STKDataSource is the abstract base for input sources, with Local, HTTP and AutoRecoveringHTTP sources shipped.",
+        "Claims gapless playback between queued files of differing formats (README example queues an .mp3 followed by an .aac), which AVQueuePlayer does not natively guarantee.",
+        "Built on CoreAudio; version 0.2.0 moved from AudioQueues to the AudioUnit API to allow real-time interception of raw PCM.",
+        "appendFrameFilterWithName:block: exposes PCM frames just before playback -- a viable hook for per-segment gain, loudness normalization or metering.",
+        "Includes a built-in equalizer (iOS 5.0+/OS X 10.9+) and power metering; README claims 0-1% CPU while streaming.",
+        "Objective-C, distributed via CocoaPods or source copy; copyright line reads 2012-2014, Thong Nguyen, so treat as legacy code."
+      ]
+    },
+    {
+      "id": 36,
+      "area": 5,
+      "area_name": "Audio Assembly & Playback",
+      "title": "AES Loudness Normalization overview",
+      "url": "https://aes.org/resources/audio-topics/loudness-project/loudness-normalization/",
+      "source_type": "standard",
+      "read_first": false,
+      "why_it_matters": "Explains upward/downward normalization workflows for batch processing. *Why it matters:* batch-normalize segments at ingest. *Note:* Apple Podcasts targets -16 LUFS stereo / -19 LUFS mono; Spotify normalizes to ~-14 LUFS.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:37.844Z",
+        "http_status": 200,
+        "content_sha256": "29d82d2964f11300ba136c447d7cde6495c0cbfa3fcbeba4dc8b3e100418af2d",
+        "estimated_tokens": 2546,
+        "chunks": 5,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/036-aes-loudness-normalization-overview.html",
+        "markdown": "markdown/036-aes-loudness-normalization-overview.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved",
+        "redistribution": "deny",
+        "evidence_url": "https://aes.org/resources/audio-topics/loudness-project/loudness-normalization/",
+        "note": "The page footer reads Audio Engineering Society, Inc. All rights reserved, and the page carries no Creative Commons mark or any other statement granting third-party redistribution.",
+        "verified": "web"
+      },
+      "digest": "The AES Loudness Project's explainer on what loudness normalization actually is and how it is applied in file-based distribution. It defines normalization as measuring the integrated loudness of a whole asset in LUFS and applying a single static gain offset so that the measurement lands on a target -- upward if the content is quieter than target, downward if louder -- and stresses that the gain is set once, with no gain riding, so the producer's internal dynamics survive intact. That distinction matters for Foray: normalizing a stitched sequence is a per-segment measure-then-offset step at ingest, not a compressor in the playback path. The page also separates the assorted-content case (speech mixed with music and interstitials) from the music case, describes album versus track normalization and why album-relative gain preserves mastering intent, and surveys why targets differ across broadcast, OTT video and on-demand music. It closes on real-time correction: useful when file-based measurement is not possible, but it cannot see ahead in a live stream and can override intended dynamics, with recommended integration windows given. Concrete targets are cited to AES TD1008, which is a separate document not captured here.",
+      "key_facts": [
+        "Normalization is defined as measuring integrated loudness in LUFS across the full asset and applying one static gain offset to hit a target; no gain riding is performed.",
+        "For assorted content with measurable speech, the page describes adjusting overall gain so the dialog integrated loudness sits at -18 LUFS; where speech is not reliably measurable, TD1008 is cited for normalizing overall content to -18 LUFS before encoding.",
+        "For track normalization in radio-style production, the page cites TD1008 recommending roughly -16 LUFS as the best match with other online content.",
+        "Album normalization applies one common gain to all tracks (recommended to be set by the loudest track) to preserve mastering intent; track normalization flattens all items to the same level.",
+        "Broadcast TV standards including AES71 target about -23/-24 LUFS (LKFS); AES71 plus ANSI A/85 and EBU R128 underpin OTT guidelines, and ANSI/CTA-2075 covers device playback.",
+        "For real-time correction, recommended rolling integration windows are 30 seconds to two minutes, with peak limiting applied because gain is being added; longer windows sound more natural.",
+        "Specific target numbers live in AES TD1008, which this page only links to."
+      ]
+    },
+    {
+      "id": 14,
+      "area": 6,
+      "area_name": "TTS & AI Narration",
+      "title": "NotebookLM Audio Overviews (Google blog)",
+      "url": "https://blog.google/innovation-and-ai/products/notebooklm-audio-overviews/",
+      "source_type": "blog",
+      "read_first": true,
+      "why_it_matters": "Two AI hosts generate a conversational \"deep dive\" from uploaded sources. Google states the feature \"is still experimental and has limitations, such as inaccuracies and the inability to interrupt the AI hosts,\" and by December 2024 reported users had generated \"more than 350 years worth of Audio Overviews.\" *Why it matters:* the leading shipped prior art for AI-narrated audio, and a model for disclosure language.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:20.229Z",
+        "http_status": 200,
+        "content_sha256": "eafae78536179f3e0cb904702e69fb733c7defb9f89cbf9e5635f537aea82b07",
+        "estimated_tokens": 776,
+        "chunks": 1,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/014-notebooklm-audio-overviews-google-blog.html",
+        "markdown": "markdown/014-notebooklm-audio-overviews-google-blog.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved",
+        "redistribution": "deny",
+        "evidence_url": "https://policies.google.com/terms",
+        "note": "Google's Terms of Service state that Google retains the intellectual property rights in its own content and grant no Creative Commons or general redistribution license; blog.google posts carry no separate open-license mark.",
+        "verified": "web"
+      },
+      "digest": "Google's launch post for NotebookLM Audio Overviews, dated September 11, 2024 and written by a Google Labs product manager. It announces a one-click feature that turns a user's uploaded sources -- documents, slides, charts, web URLs -- into a two-host synthetic conversation that summarizes the material, draws connections across it and can be downloaded for offline listening. For Foray this is the most prominent shipped precedent for AI-narrated audio built on top of someone else's source material, and it is most useful as a model for framing and disclosure rather than for engineering detail: Google states plainly that the generated discussion reflects only the uploaded sources and is not a comprehensive or objective account of the topic, and it enumerates the feature's limitations in the launch post itself rather than burying them. The named limitations are directly relevant to interstitial generation at scale -- generation latency measured in minutes for large inputs, English-only hosts, occasional inaccuracies, and no ability to interrupt the hosts. Note the extraction is thin (a single chunk of the launch post); it contains no usage statistics and no technical description of the generation stack.",
+      "key_facts": [
+        "Audio Overviews launched September 11, 2024, generating a two-host synthetic discussion from a user's uploaded NotebookLM sources with one click; output is downloadable.",
+        "Google's stated caveat in the post: the generated discussion reflects only the uploaded sources and is not a comprehensive or objective view of the topic -- a usable template for interstitial disclosure copy.",
+        "Enumerated limitations at launch: generation can take several minutes for large notebooks, hosts speak English only, they sometimes introduce inaccuracies, and the listener cannot interrupt them.",
+        "NotebookLM's surrounding features were built on Gemini 1.5 multimodal capabilities; the post states user data is not used to train NotebookLM.",
+        "The post gives no pricing, no API, no latency figures beyond several minutes, and no detail on the TTS or dialogue-generation stack.",
+        "Extraction is thin (one chunk) and is the September 2024 launch post only -- later usage statistics attributed to this feature are not in the captured text."
+      ]
+    },
+    {
+      "id": 37,
+      "area": 6,
+      "area_name": "TTS & AI Narration",
+      "title": "TTS Arena V2 (Hugging Face)",
+      "url": "https://huggingface.co/spaces/TTS-AGI/TTS-Arena-V2",
+      "source_type": "reference",
+      "read_first": false,
+      "why_it_matters": "Crowdsourced blind Elo leaderboard for TTS naturalness, with V2 adding conversational/podcast-style content. *Why it matters:* the open benchmark for picking a narrator voice model.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:23.610Z",
+        "http_status": 200,
+        "content_sha256": "239667ad6c8e662860e3216900fcf5f0c88c482298e06acafecf26550503263c",
+        "estimated_tokens": 16,
+        "chunks": 1,
+        "notes": "body-fallback; thin extraction (62 chars) — page may be JS-rendered"
+      },
+      "local_archive": {
+        "raw": "raw/037-tts-arena-v2-hugging-face.html",
+        "markdown": "markdown/037-tts-arena-v2-hugging-face.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "none-found",
+        "redistribution": "deny",
+        "evidence_url": "https://huggingface.co/terms-of-service",
+        "note": "Close call: Hugging Face's terms do grant each user a license to reproduce and distribute Content in public Repositories, but what was captured here is Hugging Face's own rendered platform chrome rather than repository Content, and the Space itself displays no license -- so no specific grant covers this text.",
+        "verified": "web"
+      },
+      "digest": "Effectively nothing usable was captured. The extraction is a single chunk of roughly 60 characters consisting of the Hugging Face Space loading chrome -- a message about fetching metadata from the Docker repository, and the word Refreshing. The Space is a client-side application whose leaderboard is rendered after boot, so a static fetch captures only the shell; no model names, no Elo ratings, no vote counts and no methodology description were retrieved. What the corpus entry establishes is therefore only positional: TTS Arena V2 exists as a crowdsourced blind pairwise-comparison leaderboard for TTS naturalness, and it is the obvious open benchmark to consult when choosing a narrator voice for AI-generated interstitials. Any actual ranking data for that decision has to be obtained another way -- by loading the Space interactively, or via whatever underlying results dataset the maintainers publish. This entry should be treated as a pointer, not as evidence about any specific TTS system's quality. The extraction is thin to the point of being empty of substance.",
+      "key_facts": [
+        "Extraction is empty of substance: one chunk of Hugging Face Space loading chrome (Docker metadata fetch notice plus a refresh indicator), roughly 60 characters.",
+        "The page is a JS/client-rendered Hugging Face Space, so leaderboard content cannot be obtained by static fetch.",
+        "No model names, Elo scores, vote counts, sample sizes or methodology were captured.",
+        "Space is maintained under the TTS-AGI org; usable as a pointer to the open TTS naturalness benchmark, not as a data source in its current captured form."
+      ]
+    },
+    {
+      "id": 38,
+      "area": 6,
+      "area_name": "TTS & AI Narration",
+      "title": "Amazon Polly pricing (official)",
+      "url": "https://aws.amazon.com/polly/pricing/",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "Standard $4, Neural $16, Generative $30, Long-Form $100 per 1M characters. *Why it matters:* cheapest scalable option for bridges.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:26.090Z",
+        "http_status": 200,
+        "content_sha256": "5c33e1786358872c45efcb85316545f3ccd05103c5f29220f4a28a3872bd9d48",
+        "estimated_tokens": 1587,
+        "chunks": 4,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/038-amazon-polly-pricing-official.html",
+        "markdown": "markdown/038-amazon-polly-pricing-official.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved",
+        "redistribution": "deny",
+        "evidence_url": "https://aws.amazon.com/terms/",
+        "note": "The AWS Site Terms state the site may not be reproduced, duplicated, copied or otherwise exploited for commercial purposes without express written consent; the CC-BY-SA-4.0 documentation exception applies to docs.aws.amazon.com, not to this marketing pricing page.",
+        "verified": "web"
+      },
+      "digest": "The official Amazon Polly pricing page, captured in full enough detail to cost out AI-narrated interstitials. Polly bills purely on characters submitted, with four voice tiers at very different price points, and the page is explicit on two points that matter for Foray's unit economics. First, generated speech may be cached and replayed at no additional cost -- so a bridge synthesized once and reused across listeners or sessions costs nothing further, which changes the calculation from per-listen to per-unique-script. Second, Speech Marks requests (the metadata used for timing and lip sync) bill at the same per-character rate as speech, so requesting them doubles the character cost for a given script. The page includes a worked table converting character counts into speech duration and cost per tier, plus free-tier allowances that differ by tier and mostly expire after twelve months. Separate, higher GovCloud rates are listed for the Standard and Neural tiers only. Positioned against the other TTS vendors in this corpus, Polly's Standard and Neural tiers are the cheap end and its Long-Form tier the expensive end.",
+      "key_facts": [
+        "Pricing observed 2026-08-12: Standard $4.00, Neural $16.00, Generative $30.00, and Long-Form $100.00 per 1 million characters, billed on characters submitted for speech or Speech Marks.",
+        "Observed 2026-08-12: generated speech can be cached and replayed at no additional charge, so reused interstitials cost once, not per playback.",
+        "Speech Marks requests are billed at the same per-character rate as speech, so requesting both roughly doubles cost for the same script (observed 2026-08-12).",
+        "Page's own conversion, observed 2026-08-12: 1 million characters is approximately 23 hours 8 minutes of speech -- so roughly 720 characters per minute of audio.",
+        "Free tier observed 2026-08-12: 5M chars/month Standard (ongoing), 1M/month Neural, 500k/month Long-Form and 100k/month Generative, the latter three for the first 12 months only.",
+        "AWS GovCloud (US) rates observed 2026-08-12 are higher and cover only two tiers: Standard $4.80 and Neural $19.20 per 1M characters."
+      ]
+    },
+    {
+      "id": 39,
+      "area": 6,
+      "area_name": "TTS & AI Narration",
+      "title": "OpenAI TTS pricing",
+      "url": "https://community.openai.com/t/new-tts-api-pricing-and-gotchas/1150616",
+      "source_type": "forum",
+      "read_first": false,
+      "why_it_matters": "tts-1 $15/1M chars, tts-1-hd $30/1M, gpt-4o-mini-tts token-based (~$0.60/1M input tok + $12/1M audio-out tok, ≈$0.015/min) with steerable tone via an instructions parameter. *Why it matters:* mid-tier with instruction-based prosody control for narrator style.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:28.544Z",
+        "http_status": 200,
+        "content_sha256": "8d6deb669aca551c2f35cd9b2d9c8131572841959b4da252eb68270e122d4f20",
+        "estimated_tokens": 820,
+        "chunks": 1,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/039-openai-tts-pricing.html",
+        "markdown": "markdown/039-openai-tts-pricing.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved",
+        "redistribution": "deny",
+        "evidence_url": "https://community.openai.com/faq",
+        "note": "The community guidelines page displays no Creative Commons or redistribution grant and defers to OpenAI's general Terms of Use (which returned 403 to a direct fetch); the posts are in any case authored by third-party forum users, not by OpenAI.",
+        "verified": "web"
+      },
+      "digest": "An OpenAI developer-community thread from late March 2025 in which users try to reverse-engineer how the gpt-4o-mini-tts model actually bills, because the published pricing page separates input text tokens from output audio tokens without stating clearly that a quoted per-minute figure covers both. The participants converge on the reading that the per-minute estimate is combined and that output audio tokens dominate the bill -- one poster calculates that reaching the same cost from text alone would require an implausible volume of instruction tokens. The thread's real value to Foray is the operational failure mode reported alongside the arithmetic: a script of roughly one minute occasionally ran for over three minutes, with the tail being silence, and was billed for the full runaway duration. That is a concrete argument for validating generated interstitial audio before use -- checking duration against expected script length and trimming trailing non-speech -- rather than trusting the synthesis call. Treat every number here as user-reported rather than authoritative; this is a community forum, not OpenAI documentation, and participants explicitly note they are not affiliated with OpenAI.",
+      "key_facts": [
+        "User-reported gpt-4o-mini-tts rates as discussed in the thread (posts dated March 2025; corpus observed 2026-08-12): about $0.60 per 1M input text tokens, which includes the instructions, and about $12 per 1M audio output tokens.",
+        "User-reported effective cost of roughly $0.015 per minute of generated audio, with the thread concluding this figure is combined across input and output rather than per side (observed 2026-08-12).",
+        "Participants report the per-minute effective rate is unstable on short inputs, running around double the estimate, and stabilizes on roughly minute-long generations.",
+        "Reported failure mode: a one-minute script generated over three minutes of audio with the last ~2.5 minutes silence, and was billed for the full duration -- argues for post-generation duration checks and silence trimming.",
+        "Suggested mitigation in-thread is preprocessing/filtering out non-speech segments from the output until the API addresses it.",
+        "All figures are unofficial user observations; the thread itself points to platform.openai.com/docs/pricing as the authority, and posters state they are not OpenAI-affiliated."
+      ]
+    },
+    {
+      "id": 40,
+      "area": 6,
+      "area_name": "TTS & AI Narration",
+      "title": "ElevenLabs pricing (official)",
+      "url": "https://elevenlabs.io/pricing",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "Subscription/credit model, ~$0.05-0.10 per 1K characters effective, best naturalness and prosody. *Why it matters:* premium option where bridge quality matters most.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:31.128Z",
+        "http_status": 200,
+        "content_sha256": "db66167cd836da033749f97ff9441fa355e5b5142c4ce7da66f681e0a9e4aeaa",
+        "estimated_tokens": 2865,
+        "chunks": 8,
+        "notes": "body-fallback"
+      },
+      "local_archive": {
+        "raw": "raw/040-elevenlabs-pricing-official.html",
+        "markdown": "markdown/040-elevenlabs-pricing-official.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved",
+        "redistribution": "deny",
+        "evidence_url": "https://elevenlabs.io/terms-of-use",
+        "note": "ElevenLabs' Terms of Service state that the text, images and other content of the Services are owned by ElevenLabs or its licensors and that all rights not explicitly granted are reserved; users receive only a limited, revocable license to access and use the Services.",
+        "verified": "web"
+      },
+      "digest": "The ElevenLabs public pricing page, captured as a subscription ladder plus an unusually informative FAQ. ElevenLabs does not sell per-character units the way Polly does; it sells monthly credit bundles that are shared across every product the company offers, so text-to-speech competes for the same pool as speech-to-text, music, dubbing and voice changing. For text-to-speech the conversion is close to one credit per character on the multilingual models, with the faster Flash/Turbo variants discounted for API use, which makes it possible to compare against per-character vendors: the page's own effective per-minute figures fall by tier and flatten out at the higher plans. For Foray the important structural facts are the ones that determine whether the model is workable for bursty interstitial generation -- credits reset each billing cycle and roll over only to a capped ceiling, downgrading or cancelling forfeits them, and higher audio quality output is gated behind a specific plan tier rather than sold separately. Compared with the other TTS vendors in this corpus, ElevenLabs is the premium option, and its cost per minute of narration is roughly an order of magnitude above Polly's cheaper tiers.",
+      "key_facts": [
+        "Plan ladder observed 2026-08-12: Free $0 / 10k credits, Starter $6 / 30k, Creator $22 / 121k, Pro $99 / 600k, Scale $299 / 1.8M (3 seats), Business $990 / 6M (10 seats), Enterprise custom.",
+        "Credit conversion observed 2026-08-12: text-to-speech costs about 1 credit per character on V2 Multilingual, with Flash/Turbo variants discounted to between 0.5 and 1 credit per character for API usage.",
+        "Effective TTS cost per extra minute observed 2026-08-12: about $0.36 (Free) falling to $0.20 (Starter), $0.18 (Creator) and about $0.17 at Pro and above; the Business tier advertises low-latency TTS as low as 5 cents/minute.",
+        "Audio quality is tier-gated (observed 2026-08-12): 128 kbps / 44.1 kHz below Pro; 192 kbps and 44.1 kHz PCM output via API from Pro upward.",
+        "Credits are a single pool shared across all products and reset each billing cycle; unused credits roll over up to two months (balance capped at ~3x monthly quota) and are forfeited on downgrade or cancellation. Rollover does not apply to Free.",
+        "Commercial License and Instant Voice Cloning start at the $6 Starter tier; Professional Voice Cloning starts at Creator (observed 2026-08-12).",
+        "Annual billing is priced at 10x the monthly rate (two months free), and credits are charged per generation request rather than per download."
+      ]
+    },
+    {
+      "id": 41,
+      "area": 7,
+      "area_name": "Prior Art & Postmortems",
+      "title": "Snipd",
+      "url": "https://www.snipd.com/",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "AI podcast player with in-episode \"snips,\" transcripts, chapters. *Why it matters:* the leading surviving clip app — note it clips within one episode and its own blog admits \"dynamic ads break transcript synchronization.\"",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:28.577Z",
+        "http_status": 200,
+        "content_sha256": "96266a80912f3f115ecae54439e553c6141e4e689205626a1e5d719e43bcc18c",
+        "estimated_tokens": 1025,
+        "chunks": 3,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/041-snipd.html",
+        "markdown": "markdown/041-snipd.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved (company marketing site, no license grant)",
+        "redistribution": "deny",
+        "evidence_url": "https://www.snipd.com/",
+        "note": "Commercial product marketing page with no Creative Commons or other open-license grant anywhere on the page; default all-rights-reserved copyright applies.",
+        "verified": "inferred"
+      },
+      "digest": "Marketing homepage for Snipd, an AI-assisted podcast player. The advertised feature set is essentially a full ingest stack exposed to end users: triple-tap the headphones to capture a moment, and the app produces an audio excerpt plus a transcript and an AI summary; separately it offers pre-listen episode summaries covering topics, guests and takeaways, AI-generated chapters, full-episode transcript search with speaker identification, guest bios with cross-show appearance links, extraction of books mentioned, and shareable quote cards. Scope extends past RSS podcasts to YouTube imports, Libro.fm audiobooks, and user-uploaded audio files, the latter gated behind a premium tier. Captured material exports to Readwise, Notion, Obsidian, Logseq, Bear, Glasp, and plain Markdown. AI features are claimed in 26 languages. For a curation product, the significant boundary is that every Snipd capture is scoped inside a single episode the user is already playing, and its outward-facing artifacts are text, images, links and short video clips rather than a continuous assembled stream of other people's audio.",
+      "key_facts": [
+        "Snipd is the leading surviving AI podcast-clipping app; capture is triggered by a headphone triple-tap.",
+        "Each capture bundles audio, an auto-transcript with speaker labels, and an AI summary.",
+        "Clipping is scoped within one episode the user is already playing — no cross-show assembly of segments.",
+        "Ingest beyond RSS: YouTube video import, Libro.fm audiobooks, and arbitrary uploaded audio (premium only).",
+        "Exports to Readwise, Notion, Obsidian, Logseq, Bear, Glasp, and Markdown; AI features in 26 languages.",
+        "Sharing outputs are text, quote-card images, links, and short video clips rather than stitched third-party audio."
+      ]
+    },
+    {
+      "id": 42,
+      "area": 7,
+      "area_name": "Prior Art & Postmortems",
+      "title": "Snipd blog — Airr sunset & DAI problem",
+      "url": "https://www.snipd.com/blog/how-to-include-podcasts-in-pkm-workflow",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "Confirms Airr (first mover) shut down and that DAI misaligns audio-to-transcript timing. *Why it matters:* a competitor's own admission of the exact DAI risk to your product.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:30.619Z",
+        "http_status": 200,
+        "content_sha256": "08331398078143236614b0aeb4afed90946829c24aa9ac843562fedce5aeacd9",
+        "estimated_tokens": 1911,
+        "chunks": 6,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/042-snipd-blog-airr-sunset-dai-problem.html",
+        "markdown": "markdown/042-snipd-blog-airr-sunset-dai-problem.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved (company blog, no license grant)",
+        "redistribution": "deny",
+        "evidence_url": "https://www.snipd.com/blog/how-to-include-podcasts-in-pkm-workflow",
+        "note": "Corporate blog post carrying no Creative Commons badge or reuse grant; author is a competitor's employee writing marketing content, so default copyright applies.",
+        "verified": "inferred"
+      },
+      "digest": "Snipd company blog post (Kevin Smith, 12 September 2025) arguing that podcasts are the missing input to personal-knowledge-management stacks, which are otherwise built around text from Kindle, web clippers and PDFs. It walks through the capture flow — headphone triple-tap, background transcription and summarization, playback uninterrupted — then documents sync paths: Readwise as a hub feeding Obsidian, Logseq, Notion and Roam; a direct Notion database integration; an official Obsidian plugin with custom templates and filters for starred or edited captures only; plus Glasp, Bear and Markdown export. Two passages carry weight beyond marketing. First, competitive: the post states that Airr, the first app to attack this problem, has been sunset. Second, technical: it states plainly that dynamically inserted ads throw audio and transcript out of alignment, so a saved offset points at the wrong audio and a highlight captures the wrong part of the episode. Snipd claims an unspecified proprietary mechanism that re-syncs transcripts to audio when dynamic insertion is present — treating offset realignment as a differentiating capability, not a detail.",
+      "key_facts": [
+        "Published 12 September 2025 on the Snipd company blog, bylined Kevin Smith.",
+        "Confirms Airr — the first mover in podcast highlight capture — has been shut down.",
+        "States that dynamic ad insertion misaligns audio against transcript timing, so saved highlights land on the wrong content.",
+        "Snipd claims a proprietary automatic re-sync of transcripts to audio when dynamic insertion is present; no mechanism is disclosed.",
+        "Free tier allows unlimited listening with AI features on two episodes per week; uploads and YouTube import require Premium."
+      ]
+    },
+    {
+      "id": 43,
+      "area": 7,
+      "area_name": "Prior Art & Postmortems",
+      "title": "Overcast clip sharing (Marco Arment blog)",
+      "url": "https://marco.org/2019/04/27/overcast-clip-sharing",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "Founder announcing that \"you can now share audio or video clips, up to a minute each, from any public podcast\"; his stated rationale for the one-minute cap was \"fair use,\" attention spans in social feeds, and matching Instagram's video limit. *Why it matters:* how a respected player deliberately scoped clipping to stay publisher-friendly and within fair use.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:33.761Z",
+        "http_status": 200,
+        "content_sha256": "dd8fa32bdf5097e105a08ee2488fa1e574e8cf86ac108112b555e67108ec382e",
+        "estimated_tokens": 1159,
+        "chunks": 2,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/043-overcast-clip-sharing-marco-arment-blog.html",
+        "markdown": "markdown/043-overcast-clip-sharing-marco-arment-blog.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved (personal blog, no license grant found)",
+        "redistribution": "deny",
+        "evidence_url": "https://marco.org/",
+        "note": "Fetched marco.org looking for a footer license or reuse statement and found none — no Creative Commons badge and no terms page granting redistribution, so default copyright applies.",
+        "verified": "web"
+      },
+      "digest": "Marco Arment's 27 April 2019 post announcing clip sharing in Overcast 2019.4. Listeners can generate a clip of up to one minute from any public podcast, output either as audio or as portrait, landscape or square video rendered in the user's current app theme. Two design choices are notable. The duration cap is hard and self-imposed, applied uniformly across all shows rather than negotiated per publisher. And the branding is deliberately soft: the Overcast badge is optional, an Apple Podcasts badge can be added instead, and the public share pages were refreshed to show badges for competing apps and the raw RSS feed for any show listed in Apple Podcasts. Arment frames all of this as strengthening the open, standards-based ecosystem so that proprietary walled gardens cannot exploit podcasting's weak points, sharing being the most cited one. Worth flagging for the corpus: the fetched text does not actually contain a fair-use rationale for the one-minute limit — the post gives ecosystem and social-feed reasoning, not a legal justification.",
+      "key_facts": [
+        "Published 27 April 2019; feature shipped in Overcast version 2019.4.",
+        "Clips are capped at one minute, from any public podcast, as audio or portrait/landscape/square video.",
+        "Overcast branding on shared clips is optional; an Apple Podcasts badge can be substituted.",
+        "Public Overcast share pages link competing apps and the show's RSS feed for non-logged-in visitors.",
+        "Clip generation creates a new derived asset (rendered video/audio), which is a different posture from streaming a range of the original enclosure.",
+        "Correction to the corpus note: the fetched post contains no explicit fair-use rationale for the one-minute cap."
+      ]
+    },
+    {
+      "id": 44,
+      "area": 7,
+      "area_name": "Prior Art & Postmortems",
+      "title": "Podcast App Graveyard (Transistor)",
+      "url": "https://transistor.fm/podcast-apps-gone/",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "Catalog of dead apps: Breaker, Stitcher, Google Podcasts, RadioPublic, Shuffle (\"community-curated short clips\"). *Why it matters:* pattern recognition — social/clip apps repeatedly failed.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:36.610Z",
+        "http_status": 200,
+        "content_sha256": "417e28276d9601fa2b8c9324a91ab0bbb357b6d30e12c145206e8fd9cd125906",
+        "estimated_tokens": 2912,
+        "chunks": 9,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/044-podcast-app-graveyard-transistor.html",
+        "markdown": "markdown/044-podcast-app-graveyard-transistor.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved — © 2026 Transistor Inc.",
+        "redistribution": "deny",
+        "evidence_url": "https://transistor.fm/podcast-apps-gone/",
+        "note": "Fetched the page and confirmed the footer reads \"© 2026 Transistor Inc. All rights reserved.\" with no Creative Commons or reuse grant.",
+        "verified": "web"
+      },
+      "digest": "A running catalogue maintained by Transistor of 23 podcast listening apps that have shut down, each with an approximate death date and a short account of what it tried to be. Recent entries: Google Podcasts (2 April 2024, folded into YouTube Music), RadioPublic (bought by Acast in 2021, dead 2024), Repod and Poddy (both 2024), Stitcher (closed by SiriusXM on 29 August 2023 after launching in 2008). Older entries run back through Acast's own app and Listen App (2022), Breaker, Bitcast, Synth, Swoot and Broadcast (2021), Tung.fm and Google Play Music podcasts (2020), Podcast 9 (2019), Bumpers and Otto Radio (2018), and Instacast (2015). The pattern the list makes visible is the useful part for a curation product, and it is a product risk rather than a legal one: nearly every entry led with social or short-form-clip framing. At least five — Shuffle's community-curated short-clip feed, Synth's 256-second soundbites, Bitcast's clip-and-comment waveform, Tung's clip-and-discuss model, and Podcast 9's transcript-preview snippet bookmarks — attempted some version of the segment premise and none survived.",
+      "key_facts": [
+        "23 discontinued podcast apps catalogued; Google Podcasts ended 2 April 2024, Stitcher on 29 August 2023.",
+        "Shuffle (offline 2022) pitched a TikTok-style feed of community-curated short podcast clips.",
+        "Synth (offline 2021) built around 256-second soundbites; Bitcast (2021) offered clipping plus waveform comments.",
+        "Tung.fm (gone ~2020) let users recommend, clip and discuss specific episodes; Podcast 9 (2019) offered transcript previews and snippet bookmarks.",
+        "RadioPublic was acquired by Acast in 2021 and shut down in 2024; Acast closed its own listening app in 2022.",
+        "Surviving apps are conventional players; the clip/social category has repeatedly failed to reach durable scale."
+      ]
+    },
+    {
+      "id": 45,
+      "area": 7,
+      "area_name": "Prior Art & Postmortems",
+      "title": "Twitter acquires Breaker (TechCrunch)",
+      "url": "https://techcrunch.com/2021/01/04/twitter-acquires-social-podcasting-app-breaker-team-to-help-build-twitter-spaces/",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "Breaker acqui-hired; app slated to shut down (later kept alive briefly under Maple Media). *Why it matters:* TechCrunch's read that \"podcasting services and podcasting content only [have] so much value.\"",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:40.688Z",
+        "http_status": 200,
+        "content_sha256": "84fcca38a35f457e590b8fe4dc173d1d0362c730d885e13119f36c25870c6590",
+        "estimated_tokens": 1596,
+        "chunks": 2,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/045-twitter-acquires-breaker-techcrunch.html",
+        "markdown": "markdown/045-twitter-acquires-breaker-techcrunch.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved — republication expressly prohibited by TechCrunch Terms of Service",
+        "redistribution": "deny",
+        "evidence_url": "https://techcrunch.com/terms-of-service/",
+        "note": "TechCrunch's Terms of Service expressly bar reproducing, republishing, distributing or creating derivative works from site material, permitting only a single personal, non-commercial copy.",
+        "verified": "web"
+      },
+      "digest": "TechCrunch report dated 4 January 2021 on Twitter's acquisition of Breaker, a social podcast app founded in 2016 by CEO Erik Berlin and CTO Leah Culver, the latter a co-author of the OAuth and oEmbed specifications. The deal was an acqui-hire: Berlin, Culver and designer Emma Lundin moved to Twitter to work on Twitter Spaces, its live-audio Clubhouse rival, then in beta. The app was announced as shutting down on 15 January 2021, with users directed to export OPML to move subscriptions elsewhere; an update appended to the article notes Maple Media instead took over operating Breaker's apps. Price was never disclosed. The article's analysis is the durable part: unlike the era's content deals, this one bought staff and technology rather than shows, and it lands in a pattern where podcast businesses exit near $300M (Stitcher to SiriusXM, Wondery to Amazon) — respectable personally but below venture-return thresholds, supporting the reading that podcast services and content carry capped value. For a curation layer that owns no content, that ceiling is the relevant signal.",
+      "key_facts": [
+        "Published 4 January 2021; Breaker founded 2016 by Erik Berlin (CEO) and Leah Culver (CTO, co-author of OAuth and oEmbed).",
+        "Acqui-hire: team joined Twitter to build Twitter Spaces; acquisition price never disclosed.",
+        "Breaker app was slated to shut down 15 January 2021; an article update says Maple Media took over operations instead.",
+        "Users were told to export OPML to migrate subscriptions to Apple, Spotify, Stitcher, Overcast, Pocket Casts or Castro.",
+        "TechCrunch's framing: podcast M&A repeatedly clusters near $300M (Stitcher/SiriusXM, Wondery/Amazon), implying capped upside for podcast-focused companies."
+      ]
+    },
+    {
+      "id": 9,
+      "area": 8,
+      "area_name": "Legal / Policy Landscape",
+      "title": "Podcast Namespace Issue #254 — DAI breaks timestamps",
+      "url": "https://github.com/Podcastindex-org/podcast-namespace/issues/254",
+      "source_type": "issue",
+      "read_first": true,
+      "why_it_matters": "Standards community documenting that DAI shifts all timestamps per download, breaking transcripts/chapters/soundbites (\"all of the times might be shifted by the ads\"). *Why it matters:* the authoritative technical statement of your offset-drift risk, plus a proposed reconstruction approach.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:33:53.650Z",
+        "http_status": 200,
+        "content_sha256": "3c859519572559ee36717b85ceb2f6b6f022cd51359e6b5bf6809a5b0c7a35f5",
+        "estimated_tokens": 12468,
+        "chunks": 13,
+        "notes": "github issue→REST API; github-issue-api"
+      },
+      "local_archive": {
+        "raw": "raw/009-podcast-namespace-issue-254-dai-breaks-timestamps.json",
+        "markdown": "markdown/009-podcast-namespace-issue-254-dai-breaks-timestamps.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "Third-party user content — not covered by the repository license",
+        "redistribution": "deny",
+        "evidence_url": "https://github.com/Podcastindex-org/podcast-namespace/issues/254",
+        "note": "The repository's open license covers the specification files, not issue bodies and comments, which are authored by many individual third parties under GitHub's terms and carry no redistribution grant.",
+        "verified": "inferred"
+      },
+      "digest": "GitHub issue #254 on the Podcast Namespace repository, opened 26 May 2021 by AdrianMachado (then at Facebook) and closed 4 March 2026 in a bulk cleanup that redirected old issues to Discussions. The proposal was a <podcast:dynamic-ads-adjusted> tag with an isAdjusted value of true, false, or not-applicable, so consumers could tell whether timestamped namespace data — transcripts, chapters, soundbites — still matches the delivered audio. The premise, stated flatly, is that inserting ads of varying length shifts every downstream timestamp, differently for each rendition. The thread is the authoritative technical record of offset drift: NPR noted it uses dynamic insertion for editorial content and cross-promos, not only ads; Castamatic noted the enclosure length declared in the feed rarely matches the delivered file. Alternatives floated included ID3-embedded insertion points so players could shift metadata themselves, and expressing shares as chapter-relative offsets; the recurring objection was that publishing insertion points enables ad-skipping. Two exchanges matter legally: James Cridland argued a shared clip is a transformative work of copyrighted material requiring the owner's agreement and earning the podcaster no download credit; AdrianMachado replied that Facebook capped clips at 30 seconds on a fair-use belief and upsold the full episode from every clip.",
+      "key_facts": [
+        "Issue #254, Podcastindex-org/podcast-namespace, opened 26 May 2021 by AdrianMachado; closed 4 March 2026 in a bulk issue cleanup.",
+        "Proposed tag: <podcast:dynamic-ads-adjusted isAdjusted=\"true|false|not-applicable\"> to signal whether timestamped metadata survives ad insertion.",
+        "NPR (staceygoers) confirmed dynamic insertion is used for editorial content and cross-promos, not only advertising.",
+        "Castamatic (francosolerio) reported the RSS enclosure length almost never matches the actually delivered file under DAI.",
+        "James Cridland argued a shared clip is a transformative work of copyrighted material needing the rights holder's agreement, and generates no download credit for the podcaster.",
+        "AdrianMachado stated Facebook capped clips at 30 seconds on a fair-use rationale and upsold the full episode alongside every clip."
+      ]
+    },
+    {
+      "id": 10,
+      "area": 8,
+      "area_name": "Legal / Policy Landscape",
+      "title": "Hunley v. Instagram (9th Cir. 2023, official opinion)",
+      "url": "https://cdn.ca9.uscourts.gov/datastore/opinions/2023/07/17/22-15293.pdf",
+      "source_type": "court-opinion",
+      "read_first": true,
+      "why_it_matters": "Reaffirms the server test in the 9th Circuit while noting district courts (Nicklen, Goldman, Leader's Institute) have rejected it, and distinguishes that \"the performance of an audiovisual work does not require a copy.\" *Why it matters:* the current controlling authority — and its own acknowledgment that the display-right server test may not extend to the performance of audio/audiovisual works, which is exactly what streaming stitched clips does.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:32.288Z",
+        "http_status": 200,
+        "content_sha256": "654117acb46546f7e459896bfa86f847833facd84b4cee0703e56d483ab6ddd5",
+        "estimated_tokens": 13657,
+        "chunks": 17,
+        "notes": ""
+      },
+      "local_archive": {
+        "raw": "raw/010-hunley-v-instagram-9th-cir-2023-official-opinion.pdf",
+        "markdown": "markdown/010-hunley-v-instagram-9th-cir-2023-official-opinion.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "US federal judicial opinion — no copyright",
+        "redistribution": "allow",
+        "evidence_url": "https://cdn.ca9.uscourts.gov/datastore/opinions/2023/07/17/22-15293.pdf",
+        "note": "Opinion of a US federal court served from the Ninth Circuit's own CDN; under the government edicts doctrine (Banks v. Manchester, reaffirmed in Georgia v. Public.Resource.Org, 590 U.S. 255 (2020)) judicial opinions and the court-prepared syllabus are not copyrightable, and 17 U.S.C. 105 bars copyright in federal government works — the PDF carries no publisher headnotes or annotations, only the court's own text plus a court-staff summary it labels as no part of the opinion.",
+        "verified": "web"
+      },
+      "digest": "Ninth Circuit opinion, No. 22-15293, argued 6 February 2023 and filed 17 July 2023, by Judge Bybee (panel: Bybee, Bumatay, Bennett of D. Md. by designation), on appeal from Judge Breyer in N.D. Cal. Two photographers sued Instagram for secondary infringement, alleging that letting Time and BuzzFeed embed their public posts violated their display right under 17 U.S.C. 106(5). The panel affirmed dismissal: under Perfect 10 v. Amazon, 508 F.3d 1146 (9th Cir. 2007), embedding does not display a copy because the file stays on the host's server; the Server Test is not confined to search engines; and Aereo did not overrule it. The doctrinal core is the split the panel drew explicitly. Infringing the display right requires an underlying copy, since the statute defines display as showing a copy. The performance right carries no copy requirement, which is why Aereo imposed liability without any copy analysis. The Server Test is therefore anchored to the display right and does not automatically extend to audio, which is performed rather than displayed. The panel limited its holding to embedding in its current form, and acknowledged that district courts in McGucken, Nicklen, Goldman and Leader's Institute have rejected or narrowed the test.",
+      "key_facts": [
+        "Hunley v. Instagram, LLC, No. 22-15293 (9th Cir.), argued 6 Feb 2023, filed 17 July 2023; opinion by Judge Bybee.",
+        "Affirmed dismissal: embedding is not display of a copy under Perfect 10 v. Amazon, 508 F.3d 1146 (9th Cir. 2007); Server Test reaffirmed and not limited to search engines.",
+        "The panel expressly distinguished the two rights: the display right requires an underlying copy, while the public performance right does not — which is why Aereo (573 U.S. 431 (2014)) did not disturb Perfect 10.",
+        "The court limited the Server Test to embedding in its current technological format and declined to foreclose relief for future retransmission designs.",
+        "It acknowledged district courts rejecting or limiting the test: McGucken v. Newsweek (S.D.N.Y. 2022), Nicklen v. Sinclair (S.D.N.Y. 2021), Goldman v. Breitbart (S.D.N.Y. 2018), Leader's Institute v. Jackson (N.D. Tex. 2017).",
+        "Risk for a playlist-of-pointers audio model: it sits on the performance side of the line the court drew, where the Server Test provides no equivalent shelter."
+      ]
+    },
+    {
+      "id": 11,
+      "area": 8,
+      "area_name": "Legal / Policy Landscape",
+      "title": "Goldman v. Breitbart analysis (Loeb & Loeb)",
+      "url": "https://www.loeb.com/en/insights/publications/2018/02/goldman-v-breitbart-news-network-llc",
+      "source_type": "blog",
+      "read_first": true,
+      "why_it_matters": "SDNY rejected the server test for embedded tweets. *Why it matters:* the leading contradicting authority — embedding third-party-hosted media can infringe even without hosting a copy.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:35.841Z",
+        "http_status": 200,
+        "content_sha256": "c43eafccb219b442ef1791b334a7d8df8800b243a8654863cf3e9b681fc24f40",
+        "estimated_tokens": 1499,
+        "chunks": 2,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/011-goldman-v-breitbart-analysis-loeb-loeb.html",
+        "markdown": "markdown/011-goldman-v-breitbart-analysis-loeb-loeb.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved (law firm publication, no license grant)",
+        "redistribution": "deny",
+        "evidence_url": "https://www.loeb.com/en/insights/publications/2018/02/goldman-v-breitbart-news-network-llc",
+        "note": "Law-firm insight article authored by named firm attorneys as client marketing; no Creative Commons badge or reuse permission appears on the page, so default copyright applies.",
+        "verified": "inferred"
+      },
+      "digest": "A law-firm client alert summarizing Goldman v. Breitbart News Network, LLC, 302 F. Supp. 3d 585 (S.D.N.Y. 2018). A photograph of Tom Brady with Celtics GM Danny Ainge, posted to the plaintiff's Snapchat in July 2016, spread to Twitter; news outlets then embedded tweets containing it, retrieving the image from Twitter's servers without storing it themselves. The court granted the photographer partial summary judgment on the display right and refused to apply the Server Test. Its reasoning rests on statutory text — public display includes transmission by any device or process, covering processes now known or later developed — and on legislative history reaching every method by which images are conveyed. Writing the embed code into the page design was itself the process. The court invoked Aereo for the proposition that technical distinctions invisible to the user should not determine liability, and distinguished Perfect 10 factually: a search engine the user navigates through differs from an image appearing unbidden on a page. Fair use, public-domain release and innocent infringement were left for later stages, with fair use described as strong. The lesson is venue-dependence: outside the Ninth Circuit, never hosting a copy may not defeat even a display-right claim.",
+      "key_facts": [
+        "Goldman v. Breitbart News Network, LLC, 302 F. Supp. 3d 585 (S.D.N.Y. 15 February 2018), partial summary judgment for the plaintiff.",
+        "Court rejected the Ninth Circuit's Server Test as inconsistent with the Copyright Act's text, legislative history, and Supreme Court precedent.",
+        "Defendants never stored the photo; browsers retrieved it from Twitter — the court held that embedding was itself a 'process' of transmission under 17 U.S.C. 101/106(5).",
+        "Aereo was cited for rejecting form-over-function analysis: user-invisible technical distinctions should not decide liability.",
+        "The court distinguished Perfect 10 on facts — a user-navigated search engine differs from content appearing unbidden on a page.",
+        "Fair use, public-domain release, and innocent-infringer defenses were left open; the court called fair use a strong defense here."
+      ]
+    },
+    {
+      "id": 46,
+      "area": 8,
+      "area_name": "Legal / Policy Landscape",
+      "title": "Perfect 10 v. Amazon (Wikipedia summary)",
+      "url": "https://en.wikipedia.org/wiki/Perfect_10,_Inc._v._Amazon.com,_Inc",
+      "source_type": "reference",
+      "read_first": false,
+      "why_it_matters": "Origin of the server test: inline linking to third-party-hosted content is not direct infringement of the display right. *Why it matters:* the best-case precedent for a \"pointers\" model — but a display-right, not performance-right, case.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:38.589Z",
+        "http_status": 200,
+        "content_sha256": "fbe0ef0ef20798e8be7671c74373165b9ec3bceca5d97cdeb8063a1be55e507e",
+        "estimated_tokens": 7220,
+        "chunks": 11,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/046-perfect-10-v-amazon-wikipedia-summary.html",
+        "markdown": "markdown/046-perfect-10-v-amazon-wikipedia-summary.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "CC BY-SA 4.0 (Creative Commons Attribution-ShareAlike 4.0 International)",
+        "redistribution": "allow",
+        "evidence_url": "https://en.wikipedia.org/wiki/Perfect_10,_Inc._v._Amazon.com,_Inc",
+        "note": "Confirmed the article footer states text is available under the Creative Commons Attribution-ShareAlike 4.0 License; redistribution therefore requires attribution to Wikipedia contributors AND share-alike, which attaches to any derivative text we produce from it — and the footer's 'additional terms may apply' caveat means embedded images/media are not covered by this grant.",
+        "verified": "web"
+      },
+      "digest": "Encyclopedia article on Perfect 10, Inc. v. Amazon.com, Inc., 508 F.3d 1146 (9th Cir. 2007), argued 15 Nov 2006, decided 16 May 2007 (Ikuta, joined by Hall and Hawkins). An adult magazine sued Google over image search, Amazon being added on appeal for surfacing Google's thumbnails. The district court adopted the server test — liability for display and distribution turns on whether the defendant hosts and transmits the file — and rejected an 'incorporation test' keyed to what the user visually perceives; the Ninth Circuit affirmed that inline linking to third-party-hosted full-size images is not direct infringement. Separately it reversed on thumbnails, holding Google's own hosted copies a highly transformative fair use serving information retrieval rather than entertainment, following Kelly v. Arriba Soft. Contributory and vicarious claims failed since infringing sites predated Google and Google could not stop them. The article then tracks the ensuing split: Hunley reaffirmed the test in 2023, while Goldman (2018), Nicklen (2021) and McGucken (2022) in S.D.N.Y. rejected it, and Emmerich Newspapers v. Particle Media — over the NewsBreak app — reached the Fifth Circuit in 2026. For a pointers product this is the best-case precedent, but it is a display-right holding and actively contested.",
+      "key_facts": [
+        "Perfect 10, Inc. v. Amazon.com, Inc., 508 F.3d 1146 (9th Cir.), argued 15 Nov 2006, decided 16 May 2007; opinion by Judge Ikuta.",
+        "Origin of the server test: inline linking to images hosted on third-party servers is not direct infringement of the display right.",
+        "The district court expressly rejected an 'incorporation test' based on what the user visually sees, in favor of where the file is stored.",
+        "Google's own hosted thumbnails were held a highly transformative fair use on appeal, following Kelly v. Arriba Soft.",
+        "Contributory and vicarious claims failed: infringing sites predated Google Image Search and Google lacked power to stop them.",
+        "The article documents the split — reaffirmed in Hunley (2023); rejected in Goldman (2018), Nicklen (2021), McGucken (2022); Emmerich Newspapers v. Particle Media argued in the Fifth Circuit in 2026."
+      ]
+    },
+    {
+      "id": 47,
+      "area": 8,
+      "area_name": "Legal / Policy Landscape",
+      "title": "Fordham Law Review — \"Now on Display: In-Line Linking in the Age of the Server Test\"",
+      "url": "https://fordhamlawreview.org/issues/now-on-display-in-line-linking-in-the-age-of-the-server-test/",
+      "source_type": "paper",
+      "read_first": false,
+      "why_it_matters": "Scholarship critical of the server test, tracing how it has been \"critiqued by scholars and copyright holders.\" *Why it matters:* rigorous framing of why the pointers model is legally contested.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:42.314Z",
+        "http_status": 200,
+        "content_sha256": "2679d6c96aa10610f8297e9051cb6c7a3da930988747b1b9913c08f765b25102",
+        "estimated_tokens": 532,
+        "chunks": 1,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/047-fordham-law-review-now-on-display-in-line-linking-in-the-age.html",
+        "markdown": "markdown/047-fordham-law-review-now-on-display-in-line-linking-in-the-age.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved — © 2023 Fordham Law Review",
+        "redistribution": "deny",
+        "evidence_url": "https://fordhamlawreview.org/issues/now-on-display-in-line-linking-in-the-age-of-the-server-test/",
+        "note": "Fetched the page and found only a footer copyright notice reading FORDHAM LAW REVIEW ©2023, with no Creative Commons or open-access license declared for the Note's text.",
+        "verified": "web"
+      },
+      "digest": "Abstract page for a Fordham Law Review Note on in-line linking and the display right; the fetched content is the abstract only, not the Note itself. It traces the parallel histories of 17 U.S.C. 106(5) and the web, then characterizes the Server Test's reception since 2007: praised by search engines and web developers, criticized by scholars and rights holders, circumvented by the Seventh Circuit, and flatly rejected outright by federal district courts in Texas (N.D. Tex.) and in New York (S.D.N.Y.). The Note credits the test as a useful device for reasoning about in-line linking mechanics, but argues it locates the act of infringement at the wrong layer — the server. It proposes a three-step 'Display Test': what work is shown and where it is stored (the Server Test preserved as step one); to whom it is displayed and whether that audience is the public; and who caused the work to be displayed. It also urges narrow definitions of 'copy' and 'public' specific to the display right and distinct from the performance and reproduction rights. For a curation product the relevant risk is step three: a causation-focused test pushes liability toward whoever assembled the pointers.",
+      "key_facts": [
+        "Student Note in the Fordham Law Review; the fetched page contains only the abstract, not the full text.",
+        "Argues the Server Test misplaces the act of infringement at the server layer despite being analytically useful.",
+        "Proposes a three-step 'Display Test': what is shown and where stored; to whom and whether public; and who caused the display.",
+        "Notes the Seventh Circuit circumvented the test and that N.D. Tex. and S.D.N.Y. district courts rejected it outright.",
+        "Advocates defining 'copy' and 'public' narrowly and specifically for the display right, separate from the performance and reproduction rights.",
+        "Relevance: a causation-based third step would point liability at the party assembling the pointers, i.e. the curation layer."
+      ]
+    },
+    {
+      "id": 48,
+      "area": 8,
+      "area_name": "Legal / Policy Landscape",
+      "title": "Pocket Casts Android Issue #2093 — chapters wrong under DAI",
+      "url": "https://github.com/Automattic/pocket-casts-android/issues/2093",
+      "source_type": "issue",
+      "read_first": false,
+      "why_it_matters": "Real bug: chapters off by ~2 minutes, \"different for every download.\" *Why it matters:* concrete proof the problem bites even mature apps.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:44.907Z",
+        "http_status": 200,
+        "content_sha256": "6b19b887bdb56200ed06f601a21e88e3c92eb92fa9e4ee56450668feea91b654",
+        "estimated_tokens": 1182,
+        "chunks": 2,
+        "notes": "github issue→REST API; github-issue-api"
+      },
+      "local_archive": {
+        "raw": "raw/048-pocket-casts-android-issue-2093-chapters-wrong-under-dai.json",
+        "markdown": "markdown/048-pocket-casts-android-issue-2093-chapters-wrong-under-dai.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "Third-party user content — not covered by the repository license",
+        "redistribution": "deny",
+        "evidence_url": "https://github.com/Automattic/pocket-casts-android/issues/2093",
+        "note": "Issue body and comments are authored by individual third parties (an external reporter and an Automattic maintainer) under GitHub's terms, not by the repository owner, and are not covered by the repository's source-code license.",
+        "verified": "inferred"
+      },
+      "digest": "Bug report opened 20 April 2024 by marvinweber against Pocket Casts for Android, now closed. It documents a regression introduced in version 7.61 after the app added support for chapters declared in the feed (Podcast Index and Podlove Simple Chapters formats). For shows using dynamic insertion, the chapter times published in the RSS feed no longer correspond to the chapters embedded in the MP3 the listener actually received. The evidence is concrete: for the German show Lage der Nation, episode 377, a chapter declared at 01:15:15.991 in the feed appears at 01:16:57.195 in the reporter's downloaded file — roughly a 100-second drift — and the reporter states the offset differs for every download. Full before-and-after chapter listings show the drift accumulating progressively as each ad break lands, so early chapters are nearly correct while late ones are badly wrong. He also notes that chapter images embedded only in the MP3 fail to render when feed chapters take priority, and proposes that file-embedded chapters should win with feed chapters as fallback. A maintainer acknowledged the report and escalated it internally. The lesson is that stored offsets must be validated against the bytes actually fetched, never trusted from metadata.",
+      "key_facts": [
+        "Issue #2093 on Automattic/pocket-casts-android, opened 20 April 2024 by marvinweber; state closed.",
+        "Regression traced to version 7.61, which added parsing of feed-declared chapters (Podcast Index and Podlove Simple Chapters).",
+        "Measured drift: Lage der Nation ep. 377 chapter at 01:15:15.991 in the feed sits at 01:16:57.195 in the delivered MP3 — about 100 seconds.",
+        "Reporter states the offset differs for every individual download; drift accumulates across the episode as successive ad breaks land.",
+        "MP3-embedded chapter images fail to display when feed chapters take precedence.",
+        "Proposed fix: prefer chapters embedded in the media file, treating feed chapters only as fallback; maintainer escalated internally."
+      ]
+    },
+    {
+      "id": 49,
+      "area": 8,
+      "area_name": "Legal / Policy Landscape",
+      "title": "Podnews — Megaphone added to ad-block lists",
+      "url": "https://podnews.net/update/megaphone-block-list",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "A major host blocked by ad-blockers (Brave, NextDNS, uBlock Origin) over data/ads. *Why it matters:* evidence of active ecosystem tension over ad-stripping and listener data.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:47.161Z",
+        "http_status": 200,
+        "content_sha256": "07e092837ffe320b782817e24ad256ab3dc9d9995be8c15541b065bc50778e15",
+        "estimated_tokens": 1783,
+        "chunks": 3,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/049-podnews-megaphone-added-to-ad-block-lists.html",
+        "markdown": "markdown/049-podnews-megaphone-added-to-ad-block-lists.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved — © Podnews LLC, reproduction prohibited",
+        "redistribution": "deny",
+        "evidence_url": "https://podnews.net/about",
+        "note": "Podnews's own about page states the website is copyright Podnews LLC and that reproduction is prohibited without their written permission; no Creative Commons or other open license is offered.",
+        "verified": "web"
+      },
+      "digest": "An edition of the Podnews daily podcast-industry newsletter dated around 6 January 2021. Its lead item reports that Megaphone — a major podcast hosting and ad-serving platform, at the time newly acquired by Spotify — had been added to several ad-blocking and tracker-blocking lists, so that users of the Brave browser, NextDNS and uBlock Origin were being blocked from reaching it. The blocks predated the Spotify purchase. Podnews cites a lime.link post and notes that Darknet Diaries host Jack Rhysider, who hosts on the platform, wanted to keep using it without sharing listener data with third parties. The remainder of the issue is unrelated industry briefs: Google Podcasts adding a web subscriptions view, a WNYC Studios co-founder joining Supercast, growth in Welsh-language podcasts, talkRADIO's removal from YouTube, and Amazon's Wondery purchase. The load-bearing point for a curation product is narrow but real: podcast delivery and measurement infrastructure is contested enough that consumer blocklists treat a major host as a tracker. The dispute is over listener data and advertising, not audio rights — but a product that fetches enclosures inherits both blocked-delivery failures and publisher sensitivity to anything resembling ad or tracking evasion.",
+      "key_facts": [
+        "Podnews issue dated 6 January 2021; lead item is Megaphone's addition to multiple ad-block and tracker-block lists.",
+        "Brave, NextDNS and uBlock Origin were all blocking access to Megaphone; the blocks preceded Spotify's acquisition of the company.",
+        "The stated grievance is listener-data sharing with third parties, not audio copyright.",
+        "Darknet Diaries host Jack Rhysider, a Megaphone customer, is cited wanting to host there without sharing listener data.",
+        "Implication for enclosure-fetching clients: blocked hosts can cause delivery failures, and the ecosystem is primed to read ad/tracking avoidance as hostile."
+      ]
+    },
+    {
+      "id": 50,
+      "area": 8,
+      "area_name": "Legal / Policy Landscape",
+      "title": "Creative Commons Podcasting Legal Guide",
+      "url": "https://wiki.creativecommons.org/wiki/Podcasting_Legal_Guide",
+      "source_type": "docs",
+      "read_first": false,
+      "why_it_matters": "Fair use four-factor framework applied to podcasts. *Why it matters:* baseline fair-use analysis for excerpting.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:50.985Z",
+        "http_status": 200,
+        "content_sha256": "ca78bec18ce149019ca247499d1e114cdad54f29c36cce7032d03a6202ab005b",
+        "estimated_tokens": 30913,
+        "chunks": 55,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/050-creative-commons-podcasting-legal-guide.html",
+        "markdown": "markdown/050-creative-commons-podcasting-legal-guide.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "CC BY-NC-SA 2.5 (Attribution-NonCommercial-ShareAlike 2.5) — NonCommercial clause blocks use here",
+        "redistribution": "deny",
+        "evidence_url": "https://wiki.creativecommons.org/wiki/Podcasting_Legal_Guide",
+        "note": "This page carries a banner and a 'License & Attribution' section stating that, unlike other articles on the wiki, the Guide is licensed under Attribution-NonCommercial-ShareAlike 2.5 — so it does NOT inherit the wiki's general license; the NonCommercial restriction makes republishing it in a commercial product's public repository the wrong call, hence deny despite an open license technically being present.",
+        "verified": "web"
+      },
+      "digest": "The Podcasting Legal Guide, subtitled Rules for the Revolution, a 2006 wiki-hosted guide written by Colette Vogele (Vogele & Associates) together with Mia Garlick, then at Creative Commons, and the Berkman Center's Clinical Program in Cyberlaw, produced under Stanford's Center for Internet and Society fellowship, with a foreword by Lawrence Lessig. It is limited to US law and states plainly that it is not legal advice and creates no attorney-client relationship. Structure: an overview of copyright, publicity-rights and trademark exposure when producing a podcast; five circumstances in which permission is not needed — facts, ideas, theories, slogans and short phrases; public domain works; US government works; fair use; and Creative Commons or otherwise 'podsafe' material. A substantial section on music explains that a song involves two separate works, the composition and the sound recording, each with distinct rights, so multiple licenses are typically required. A four-factor fair-use section addresses common misconceptions and gives podcast-specific examples. The distribution half covers implied versus express licenses and applying a CC license to one's own feed. For a segment-clipping product, the music analysis is the live hazard: a segment containing a licensed music bed or clip carries rights that the podcast's own permissions do not clear.",
+      "key_facts": [
+        "Authored 2006 by Colette Vogele (Vogele & Associates), Mia Garlick (Creative Commons) and the Berkman Center Clinical Program in Cyberlaw; foreword by Lawrence Lessig.",
+        "Scope is US law only, and it expressly disclaims being legal advice or creating an attorney-client relationship.",
+        "Identifies five categories where permission is unnecessary: facts/ideas/short phrases, public domain works, US government works, fair use, and CC-licensed or 'podsafe' content.",
+        "Music section stresses that a song comprises two separate copyrighted works (composition and sound recording) with distinct rights, generally requiring multiple licenses.",
+        "Applies the statutory four-factor fair-use test to podcasting with worked examples and two common misconceptions.",
+        "Practical risk it surfaces for clipping: music inside a captured segment carries rights the podcast's own permissions do not clear."
+      ]
+    },
+    {
+      "id": 51,
+      "area": 9,
+      "area_name": "LLM Pipeline Engineering",
+      "title": "LLM-as-a-Judge complete guide (Evidently AI)",
+      "url": "https://www.evidentlyai.com/llm-guide/llm-as-a-judge",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "Treats building a judge as a small ML project starting from a labeled dataset. *Why it matters:* how to evaluate bridge quality and segment coherence at scale.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:33.541Z",
+        "http_status": 200,
+        "content_sha256": "abef7d30bce81c7cfe85b4eaf794dda666518313762dd718968e4dde4ed88a23",
+        "estimated_tokens": 13491,
+        "chunks": 18,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/051-llm-as-a-judge-complete-guide-evidently-ai.html",
+        "markdown": "markdown/051-llm-as-a-judge-complete-guide-evidently-ai.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved",
+        "redistribution": "deny",
+        "evidence_url": "https://www.evidentlyai.com/llm-guide/llm-as-a-judge",
+        "note": "The page footer reads as a 2026 Evidently AI all-rights-reserved copyright with only privacy policy and terms-of-service links; the company's open-source library license covers code, not this article text.",
+        "verified": "web"
+      },
+      "digest": "A vendor-authored practitioner guide arguing that an LLM judge is not a metric but a small supervised-learning project whose artifact happens to be a prompt. It separates judge shapes (pairwise comparison, direct scoring against named criteria, reference-based checking against a ground-truth answer) and then gives a build loop: pick one narrow question, assemble a small but adversarially diverse dataset, hand-label it yourself before writing any prompt, write the evaluation prompt from what the labeling taught you, then score the judge against your labels with ordinary classification metrics and keep a held-out slice for the final prompt. Prompt advice favors binary or coarse decisions over fine numeric scales, splitting compound criteria into separate evaluators, and requesting reasoning for debuggability. It also notes that hand-grading changes your own standards mid-flight, citing published work on that effect. For Foray this is the operating manual for the copy quality gate: the manual-labeling step is the part teams skip and the part that makes the judge trustworthy. It is marketing-adjacent, so treat tooling claims separately from methodology.",
+      "key_facts": [
+        "Three judge shapes covered: pairwise comparison, evaluation by criteria (direct scoring), and reference-based evaluation",
+        "Build loop is five steps: define the scenario, assemble a dataset, manually label it, write the evaluation prompt, then measure against labels and iterate, retaining a held-out set",
+        "Judge quality is measured with standard classification metrics such as precision and recall against human labels",
+        "Recommends binary or low-precision scoring and splitting multi-dimensional criteria into separate evaluators",
+        "Cites Shankar et al. 2024, 'Who Validates the Validators?' (arXiv 2404.12272), for criteria drift during manual grading",
+        "Notes prompts are not portable across judge models, so instructions must be retested per model",
+        "Vendor context: Evidently is an open-source eval library with a claimed 25M+ downloads"
+      ]
+    },
+    {
+      "id": 52,
+      "area": 9,
+      "area_name": "LLM Pipeline Engineering",
+      "title": "A Survey on LLM-as-a-Judge (ScienceDirect)",
+      "url": "https://www.sciencedirect.com/science/article/pii/S2666675825004564",
+      "source_type": "paper",
+      "read_first": false,
+      "why_it_matters": "Taxonomy of judging methods, biases, and pipeline design. *Why it matters:* rigorous grounding for your evaluation harness.",
+      "fetch": {
+        "status": "failed",
+        "fetched_at": "2026-08-12T16:47:36.583Z",
+        "http_status": 403,
+        "content_sha256": null,
+        "estimated_tokens": 0,
+        "chunks": 0,
+        "notes": "fetch failed"
+      },
+      "local_archive": null,
+      "license": {
+        "id": "All rights reserved (Elsevier)",
+        "redistribution": "deny",
+        "evidence_url": "https://www.sciencedirect.com/science/article/pii/S2666675825004564",
+        "note": "Not fetched (403 bot wall); Elsevier hosts no redistribution grant for this article.",
+        "verified": "inferred"
+      },
+      "digest": "Not in the corpus: ScienceDirect answered the fetch with HTTP 403 (bot wall), so this survey of LLM-as-a-judge methods contributed nothing to the index — no abstract, no taxonomy, no chunks. The dossier listed it for a rigorous taxonomy of judging methods, their biases, and pipeline design. Per the corpus policy, a bot wall is recorded and reported rather than worked around, so no workaround was attempted. The evaluation-harness ground this source was meant to cover is partly held by three sources that did fetch: 51 (a practitioner guide to LLM-as-a-judge), 53 (best-practice write-up) and 54 (a CC BY paper measuring scoring bias in judges). If the survey itself is needed, the route is a licensed copy through an institutional subscription, read by a human — not a re-scrape.",
+      "key_facts": [
+        "Fetch outcome: HTTP 403 from ScienceDirect; recorded in dead-links.md, zero chunks indexed.",
+        "Corpus policy (PLAN.md): bot walls and paywalls are recorded, never circumvented.",
+        "Coverage substitutes that did fetch: sources 51, 53 and 54.",
+        "Elsevier content would be deny-by-default for redistribution even if it had fetched."
+      ]
+    },
+    {
+      "id": 53,
+      "area": 9,
+      "area_name": "LLM Pipeline Engineering",
+      "title": "LLM-as-a-Judge best practices (DeepEval)",
+      "url": "https://deepeval.com/blog/llm-as-a-judge",
+      "source_type": "blog",
+      "read_first": false,
+      "why_it_matters": "Covers prompt regression testing, CI/CD integration, G-Eval, DAG metrics. *Why it matters:* prompt regression testing for your segmentation/curation prompts.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:47:39.270Z",
+        "http_status": 200,
+        "content_sha256": "f9b09603223f462ea7aeb160276fdc5981bb1da98e3a78706bb5c9f1d43c20c1",
+        "estimated_tokens": 7483,
+        "chunks": 12,
+        "notes": "readability"
+      },
+      "local_archive": {
+        "raw": "raw/053-llm-as-a-judge-best-practices-deepeval.html",
+        "markdown": "markdown/053-llm-as-a-judge-best-practices-deepeval.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "All rights reserved (article text); Apache 2.0 applies to the DeepEval software only",
+        "redistribution": "deny",
+        "evidence_url": "https://deepeval.com/blog/llm-as-a-judge",
+        "note": "The footer shows a 2026 Confident AI Inc. copyright; the only license named on the page is Apache 2.0 for the DeepEval library, and no license is extended to the blog article text.",
+        "verified": "web"
+      },
+      "digest": "A framework vendor's practitioner post that maps judging problems onto three implementation patterns and shows the API for each. G-Eval covers subjective single-output criteria you describe in natural language; a directed-acyclic-graph metric covers criteria that are really branching rules and where you want determinism rather than a model's holistic opinion; question-answer-generation style built-ins decompose an evaluation into closed-ended checks and back the standard retrieval and agent metrics. It also distinguishes single-output scoring from pairwise arena comparison, and reference-based from referenceless metrics purely by which test-case fields the metric reads. The operationally useful half is downstream: run judges as regression tests in CI before deploying a prompt change, evaluate agent traces at component and trajectory level, and monitor production with a deliberately small set of high-signal metrics because too many judges make monitoring noisy and expensive. For Foray this is the closest match to gating LLM-authored hooks and why-lines: loose criteria while exploring, explicit graded steps or a deterministic graph once the check guards a release.",
+      "key_facts": [
+        "Three judging techniques presented: G-Eval, DAG-based metrics, and QAG-style built-in metrics",
+        "Single-output metrics return a score between 0 and 1; pairwise comparison uses a separate arena test case with named contestants",
+        "Reference-based versus referenceless is determined only by which test-case fields the metric consumes (expected output, context, retrieval context, expected tools)",
+        "Guidance: start from a free-text criteria string while exploring, move to explicit evaluation steps once the metric guards CI/CD or production monitoring",
+        "Recommends a small number of high-signal metrics in production monitoring to avoid noisy, expensive, uninterpretable dashboards",
+        "Debug surface per metric: score, reason, and an optional verbose mode",
+        "Site footer credits Confident AI Inc. (2026); the DeepEval framework itself is Apache 2.0"
+      ]
+    },
+    {
+      "id": 54,
+      "area": 9,
+      "area_name": "LLM Pipeline Engineering",
+      "title": "Evaluating Scoring Bias in LLM-as-a-Judge (arXiv 2506.22316)",
+      "url": "https://arxiv.org/pdf/2506.22316",
+      "source_type": "paper",
+      "read_first": false,
+      "why_it_matters": "Documents systematic biases in LLM judges. *Why it matters:* caveats when trusting automated quality scores.",
+      "fetch": {
+        "status": "ingested",
+        "fetched_at": "2026-08-12T16:48:40.300Z",
+        "http_status": 200,
+        "content_sha256": "1ea7b239ff1341189bd3927bbab63b43b190289437156d89e0e251aca146b744",
+        "estimated_tokens": 11418,
+        "chunks": 16,
+        "notes": ""
+      },
+      "local_archive": {
+        "raw": "raw/054-evaluating-scoring-bias-in-llm-as-a-judge-arxiv-2506-22316.pdf",
+        "markdown": "markdown/054-evaluating-scoring-bias-in-llm-as-a-judge-arxiv-2506-22316.md",
+        "root": "data-local/corpus/ (gitignored, never committed)"
+      },
+      "license": {
+        "id": "CC BY 4.0",
+        "redistribution": "allow",
+        "evidence_url": "https://arxiv.org/abs/2506.22316",
+        "note": "The arXiv abstract page shows a Creative Commons license icon linking to creativecommons.org/licenses/by/4.0/, so redistribution with attribution is permitted.",
+        "verified": "web"
+      },
+      "digest": "An Ant Group study of a failure mode that matters more than the well-studied pairwise biases: when a judge assigns an absolute score, the score moves in response to changes in the scoring prompt that carry no information about the response being graded. The authors name three such perturbations - reordering the rubric, changing the symbols used for score levels, and including a reference answer pinned at a particular score - and quantify each with stability measures (how often a score flips and by how much), agreement with gold scores, and score distribution shift. They evaluate five judges across four public benchmarks at temperature zero, using recent frontier models rather than the benchmarks' original annotations as gold. Every judge shifts. Larger and stronger judges shift less but never stop shifting, and the reference-answer perturbation is by far the worst, flipping something like a third to a half of all scores. For Foray this is a hard constraint on any copy quality gate: absolute pass/fail thresholds are only stable relative to a frozen rubric, so rubric edits invalidate historical scores.",
+      "key_facts": [
+        "Three named biases: rubric order bias, score ID bias, and reference answer score bias; arXiv 2506.22316, submitted 27 Jun 2025, v4 dated 3 Feb 2026",
+        "Judge models: GPT-4o, DeepSeek-V3-671B, Qwen3-32B, Qwen3-8B, Mistral-Small-24B-Instruct-2501, all run at temperature 0",
+        "Benchmarks: BiGGen Bench (2,780 responses over 695 instances), FLASK (200 prompts, 12 rubrics, 2,001 responses), MT Bench and Vicuna Bench (80 prompts and 320 responses each)",
+        "Metrics: flip rate and mean absolute deviation for stability, Spearman and Pearson correlation for accuracy, plus a scoring-tendency measure",
+        "Gold scores come from GPT-4.1 majority vote over three runs; GPT-4.1 correlated with human labels at Spearman 0.6048 on BiGGen Bench and 0.6401 on FLASK, above the benchmarks' original GPT-4 scores",
+        "Adding a reference answer scored 5 flips roughly 35-49% of scores; GPT-4o hit 45.54% flip rate and 0.5604 MAD on BiGGen Bench",
+        "Symbol and order perturbations alone flip 16-52% of scores; Qwen3-8B reached 46.22% flip rate under a descending rubric while GPT-4o mostly stayed under 25% flip rate and 0.3 MAD",
+        "Synthetic reference answers for scores 1-4 were built with a generate-then-review loop alternating GPT-4.1 and GPT-4o; dataset released at github.com/KMdsy/scoring_bias"
+      ]
+    }
+  ]
+}

@@ -53,6 +53,7 @@ node tools/corpus/corpus.mjs search "server test"    # FTS5 keyword search
 node tools/corpus/corpus.mjs stats                   # per-area coverage
 node tools/corpus/corpus.mjs refetch 12              # force re-ingest one source
 node tools/corpus/corpus.mjs report --write          # coverage.md + dead-links.md
+node tools/corpus/corpus.mjs export-index --write    # corpus-index.json (committed)
 ```
 
 Schema (migrations/): `sources` (the parsed dossier — the dossier markdown IS
@@ -62,6 +63,44 @@ heading-path tagged, `embedding` NULL until the backfill pass), `chunks_fts`
 (FTS5, trigger-synced). Parallel area ingestion is safe: WAL + busy_timeout
 on the DB, and a cross-process host gate (`hostgate.mjs`) keeps sibling
 processes from co-hammering a shared host.
+
+## What leaves this machine
+
+The DB and archives are gitignored, so the corpus exists only where it was
+built. The repo is **public**, so the fetched text cannot simply be committed:
+that would be republication of 54 third-party works, most of which carry no
+license permitting it (product principle #3, "legally boring"). What is
+committed instead:
+
+- `docs/research/corpus/digests.md` — **authored** by us: per source, what it
+  says in our own words, its key facts, and the redistribution verdict with the
+  licence evidence behind it. Fail-closed: "in doubt" is `deny`.
+- `docs/research/corpus/corpus-index.json` — **generated** from that file plus
+  the DB by `export-index`: urls, `content_sha256`, chunk/token counts, fetch
+  status, local archive paths, and the same digests, machine-readable for
+  agents.
+
+`export-index.mjs` has no code path that reads `chunks.text`, and its parser
+rejects a digest long enough to be pasted source text (2500 chars) — the same
+shape of guard as the transcript index's "no body-sized strings" rule.
+
+## Rebuilding the corpus on another machine
+
+Nothing is lost by not committing it — the dossier is the manifest, so a clean
+machine rebuilds in one pass (~40MB on disk, most of it PDFs; a few minutes,
+paced by the ≥2s/host politeness gate):
+
+```
+cd tools/corpus && npm install
+node tools/corpus/corpus.mjs init
+node tools/corpus/corpus.mjs load-manifest
+node tools/corpus/corpus.mjs ingest --all
+node tools/corpus/corpus.mjs export-index          # dry run: does it match?
+```
+
+Compare `content_sha256` in the committed index against your rebuild to see
+which sources changed upstream since 2026-08-12. Two sources are known dead
+(`dead-links.md`) and will fail on any machine.
 
 ## Tests
 

@@ -369,3 +369,51 @@ Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
     because ingestion runs one process per dossier area in parallel and several
     hosts appear in multiple areas. Same "legally boring" posture as playback:
     fetch politely, archive privately, never republish.
+
+## 2026-08-12 (research corpus, part 2: what may leave the machine)
+
+- **The corpus stays local. What gets committed is an index plus digests we
+  wrote ourselves** (`docs/research/corpus/digests.md` + `corpus-index.json`,
+  exported by `corpus export-index`). The corpus as built is 40MB in
+  `data-local/corpus/`: 37.5MB of raw bytes (13 PDFs dominate; one arXiv PDF is
+  22.6MB), 1.1MB of cleaned markdown across 52 files, 2.2MB of SQLite. Size was
+  never the blocker — 1.1MB against a 50MB `data/` is nothing. **The blocker is
+  that this repo is public**, so committing the cleaned text of 54 third-party
+  works is republication, not archiving. Product principle #3 ("legally
+  boring") and the part-1 entry above ("fetch politely, archive privately,
+  never republish") both point the same way, and the transcript-availability
+  decision earlier the same day already set the precedent for this exact
+  trade-off: **store the index, never the bodies.**
+- **Every source carries a redistribution verdict with named evidence, and the
+  default is deny.** 16 of 54 sources are `allow` — CC BY 4.0 (both
+  podcasting2.org spec pages, four arXiv papers whose authors chose CC BY, one
+  ACL Anthology paper), CC0 (podcast-namespace repo), MIT/BSD (pyannote,
+  WhisperX, StreamingKit, docs-api), CC BY-SA 4.0 (TreeSeg, Wikipedia), and the
+  Hunley v. Instagram opinion, which has no copyright at all under the
+  government-edicts doctrine. The other 38 are deny: trade press, law-firm and
+  law-review articles, vendor pricing and marketing pages, Apple documentation
+  and forum threads, IAB/AES standards, GitHub issue threads (third-party
+  comments are not covered by a repo's licence), and every arXiv paper left on
+  arXiv's default licence — **which grants arXiv the right to distribute, not
+  us.** That distinction is the single easiest mistake to make here.
+- **Even the 16 permitted sources are not committed.** Their extractions are
+  403KB of the 1.1MB. Three reasons not to take them: a corpus that is 30%
+  present invites `grep` results that look authoritative and are silently
+  partial; two of the permitted licences are copyleft (CC BY-SA) and one is
+  BSD-4-Clause with the advertising clause, and this repo has **no LICENSE file
+  of its own**, so importing share-alike text creates a licensing tangle nobody
+  asked for; and the permitted set is precisely the set that is cheapest to
+  re-fetch (arXiv, GitHub, a court CDN). The verdicts are recorded so the
+  decision can be revisited on evidence rather than re-litigated from scratch.
+- **"Our own words" is enforced by code, not by good intentions.**
+  `export-index` refuses to write the index if any digest shares a ten-word run
+  of prose with its own archived extraction (`verbatimRuns`, with a stopword
+  floor so that listing five MIME types or five model names — facts — does not
+  trip it). The parser also rejects any digest over 2500 characters. This is
+  the same shape of guard as the transcript index's "no body-sized strings"
+  rule in CI: make the wrong thing fail loudly instead of trusting review.
+- **Regeneration is the answer to "but the cloud runners still can't query
+  it."** They can't, and that is accepted. The dossier is the manifest, so any
+  machine rebuilds the whole corpus with `init` → `load-manifest` →
+  `ingest --all`, and the committed `content_sha256` per source says whether a
+  rebuild matches this snapshot or the upstream page has changed since.

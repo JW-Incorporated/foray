@@ -8,6 +8,7 @@
  *   node tools/corpus/corpus.mjs stats
  *   node tools/corpus/corpus.mjs refetch <source_id>
  *   node tools/corpus/corpus.mjs report [--write]
+ *   node tools/corpus/corpus.mjs export-index [--write]
  *
  * DB + archives: data-local/corpus/ (gitignored). See README.md.
  */
@@ -21,11 +22,15 @@ import { createFetcher } from "./fetcher.mjs";
 import { createHostGate } from "./hostgate.mjs";
 import { ingestMany } from "./ingest.mjs";
 import { coverageMarkdown, deadLinksMarkdown, coverageData } from "./report.mjs";
+import { parseDigests, buildIndex, serializeIndex, diffIndexAgainstDigests, checkVerbatimOverlap } from "./export-index.mjs";
+import { CORPUS_ROOT } from "./paths.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..");
 const DEFAULT_DOSSIER = path.join(REPO_ROOT, "docs", "research", "foray-research-dossier.md");
 const REPORT_DIR = path.join(REPO_ROOT, "docs", "research", "corpus");
+const DIGESTS_PATH = path.join(REPORT_DIR, "digests.md");
+const INDEX_PATH = path.join(REPORT_DIR, "corpus-index.json");
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -164,16 +169,57 @@ async function main() {
       break;
     }
 
+    /* The corpus itself is local-only (data-local/ is gitignored). This is the
+     * part of it that can be committed to a PUBLIC repo: source facts, hashes,
+     * counts, our own digests, and the per-source redistribution verdict. It
+     * never emits scraped text — see export-index.mjs and DECISIONS.md. */
+    case "export-index": {
+      const db = openMigrated();
+      const digestsPath = args.digests ?? DIGESTS_PATH;
+      const outPath = args.out ?? INDEX_PATH;
+      const entries = parseDigests(fs.readFileSync(digestsPath, "utf8"));
+      const index = buildIndex(db, entries);
+      const problems = diffIndexAgainstDigests(index, entries);
+      if (problems.length) throw new Error(`index/digests mismatch:\n  ${problems.join("\n  ")}`);
+
+      /* On the machine that holds the archives, prove the digests are ours. */
+      const archiveOf = new Map(index.sources.map((s) => [s.id, s.local_archive?.markdown ?? null]));
+      const overlap = checkVerbatimOverlap(entries, (e) => {
+        const rel = archiveOf.get(e.id);
+        if (!rel) return null;
+        const full = path.join(CORPUS_ROOT, rel);
+        return fs.existsSync(full) ? fs.readFileSync(full, "utf8") : null;
+      });
+      if (overlap.problems.length) {
+        throw new Error(`digests must be our own words:\n  ${overlap.problems.join("\n  ")}`);
+      }
+      const t = index.totals;
+      if (args.write) {
+        fs.mkdirSync(path.dirname(outPath), { recursive: true });
+        fs.writeFileSync(outPath, serializeIndex(index), "utf8");
+        console.log(`wrote ${path.relative(REPO_ROOT, outPath)}`);
+      } else {
+        console.log(`(dry run — pass --write to update ${path.relative(REPO_ROOT, outPath)})`);
+      }
+      console.log(
+        `${t.sources} sources · ${t.ingested} ingested · ${t.chunks} chunks · ~${Math.round(t.estimated_tokens / 1000)}k tokens\n` +
+        `verbatim guard: ${overlap.checked} digest(s) checked against local archives, 0 shared runs\n` +
+        `redistribution: ${t.redistribution_allowed} allow, ${t.redistribution_denied} deny (no source text is committed either way)`
+      );
+      break;
+    }
+
     default:
       console.error(
-        `usage: corpus <init|load-manifest|ingest|search|stats|refetch|report>\n` +
+        `usage: corpus <init|load-manifest|ingest|search|stats|refetch|report|export-index>\n` +
         `  init                                create/migrate the db\n` +
         `  load-manifest [--dossier p]         parse the dossier into sources\n` +
         `  ingest --all|--area N|--source ID   fetch + extract + chunk\n` +
         `  search "query" [--limit N]          FTS5 keyword search\n` +
         `  stats                               per-area coverage\n` +
         `  refetch <source_id>                 force re-ingest one source\n` +
-        `  report [--write]                    coverage + dead-links markdown`
+        `  report [--write]                    coverage + dead-links markdown\n` +
+        `  export-index [--write]              docs/research/corpus/corpus-index.json`
       );
       process.exitCode = cmd ? 1 : 0;
   }
