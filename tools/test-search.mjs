@@ -162,7 +162,11 @@ assertAnchor("startups and venture capital", ["startup", "venture", "capital"]);
    picks to check, and the needle(s) every one of those picks must contain
    (any one of the needles is enough per item -- OR semantics). */
 const topicalCases = [
-  { query: "how bbq works", status: "sparse", checkTop: 4, anyOf: ["bbq", "barbecue", "grill"] },
+  // Flipped sparse->ok by catalogue growth: the 2026-07-30 refresh's BBQ
+  // Central episode tipped the strong count past RICH_MIN -- same
+  // catalogue-growth flip as "plane crashes" (2026-08-06) below. The
+  // on-topic needle check is what guards quality here, not the label.
+  { query: "how bbq works", status: "ok", checkTop: 4, anyOf: ["bbq", "barbecue", "grill"] },
   { query: "the history of jazz", status: "sparse", checkTop: 2, anyOf: ["jazz"] },
   { query: "true crime", status: "ok", checkTop: 5, anyOf: ["true-crime", "crime", "murder", "serial-killer"] },
   { query: "comedy", status: "ok", checkTop: 5, anyOf: [] /* checked separately via branchOf */ },

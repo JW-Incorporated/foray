@@ -414,7 +414,22 @@ function classifyResults(results, { cap = 10, perShowCap = PER_SHOW_CAP, listene
   // with sub-bar results just to look like a fuller playlist. Diversity is
   // applied to whichever candidate set would have been sliced, so it can
   // reorder within "strong"/"results" but never reach outside either.
-  const candidates = sparse ? strong : results;
+  //
+  // Single-show strong set: same strong-only rule even when the count
+  // clears RICH_MIN. When every bar-clearing match comes from ONE show,
+  // there is nothing real to diversify with -- widening to `results` just
+  // hands the per-show cap sub-bar false positives to promote over the
+  // show's own deferred STRONG episodes (the "Texas" leak described above:
+  // "how bbq works" put true-crime filler at rank 3 while real BBQ
+  // episodes sat at rank 7, the moment the catalog's 6th BBQ Central
+  // episode landed, 2026-07-30). The honest playlist is the show's
+  // un-capped strong list (diversify()'s backfill keeps it intact), and
+  // the status stays "ok"/"sparse" by strong count alone. A multi-show
+  // strong set keeps the wide candidate pool: there sub-bar backfill is
+  // what lets other shows' weaker-but-on-topic items break up an
+  // echo-chamber top-10 (e.g. "startups and venture capital").
+  const singleShow = strong.length >= 2 && strong.every((x) => x.i.show === strong[0].i.show);
+  const candidates = (sparse || singleShow) ? strong : results;
   const picks = diversify(candidates, { cap, perShowCap, listenedShows });
   if (picks.length < 2) return { status: "empty", picks: [] };
   return { status: sparse ? "sparse" : "ok", picks };
