@@ -115,6 +115,10 @@ jobs:
         run: node --test "test/*.test.js"
       - name: Refresh-pipeline helper tests
         run: node --test "tools/refresh/*.test.mjs"
+      - name: Segment-pipeline helper tests
+        # Transcript normaliser (#105). Same job as everything above for the
+        # same reason: `data-and-site` is the required check in protect-main.
+        run: node --test "tools/segments/*.test.mjs"
       - name: Validate semantic-index.json
         run: node tools/validate-semantic-index.mjs
       - name: Search-quality battery
