@@ -38,6 +38,9 @@ export function createFetcher({
   now = () => Date.now(),
   defaultDelayMs = DEFAULT_DELAY_MS,
   attemptTimeoutMs = ATTEMPT_TIMEOUT_MS,
+  /* Optional cross-process gate (hostgate.mjs). The in-process limiter can't
+   * see sibling area-ingestion processes; the gate can. */
+  hostGate = null,
 } = {}) {
   /* host -> { chain: Promise, nextAllowedAt: number, robots: parsed|null } */
   const hosts = new Map();
@@ -57,6 +60,7 @@ export function createFetcher({
     const run = s.chain.then(async () => {
       const wait = s.nextAllowedAt - now();
       if (wait > 0) await sleep(wait);
+      if (hostGate) await hostGate.reserve(host, delayMs);
       try {
         return await fn();
       } finally {
