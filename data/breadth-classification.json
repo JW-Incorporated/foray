@@ -61673,13 +61673,1050 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-11-d7771941",
       "classified_at": "2026-08-11T16:51:13.863Z"
+    },
+    "1729575866": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly rugby news and guest interviews from professional commentators.",
+      "display_title": "8/9 Rugby",
+      "blurb": "Brett McKay hosts rotating rugby experts discussing international matches and player analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1729708334": {
+      "topics": [
+        "culture/fashion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two hosts discuss beauty products, makeup techniques and industry trends.",
+      "display_title": "Inside The Makeup Bag",
+      "blurb": "Unfiltered beauty chat covering makeup, skincare and trending cosmetic products.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1730097248": {
+      "topics": [
+        "business/marketing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Brand strategy experts unpack consumer trends and business case studies.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1730249954": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women share their Qurān memorization journeys and Islamic spiritual reflections.",
+      "display_title": "Women of Qurān",
+      "blurb": "Muslim women discuss their relationships with the Qurān and memorization paths.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1730507876": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College tennis coaches share leadership principles and mentorship insights.",
+      "display_title": "Walk Like A Champion Podcast",
+      "blurb": "Tennis coaches and athletes reflect on championship mentality and leadership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1730587238": {
+      "topics": [
+        "news/tech",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tech industry criticism covering AI hype, venture capital excess and platforms.",
+      "display_title": "Better Offline",
+      "blurb": "Narrative show interrogating tech industry myths and economic consequences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1730598122": {
+      "topics": [
+        "personal-journals",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Recovering addicts and trauma survivors share stories of resilience and sobriety.",
+      "display_title": "Rise Above with Kevin Lanning",
+      "blurb": "Former Google executive interviews people overcoming addiction and trauma.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1730664032": {
+      "topics": [
+        "nature/earth-science",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Regenerative farming experts discuss sustainable food systems and soil health.",
+      "display_title": "Deep Seed - Regenerative Agriculture",
+      "blurb": "Conversations with regenerative farmers exploring sustainable practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1730794430": {
+      "topics": [
+        "fiction/comedy",
+        "gaming/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "D&D actual play campaign with dramatic roleplay, humor and absurd encounters.",
+      "display_title": "Fool's Gold: Sands",
+      "blurb": "Professional D&D players navigate a chaotic world of ridiculous encounters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1730954168": {
+      "topics": [
+        "education/self-improvement",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Interviews on personal identity transformation, goal-setting and philosophy.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1730984252": {
+      "topics": [
+        "health/mental",
+        "medicine/neuroscience"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neuroscience researchers explain brain function in diet, sleep and memory.",
+      "display_title": "Your Brain On",
+      "blurb": "Neurologists debunk myths and explain how diet and sleep affect the brain.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1731266576": {
+      "topics": [
+        "sports",
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Barrel racing horse training techniques and equipment discussion.",
+      "display_title": "The Petty Betty Barrel Racing Podcast",
+      "blurb": "Barrel racing enthusiasts discuss horse training and equipment mechanics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1731441128": {
+      "topics": [
+        "aviation",
+        "engineering"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Drone industry professionals discuss UAV technology, regulation and uses.",
+      "display_title": "Let's Talk Drones",
+      "blurb": "Drone enthusiasts and robotics experts discuss commercial UAV innovation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1731804320": {
+      "topics": [
+        "religion/spirituality",
+        "philosophy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chinese Taoist and Buddhist teachings on destiny, fortune and cycles.",
+      "display_title": "1000个风水命理知识｜小隐说易",
+      "blurb": "Feng shui and divination teachings grounded in Buddhist and Taoist philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1731938306": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Detroit Pistons news, player analysis and NBA basketball commentary.",
+      "display_title": "Pistons Talk Podcast",
+      "blurb": "Pistons coverage with game analysis, draft discussion and player insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1732126292": {
+      "topics": [
+        "education/self-improvement",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily affirmations and personal growth mindset development content.",
+      "display_title": "Good Thinking: Daily Positive Affirmations & Growth Mindset",
+      "blurb": "Daily affirmations and mindset training for personal development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1732886330": {
+      "topics": [
+        "news/politics",
+        "economics",
+        "society/law"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics",
+          "confidence": 0.6
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Discussions intersecting religion, economics and political commentary.",
+      "display_title": "Religion Economics Politics",
+      "blurb": "Conversations examining intersections of spirituality, money and governance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1732961306": {
+      "topics": [
+        "hobbies",
+        "gaming/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "LEGO enthusiasts (Adult Fans Of LEGO) discuss building and collecting.",
+      "display_title": "AFOLs Welcome: A Lego Podcast",
+      "blurb": "Adult LEGO fans discuss building techniques, sets and community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1733106740": {
+      "topics": [
+        "education/self-improvement",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal growth stories and self-improvement journey documentation.",
+      "display_title": "EPIC Begins With 1 Step Forward",
+      "blurb": "Personal stories of growth and transformation through small steps.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1733476604": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Topics not clearly established from available podcast information.",
+      "display_title": "The Growler",
+      "blurb": "Show focused on culture and community engagement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1733478812": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sports-related podcast; specific focus unclear from limited signal.",
+      "display_title": "On Your Marks",
+      "blurb": "Sports discussion and athletic event coverage and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1733515364": {
+      "topics": [
+        "true-crime",
+        "society/law"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime stories and legal system discussion from judicial perspective.",
+      "display_title": "The Court House",
+      "blurb": "True crime cases examined through legal and judicial analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1733535260": {
+      "topics": [
+        "news/tech",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tech industry trends and digital platform culture analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1733597930": {
+      "topics": [
+        "culture/pop-culture",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pop culture commentary and celebrity/entertainment discussion.",
+      "display_title": "Queen Things",
+      "blurb": "Pop culture commentary and entertainment industry discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1733927846": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Two comedians engage in long-form casual conversation and banter.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1734332798": {
+      "topics": [
+        "sports/basketball",
+        "personal-journals"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.7
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Basketball commentary mixed with personal guest stories.",
+      "display_title": "Two Personal with Joy Taylor",
+      "blurb": "Sports personality interviews guests on basketball and life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1734460262": {
+      "topics": [
+        "hobbies",
+        "food"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "food",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spirits and distilling production, tasting and craft discussion.",
+      "display_title": "Spirits & Distilling Podcast",
+      "blurb": "Spirits experts discuss distilling, craft production and tasting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1734469172": {
+      "topics": [
+        "news",
+        "tv-film"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily entertainment industry news, celebrity updates and film coverage.",
+      "display_title": "Entertainment News Daily",
+      "blurb": "Daily coverage of entertainment industry news and celebrity updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1734694412": {
+      "topics": [
+        "nature/pets",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pet ownership, animal care and human-animal relationships discussion.",
+      "display_title": "Speaking of Pets",
+      "blurb": "Pet owners discuss animal care, training and companionship.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1734698162": {
+      "topics": [
+        "relationships",
+        "health/sexuality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swinger community lifestyle discussion and relationship dynamics.",
+      "display_title": "Vanilla Swingers: Swinger Podcast, Unfiltered AF",
+      "blurb": "Open discussion of swinger lifestyle, relationships and intimacy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1734854300": {
+      "topics": [
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cultural creative pursuits and artistic expression storytelling.",
+      "display_title": "The Creative Chronicles",
+      "blurb": "Stories of creative pursuits and artistic expression.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1734908174": {
+      "topics": [
+        "tv-film",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and television industry news, reviews and entertainment coverage.",
+      "display_title": "On The Tinsel Front",
+      "blurb": "Film and television industry news and entertainment discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1735004408": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Football personalities and athletes sharing stories and life lessons.",
+      "display_title": "Heroes & Humans of Football",
+      "blurb": "Football athletes and coaches share personal stories and insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1735558112": {
+      "topics": [
+        "health/fitness",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness philosophy, gym culture and athletic performance mindset.",
+      "display_title": "Gym Mentality",
+      "blurb": "Fitness experts discuss training philosophy and gym culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1735584464": {
+      "topics": [
+        "news"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "News and current events coverage; specific focus area unclear.",
+      "display_title": "Such a Good Call",
+      "blurb": "News analysis and commentary on current events and decisions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1735702250": {
+      "topics": [
+        "comedy",
+        "business/marketing"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Jamie Laing entertainment and comedy with business/lifestyle content.",
+      "display_title": "Great Company with Jamie Laing",
+      "blurb": "Jamie Laing hosts conversations on lifestyle and entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1735991276": {
+      "topics": [
+        "gaming/design",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game design, development and gaming culture discussion.",
+      "display_title": "Pixel Quest",
+      "blurb": "Game design and video game culture explored with industry experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1735997150": {
+      "topics": [
+        "medicine/neuroscience",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brain science research renaissance and neuroscience breakthroughs.",
+      "display_title": "Research Renaissance: Exploring the Future of Brain Science",
+      "blurb": "Neuroscience researchers discuss cutting-edge brain science discoveries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1736009810": {
+      "topics": [
+        "health/mental",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Perimenopause, menopause and hormone balance for midlife women.",
+      "display_title": "Are You There, Midlife?",
+      "blurb": "Practical guidance for midlife women on hormones and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1736139620": {
+      "topics": [
+        "science",
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MIT climate science research and environmental solutions Q&A.",
+      "display_title": "Ask MIT Climate",
+      "blurb": "MIT climate scientists answer questions on environmental science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-88f0e5db",
+      "classified_at": "2026-08-12T00:51:02.976Z"
     }
   },
-  "built_at": "2026-08-11T16:51:13.863Z",
+  "built_at": "2026-08-12T00:51:02.976Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-11-d7771941",
+    "last_batch_id": "fresh-2026-08-12-88f0e5db",
     "last_batch_tier": 1
   }
 }
