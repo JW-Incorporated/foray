@@ -70,6 +70,8 @@ const FLOORS = {
   "tools/corpus/db.test.mjs": 17,
   "tools/corpus/manifest.test.mjs": 19,
   "tools/corpus/export-index.test.mjs": 24,
+  "tools/corpus/chunk.test.mjs": 16,
+  "tools/corpus/ftsquery.test.mjs": 18,
 };
 
 for (const [rel, floor] of Object.entries(FLOORS)) {
