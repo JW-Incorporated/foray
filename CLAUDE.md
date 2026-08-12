@@ -56,7 +56,9 @@ outcomes**, not code line-by-line. Full role split: `docs/roles.md`.
    is no window in which to review it. Do the reviewer pass — subagent or your
    own re-read — before `git push`. PR #147 (corpus scraper infra) merged before
    its planned review could start; that review then found a must-fix chunker bug
-   which cost a follow-up PR. Label a PR `hold` if you need the window back.
+   which cost a follow-up PR. The `hold` label stops auto-merge on one PR — but
+   only once that label exists in the repo, and as of 2026-08-12 it does not, so
+   `gh label create hold` first, or simply don't push until the review is done.
 
 ## Never babysit your own PR  (KEEP VERBATIM — starter-kit invariant)
 
