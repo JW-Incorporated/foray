@@ -49,6 +49,14 @@ outcomes**, not code line-by-line. Full role split: `docs/roles.md`.
 6. **Codify repetition.** If a procedural task recurs, write it as a committed
    script/command/test instead of re-doing it by hand (see `tools/refresh/` —
    this is exactly why the nightly pipeline was consolidated out of `data-local`).
+7. **On auto-merge paths, review before PUSH — not before merge.** A PR that
+   touches only `data/`, `docs/`, `player/`, `tools/`, `test/`, `app.js`,
+   `styles.css` or `search-engine.js` has auto-merge enabled and lands the
+   moment checks go green (`.github/workflows/automerge-nightly.yml`), so there
+   is no window in which to review it. Do the reviewer pass — subagent or your
+   own re-read — before `git push`. PR #147 (corpus scraper infra) merged before
+   its planned review could start; that review then found a must-fix chunker bug
+   which cost a follow-up PR. Label a PR `hold` if you need the window back.
 
 ## Never babysit your own PR  (KEEP VERBATIM — starter-kit invariant)
 
