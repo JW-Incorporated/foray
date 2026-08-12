@@ -40,7 +40,10 @@ function ndcgAt(order, q, k) {
  * Run every gold query in one mode.
  * @returns {{mode, perQuery: object[], aggregate: object}}
  */
-export function runEval(db, gold, { mode = "keyword", limit = 25, ...opts } = {}) {
+export function runEval(db, gold, { mode = "keyword", limit = 8, ...opts } = {}) {
+  /* Depth defaults to the CLI's own --limit. Evaluating deeper than users
+   * ever see inflates nDCG for free (at 25 this set scores 0.865 against
+   * 0.790 at 8) and measures a product nobody uses. Pass --limit to explore. */
   const perQuery = gold.queries.map((q) => {
     if (mode !== "keyword") throw new Error(`unknown eval mode: ${mode}`);
     /* A query that ERRORS is a legitimate measurement, not a reason to abort
@@ -54,7 +57,7 @@ export function runEval(db, gold, { mode = "keyword", limit = 25, ...opts } = {}
       error = err.message;
     }
     const order = sourcesInOrder(rows);
-    const rank = firstHitRank(order.slice(0, 10), q.primary);
+    const rank = firstHitRank(order, q.primary);
     const negatives = (q.negative ?? []).filter((n) => order.slice(0, 5).includes(n));
     return {
       id: q.id,
@@ -62,7 +65,7 @@ export function runEval(db, gold, { mode = "keyword", limit = 25, ...opts } = {}
       found: rank > 0,
       recall5: order.slice(0, 5).some((id) => q.primary.includes(id)) ? 1 : 0,
       rr: rank ? 1 / rank : 0,
-      ndcg10: ndcgAt(order, q, 10),
+      ndcg10: ndcgAt(order, q, limit),
       top5: order.slice(0, 5),
       firstHitRank: rank,
       negativesInTop5: negatives,
@@ -74,6 +77,7 @@ export function runEval(db, gold, { mode = "keyword", limit = 25, ...opts } = {}
   const mean = (f) => perQuery.reduce((a, r) => a + f(r), 0) / perQuery.length;
   return {
     mode,
+    limit,
     perQuery,
     aggregate: {
       queries: perQuery.length,
@@ -91,9 +95,10 @@ export function runEval(db, gold, { mode = "keyword", limit = 25, ...opts } = {}
  *  hides exactly the regressions this exists to catch. */
 export function formatEval(result) {
   const L = [];
-  L.push(`mode: ${result.mode}`);
+  const k = result.limit;
+  L.push(`mode: ${result.mode}   depth: top-${k} (the CLI's own default)`);
   L.push("");
-  L.push(" id  found  rr     ndcg10  top-5 sources                 query");
+  L.push(` id  found  rr     ndcg@${String(k).padEnd(2)} top-5 sources                 query`);
   for (const r of result.perQuery) {
     L.push(
       `${String(r.id).padStart(3)}  ${(r.error ? "ERR" : r.found ? "yes" : "NO ").padEnd(5)}  ` +
@@ -107,7 +112,7 @@ export function formatEval(result) {
   L.push("");
   L.push(
     `found ${a.found}/${a.queries}   Recall@5 ${a.recall5.toFixed(3)}   ` +
-      `MRR@10 ${a.mrr10.toFixed(3)}   nDCG@10 ${a.ndcg10.toFixed(3)}` +
+      `MRR@${k} ${a.mrr10.toFixed(3)}   nDCG@${k} ${a.ndcg10.toFixed(3)}` +
       (a.errors ? `   ERRORED ${a.errors}` : "") +
       (a.negativeHits ? `   negatives-in-top5 ${a.negativeHits}` : "")
   );

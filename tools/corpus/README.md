@@ -76,10 +76,14 @@ The answer key was cross-checked by a second, fresh-context agent working
 only from the dossier and coverage.md; where the two disagreed the file
 records the disagreement instead of resolving it. Measured on this corpus:
 
-| retrieval | found | Recall@5 | MRR@10 | nDCG@10 |
+| retrieval | found | Recall@5 | MRR@8 | nDCG@8 |
 |---|---|---|---|---|
 | raw passthrough (previous behaviour) | 3/15 | 0.200 | 0.200 | 0.160 |
-| built query | **15/15** | **1.000** | **0.902** | **0.865** |
+| built query | **15/15** | **1.000** | **0.902** | **0.788** |
+
+Measured at top-8, which is `search`'s own default — evaluating deeper than
+users ever see inflates nDCG for free (the same run scores 0.865 at depth 25)
+and measures a product nobody uses. `--limit` changes both.
 
 The whole gain is the query builder; re-chunking contributes exactly zero to
 these numbers (it is correctness hygiene, and it matters for the embedding

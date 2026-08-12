@@ -145,6 +145,11 @@ async function main() {
       const r = rechunkAll(db);
       console.log(`rechunked ${r.documents} documents from archived markdown: ${r.before} → ${r.after} chunks`);
       if (r.missing.length) console.log(`  ${r.missing.length} markdown file(s) missing: ${r.missing.join(", ")}`);
+      if (r.emptied.length) {
+        console.log(`  ${r.emptied.length} document(s) SKIPPED — archive yielded no chunks, existing rows kept:`);
+        for (const e of r.emptied) console.log(`    ${e}`);
+        console.log(`  (refetch these; an empty archive usually means a truncated write)`);
+      }
       break;
     }
 
@@ -154,6 +159,7 @@ async function main() {
       const gold = JSON.parse(fs.readFileSync(goldPath, "utf8"));
       const result = runEval(db, gold, {
         mode: args.mode ?? "keyword",
+        limit: args.limit === undefined ? 8 : numFlag(args.limit, "--limit", { min: 1, max: 100 }),
         bigrams: args.bigrams !== "off",
         raw: Boolean(args.raw),
       });

@@ -23,8 +23,12 @@ const MIN_WORDS = 5;
 
 export const estTokens = (s) => Math.ceil(s.length / 4);
 
-/** Words that carry meaning — not punctuation, not bare digits. */
-const realWordCount = (s) => (s.match(/[A-Za-z][A-Za-z'’-]*/g) || []).length;
+/* Tokens that carry meaning. `\p{L}` rather than [A-Za-z] because an
+ * ASCII-only test silently deletes non-Latin text, and NUMBERS count because
+ * a results table ("0.750", "-16 LUFS", a pricing grid) is exactly the
+ * content this corpus is mined for — an ASCII-letters-only gate would drop a
+ * whole benchmark table as "junk" while claiming to preserve data points. */
+const realWordCount = (s) => (s.match(/[\p{L}\p{N}][\p{L}\p{N}'’.-]*/gu) || []).length;
 
 /* A thematic break ("---", "***", "___"), a rule of "=", or a line of nothing
  * but bullets/dashes. These are typography, not content: they were never worth

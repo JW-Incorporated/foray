@@ -2,6 +2,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import { buildFtsQuery } from "./ftsquery.mjs";
 
 const m = (s, o) => buildFtsQuery(s, o).match;
@@ -51,10 +52,25 @@ test("bare FTS5 operator words are neutralised into literals", () => {
   assert.ok(q.includes('"timestamps"'));
 });
 
-test("an embedded double quote is doubled, not left to break the string", () => {
-  const q = buildFtsQuery('say "hi', { bigrams: false }).match;
-  assert.ok(!/[^"]"[^ "]/.test(q.replace(/""/g, "")) || q.includes('""') || q.includes('"hi"'));
-  assert.doesNotThrow(() => buildFtsQuery('a "" b "'));
+test("empty and stray quotes do not produce a broken expression", () => {
+  // Every arm must still be a balanced quoted phrase, whatever the quoting.
+  for (const s of ['a "" b "', '""', '" " "', 'x"y"z']) {
+    const q = buildFtsQuery(s).match;
+    if (q === null) continue;
+    for (const arm of q.split(" OR ")) assert.match(arm, /^"[^"]*"$/, `${s} → bad arm ${arm}`);
+  }
+});
+
+test("a quoted phrase suppresses the all-stopword fallback", () => {
+  // '"dynamic ad insertion" what is it' must not re-inject "is"/"it" as arms:
+  // they appear in nearly every chunk and bury the phrase hits.
+  const { match } = buildFtsQuery('"dynamic ad insertion" what is it');
+  assert.equal(match, '"dynamic ad insertion"');
+});
+
+test("repeated words are not weighted multiple times", () => {
+  const arms = buildFtsQuery("test test test test").match.split(" OR ");
+  assert.equal(arms.length, new Set(arms).size, "duplicate arms inflate bm25");
 });
 
 /* --- the silent zeroes. Implicit AND made real questions return nothing. -- */
@@ -116,4 +132,30 @@ test("every emitted arm is a quoted phrase", () => {
   for (const arm of q.split(" OR ")) {
     assert.match(arm, /^"[^"]*"$/, `arm not quoted: ${arm}`);
   }
+});
+
+/* --- the claim, executed. String assertions alone structurally cannot test
+ * "this never reaches FTS5 as syntax" — only a real MATCH can. ------------- */
+
+test("every hostile input executes against a real FTS5 index without throwing", () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec(`CREATE VIRTUAL TABLE t USING fts5(text, tokenize='porter unicode61')`);
+  db.exec(`INSERT INTO t(text) VALUES ('dynamic ad insertion breaks chapter timestamps')`);
+  const hostile = [
+    "what is DAI?", "C++ audio", "diarization: who is speaking when",
+    "aligning word-level timestamps", "can I republish someone's podcast audio",
+    'AVFoundation "gapless', "timestamps NEAR chapters AND ads", "a* OR b^",
+    "^caret", "col:val", "(unbalanced", "NOT everything", '""', "-- dashes --",
+    "emoji 🎧 query", "日本語のクエリ", "how does it do that", "   ", "",
+    "x".repeat(5000), "a ".repeat(2000),
+  ];
+  for (const h of hostile) {
+    const q = buildFtsQuery(h).match;
+    if (q === null) continue;
+    assert.doesNotThrow(
+      () => db.prepare("SELECT rowid FROM t WHERE t MATCH ?").all(q),
+      `FTS5 rejected the expression built from ${JSON.stringify(h)}: ${q}`
+    );
+  }
+  db.close();
 });

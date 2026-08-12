@@ -28,16 +28,16 @@
  *     bigrams give bm25 something to prefer without costing any recall,
  *     because they are additional OR arms, never constraints.
  *
- * MEASURED, so nobody has to guess (15-query gold set, `corpus eval`):
+ * MEASURED, so nobody has to guess (15-query gold set, `corpus eval`, at the
+ * CLI's own top-8 depth):
  *   raw passthrough      found  3/15  Recall@5 0.200  MRR 0.200  nDCG 0.160  (4 crashed)
- *   built, bigrams off   found 15/15  Recall@5 1.000  MRR 0.911  nDCG 0.869  (1 distractor in top5)
- *   built, bigrams on    found 15/15  Recall@5 1.000  MRR 0.902  nDCG 0.865  (0 distractors)
- * Read that honestly: the bigram boost is NOT a measurable aggregate win —
- * it is inside the noise of a 15-query set, and on MRR it is nominally
- * behind. It is kept on by default on the strength of one datapoint (it
- * keeps a known Chromaprint distractor out of the top 5 on query 6) and
- * `--bigrams off` exists so the next person can re-measure rather than
- * inherit a belief. Do not cite it as an improvement.
+ *   built, bigrams off   found 15/15  Recall@5 1.000  MRR 0.911  nDCG 0.765  (1 distractor in top5)
+ *   built, bigrams on    found 15/15  Recall@5 1.000  MRR 0.902  nDCG 0.788  (0 distractors)
+ * Read that honestly: bigrams win nDCG by 0.023 and LOSE MRR by 0.009 on a
+ * 15-query set — both differences are inside the noise. They are kept on by
+ * default because they also keep a known Chromaprint distractor out of the
+ * top 5 on query 6, and `--bigrams off` exists so the next person can
+ * re-measure rather than inherit a belief. Do not cite this as a win.
  *
  * Deliberate literal input (real FTS5 syntax) is still available via the
  * `--raw` flag on the CLI; this builder is total and never throws.
@@ -92,8 +92,15 @@ export function buildFtsQuery(input, { bigrams = true } = {}) {
   const dropped = all.filter((t) => STOPWORDS.has(t.toLowerCase()));
   /* If the question was ALL function words ("how does it do that"), keeping
    * nothing would turn a real query into "no matches" — a silent lie. Fall
-   * back to the unfiltered terms and let bm25 sort it out. */
-  const terms = kept.length ? kept : all;
+   * back to the unfiltered terms and let bm25 sort it out.
+   *
+   * But ONLY when there is no explicit phrase to search for. `"dynamic ad
+   * insertion" what is it` has a perfectly good query in it already; re-
+   * injecting "is" and "it" as OR arms widens the candidate set from four
+   * chunks to the whole corpus and buries the phrase hits. A quoted phrase
+   * is the strongest statement of intent the user can make. */
+  const haveQuery = kept.length || phrases.length;
+  const terms = haveQuery ? kept : all;
 
   const arms = [...phrases.map(phrase)];
 
@@ -102,10 +109,14 @@ export function buildFtsQuery(input, { bigrams = true } = {}) {
   }
   arms.push(...terms.map(phrase));
 
+  /* Dedup: bm25 sums per-phrase contributions, so "test test test" would
+   * otherwise weight "test" four times over and drown the rest of the query. */
+  const unique = [...new Set(arms)];
+
   return {
-    match: arms.length ? arms.join(" OR ") : null,
+    match: unique.length ? unique.join(" OR ") : null,
     terms,
     phrases,
-    dropped: kept.length ? dropped : [],
+    dropped: haveQuery ? dropped : [],
   };
 }
