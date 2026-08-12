@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-11T16:58:04.777Z",
+  "built_at": "2026-08-12T00:57:56.545Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-11-9a75b39f",
+    "last_batch_id": "fresh-2026-08-12-059f5f1c",
     "last_batch_tier": 1
   },
   "entries": {
@@ -173391,10 +173391,32 @@
     },
     "1794175433": {
       "topics": [
-        "health/alternative"
+        "medicine/biology",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Clinical podcast on brain health, Alzheimer's prevention, neurodegenerative research.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1794195371": {
       "topics": [
@@ -173425,11 +173447,24 @@
     },
     "1794203807": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly Thoroughbred horse racing analysis, Derby Trail coverage, industry trends.",
+      "display_title": "BloodHorse Monday",
+      "blurb": "Expert analysis of Thoroughbred racing with insights into stallion success and prestigious racing meets.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1794218115": {
       "topics": [
@@ -173448,10 +173483,29 @@
     },
     "1794355823": {
       "topics": [
-        "music"
+        "music",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Grammy winner Richard Marx interviews musicians and celebrities over cocktails.",
+      "display_title": "Stories To Tell",
+      "blurb": "Casual conversation between Richard Marx and guests from music, comedy, and entertainment discussing careers and friendship.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1794358647": {
       "topics": [
@@ -173495,7 +173549,24 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Christian women's discipleship podcast on biblical truth and faith application.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1794428836": {
       "topics": [
@@ -173547,7 +173618,21 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.98
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Qur'an study during Ramadan with scholarly reflection and practical insights.",
+      "display_title": "Qur'an 30 for 30",
+      "blurb": "Daily exploration of Qur'anic sections with scholarly guidance on themes, history, and spiritual application.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1794622545": {
       "topics": [
@@ -173566,10 +173651,24 @@
     },
     "1794653705": {
       "topics": [
-        "sports/hockey"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Carolina Hurricanes hockey podcast with interviews and behind-the-scenes coverage.",
+      "display_title": "Iced Tea",
+      "blurb": "Behind-the-scenes stories with Hurricanes players, staff, and fans about team history and culture.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1794683063": {
       "topics": [
@@ -173598,7 +173697,21 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.98
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Telugu-language Bhagavad Gita recitation and teaching from Hindu tradition.",
+      "display_title": "Bhagavadgita",
+      "blurb": "Bhagavad Gita teachings in Telugu from accomplished scholar and Hindu educator.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1794736296": {
       "topics": [
@@ -173617,11 +173730,29 @@
     },
     "1794820037": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "comedy",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brazilian comedy podcast with random conversations and absurdist humor between comedians.",
+      "display_title": "NÃO IMPORTA",
+      "blurb": "Brazilian comedians discuss random topics with wordplay, nonsense, and irreverent humor every week.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1794841557": {
       "topics": [
@@ -173636,7 +173767,21 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama: time traveler returns relic to Tutankhamun in ancient Egypt.",
+      "display_title": "Entombed",
+      "blurb": "Audio adventure drama following a reluctant hero's time travel journey to ancient Egypt with a cursed artifact.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1794917149": {
       "topics": [
@@ -173708,7 +173853,21 @@
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal and afterlife exploration: NDEs, mediumship, reincarnation phenomena.",
+      "display_title": "Our Paranormal Afterlife",
+      "blurb": "Evidence-based exploration of consciousness and life after death through near-death experiences and spiritual phenomena.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1795250798": {
       "topics": [
@@ -173722,7 +173881,21 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dinosaur adventure stories for children with moral lessons and action.",
+      "display_title": "Dinosaur Stories For Kids",
+      "blurb": "Action-packed dinosaur adventures teaching children courage, teamwork, and problem-solving in the Mesozoic era.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1795344405": {
       "topics": [
@@ -173760,7 +173933,25 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Five centuries of classical music history explained for general audiences.",
+      "display_title": "Classical For Everyone",
+      "blurb": "Accessible exploration of classical music across 500 years for curious listeners of any background.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1795505299": {
       "topics": [
@@ -173801,10 +173992,29 @@
     },
     "1795568927": {
       "topics": [
+        "craft/filmmaking",
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Russo Brothers teach filmmaking through interviews with Hollywood's top creative talent.",
+      "display_title": "Pizza Film School",
+      "blurb": "Behind-the-scenes filmmaking education with industry masters discussing their craft and creative process.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1795664490": {
       "topics": [
@@ -173918,7 +174128,21 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Car culture podcast with debates about innovations, design, and automotive trends.",
+      "display_title": "Carish",
+      "blurb": "Car enthusiasts debate automotive trends, innovations, and cars from casual to controversial perspectives.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1795815972": {
       "topics": [
@@ -173959,11 +174183,32 @@
     },
     "1795993019": {
       "topics": [
-        "news/tech",
-        "computing"
+        "computing",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Frontier technology and geopolitics: biotech, space, robotics, chips.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1796001759": {
       "topics": [
@@ -174089,7 +174334,21 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two quilting friends discuss techniques, projects, retreats, and community.",
+      "display_title": "Quilting with Mary Beth and Donna",
+      "blurb": "Longtime quilting friends share techniques, projects, and behind-the-scenes stories from their crafting life.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1796608543": {
       "topics": [
@@ -174204,7 +174463,21 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Heavy, desert, and stoner rock genre interviews, recommendations, concert reviews.",
+      "display_title": "The Heavy Desert Podcast",
+      "blurb": "Deep coverage of heavy and stoner rock through artist interviews, concert reviews, and underground scene insight.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1796738774": {
       "topics": [
@@ -174229,10 +174502,24 @@
     },
     "1796780573": {
       "topics": [
-        "science/chemistry"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chemistry content with sensationalist titles; signal quality inconsistent.",
+      "display_title": "Chem Chronicles",
+      "blurb": "Chemistry discussions and stories covering molecular science, reactions, and scientific discoveries.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1796799758": {
       "topics": [
@@ -174245,12 +174532,34 @@
     },
     "1796808281": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "business",
+        "business/founders",
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women biotech CEOs discuss leadership, innovation, and company building.",
+      "display_title": "Biotech CEO Sisterhood",
+      "blurb": "Women leaders in biotech discuss company-building, management challenges, and industry insights.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1796836887": {
       "topics": [
@@ -174385,10 +174694,29 @@
     },
     "1797582989": {
       "topics": [
+        "comedy",
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improvised comedy adventure for kids and adults in a fantasy sky world.",
+      "display_title": "Tales From the Cloud Sea",
+      "blurb": "Improvised fantasy adventure with child-friendly characters solving mysteries in a sky-island world.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1797583113": {
       "topics": [
@@ -174506,14 +174834,42 @@
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family-friendly education, history, and clean comedy for all ages.",
+      "display_title": "Tomfoolery and Hullabaloo",
+      "blurb": "Clean comedy and educational history stories designed for families and curious learners of all ages.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1797998669": {
       "topics": [
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Incredible Hulk comics retrospective from first appearance through adaptations.",
+      "display_title": "Gamma Radio",
+      "blurb": "Chronological Hulk comics analysis covering comics, TV shows, movies, and video games.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1798045503": {
       "topics": [
@@ -174715,11 +175071,29 @@
     },
     "1798513895": {
       "topics": [
-        "news/tech",
-        "computing"
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Windows, Surface, Copilot, Xbox, and PC technology news and analysis.",
+      "display_title": "Windows Central Podcast",
+      "blurb": "News and insights on Windows, Surface, Xbox, and PC technology from industry journalists.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1798623410": {
       "topics": [
@@ -174754,22 +175128,68 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.98
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist meditation, dharma, and Tibetan Buddhist practice for everyday life.",
+      "display_title": "Buddhism Beyond Belief",
+      "blurb": "Buddhist practice and meditation from 30-year student of Tibetan Buddhism grounded in daily application.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1798866425": {
       "topics": [
-        "kids-family/education"
+        "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's adventure stories with moral lessons and educational sound design.",
+      "display_title": "Little Ears, Big Adventures",
+      "blurb": "Magical adventure stories for children featuring music and sound effects with embedded life lessons.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1798877627": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "nature",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Outdoor adventure interviews covering wild places, exploration, backcountry.",
+      "display_title": "The Backcountry Manifesto",
+      "blurb": "Adventure journalism with experts in wilderness, exploration, climbing, and outdoor pursuits.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1798886239": {
       "topics": [
@@ -174830,12 +175250,34 @@
     },
     "1799049275": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "business",
+        "business/founders",
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biotech CEO interviews on innovation, clinical development, and career paths.",
+      "display_title": "Clinical Trialblazers",
+      "blurb": "Unscripted biotech leader interviews exploring careers, breakthroughs, and scientific innovation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1799078597": {
       "topics": [
@@ -175107,7 +175549,21 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.98
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bhagavata Purana scholarly study with practitioner and academic perspectives.",
+      "display_title": "The Bhagavata Podcast",
+      "blurb": "Scholarly Hindu scripture study combining academic rigor with practitioner insight on spiritual philosophy.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1800065901": {
       "topics": [
@@ -175203,17 +175659,45 @@
     },
     "1800457097": {
       "topics": [
-        "sports/cricket"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket coaching development from England and Wales Cricket Board.",
+      "display_title": "The icoachcricket Podcast",
+      "blurb": "Cricket coaching strategies from grassroots to international level with expert coaches.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1800490745": {
       "topics": [
-        "sports/fantasy"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football strategy and analysis using empirical data and contrarian predictions.",
+      "display_title": "Fantasy Football for Winners",
+      "blurb": "Fantasy football strategy and predictions based on data analytics and empirical evidence.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1800587205": {
       "topics": [
@@ -175308,10 +175792,24 @@
     },
     "1800993869": {
       "topics": [
-        "business/marketing"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business ethics, marketing, and social responsibility for entrepreneurs.",
+      "display_title": "Liberatory Business",
+      "blurb": "Conversations on building profitable businesses with social responsibility and radical principles.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1801027767": {
       "topics": [
@@ -175426,7 +175924,21 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bodybuilding Q&A on nutrition, training, performance enhancement, health management.",
+      "display_title": "Anabolic Bodybuilding",
+      "blurb": "Expert bodybuilding guidance covering training, nutrition, and performance enhancement for serious lifters.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1801287523": {
       "topics": [
@@ -175483,10 +175995,29 @@
     },
     "1801538855": {
       "topics": [
-        "nature"
+        "nature",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Wild nature and human nature intersection; conservation and public lands policy.",
+      "display_title": "The Wild Idea",
+      "blurb": "Exploration of wild nature and human relationship with remaining wild places through interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1801566501": {
       "topics": [
@@ -175544,7 +176075,21 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language sci-fi audio drama about time travel and apocalyptic alternate timelines.",
+      "display_title": "Caso 63",
+      "blurb": "Spanish sci-fi audio drama exploring time travel, alternate realities, and apocalyptic futures.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1801866979": {
       "topics": [
@@ -175639,10 +176184,24 @@
     },
     "1802264717": {
       "topics": [
-        "comedy/interviews"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Standup comedian's casual comedy podcast with personal stories and guest conversations.",
+      "display_title": "Feelin' Girlie",
+      "blurb": "Comedy podcast with personal storytelling, humor, and conversations from stand-up comedian Dylan Carlino.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1802274557": {
       "topics": [
@@ -175683,7 +176242,21 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comic book reviews and commentary on weird, strange comic stories.",
+      "display_title": "Sus Stories with Atif Myers",
+      "blurb": "Comedic comic book reviews with focus on weird and unconventional graphic novels.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1802393851": {
       "topics": [
@@ -175749,10 +176322,29 @@
     },
     "1802669489": {
       "topics": [
-        "nature"
+        "nature",
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.7
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Survival stories and disaster analysis from real-world events.",
+      "display_title": "How To Survive",
+      "blurb": "Real-world disaster survival stories with practical lessons from catastrophes and survivor experiences.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1802670507": {
       "topics": [
@@ -175831,10 +176423,24 @@
     },
     "1802922479": {
       "topics": [
-        "business/careers"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Loan officer interviews and mortgage business strategy and success.",
+      "display_title": "Mortgage Rainmaker",
+      "blurb": "Mortgage professional interviews covering business strategy, pipeline building, and career growth.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1802929394": {
       "topics": [
@@ -175928,7 +176534,21 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.98
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Telugu Krishna stories from Hindu mythology and tradition.",
+      "display_title": "Shri Krishna Kathalu",
+      "blurb": "Krishna stories from Hindu tradition told in Telugu by accomplished spiritual scholar.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1803188440": {
       "topics": [
@@ -175943,7 +176563,21 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast with lighter tone, celebrity guests, legal perspectives.",
+      "display_title": "Juicy Crimes",
+      "blurb": "True crime stories with lighter tone, featuring legal experts, journalists, and celebrity guests.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-059f5f1c",
+      "classified_at": "2026-08-12T00:57:56.545Z"
     },
     "1803204320": {
       "topics": [
