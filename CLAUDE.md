@@ -157,8 +157,11 @@ deleted later by a PR that auto-merges, and a deleted suite passes CI.
   workstream (one entry: what, branch prefix, owned directories, what's out of
   scope), and move the entry to "completed" when it lands. Full plans live in
   `docs/`; STATE.md stays short enough to read every time.
-- `tools/refresh/`: the committed nightly pipeline (scan → resolve → merge).
-  See its README; cloud topology in `docs/nightly-refresh-cloud.md`.
+- `tools/`: the committed keyless pipelines, most with their own README —
+  `refresh/` (nightly scan → resolve → merge; cloud topology in
+  `docs/nightly-refresh-cloud.md`), `classify/`, `segments/`, `transcribe/`,
+  `corpus/`, `web/`. The repo root stays dependency-free; a directory that
+  needs deps carries its own `package.json` (`corpus/`).
 - `backend/`: Node/TS — ingest, dedup, cost metering, curation engine,
   session-builder CLI. Runs keyless in dry-run (StubEnricher); real keys go in
   root `.env` (gitignored).
