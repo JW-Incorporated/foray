@@ -123,7 +123,9 @@ instead.
   `player/` and `tools/` suite. Run it for any change under those trees.
 - The pipeline suite your change touches: `node --test "tools/refresh/*.test.mjs"`
   (likewise `tools/segments/`, `tools/transcribe/`, `player/**/*.test.js`).
-  `tools/corpus/` has its own deps: `cd tools/corpus && npm test`.
+  `tools/corpus/` has its own deps: `cd tools/corpus && npm install && npm test`
+  (`node:sqlite` is flagged on Node 22.x — there, run
+  `node --experimental-sqlite --test *.test.mjs`; unflagged on >=23.4).
 - Site JS: `node --check app.js`
 - Data integrity: CI (`.github/workflows/ci.yml`) validates all JSON + session
   episode refs on push.
@@ -181,8 +183,9 @@ deleted later by a PR that auto-merges, and a deleted suite passes CI.
 ## Research corpus (local-only) — search it before reasoning from memory
 
 The 54 curated sources in `docs/research/foray-research-dossier.md` are scraped
-into a searchable SQLite+FTS5 corpus (52 ingested, 480 chunks; the two failures
-are named in `docs/research/corpus/dead-links.md`). Nine areas: podcast
+into a searchable SQLite+FTS5 corpus (52 ingested, 453 chunks at time of
+writing — `stats` prints the live numbers; the two failures are named in
+`docs/research/corpus/dead-links.md`). Nine areas: podcast
 infrastructure, speech processing/ASR, topic segmentation, retrieval and
 recommendation, audio assembly, TTS, prior art, legal/policy, LLM pipeline
 engineering.
@@ -193,17 +196,25 @@ node tools/corpus/corpus.mjs stats                           # per-area coverage
 node tools/corpus/corpus.mjs report                          # coverage + dead links
 ```
 
-Full CLI and schema: `tools/corpus/README.md`.
+Full CLI and schema: `tools/corpus/README.md`. Deps are scoped to that
+directory, so once per checkout: `cd tools/corpus && npm install` — without it
+every subcommand above dies with `ERR_MODULE_NOT_FOUND`, not a usage error.
 
 **When to search it.** Before reasoning from memory on: segment anchoring and
 DAI offset drift (`docs/adr/0007-segment-anchoring.md`,
 `docs/curation/segment-extraction-pipeline.md`), transcript acquisition,
 loudness normalization of stitched audio, retrieval/ranking design, and
 anything touching product principle #3 ("legally boring"). It holds the primary
-documents themselves — the 9th Circuit's *Hunley* opinion, the AES loudness
-recommendation, the WhisperX and TREC papers, Podcast Namespace issue #254 —
-and a model's recollection of what a court or a standards body actually said is
-confidently wrong often enough that one search is cheaper than the rework.
+documents themselves — the 9th Circuit's *Hunley* opinion, the WhisperX and TREC
+papers, Podcast Namespace issue #254 — and a model's recollection of what a
+court or a standards body actually said is confidently wrong often enough that
+one search is cheaper than the rework.
+
+**Check what it actually has before citing it.** Coverage is not uniform: AES
+TD1004.1.15-10, the loudness recommendation itself, is one of the two sources
+that failed to fetch (404), so on loudness the corpus holds AES's *overview*
+page and not the recommendation — quote the latter and you are back to quoting
+from memory. `stats` gives per-area coverage, `dead-links.md` names every gap.
 
 **It exists only on the machine that built it.** The DB lives in
 `data-local/corpus/`, which is gitignored, so cloud runners (nightly refresh,
