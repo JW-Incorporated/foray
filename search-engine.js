@@ -136,8 +136,10 @@ function interpretQuery(q, ctx) {
     const others = contentTokens.filter(o => o !== tok);
     const otherKeys = others.map(o => new Set([o, ...(ALIASES[o] || [])]));
 
+    let hasConceptExpansion = false;
     for (const [cid, c] of Object.entries(concepts)) {
       if (!c.terms?.some(t => lookupKeys.has(t))) continue;
+      hasConceptExpansion = true;
       const related = new Set(c.related || []);
       const supported = others.length === 0 || otherKeys.some(okeys => {
         if (c.terms.some(t => okeys.has(t))) return true;
@@ -166,10 +168,30 @@ function interpretQuery(q, ctx) {
       terms,
       broad: corpusDF(tok, ctx) >= BROAD_DF_THRESHOLD,
       df: tagDF(tok, ctx),
+      hasConceptExpansion,
     };
   });
 
-  return { groups, filters, topicBoosts, hasPrimary: groups.some(g => !g.broad) };
+  const primaryGroups = groups.filter(g => !g.broad);
+  /* A query where every specific (non-broad) token is ALSO unrecognized by
+     any concept's vocabulary looks like a proper noun (a person/show name),
+     not a topic phrase -- topic words are almost always concept terms once
+     the index has real coverage for them. Only for that narrow shape do we
+     require every primary token to match (AND), not just one (OR): a named-
+     entity query where only one of two names coincidentally matches
+     something unrelated (e.g. "lex" alone matching an Ancient Rome episode
+     about the "Lex Juliae") should not qualify. Topic-phrase queries (at
+     least one token IS concept vocabulary) keep OR semantics -- requiring
+     every word of "nuclear fusion energy" to literally co-occur would hurt
+     recall for legitimate broader topic matches. */
+  const properNounQuery = primaryGroups.length >= 2 && primaryGroups.every(g => !g.hasConceptExpansion);
+
+  return {
+    groups, filters, topicBoosts,
+    hasPrimary: primaryGroups.length > 0,
+    properNounQuery,
+    primaryGroupCount: primaryGroups.length,
+  };
 }
 
 function passesFilters(item, filters) {
@@ -192,10 +214,21 @@ function scoreMatch(item, interp, itemTags) {
   const topics = (item.topics || []).join(" ").toLowerCase();
   const tags = itemTags?.tags?.[item.id] || [];
 
+  /* Terms >=4 chars used to match via plain substring (text.includes(t)),
+     which collides on an unrelated word that happens to CONTAIN the term:
+     "fusion" inside "diffusion", "roman" inside "romance"/"romantic",
+     "team" inside "steam". All three known collisions add extra letters
+     BEFORE the term, never after -- so instead of a blanket switch to
+     word-boundary matching (which would also break legitimate plural
+     matches some concepts rely on, e.g. a term "rocket" matching text
+     "rockets"), this requires no letter/digit immediately before the
+     match and allows an optional trailing "s". Blocks all three known
+     collisions, keeps plural matching, touches nothing else. */
+  const longTermPattern = (t) => new RegExp("(?<![a-z0-9])" + t + "s?(?![a-z0-9])");
   const hitText = (text, t) =>
-    t.length < 4 ? new RegExp("\\b" + t + "\\b").test(text) : text.includes(t);
+    t.length < 4 ? new RegExp("\\b" + t + "\\b").test(text) : longTermPattern(t).test(text);
   const hitTag = (tag, t) =>
-    t.length < 4 ? (tag === t || tag.split("-").includes(t)) : tag.includes(t);
+    t.length < 4 ? (tag === t || tag.split("-").includes(t)) : longTermPattern(t).test(tag);
 
   let sum = 0;
   let matchedGroups = 0;
@@ -226,6 +259,38 @@ function scoreMatch(item, interp, itemTags) {
   for (const tb of interp.topicBoosts) {
     if ((item.topics || []).includes(tb)) sum += 2;
   }
+
+  /* Full-phrase show-name RESCUE: a multi-word query where every token
+     appears as a whole word in the show name is almost certainly a direct
+     show/host search ("lex fridman", "huberman lab"). Those often can't
+     cross the normal per-term threshold on their own -- the only real
+     signal is a flat +1 show-field hit per term, deliberately capped low
+     since a single show-word hit alone is weak evidence.
+
+     Gated on `!wouldPassGate`: only items that would otherwise be EXCLUDED
+     get this treatment. An early version applied it unconditionally and
+     regressed "crime junkie"/"endurance running" from rich to sparse --
+     shows whose NAME happens to equal the query (Crime Junkie, Physiology
+     & Endurance Running) already pass normally through real topic/tag
+     matches, and adding +8 on top of an already-good score inflated the
+     query's *relative* strong-match bar (see classifyResults), knocking
+     other genuinely-good matches (other true-crime/endurance shows) out
+     of the "strong" set even though nothing about THEIR relevance
+     changed. Gating on "would otherwise be excluded" makes this a pure
+     rescue for the recall gap it targets, with zero effect on any query
+     that already worked -- verified via the full battery. */
+  const wouldPassGate = interp.properNounQuery
+    ? primaryMatched === interp.primaryGroupCount
+    : (interp.hasPrimary ? primaryMatched > 0 : matchedGroups > 0);
+  if (!wouldPassGate && interp.groups.length >= 2) {
+    const allTokensInShow = interp.groups.every(g => new RegExp("\\b" + g.token + "\\b").test(show));
+    if (allTokensInShow) {
+      sum += 8;
+      matchedGroups = interp.groups.length;
+      primaryMatched = interp.primaryGroupCount;
+    }
+  }
+
   return { sum, matched: matchedGroups, primaryMatched };
 }
 
@@ -246,8 +311,15 @@ function searchWithRelaxation(pool, interp, minScore, itemTags, rankFallback) {
          -- a broad/generic-only match (e.g. "history") can never by itself
          justify inclusion. When the whole query is broad words (e.g. a bare
          "history"), there's nothing more specific to prefer, so any match
-         counts, same as before. */
-      .filter(x => (interp.hasPrimary ? x.primaryMatched > 0 : x.matched > 0) && x.sum > minScore)
+         counts, same as before. For a properNounQuery (see interpretQuery),
+         the gate tightens from OR to AND -- every primary token must match,
+         not just one -- since a lone coincidental word match (e.g. "lex" in
+         an unrelated Ancient Rome episode) shouldn't satisfy a 2-word name
+         search. */
+      .filter(x => {
+        if (interp.properNounQuery) return x.primaryMatched === interp.primaryGroupCount && x.sum > minScore;
+        return (interp.hasPrimary ? x.primaryMatched > 0 : x.matched > 0) && x.sum > minScore;
+      })
       .sort((a, b) => b.matched - a.matched || b.sum - a.sum);
   };
   let results = attempt(interp.filters);
@@ -283,15 +355,67 @@ function searchWithRelaxation(pool, interp, minScore, itemTags, rankFallback) {
 const STRONG_RATIO = 0.5;
 const RICH_MIN = 6;
 
-function classifyResults(results, { cap = 10 } = {}) {
+/* ---------- diversity ----------
+   Anti-echo-chamber (CLAUDE.md principle #1): a result shouldn't be
+   dominated by the one or two biggest shows the catalog happens to carry
+   the most episodes of -- "nuclear fusion energy" returning Lex Fridman
+   twice, "true crime" returning Casefile/Crime Junkie twice each, etc.
+   Relevance stays authoritative (this never changes `sum`/`matched`, and
+   classifyResults' rich/sparse/empty tiering above is computed BEFORE this
+   runs, on pure relevance) -- diversify() only re-ranks/selects WITHIN an
+   already-qualified candidate set. It can reorder or defer a candidate; it
+   can never introduce one that didn't already pass the relevance bar. */
+const PER_SHOW_CAP = 2;
+const LISTENED_PENALTY = 0.85; // 15% gentle down-weight, not exclusion
+
+/* Greedy per-show cap with a backfill pass, over candidates already sorted
+   by relevance (matched desc, then a listened-history-adjusted sum). Takes
+   up to `perShowCap` per show on the first pass; if that leaves fewer than
+   `cap` picks (not enough distinct shows to diversify with), backfills the
+   deferred over-cap items back in their original order -- so capping can
+   only ever REORDER/SPREAD an already-diverse-enough set; it never shrinks
+   a genuinely sparse or single-show (e.g. a show-name query like
+   "smartless") result. That backfill is what keeps this honest: capping
+   bbq's 4 same-show episodes down to 2 and calling it "sparse" would be
+   exactly the padding-vs-honesty problem this whole engine exists to avoid. */
+function diversify(candidates, { cap = 10, perShowCap = PER_SHOW_CAP, listenedShows = new Set() } = {}) {
+  const ranked = candidates
+    .map((c, idx) => ({ c, idx, adjusted: c.sum * (listenedShows.has(c.i.show) ? LISTENED_PENALTY : 1) }))
+    .sort((a, b) => (b.c.matched - a.c.matched) || (b.adjusted - a.adjusted) || (a.idx - b.idx));
+
+  const showCounts = new Map();
+  const picked = [];
+  const deferred = [];
+  for (const r of ranked) {
+    const show = r.c.i.show;
+    const n = showCounts.get(show) || 0;
+    if (n < perShowCap) {
+      picked.push(r.c);
+      showCounts.set(show, n + 1);
+      if (picked.length === cap) return picked;
+    } else {
+      deferred.push(r.c);
+    }
+  }
+  for (const c of deferred) {
+    picked.push(c);
+    if (picked.length === cap) break;
+  }
+  return picked;
+}
+
+function classifyResults(results, { cap = 10, perShowCap = PER_SHOW_CAP, listenedShows = new Set() } = {}) {
   if (!results.length) return { status: "empty", picks: [] };
   const bar = results[0].sum * STRONG_RATIO;
   const strong = results.filter(x => x.sum >= bar);
   if (strong.length < 2) return { status: "empty", picks: [] };
   const sparse = strong.length < RICH_MIN;
   // Sparse: only the strong matches make the cut -- never pad toward `cap`
-  // with sub-bar results just to look like a fuller playlist.
-  const picks = (sparse ? strong : results).slice(0, cap);
+  // with sub-bar results just to look like a fuller playlist. Diversity is
+  // applied to whichever candidate set would have been sliced, so it can
+  // reorder within "strong"/"results" but never reach outside either.
+  const candidates = sparse ? strong : results;
+  const picks = diversify(candidates, { cap, perShowCap, listenedShows });
   if (picks.length < 2) return { status: "empty", picks: [] };
   return { status: sparse ? "sparse" : "ok", picks };
 }
@@ -327,9 +451,9 @@ function prettyConceptLabel(id) {
 
 const SearchEngine = {
   STOPWORDS, GENERIC_WORDS, ALIASES, BROAD_DF_THRESHOLD,
-  STRONG_RATIO, RICH_MIN,
+  STRONG_RATIO, RICH_MIN, PER_SHOW_CAP, LISTENED_PENALTY,
   tokenize, branchOf, tagDF, corpusDF,
-  interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults,
+  interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
   suggestAdjacentTopics, prettyConceptLabel,
 };
 

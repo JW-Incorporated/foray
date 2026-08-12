@@ -261,8 +261,11 @@ const doc = {
     ],
   },
   notes:
-    "catalog_count/tag_count for taxonomy_nodes including 'engineering/energy-fusion' " +
-    "are noisy — issue #12 (46 discover.json items mistagged onto that node); not fixed here. " +
+    "issue #12 (discover.json items mistagged onto 'engineering/energy-fusion') was fixed " +
+    "by retagging the 47 affected items to their correct nodes; the fusion node's counts " +
+    "here now reflect real content only. semantic-index.json concepts still routing to " +
+    "engineering/energy-fusion (e.g. 'physics', 'clean-energy') are a separate, unfixed " +
+    "concern — see the misrouted-concept entries below. " +
     "recommended_actions is an array (a topic can need more than one). priority: " +
     "1=fix search now (tier-1 topic, real content, broken discovery), 2-3=search or " +
     "sourcing fix, 4=retag/taxonomy-governance, 5=defer (no lever today), 6=already fine. " +

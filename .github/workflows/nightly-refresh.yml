@@ -17,14 +17,25 @@
 # only credential is the auto-provided GITHUB_TOKEN, scoped to contents below.
 #
 # Cron is offset off :00 (Swift2 convention — avoids GitHub's top-of-hour
-# scheduling contention). 09:40 UTC ≈ early US morning, a couple hours ahead of
-# the Cloud agent's run so it always finds a fresh digest.
+# scheduling contention).
+#
+# 06:40 UTC, NOT 09:40. GitHub does not run scheduled workflows on time under
+# load — measured on this repo, the 09:40 cron actually started at 10:54 and
+# 11:05 on consecutive days, 75-85 minutes late. The Cloud agent runs at ~11:40
+# and docs/agents/runners.md specifies a >=2h margin so the agent always reads a
+# fresh digest; that margin had silently eroded to 26 minutes.
+#
+# Failure mode if the margin is lost: the agent reads YESTERDAY's digest, whose
+# items are already in discover.json, so merge.mjs skips them all and reports
+# "0 items added" — a silently skipped night rather than a visible error. The
+# freshness guard in the runner prompt now catches that too, but the real fix is
+# to stop racing. 06:40 leaves ~3h of slack even on a badly delayed morning.
 
 name: nightly-refresh
 
 on:
   schedule:
-    - cron: "40 9 * * *"
+    - cron: "40 6 * * *"
   workflow_dispatch: {}
 
 concurrency:

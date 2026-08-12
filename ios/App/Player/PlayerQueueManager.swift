@@ -103,7 +103,39 @@ public actor PlayerQueueManager {
 
     private var state: PlayerQueueState = .idle
     private var queue: [PlayableItem] = []
+
+    /// What is actually LOADED. `persistCurrentPosition()` writes against this,
+    /// so it must never point at an item we merely intend to load — see
+    /// `targetIndex` and the note on `skipToNext()`.
     private var currentIndex: Int = -1
+
+    /// Where an in-flight skip is HEADING, before its load resolves.
+    ///
+    /// These two were one variable until the JS port (issue #33) exposed the
+    /// problem. The reducer emits `.savePosition` BEFORE `.loadItem` on a skip;
+    /// if `currentIndex` has already advanced, the outgoing episode's playhead
+    /// gets written under the INCOMING episode's id, destroying that episode's
+    /// saved resume point before the load reads it. Deferring the advance alone
+    /// would then break fast double-skip (both taps would resolve to the same
+    /// target), hence a separate cursor rather than simply moving the
+    /// assignment later.
+    private var targetIndex: Int?
+
+    /// Overrides the next load's start offset. Used by `skipToPrevious()`,
+    /// where "restart" must mean zero rather than the offset the item was
+    /// built with.
+    private var forceNextStartOffset: CMTime?
+
+    /// Where the next queue lookup counts from: an in-flight skip target if
+    /// there is one, else what is loaded.
+    ///
+    /// AUDIT: like the rest of this file, the currentIndex/targetIndex split has
+    /// never been through a compiler — `ios-kit` CI builds ForayKit only, not
+    /// the App target. The equivalent logic IS compiled and tested in
+    /// player/queue-manager.js (issue #33), where the bug was found; port
+    /// parity between the two is currently maintained by eye. Re-verify on the
+    /// Mac alongside the other AUDIT items before trusting it.
+    private var cursor: Int { targetIndex ?? currentIndex }
 
     /// Route names (e.g. `AVAudioSessionPortDescription.portName`) the user
     /// has confirmed are "my car" — only these get auto-resume-on-reconnect
@@ -139,6 +171,10 @@ public actor PlayerQueueManager {
     public func loadQueue(_ items: [PlayableItem]) {
         queue = items
         currentIndex = -1
+        // A skip target or forced offset from the previous queue would index
+        // into content that no longer exists.
+        targetIndex = nil
+        forceNextStartOffset = nil
     }
 
     /// Starts playback of the item at `index` in the current queue (e.g.
@@ -150,6 +186,7 @@ public actor PlayerQueueManager {
             return
         }
         currentIndex = index
+        targetIndex = nil
         configureAudioSessionIfNeeded()
         registerNotificationsIfNeeded()
         startPositionPersistenceTimerIfNeeded()
@@ -165,6 +202,8 @@ public actor PlayerQueueManager {
         queue = items
         guard queue.indices.contains(index) else { return }
         currentIndex = index
+        targetIndex = nil
+        forceNextStartOffset = nil
         configureAudioSessionIfNeeded()
         registerNotificationsIfNeeded()
         // Land in `.interrupted(wasPlaying: false)` rather than `.playing`
@@ -219,9 +258,16 @@ public actor PlayerQueueManager {
     }
 
     public func skipToNext() async {
-        let next = nextItem(after: currentIndex, skippingBridges: true)
+        // Deliberately does NOT advance `currentIndex` here. The reducer emits
+        // `.savePosition` before `.loadItem`, and `persistCurrentPosition()`
+        // writes against `currentPlayableItem()` — so advancing first would
+        // stamp the incoming episode with the outgoing one's playhead and wipe
+        // its saved resume point. `loadItem(_:)` advances once it knows what
+        // actually loaded; `targetIndex` keeps fast double-skip working in the
+        // meantime.
+        let next = nextItem(after: cursor, skippingBridges: true)
         if let next {
-            currentIndex = next.index
+            targetIndex = next.index
         }
         await handle(.skipToNext(next?.item.ref))
     }
@@ -233,6 +279,12 @@ public actor PlayerQueueManager {
         // true previous item is a later refinement once "restart vs. go
         // back" UX (typically threshold on elapsed time, mirroring
         // standard podcast-app behavior) is decided — flagged in README.
+        //
+        // "Restart" has to mean zero. Without this override the reload uses
+        // `item.startOffset`, which for an episode the user resumed mid-way is
+        // the original resume point — so "restart" would drop them back where
+        // they already were rather than at the beginning.
+        forceNextStartOffset = CMTime.zero
         await handle(.skipToPrevious(nil))
     }
 
@@ -295,8 +347,19 @@ public actor PlayerQueueManager {
             await handle(.error("loadItem: unknown ref \(ref.id)"))
             return
         }
+        let startOffset = forceNextStartOffset ?? item.startOffset
+        forceNextStartOffset = nil
+
+        // Advance the index HERE, not at the call site — by now `.savePosition`
+        // has already run against the outgoing item. `currentIndex` tracks what
+        // is loaded, never what we intend to load.
+        if let idx = queue.firstIndex(where: { $0.ref == item.ref }) {
+            currentIndex = idx
+            if targetIndex == idx { targetIndex = nil }   // arrived
+        }
+
         do {
-            try await backend.load(url: item.localURL, startOffset: item.startOffset)
+            try await backend.load(url: item.localURL, startOffset: startOffset)
             await handle(.itemLoaded)
         } catch {
             // Degrade path (05_CORNER_CASES.md #6/#10): if the local file
@@ -323,6 +386,10 @@ public actor PlayerQueueManager {
             emitTelemetry("playTransitionTTS.invoked.without.transitioning.state")
             return
         }
+        if let idx = queue.firstIndex(where: { $0.ref == bridgeItem.ref }) {
+            currentIndex = idx
+            if targetIndex == idx { targetIndex = nil }
+        }
         do {
             try await backend.load(url: bridgeItem.localURL, startOffset: .zero)
             backend.play()
@@ -338,11 +405,10 @@ public actor PlayerQueueManager {
     }
 
     private func advancePastTransitionFailure() async {
-        guard let resolved = nextRealItem(afterBridgeAt: currentIndex) else {
+        guard let resolved = nextRealItem(afterBridgeAt: cursor) else {
             await handle(.itemEnded(next: nil, bridged: false))
             return
         }
-        currentIndex = resolved.index
         await handle(.itemEnded(next: resolved.item.ref, bridged: false))
     }
 
@@ -357,15 +423,14 @@ public actor PlayerQueueManager {
         case .transitioning:
             // The bridge TTS itself just finished; move into the real next
             // item (the one immediately after the bridge in the queue).
-            guard let resolved = nextRealItem(afterBridgeAt: currentIndex) else {
+            guard let resolved = nextRealItem(afterBridgeAt: cursor) else {
                 await handle(.itemEnded(next: nil, bridged: false))
                 return
             }
-            currentIndex = resolved.index
             await handle(.itemEnded(next: resolved.item.ref, bridged: false))
 
         case .playing:
-            guard let resolved = nextItem(after: currentIndex, skippingBridges: false) else {
+            guard let resolved = nextItem(after: cursor, skippingBridges: false) else {
                 await handle(.itemEnded(next: nil, bridged: false))
                 return
             }
@@ -381,7 +446,6 @@ public actor PlayerQueueManager {
             // which `currentPlayableItem()`'s callers should treat
             // specially during `.transitioning` (show `to`'s "up next"
             // framing, not the bridge item's raw title).
-            currentIndex = resolved.index
             await handle(.itemEnded(next: resolved.item.ref, bridged: bridged))
 
         case .idle, .loadingItem, .interrupted, .ended:

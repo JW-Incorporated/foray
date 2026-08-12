@@ -117,3 +117,202 @@ describe("known real-world quirks captured in the fixture corpus", () => {
     }
   });
 });
+
+/**
+ * `<podcast:transcript>` has two consumers that want different formats:
+ * Tier-1 enrichment wants prose (`transcriptUrl`, text/plain first), and
+ * segment anchoring (ADR 0007) wants a timeline (`timedTranscriptUrl`).
+ * The fixture corpus carries no transcript tags at all, so these cases are
+ * built inline. Real feeds publish ~2.9 transcript tags per show, so the
+ * multi-tag combinations below are the common case, not the exotic one.
+ */
+function feedWithTranscripts(tags: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+  <channel>
+    <title>Transcript Fixtures</title>
+    <item>
+      <title>Episode</title>
+      <guid>ep-1</guid>
+      <enclosure url="https://example.com/ep1.mp3" length="1000" type="audio/mpeg" />
+${tags}
+    </item>
+  </channel>
+</rss>`;
+}
+
+function firstEpisode(tags: string) {
+  const feed = parseFeed(feedWithTranscripts(tags));
+  expect(feed.episodes).toHaveLength(1);
+  return feed.episodes[0]!;
+}
+
+const PLAIN = '      <podcast:transcript url="https://example.com/t.txt" type="text/plain" />';
+const HTML = '      <podcast:transcript url="https://example.com/t.html" type="text/html" />';
+const VTT = '      <podcast:transcript url="https://example.com/t.vtt" type="text/vtt" />';
+const SRT = '      <podcast:transcript url="https://example.com/t.srt" type="application/srt" />';
+const SUBRIP = '      <podcast:transcript url="https://example.com/t.subrip" type="application/x-subrip" />';
+const JSON_T = '      <podcast:transcript url="https://example.com/t.json" type="application/json" />';
+
+describe("transcript format preference", () => {
+  describe("transcriptUrl (Tier-1 enrichment) — behaviour must be unchanged", () => {
+    it("prefers text/plain over every timed format, however they are ordered", () => {
+      expect(firstEpisode([VTT, SRT, PLAIN, JSON_T].join("\n")).transcriptUrl).toBe("https://example.com/t.txt");
+      expect(firstEpisode([PLAIN, VTT].join("\n")).transcriptUrl).toBe("https://example.com/t.txt");
+    });
+
+    it("falls back to application/json when there is no text/plain", () => {
+      expect(firstEpisode([VTT, SRT, JSON_T].join("\n")).transcriptUrl).toBe("https://example.com/t.json");
+    });
+
+    it("falls back to the first tag when neither text/plain nor application/json is offered", () => {
+      expect(firstEpisode([SRT, VTT].join("\n")).transcriptUrl).toBe("https://example.com/t.srt");
+      expect(firstEpisode(HTML).transcriptUrl).toBe("https://example.com/t.html");
+    });
+
+    it("is null when the episode publishes no transcript at all", () => {
+      expect(firstEpisode("").transcriptUrl).toBeNull();
+    });
+  });
+
+  describe("timedTranscriptUrl / timedTranscriptType (segment anchoring)", () => {
+    it("only-plain: no timed transcript exists, so both fields are null", () => {
+      const ep = firstEpisode(PLAIN);
+      expect(ep.transcriptUrl).toBe("https://example.com/t.txt");
+      expect(ep.timedTranscriptUrl).toBeNull();
+      expect(ep.timedTranscriptType).toBeNull();
+    });
+
+    it("only-vtt: picks it, and enrichment falls back to the same tag", () => {
+      const ep = firstEpisode(VTT);
+      expect(ep.timedTranscriptUrl).toBe("https://example.com/t.vtt");
+      expect(ep.timedTranscriptType).toBe("text/vtt");
+      expect(ep.transcriptUrl).toBe("https://example.com/t.vtt");
+    });
+
+    it("both-plain-and-vtt: the two consumers diverge — this is the bug this field fixes", () => {
+      const ep = firstEpisode([PLAIN, VTT].join("\n"));
+      expect(ep.transcriptUrl).toBe("https://example.com/t.txt");
+      expect(ep.timedTranscriptUrl).toBe("https://example.com/t.vtt");
+      expect(ep.timedTranscriptType).toBe("text/vtt");
+    });
+
+    it("all four timed formats present: vtt wins, in the documented preference order", () => {
+      // Deliberately published in reverse preference order — the pick must
+      // follow the format ranking, not document order.
+      const ep = firstEpisode([JSON_T, SUBRIP, SRT, VTT, PLAIN].join("\n"));
+      expect(ep.timedTranscriptUrl).toBe("https://example.com/t.vtt");
+      expect(ep.timedTranscriptType).toBe("text/vtt");
+    });
+
+    it("each timed format is recognized when it is the only timed option", () => {
+      const cases: [string, string, string][] = [
+        [VTT, "https://example.com/t.vtt", "text/vtt"],
+        [SRT, "https://example.com/t.srt", "application/srt"],
+        [SUBRIP, "https://example.com/t.subrip", "application/x-subrip"],
+        [JSON_T, "https://example.com/t.json", "application/json"]
+      ];
+      for (const [tag, url, type] of cases) {
+        const ep = firstEpisode([PLAIN, HTML, tag].join("\n"));
+        expect(ep.timedTranscriptUrl).toBe(url);
+        expect(ep.timedTranscriptType).toBe(type);
+      }
+    });
+
+    it("preference order falls through: srt, then x-subrip, then json", () => {
+      expect(firstEpisode([JSON_T, SUBRIP, SRT].join("\n")).timedTranscriptType).toBe("application/srt");
+      expect(firstEpisode([JSON_T, SUBRIP].join("\n")).timedTranscriptType).toBe("application/x-subrip");
+      expect(firstEpisode(JSON_T).timedTranscriptType).toBe("application/json");
+    });
+
+    it("none at all: an episode with no transcript tags reports null, not undefined", () => {
+      const ep = firstEpisode("");
+      expect(ep.timedTranscriptUrl).toBeNull();
+      expect(ep.timedTranscriptType).toBeNull();
+    });
+
+    it("untimed-only: text/plain plus text/html still yields no timed transcript", () => {
+      const ep = firstEpisode([PLAIN, HTML].join("\n"));
+      expect(ep.timedTranscriptUrl).toBeNull();
+      expect(ep.timedTranscriptType).toBeNull();
+    });
+
+    it("tolerates a missing type attribute — no throw, no false match", () => {
+      const ep = firstEpisode('      <podcast:transcript url="https://example.com/t.unknown" />');
+      expect(ep.transcriptUrl).toBe("https://example.com/t.unknown"); // first-tag fallback, unchanged
+      expect(ep.timedTranscriptUrl).toBeNull();
+      expect(ep.timedTranscriptType).toBeNull();
+    });
+
+    it("tolerates a malformed/garbage type attribute, and still finds a real one alongside it", () => {
+      const ep = firstEpisode(
+        [
+          '      <podcast:transcript url="https://example.com/t.junk" type="" />',
+          '      <podcast:transcript url="https://example.com/t.junk2" type="not a mime type" />',
+          '      <podcast:transcript url="https://example.com/t.junk3" />',
+          SRT
+        ].join("\n")
+      );
+      expect(ep.timedTranscriptUrl).toBe("https://example.com/t.srt");
+      expect(ep.timedTranscriptType).toBe("application/srt");
+    });
+
+    it("matches case-insensitively and ignores charset parameters, as real feeds emit them", () => {
+      const ep = firstEpisode('      <podcast:transcript url="https://example.com/t.vtt" type="TEXT/VTT; charset=utf-8" />');
+      expect(ep.timedTranscriptUrl).toBe("https://example.com/t.vtt");
+      expect(ep.timedTranscriptType).toBe("text/vtt"); // normalized, not the raw attribute
+    });
+
+    it("a timed tag with no url is reported as absent rather than as a fetchable pair", () => {
+      const ep = firstEpisode(['      <podcast:transcript type="text/vtt" />', PLAIN].join("\n"));
+      expect(ep.timedTranscriptUrl).toBeNull();
+      expect(ep.timedTranscriptType).toBeNull();
+    });
+
+  });
+
+  it("transcriptUrl is unchanged for every subset and ordering of the six real-world formats", () => {
+    // The regression guard for this change: replays the pre-change selection
+    // rule (text/plain, then application/json, then first tag) over every
+    // subset and permutation of the formats real feeds publish, and asserts
+    // the parser still agrees with it exactly. 1,957 combinations.
+    const all = [PLAIN, HTML, VTT, SRT, SUBRIP, JSON_T];
+    const urlOf = (tag: string) => tag.match(/url="([^"]+)"/)![1];
+    const typeOf = (tag: string) => tag.match(/type="([^"]+)"/)![1];
+    const legacyPick = (tags: string[]) =>
+      tags.find((t) => typeOf(t) === "text/plain") ??
+      tags.find((t) => typeOf(t) === "application/json") ??
+      tags[0] ??
+      null;
+
+    const permutations = (tags: string[]): string[][] => {
+      if (tags.length <= 1) return [tags];
+      return tags.flatMap((t, i) =>
+        permutations([...tags.slice(0, i), ...tags.slice(i + 1)]).map((rest) => [t, ...rest])
+      );
+    };
+
+    let checked = 0;
+    for (let mask = 0; mask < 1 << all.length; mask++) {
+      const subset = all.filter((_, i) => mask & (1 << i));
+      for (const order of permutations(subset)) {
+        const expected = legacyPick(order);
+        expect(firstEpisode(order.join("\n")).transcriptUrl).toBe(expected === null ? null : urlOf(expected));
+        checked++;
+      }
+    }
+    expect(checked).toBe(1957);
+  });
+
+  it("every fixture-corpus episode exposes both transcript fields as string-or-null", () => {
+    for (const file of fixtureFiles) {
+      const feed = parseFeed(fs.readFileSync(path.join(FIXTURES_DIR, file), "utf-8"));
+      for (const ep of feed.episodes) {
+        expect(ep.timedTranscriptUrl === null || typeof ep.timedTranscriptUrl === "string").toBe(true);
+        expect(ep.timedTranscriptType === null || typeof ep.timedTranscriptType === "string").toBe(true);
+        // A type is only ever reported alongside a url.
+        if (ep.timedTranscriptType !== null) expect(ep.timedTranscriptUrl).not.toBeNull();
+      }
+    }
+  });
+});

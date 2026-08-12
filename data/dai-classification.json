@@ -1,0 +1,1496 @@
+{
+  "built_at": "2026-07-26T19:31:25.921Z",
+  "shows": {
+    "91689834": {
+      "show": "Planetary Radio: Space Exploration, Astronomy and Science",
+      "dai": true,
+      "reason": "host:omny-us.pdn.tritondigital.com",
+      "resolved_host": "omny-us.pdn.tritondigital.com",
+      "checked_at": "2026-07-26T19:22:24.136Z"
+    },
+    "121493645": {
+      "show": "Engines of Our Ingenuity",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "ondemand.houstonpublicmedia.org",
+      "checked_at": "2026-07-26T19:21:07.260Z"
+    },
+    "151485663": {
+      "show": "CBC Ideas",
+      "dai": true,
+      "reason": "host:26133.mc.tritondigital.com",
+      "resolved_host": "26133.mc.tritondigital.com",
+      "checked_at": "2026-07-26T19:20:29.777Z"
+    },
+    "152249110": {
+      "show": "Radiolab",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "waaa.wnyc.org",
+      "checked_at": "2026-07-26T19:23:23.199Z"
+    },
+    "173001861": {
+      "show": "Dan Carlin's Hardcore History",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:20:56.868Z"
+    },
+    "201671138": {
+      "show": "This American Life",
+      "dai": true,
+      "reason": "host:npr.simplecastaudio.com",
+      "resolved_host": "npr.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:27:10.860Z"
+    },
+    "201680433": {
+      "show": "SpyCast",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:22:20.461Z"
+    },
+    "250500859": {
+      "show": "StoryCorps",
+      "dai": true,
+      "reason": "host:npr.simplecastaudio.com",
+      "resolved_host": "npr.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:27:28.406Z"
+    },
+    "251471480": {
+      "show": "Wood Talk | Woodworking",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:21:28.958Z"
+    },
+    "257042117": {
+      "show": "Philosophy Bites",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:23:15.717Z"
+    },
+    "270428918": {
+      "show": "Distillations | Science History Institute",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:23:56.656Z"
+    },
+    "275699983": {
+      "show": "The Moth",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "d2ffk1w24woq0d.cloudfront.net",
+      "checked_at": "2026-07-26T19:27:16.085Z"
+    },
+    "278981407": {
+      "show": "Stuff You Should Know",
+      "dai": true,
+      "reason": "host:27103.mc.tritondigital.com",
+      "resolved_host": "27103.mc.tritondigital.com",
+      "checked_at": "2026-07-26T19:20:31.202Z"
+    },
+    "283657561": {
+      "show": "Snap Judgment",
+      "dai": true,
+      "reason": "host:dovetail-cdn.prxu.org",
+      "resolved_host": "dovetail-cdn.prxu.org",
+      "checked_at": "2026-07-26T19:27:13.143Z"
+    },
+    "290783428": {
+      "show": "Planet Money",
+      "dai": true,
+      "reason": "host:npr.simplecastaudio.com",
+      "resolved_host": "npr.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:22:30.357Z"
+    },
+    "315114957": {
+      "show": "This Week in Startups",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:21:13.501Z"
+    },
+    "316045799": {
+      "show": "Comedy Bang Bang: The Podcast",
+      "dai": true,
+      "reason": "host:stitcher.simplecastaudio.com",
+      "resolved_host": "stitcher.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:26:20.954Z"
+    },
+    "318345767": {
+      "show": "The Partially Examined Life Philosophy Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "delivery-edge.libsyn.com",
+      "checked_at": "2026-07-26T19:23:09.717Z"
+    },
+    "328074695": {
+      "show": "Design Matters with Debbie Millman",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:28:07.401Z"
+    },
+    "329875043": {
+      "show": "WTF with Marc Maron Podcast",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:26:13.859Z"
+    },
+    "330291397": {
+      "show": "GardenFork Radio - Eclectic DIY",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:21:26.624Z"
+    },
+    "350159142": {
+      "show": "omega tau",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:20:24.914Z"
+    },
+    "354668519": {
+      "show": "Freakonomics Radio",
+      "dai": true,
+      "reason": "host:stitcher.simplecastaudio.com",
+      "resolved_host": "stitcher.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:22:36.563Z"
+    },
+    "367330921": {
+      "show": "My Brother, My Brother and Me",
+      "dai": true,
+      "reason": "host:afp-9384-injected.calisto.simplecastaudio.com",
+      "resolved_host": "afp-9384-injected.calisto.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:20:45.412Z"
+    },
+    "369032477": {
+      "show": "The Strong Towns Podcast",
+      "dai": true,
+      "reason": "host:s384.podbean.com",
+      "resolved_host": "s384.podbean.com",
+      "checked_at": "2026-07-26T19:23:48.908Z"
+    },
+    "394447340": {
+      "show": "The Fretboard Journal Guitar Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:21:18.087Z"
+    },
+    "394775318": {
+      "show": "99% Invisible",
+      "dai": true,
+      "reason": "host:stitcher.simplecastaudio.com",
+      "resolved_host": "stitcher.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:22:14.252Z"
+    },
+    "409287913": {
+      "show": "How Did This Get Made?",
+      "dai": true,
+      "reason": "host:stitcher.simplecastaudio.com",
+      "resolved_host": "stitcher.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:26:26.221Z"
+    },
+    "490027390": {
+      "show": "The Enormocast: the climbing podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.blubrry.com",
+      "checked_at": "2026-07-26T19:24:04.016Z"
+    },
+    "493253759": {
+      "show": "The History of WWII Podcast",
+      "dai": true,
+      "reason": "host:dcs.megaphone.fm",
+      "resolved_host": "dcs.megaphone.fm",
+      "checked_at": "2026-07-26T19:23:39.052Z"
+    },
+    "502349432": {
+      "show": "MWA Podcast - Woodworking Conversations",
+      "dai": true,
+      "reason": "host:audio.buzzsprout.com",
+      "resolved_host": "audio.buzzsprout.com",
+      "checked_at": "2026-07-26T19:25:27.185Z"
+    },
+    "508943027": {
+      "show": "Shop Talk Live - Fine Woodworking",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:21:31.432Z"
+    },
+    "521594713": {
+      "show": "You Are Not So Smart",
+      "dai": true,
+      "reason": "host:stitcher.simplecastaudio.com",
+      "resolved_host": "stitcher.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:22:42.446Z"
+    },
+    "536258179": {
+      "show": "Welcome to Night Vale",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:27:55.503Z"
+    },
+    "539359582": {
+      "show": "Go Creative Show",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:23:20.570Z"
+    },
+    "556959673": {
+      "show": "Palaeocast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:24:36.479Z"
+    },
+    "578641256": {
+      "show": "The Game Design Round Table",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:24:07.738Z"
+    },
+    "593958494": {
+      "show": "FermUp - The Fermented Food Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "dn711202.ca.archive.org",
+      "checked_at": "2026-07-26T19:24:26.406Z"
+    },
+    "659155419": {
+      "show": "Philosophize This!",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:23:07.301Z"
+    },
+    "663379413": {
+      "show": "Energy Gang",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-07-26T19:23:04.467Z"
+    },
+    "719585944": {
+      "show": "Story Pirates",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:27:51.938Z"
+    },
+    "775143271": {
+      "show": "Talking Headways: A Streetsblog Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "teletraan.libsyn.com",
+      "checked_at": "2026-07-26T19:23:50.213Z"
+    },
+    "788236947": {
+      "show": "Song Exploder",
+      "dai": true,
+      "reason": "host:dovetail-cdn.prxu.org",
+      "resolved_host": "dovetail-cdn.prxu.org",
+      "checked_at": "2026-07-26T19:22:07.451Z"
+    },
+    "809264944": {
+      "show": "Criminal",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:26:34.992Z"
+    },
+    "812436884": {
+      "show": "The Cinematography Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.blubrry.com",
+      "checked_at": "2026-07-26T19:23:21.665Z"
+    },
+    "818198322": {
+      "show": "FoundMyFitness",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:25:53.229Z"
+    },
+    "857888327": {
+      "show": "Sigma Nutrition Radio",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:25:54.391Z"
+    },
+    "869377733": {
+      "show": "Around the House with Eric G",
+      "dai": true,
+      "reason": "host:episodes.captivate.fm",
+      "resolved_host": "episodes.captivate.fm",
+      "checked_at": "2026-07-26T19:21:28.049Z"
+    },
+    "870688022": {
+      "show": "Death, Sex & Money",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:27:35.179Z"
+    },
+    "908005404": {
+      "show": "The Maritime History Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "episodes.castos.com",
+      "checked_at": "2026-07-26T19:25:21.780Z"
+    },
+    "917918570": {
+      "show": "Serial",
+      "dai": true,
+      "reason": "host:nyt.simplecastaudio.com",
+      "resolved_host": "nyt.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:26:37.462Z"
+    },
+    "918896288": {
+      "show": "Gastropod",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:21:44.037Z"
+    },
+    "923527373": {
+      "show": "Astonishing Legends",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "d11untcg2uthr3.cloudfront.net",
+      "checked_at": "2026-07-26T19:26:39.559Z"
+    },
+    "928790786": {
+      "show": "Amicus With Dahlia Lithwick | Law, justice, and the courts",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:24:19.572Z"
+    },
+    "934552872": {
+      "show": "Switched on Pop",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:22:09.322Z"
+    },
+    "935345158": {
+      "show": "Designer Notes",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "cf-media.sndcdn.com",
+      "checked_at": "2026-07-26T19:24:06.457Z"
+    },
+    "942777522": {
+      "show": "The Psychology Podcast",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-07-26T19:25:47.097Z"
+    },
+    "950464429": {
+      "show": "Dear Sugars",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:27:45.401Z"
+    },
+    "953541032": {
+      "show": "Making Chips Podcast for Manufacturing Leaders",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:20:49.067Z"
+    },
+    "957430475": {
+      "show": "The Allusionist",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-07-26T19:21:55.628Z"
+    },
+    "958230465": {
+      "show": "The Twenty Minute VC (20VC)",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:21:16.115Z"
+    },
+    "958925354": {
+      "show": "Don't Panic Geocast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "media24.fireside.fm",
+      "checked_at": "2026-07-26T19:22:48.182Z"
+    },
+    "960976813": {
+      "show": "I Know Dino: The Big Dinosaur Podcast",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-07-26T19:24:31.171Z"
+    },
+    "965557666": {
+      "show": "The Roundhouse",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:25:22.932Z"
+    },
+    "969519520": {
+      "show": "Happier with Gretchen Rubin",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:25:57.456Z"
+    },
+    "978052928": {
+      "show": "Lore",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "teletraan.libsyn.com",
+      "checked_at": "2026-07-26T19:26:45.377Z"
+    },
+    "990897842": {
+      "show": "Myths and Legends",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "d11untcg2uthr3.cloudfront.net",
+      "checked_at": "2026-07-26T19:24:46.774Z"
+    },
+    "998568017": {
+      "show": "Casefile True Crime",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:26:51.708Z"
+    },
+    "1015557071": {
+      "show": "Spit and Twitches: The Animal Cognition Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "dn711202.ca.archive.org",
+      "checked_at": "2026-07-26T19:28:15.632Z"
+    },
+    "1019576853": {
+      "show": "Software Engineering Daily",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:22:28.612Z"
+    },
+    "1021703062": {
+      "show": "Our Fake History",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-07-26T19:24:51.523Z"
+    },
+    "1028908750": {
+      "show": "Hidden Brain",
+      "dai": true,
+      "reason": "host:stitcher.simplecastaudio.com",
+      "resolved_host": "stitcher.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:22:39.854Z"
+    },
+    "1042361179": {
+      "show": "KILL TONY",
+      "dai": true,
+      "reason": "host:rsv.simplecastaudio.com",
+      "resolved_host": "rsv.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:26:31.960Z"
+    },
+    "1046978749": {
+      "show": "Causality",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "media.engineered.network",
+      "checked_at": "2026-07-26T19:22:50.575Z"
+    },
+    "1048826488": {
+      "show": "The Clockwork Game Design Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "www.keithburgun.net",
+      "checked_at": "2026-07-26T19:24:08.747Z"
+    },
+    "1050462261": {
+      "show": "Acquired",
+      "dai": true,
+      "reason": "host:audio.transistor.fm",
+      "resolved_host": "audio.transistor.fm",
+      "checked_at": "2026-07-26T19:21:10.490Z"
+    },
+    "1051557000": {
+      "show": "Science Vs",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:23:25.885Z"
+    },
+    "1056200096": {
+      "show": "Odd Lots",
+      "dai": true,
+      "reason": "host:27083.mc.tritondigital.com",
+      "resolved_host": "27083.mc.tritondigital.com",
+      "checked_at": "2026-07-26T19:22:32.976Z"
+    },
+    "1056223392": {
+      "show": "Experimental Brewing",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.blubrry.com",
+      "checked_at": "2026-07-26T19:24:24.884Z"
+    },
+    "1065559535": {
+      "show": "Modern Love",
+      "dai": true,
+      "reason": "host:nyt.simplecastaudio.com",
+      "resolved_host": "nyt.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:27:40.496Z"
+    },
+    "1078112813": {
+      "show": "Unexplained",
+      "dai": true,
+      "reason": "host:26033.mc.tritondigital.com",
+      "resolved_host": "26033.mc.tritondigital.com",
+      "checked_at": "2026-07-26T19:26:54.396Z"
+    },
+    "1080036452": {
+      "show": "the Sharp End Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "cf-media.sndcdn.com",
+      "checked_at": "2026-07-26T19:24:02.218Z"
+    },
+    "1087147821": {
+      "show": "10% Happier with Dan Harris",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "teletraan.libsyn.com",
+      "checked_at": "2026-07-26T19:25:38.118Z"
+    },
+    "1092361338": {
+      "show": "Las Culturistas with Matt Rogers and Bowen Yang",
+      "dai": true,
+      "reason": "host:27073.mc.tritondigital.com",
+      "resolved_host": "27073.mc.tritondigital.com",
+      "checked_at": "2026-07-26T19:26:15.193Z"
+    },
+    "1095138637": {
+      "show": "The Magnus Archives",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:27:57.775Z"
+    },
+    "1100563458": {
+      "show": "The History of Ancient Greece",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "delivery-edge.libsyn.com",
+      "checked_at": "2026-07-26T19:21:02.617Z"
+    },
+    "1105457520": {
+      "show": "Main Engine Cut Off",
+      "dai": true,
+      "reason": "host:cdn.simplecast.com",
+      "resolved_host": "cdn.simplecast.com",
+      "checked_at": "2026-07-26T19:22:21.938Z"
+    },
+    "1110780638": {
+      "show": "The Lonely Palette",
+      "dai": true,
+      "reason": "host:cdn.simplecast.com",
+      "resolved_host": "cdn.simplecast.com",
+      "checked_at": "2026-07-26T19:25:01.878Z"
+    },
+    "1116303051": {
+      "show": "The TWIML AI Podcast",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:25:30.754Z"
+    },
+    "1116866428": {
+      "show": "Storm Front Freaks",
+      "dai": true,
+      "reason": "host:s346.podbean.com",
+      "resolved_host": "s346.podbean.com",
+      "checked_at": "2026-07-26T19:24:41.856Z"
+    },
+    "1121047188": {
+      "show": "Just Fly Performance Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.blubrry.com",
+      "checked_at": "2026-07-26T19:22:02.059Z"
+    },
+    "1141877104": {
+      "show": "Founders",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:21:12.363Z"
+    },
+    "1142736861": {
+      "show": "ArtCurious Podcast",
+      "dai": true,
+      "reason": "host:dcs.megaphone.fm",
+      "resolved_host": "dcs.megaphone.fm",
+      "checked_at": "2026-07-26T19:24:59.049Z"
+    },
+    "1143845868": {
+      "show": "Dissect",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:28:11.647Z"
+    },
+    "1148175292": {
+      "show": "In The Dark",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:26:58.461Z"
+    },
+    "1150510297": {
+      "show": "How I Built This with Guy Raz",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-07-26T19:23:31.205Z"
+    },
+    "1150800298": {
+      "show": "Heavyweight",
+      "dai": true,
+      "reason": "host:27083.mc.tritondigital.com",
+      "resolved_host": "27083.mc.tritondigital.com",
+      "checked_at": "2026-07-26T19:27:31.110Z"
+    },
+    "1159251584": {
+      "show": "Brady Heywood Podcast",
+      "dai": true,
+      "reason": "host:6b8m1.omnycontent.com",
+      "resolved_host": "6b8m1.omnycontent.com",
+      "checked_at": "2026-07-26T19:22:51.745Z"
+    },
+    "1162734003": {
+      "show": "Chemistry World Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:23:55.585Z"
+    },
+    "1163432306": {
+      "show": "Two Scientists Walk Into a Bar",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "cf-media.sndcdn.com",
+      "checked_at": "2026-07-26T19:21:52.500Z"
+    },
+    "1168248976": {
+      "show": "The Archaeology Show",
+      "dai": true,
+      "reason": "host:injector.simplecastaudio.com",
+      "resolved_host": "injector.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:24:37.749Z"
+    },
+    "1171270672": {
+      "show": "Twenty Thousand Hertz",
+      "dai": true,
+      "reason": "host:dovetail-cdn.prxu.org",
+      "resolved_host": "dovetail-cdn.prxu.org",
+      "checked_at": "2026-07-26T19:28:04.118Z"
+    },
+    "1186056137": {
+      "show": "Lingthusiasm",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "cf-media.sndcdn.com",
+      "checked_at": "2026-07-26T19:21:54.288Z"
+    },
+    "1190981360": {
+      "show": "This Past Weekend w/ Theo Von",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:26:09.830Z"
+    },
+    "1206942864": {
+      "show": "Business of Machining",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "media.zencastr.com",
+      "checked_at": "2026-07-26T19:20:50.920Z"
+    },
+    "1207586509": {
+      "show": "The Common Descent Podcast",
+      "dai": true,
+      "reason": "host:s360.podbean.com",
+      "resolved_host": "s360.podbean.com",
+      "checked_at": "2026-07-26T19:24:34.432Z"
+    },
+    "1208172851": {
+      "show": "Luthier on Luthier with Michael Bashkin",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:21:17.116Z"
+    },
+    "1209821045": {
+      "show": "That Triathlon Show",
+      "dai": true,
+      "reason": "host:injector.simplecastaudio.com",
+      "resolved_host": "injector.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:25:13.549Z"
+    },
+    "1215386938": {
+      "show": "Sticky Notes: The Classical Music Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:25:08.454Z"
+    },
+    "1227971746": {
+      "show": "Masters of Scale",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-07-26T19:23:33.699Z"
+    },
+    "1233834541": {
+      "show": "Wow in the World",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-07-26T19:27:50.077Z"
+    },
+    "1237931798": {
+      "show": "Where Should We Begin? with Esther Perel",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:27:37.589Z"
+    },
+    "1240841298": {
+      "show": "Ear Hustle",
+      "dai": true,
+      "reason": "host:dovetail-cdn.prxu.org",
+      "resolved_host": "dovetail-cdn.prxu.org",
+      "checked_at": "2026-07-26T19:27:22.963Z"
+    },
+    "1244649384": {
+      "show": "LeVar Burton Reads",
+      "dai": true,
+      "reason": "host:stitcher.simplecastaudio.com",
+      "resolved_host": "stitcher.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:28:02.297Z"
+    },
+    "1246443751": {
+      "show": "Circle Round",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:27:53.994Z"
+    },
+    "1256553977": {
+      "show": "A Piece of Work",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "waaa.wnyc.org",
+      "checked_at": "2026-07-26T19:25:02.955Z"
+    },
+    "1262231136": {
+      "show": "My Favorite Theorem",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "static1.squarespace.com",
+      "checked_at": "2026-07-26T19:22:13.041Z"
+    },
+    "1270813772": {
+      "show": "Alpinist",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:24:05.201Z"
+    },
+    "1278815517": {
+      "show": "Ologies with Alie Ward",
+      "dai": true,
+      "reason": "host:stitcher.simplecastaudio.com",
+      "resolved_host": "stitcher.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:22:18.605Z"
+    },
+    "1294131221": {
+      "show": "Off-Nominal",
+      "dai": true,
+      "reason": "host:cdn.simplecast.com",
+      "resolved_host": "cdn.simplecast.com",
+      "checked_at": "2026-07-26T19:22:22.847Z"
+    },
+    "1296082082": {
+      "show": "Craft Beer & Brewing Magazine Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "media24.fireside.fm",
+      "checked_at": "2026-07-26T19:24:23.860Z"
+    },
+    "1299915173": {
+      "show": "This Podcast Will Kill You",
+      "dai": true,
+      "reason": "host:26043.mc.tritondigital.com",
+      "resolved_host": "26043.mc.tritondigital.com",
+      "checked_at": "2026-07-26T19:21:49.865Z"
+    },
+    "1311004083": {
+      "show": "Broken Record with Rick Rubin, Malcolm Gladwell, Bruce Headlam and Justin Richmond",
+      "dai": true,
+      "reason": "host:27123.mc.tritondigital.com",
+      "resolved_host": "27123.mc.tritondigital.com",
+      "checked_at": "2026-07-26T19:28:12.721Z"
+    },
+    "1322200189": {
+      "show": "Crime Junkie",
+      "dai": true,
+      "reason": "host:rsv.simplecastaudio.com",
+      "resolved_host": "rsv.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:26:59.778Z"
+    },
+    "1330329512": {
+      "show": "CoRecursive: Coding Stories",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:22:27.691Z"
+    },
+    "1331598443": {
+      "show": "Titans of Nuclear",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:20:23.654Z"
+    },
+    "1333552422": {
+      "show": "Feel Better, Live More with Dr Rangan Chatterjee",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:25:45.014Z"
+    },
+    "1335814741": {
+      "show": "Business Wars",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-07-26T19:23:32.562Z"
+    },
+    "1337886873": {
+      "show": "Choiceology with Katy Milkman",
+      "dai": true,
+      "reason": "host:afp-928686-injected.calisto.simplecastaudio.com",
+      "resolved_host": "afp-928686-injected.calisto.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:22:44.004Z"
+    },
+    "1345682353": {
+      "show": "Armchair Expert with Dax Shepard",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-07-26T19:26:03.704Z"
+    },
+    "1348151802": {
+      "show": "Ancient History Fangirl",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:20:59.739Z"
+    },
+    "1349624470": {
+      "show": "AMS on the Air",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.blubrry.com",
+      "checked_at": "2026-07-26T19:24:45.376Z"
+    },
+    "1373312240": {
+      "show": "Weather Geeks",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-07-26T19:24:43.210Z"
+    },
+    "1379959217": {
+      "show": "Morbid",
+      "dai": true,
+      "reason": "host:stitcher.simplecastaudio.com",
+      "resolved_host": "stitcher.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:27:02.145Z"
+    },
+    "1390707588": {
+      "show": "Music History Monday",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "podcast.robertgreenbergmusic.com",
+      "checked_at": "2026-07-26T19:25:11.962Z"
+    },
+    "1400828889": {
+      "show": "The Peter Attia Drive",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:24:12.960Z"
+    },
+    "1404606470": {
+      "show": "The Dirt Podcast",
+      "dai": true,
+      "reason": "host:podcasts.captivate.fm",
+      "resolved_host": "podcasts.captivate.fm",
+      "checked_at": "2026-07-26T19:24:40.774Z"
+    },
+    "1405972616": {
+      "show": "F1 Beyond The Grid",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "d11untcg2uthr3.cloudfront.net",
+      "checked_at": "2026-07-26T19:22:52.746Z"
+    },
+    "1406537385": {
+      "show": "Practical AI",
+      "dai": true,
+      "reason": "host:audio.transistor.fm",
+      "resolved_host": "audio.transistor.fm",
+      "checked_at": "2026-07-26T19:25:28.611Z"
+    },
+    "1412947410": {
+      "show": "The BBQ Central Show",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.blubrry.com",
+      "checked_at": "2026-07-26T19:21:45.752Z"
+    },
+    "1418960261": {
+      "show": "Call Her Daddy",
+      "dai": true,
+      "reason": "host:stitcher.simplecastaudio.com",
+      "resolved_host": "stitcher.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:26:07.609Z"
+    },
+    "1434243584": {
+      "show": "Lex Fridman Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.blubrry.com",
+      "checked_at": "2026-07-26T19:20:21.100Z"
+    },
+    "1437541488": {
+      "show": "Woodshop Life Podcast",
+      "dai": true,
+      "reason": "host:s369.podbean.com",
+      "resolved_host": "s369.podbean.com",
+      "checked_at": "2026-07-26T19:25:25.845Z"
+    },
+    "1437755068": {
+      "show": "The War on Cars",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:23:47.497Z"
+    },
+    "1438054347": {
+      "show": "Conan O'Brien Needs a Friend",
+      "dai": true,
+      "reason": "host:stitcher.simplecastaudio.com",
+      "resolved_host": "stitcher.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:20:41.240Z"
+    },
+    "1442604220": {
+      "show": "Aria Code",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "waaa.wnyc.org",
+      "checked_at": "2026-07-26T19:25:09.699Z"
+    },
+    "1448663986": {
+      "show": "Materialism: A Materials Science Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "storage.pinecast.net",
+      "checked_at": "2026-07-26T19:20:33.724Z"
+    },
+    "1449884495": {
+      "show": "Fall of Civilizations Podcast",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:20:38.749Z"
+    },
+    "1457552694": {
+      "show": "WW2 Pod: We Have Ways of Making You Talk",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:23:36.284Z"
+    },
+    "1459158254": {
+      "show": "MRS Bulletin Materials News Podcast",
+      "dai": true,
+      "reason": "host:audio.buzzsprout.com",
+      "resolved_host": "audio.buzzsprout.com",
+      "checked_at": "2026-07-26T19:20:54.031Z"
+    },
+    "1459202600": {
+      "show": "Advent of Computing",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:22:26.033Z"
+    },
+    "1462809301": {
+      "show": "Railway Mania",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "d11untcg2uthr3.cloudfront.net",
+      "checked_at": "2026-07-26T19:25:24.197Z"
+    },
+    "1464919521": {
+      "show": "Dateline NBC",
+      "dai": true,
+      "reason": "host:nbcnews.simplecastaudio.com",
+      "resolved_host": "nbcnews.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:27:03.960Z"
+    },
+    "1468013270": {
+      "show": "2 Bears, 1 Cave with Tom Segura & Bert Kreischer",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:26:23.121Z"
+    },
+    "1469168641": {
+      "show": "Strict Scrutiny",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "d11untcg2uthr3.cloudfront.net",
+      "checked_at": "2026-07-26T19:24:14.117Z"
+    },
+    "1474245040": {
+      "show": "The Happiness Lab with Dr. Laurie Santos",
+      "dai": true,
+      "reason": "host:26043.mc.tritondigital.com",
+      "resolved_host": "26043.mc.tritondigital.com",
+      "checked_at": "2026-07-26T19:25:34.985Z"
+    },
+    "1474857063": {
+      "show": "Within Tolerance",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "d3ctxlq1ktw2nl.cloudfront.net",
+      "checked_at": "2026-07-26T19:20:52.975Z"
+    },
+    "1477655202": {
+      "show": "Flight Safety Detectives",
+      "dai": true,
+      "reason": "host:injector.simplecastaudio.com",
+      "resolved_host": "injector.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:21:48.855Z"
+    },
+    "1480259187": {
+      "show": "The Great Women Artists",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "cf-media.sndcdn.com",
+      "checked_at": "2026-07-26T19:28:10.171Z"
+    },
+    "1485435369": {
+      "show": "Old Gods of Appalachia",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:28:00.196Z"
+    },
+    "1487829595": {
+      "show": "Well There's Your Problem",
+      "dai": true,
+      "reason": "host:s351.podbean.com",
+      "resolved_host": "s351.podbean.com",
+      "checked_at": "2026-07-26T19:22:49.203Z"
+    },
+    "1490521721": {
+      "show": "Fast Talk",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:25:16.601Z"
+    },
+    "1495557562": {
+      "show": "The Race F1 Podcast",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:23:00.881Z"
+    },
+    "1496265971": {
+      "show": "Bad Friends",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:21:40.424Z"
+    },
+    "1497785843": {
+      "show": "5-4",
+      "dai": true,
+      "reason": "host:audio4.redcircle.com",
+      "resolved_host": "audio4.redcircle.com",
+      "checked_at": "2026-07-26T19:24:22.043Z"
+    },
+    "1503540842": {
+      "show": "Black Box Down",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:21:47.094Z"
+    },
+    "1506431005": {
+      "show": "Science for Sport Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "media24.fireside.fm",
+      "checked_at": "2026-07-26T19:22:00.654Z"
+    },
+    "1508222292": {
+      "show": "Being an Engineer",
+      "dai": true,
+      "reason": "host:audio.buzzsprout.com",
+      "resolved_host": "audio.buzzsprout.com",
+      "checked_at": "2026-07-26T19:20:37.400Z"
+    },
+    "1513823904": {
+      "show": "Piano Tech Radio Hour",
+      "dai": true,
+      "reason": "host:audio.transistor.fm",
+      "resolved_host": "audio.transistor.fm",
+      "checked_at": "2026-07-26T19:21:21.954Z"
+    },
+    "1514179611": {
+      "show": "Camera Shake Photography Podcast",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:23:17.834Z"
+    },
+    "1515419751": {
+      "show": "Mike Birbiglia's Working It Out",
+      "dai": true,
+      "reason": "host:afp-222748-injected.calisto.simplecastaudio.com",
+      "resolved_host": "afp-222748-injected.calisto.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:26:33.634Z"
+    },
+    "1520403988": {
+      "show": "The Ancients",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:20:58.394Z"
+    },
+    "1521578868": {
+      "show": "SmartLess",
+      "dai": true,
+      "reason": "host:stitcher.simplecastaudio.com",
+      "resolved_host": "stitcher.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:20:43.232Z"
+    },
+    "1525620301": {
+      "show": "Geology Bites",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "d3ctxlq1ktw2nl.cloudfront.net",
+      "checked_at": "2026-07-26T19:22:47.002Z"
+    },
+    "1525689066": {
+      "show": "Ask Lisa: The Psychology of Parenting",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:26:02.316Z"
+    },
+    "1528655613": {
+      "show": "It's a Material World: Materials Science Podcast",
+      "dai": true,
+      "reason": "host:s310.podbean.com",
+      "resolved_host": "s310.podbean.com",
+      "checked_at": "2026-07-26T19:20:55.433Z"
+    },
+    "1528861092": {
+      "show": "PlanetGeo: The Geology Podcast",
+      "dai": true,
+      "reason": "host:audio.buzzsprout.com",
+      "resolved_host": "audio.buzzsprout.com",
+      "checked_at": "2026-07-26T19:22:45.303Z"
+    },
+    "1533429509": {
+      "show": "Robot Talk",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:25:33.676Z"
+    },
+    "1535408667": {
+      "show": "Maintenance Phase",
+      "dai": true,
+      "reason": "host:audio.buzzsprout.com",
+      "resolved_host": "audio.buzzsprout.com",
+      "checked_at": "2026-07-26T19:25:50.771Z"
+    },
+    "1537788786": {
+      "show": "The Rest Is History",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:20:40.034Z"
+    },
+    "1538204210": {
+      "show": "Wicked Words - A True Crime Talk Show with Kate Winkler Dawson",
+      "dai": true,
+      "reason": "host:26063.mc.tritondigital.com",
+      "resolved_host": "26063.mc.tritondigital.com",
+      "checked_at": "2026-07-26T19:27:06.224Z"
+    },
+    "1545953110": {
+      "show": "Huberman Lab",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:24:10.182Z"
+    },
+    "1547328233": {
+      "show": "Folklore & Fiction",
+      "dai": true,
+      "reason": "host:s381.podbean.com",
+      "resolved_host": "s381.podbean.com",
+      "checked_at": "2026-07-26T19:24:57.697Z"
+    },
+    "1548554104": {
+      "show": "Volts",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "substackcdn.com",
+      "checked_at": "2026-07-26T19:23:03.406Z"
+    },
+    "1554578197": {
+      "show": "Unexplainable",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:23:28.570Z"
+    },
+    "1554962073": {
+      "show": "Watt It Takes",
+      "dai": true,
+      "reason": "host:cdn.simplecast.com",
+      "resolved_host": "cdn.simplecast.com",
+      "checked_at": "2026-07-26T19:23:05.878Z"
+    },
+    "1555107027": {
+      "show": "CleanTechies Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "substackcdn.com",
+      "checked_at": "2026-07-26T19:20:25.967Z"
+    },
+    "1559275284": {
+      "show": "The Robot Brains Podcast",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:25:32.048Z"
+    },
+    "1561689671": {
+      "show": "Good Inside with Dr. Becky",
+      "dai": true,
+      "reason": "host:afp-940002-injected.calisto.simplecastaudio.com",
+      "resolved_host": "afp-940002-injected.calisto.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:26:00.750Z"
+    },
+    "1564530722": {
+      "show": "We Can Do Hard Things",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:27:42.935Z"
+    },
+    "1565876835": {
+      "show": "The Sound Aquatic",
+      "dai": true,
+      "reason": "host:s381.podbean.com",
+      "resolved_host": "s381.podbean.com",
+      "checked_at": "2026-07-26T19:22:05.969Z"
+    },
+    "1578319619": {
+      "show": "The Matt Walker Podcast",
+      "dai": true,
+      "reason": "host:audio.buzzsprout.com",
+      "resolved_host": "audio.buzzsprout.com",
+      "checked_at": "2026-07-26T19:24:11.223Z"
+    },
+    "1579263731": {
+      "show": "Tuned In",
+      "dai": true,
+      "reason": "host:audio.buzzsprout.com",
+      "resolved_host": "audio.buzzsprout.com",
+      "checked_at": "2026-07-26T19:22:59.616Z"
+    },
+    "1593204897": {
+      "show": "Catalyst with Shayle Kann",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:20:27.084Z"
+    },
+    "1599757941": {
+      "show": "Tiny Matters",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-07-26T19:23:57.646Z"
+    },
+    "1603639502": {
+      "show": "Fly on the Wall with Dana Carvey and David Spade",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "d2ffk1w24woq0d.cloudfront.net",
+      "checked_at": "2026-07-26T19:21:34.242Z"
+    },
+    "1611216298": {
+      "show": "ZOE Science & Nutrition",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-07-26T19:25:51.811Z"
+    },
+    "1626752040": {
+      "show": "The Engineering History Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "d3ctxlq1ktw2nl.cloudfront.net",
+      "checked_at": "2026-07-26T19:21:09.297Z"
+    },
+    "1635354647": {
+      "show": "The World's Best Construction Podcast",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:22:17.128Z"
+    },
+    "1640165188": {
+      "show": "Shipwrecks and Sea Dogs",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:25:19.266Z"
+    },
+    "1641383288": {
+      "show": "The Unauthorized History of the Pacific War",
+      "dai": true,
+      "reason": "host:cdn.simplecast.com",
+      "resolved_host": "cdn.simplecast.com",
+      "checked_at": "2026-07-26T19:23:38.216Z"
+    },
+    "1641743797": {
+      "show": "The Outlaw Ocean",
+      "dai": true,
+      "reason": "host:26133.mc.tritondigital.com",
+      "resolved_host": "26133.mc.tritondigital.com",
+      "checked_at": "2026-07-26T19:22:03.284Z"
+    },
+    "1643125075": {
+      "show": "The Physiology of Endurance Running Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "d3ctxlq1ktw2nl.cloudfront.net",
+      "checked_at": "2026-07-26T19:25:18.068Z"
+    },
+    "1643974551": {
+      "show": "Bone Valley",
+      "dai": true,
+      "reason": "host:27093.mc.tritondigital.com",
+      "resolved_host": "27093.mc.tritondigital.com",
+      "checked_at": "2026-07-26T19:27:08.695Z"
+    },
+    "1646101002": {
+      "show": "The Mel Robbins Podcast",
+      "dai": true,
+      "reason": "host:stitcher.simplecastaudio.com",
+      "resolved_host": "stitcher.simplecastaudio.com",
+      "checked_at": "2026-07-26T19:25:55.340Z"
+    },
+    "1667640147": {
+      "show": "Dear Prudence",
+      "dai": true,
+      "reason": "host:stitcher2.acast.com",
+      "resolved_host": "stitcher2.acast.com",
+      "checked_at": "2026-07-26T19:27:47.529Z"
+    },
+    "1670771664": {
+      "show": "The Violin Chronicles Podcast",
+      "dai": true,
+      "reason": "host:s381.podbean.com",
+      "resolved_host": "s381.podbean.com",
+      "checked_at": "2026-07-26T19:21:19.282Z"
+    },
+    "1702258458": {
+      "show": "Handsome",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-07-26T19:26:28.093Z"
+    },
+    "1745548847": {
+      "show": "Lab to Market Leadership",
+      "dai": true,
+      "reason": "host:audio.buzzsprout.com",
+      "resolved_host": "audio.buzzsprout.com",
+      "checked_at": "2026-07-26T19:20:28.187Z"
+    },
+    "1755173852": {
+      "show": "TechSurge: Deep Tech Podcast",
+      "dai": true,
+      "reason": "host:audio.transistor.fm",
+      "resolved_host": "audio.transistor.fm",
+      "checked_at": "2026-07-26T19:21:14.927Z"
+    },
+    "1795483480": {
+      "show": "Good Hang with Amy Poehler",
+      "dai": true,
+      "reason": "host:dcs-spotify.megaphone.fm",
+      "resolved_host": "dcs-spotify.megaphone.fm",
+      "checked_at": "2026-07-26T19:21:32.707Z"
+    },
+    "1809409412": {
+      "show": "Inside Chips (Semiconductor Engineering)",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-07-26T19:20:34.891Z"
+    },
+    "1833238020": {
+      "show": "MTDCNC Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "d3ctxlq1ktw2nl.cloudfront.net",
+      "checked_at": "2026-07-26T19:20:36.179Z"
+    }
+  }
+}

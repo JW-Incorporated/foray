@@ -204,7 +204,16 @@ location. Summarized here for the M0 spike:
    documented at the declaration; confirm AVFoundation's own internal
    callback delivery (KVO/notifications) never reenters from an
    unexpected thread in a way that breaks that assumption.
-9. **`.spokenAudio` audio session mode** dynamics processing on
+9. **`currentIndex` / `targetIndex` split in `PlayerQueueManager`** — added
+   2026-07-26 to fix two real bugs found by the JS port (issue #33): a skip
+   wrote the outgoing episode's playhead under the *incoming* episode's id
+   (destroying its resume point), and `skipToPrevious()` resumed instead of
+   restarting. The fix is compiled and tested in `player/queue-manager.js`;
+   this Swift copy is not compiled by CI. Verify the two behaviours on device:
+   skip to a part-heard episode and confirm it still resumes where you left it,
+   and confirm prev-track restarts from zero rather than the current playhead.
+
+10. **`.spokenAudio` audio session mode** dynamics processing on
    music-adjacent comedy/hang content — spec calls this mode out for
    podcasts generally, but verify it doesn't do anything undesirable on
    the "comfort" archetype's content.

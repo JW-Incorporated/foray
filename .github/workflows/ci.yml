@@ -40,7 +40,7 @@ jobs:
       - name: Validate JSON data files
         run: |
           node -e "
-            const files = ['data/session.json','data/taxonomy.json','data/validated-links.json','data/discover.json','data/catalog.json','data/personas.json','data/ladders.json','data/top-topics.json','data/topic-coverage-report.json','manifest.json'];
+            const files = ['data/session.json','data/taxonomy.json','data/validated-links.json','data/discover.json','data/catalog.json','data/personas.json','data/ladders.json','data/top-topics.json','data/topic-coverage-report.json','data/transcript-availability.json','data/segments.json','manifest.json'];
             for (const f of files) { require('./' + f); console.log('ok', f); }
             const s = require('./data/session.json');
             const refs = [...s.cards.flatMap(c=>[c.episode_id,...(c.alternates||[])]), ...s.categories.flatMap(c=>c.groups.flatMap(g=>g.episode_ids))];
@@ -67,12 +67,87 @@ jobs:
             // 3. Every pool item should have tags (warn-level: new waves get tagged post-merge)
             const untagged = [...d.items.map(i=>i.id), ...Object.keys(s.episodes)].filter(id=>!tg.tags[id]);
             if (untagged.length) console.warn('WARN untagged items:', untagged.length);
+
+            // 4. Audio provenance (issue #21). A null audio_url is ALLOWED —
+            // the item still appears in discovery and links out to Apple
+            // Podcasts instead of playing in-app. A malformed one is not:
+            // it would reach the player and fail at playback time.
+            const audioItems = [...d.items, ...Object.values(s.episodes)];
+            const withAudio = audioItems.filter(i=>i.audio_url);
+            const badScheme = withAudio.filter(i=>!/^https:\/\//.test(i.audio_url));
+            if (badScheme.length) { console.error('audio_url must be https:', badScheme.map(i=>i.id||i.title).slice(0,10)); process.exit(1); }
+            // Corner case #9: a tokened URL is a secret and must never be published.
+            const tokened = withAudio.filter(i=>/[?&](token|auth|api_?key|secret|password|session)=/i.test(i.audio_url));
+            if (tokened.length) { console.error('audio_url looks tokened (secret leak):', tokened.map(i=>i.id||i.title).slice(0,10)); process.exit(1); }
+            const noAudio = audioItems.length - withAudio.length;
+            console.log('audio coverage:', withAudio.length + '/' + audioItems.length, '(' + noAudio + ' link-out only)');
+
+            // 5. DAI flag (issue #22). It gates seek precision in #30, so a
+            // playable item MUST carry a verdict — a missing flag would be read
+            // as falsy and silently promise exact seeking on a stitched feed.
+            const unflagged = withAudio.filter(i=>typeof i.dai_suspected !== 'boolean');
+            if (unflagged.length) { console.error('playable items missing dai_suspected:', unflagged.map(i=>i.id||i.title).slice(0,10)); process.exit(1); }
+            // Conversely, an unplayable item must not carry one — there is
+            // nothing to seek in, and a stale flag outlives the URL that earned it.
+            const strayFlag = audioItems.filter(i=>!i.audio_url && i.dai_suspected !== undefined);
+            if (strayFlag.length) { console.error('items without audio carry dai_suspected:', strayFlag.map(i=>i.id||i.title).slice(0,10)); process.exit(1); }
+            const dai = withAudio.filter(i=>i.dai_suspected).length;
+            console.log('dai_suspected:', dai + '/' + withAudio.length, '(' + (withAudio.length - dai) + ' precise-seek eligible)');
+            // 6. Transcript availability index (issue #104). Two invariants,
+            // both cheap and both expensive to discover late.
+            const ta = require('./data/transcript-availability.json');
+            const taEpisodes = ta.shows.flatMap(s => s.episodes || []);
+            // (a) It is an INDEX. A transcript body landing here is ~400MB of
+            // repo growth against a 44MB data/ directory, and the pipeline's
+            // rule is fetch-extract-discard.
+            const bodyish = taEpisodes.filter(e => Object.values(e).some(v => typeof v === 'string' && v.length > 2000));
+            if (bodyish.length) { console.error('transcript-availability.json stores transcript-body-sized strings:', bodyish.length); process.exit(1); }
+            // (b) has_timestamps must agree with the recorded format. It is what
+            // decides whether a segment boundary can be anchored (ADR-0007); a
+            // drifted flag promises an anchor that fails silently at playback.
+            const TIMED = new Set(['text/vtt','application/srt','application/x-subrip','application/json']);
+            const badFlag = taEpisodes.filter(e => e.has_timestamps !== TIMED.has(e.transcript_type));
+            if (badFlag.length) { console.error('has_timestamps disagrees with transcript_type:', badFlag.slice(0,5)); process.exit(1); }
+            console.log('transcript availability:', ta.summary.episodes_with_transcript + '/' + ta.summary.episodes_total, '(' + ta.summary.transcript_coverage_pct + '%,', ta.summary.episodes_with_timed_transcript, 'anchorable)');
             console.log('data invariants ok');
           "
       - name: Syntax-check site JS
         run: |
           node --check app.js
           node --check search-engine.js
+      - name: Player state-machine tests
+        # Pure reducer, no DOM and no dependencies — see player/queue-state.js.
+        # Both suites live in this job (rather than their own) because
+        # `data-and-site` is already a required check in the protect-main
+        # ruleset; a new job would not be enforced until the ruleset changed.
+        run: node --test "player/**/*.test.js"
+      - name: app.js security invariants
+        # Tier 4 auto-merge gate (.github/workflows/automerge-nightly.yml).
+        # app.js previously had ONLY `node --check` — a syntax check that would
+        # pass an XSS regression, a CSP violation, or a javascript: URL. This
+        # suite is what replaces the human read now that app.js can auto-merge.
+        # Same job for the same reason as above: it must be inside an already
+        # required check to actually gate anything.
+        run: node --test "test/*.test.js"
+      - name: Refresh-pipeline helper tests
+        run: node --test "tools/refresh/*.test.mjs"
+      - name: Segment-pipeline helper tests
+        # Fixtures only, no network — see the suites' headers. Same job as
+        # everything above for the same reason: `data-and-site` is the
+        # required check in protect-main.
+        run: node --test "tools/segments/*.test.mjs"
+      - name: Transcription-pipeline tests
+        # Same job for the same reason as the two above: `data-and-site` is the
+        # required check, so a suite in a new job would gate nothing. Includes
+        # the assertion that no downloaded audio is git-tracked (issue #120),
+        # which is only meaningful when it runs on every PR.
+        run: node --test "tools/transcribe/*.test.mjs"
+      - name: Validate data/segments.json
+        # Schema gate on the segment pool (#106, ADR-0007). Every record
+        # carries the provenance it was validated against, so everything
+        # except verbatim-ness — which needs the transcript — is re-checkable
+        # offline. A hand-edited or half-written segments file fails here.
+        run: node tools/segments/merge-segments.mjs --check
       - name: Validate semantic-index.json
         run: node tools/validate-semantic-index.mjs
       - name: Search-quality battery

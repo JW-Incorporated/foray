@@ -23,6 +23,12 @@ outcomes**, not code line-by-line. Full role split: `docs/roles.md`.
 
 1. **Merge/push to `main` or deploy.** `main` is protected (ruleset
    `protect-main`: PR + green `backend`/`data-and-site` checks, zero bypass).
+   Exception (added 2026-07-30, see `docs/roles.md` § Merge authority):
+   for PRs scoped to product/content/UX, Joey may direct Claude to merge
+   once required checks are green, without waiting on Wyatt. This does not
+   extend to anything touching architecture, infra, secrets, or CI/CD —
+   those still require Wyatt's approval. This exception is provisional
+   pending Wyatt's sign-off.
    Work on a branch; propose via PR. Never push `main`, never force-push.
 2. **Touch secrets, credentials, or production infra** (incl. deleting data).
    This repo's cloud automation is deliberately keyless — keep it that way.
@@ -43,6 +49,60 @@ outcomes**, not code line-by-line. Full role split: `docs/roles.md`.
 6. **Codify repetition.** If a procedural task recurs, write it as a committed
    script/command/test instead of re-doing it by hand (see `tools/refresh/` —
    this is exactly why the nightly pipeline was consolidated out of `data-local`).
+
+## Never babysit your own PR  (KEEP VERBATIM — starter-kit invariant)
+
+**Open the PR and stop.** Do not arm a `send_later`, a self-check-in, a
+Monitor, or any "come back and look at this again" wake-up, and do not
+subscribe to PR activity to wake on it. This applies to every session in this
+repo — scheduled runners, Joey's sessions, Wyatt's sessions.
+
+**Why:** in Swift2 these self-armed loops reached **~69% of all scheduled agent
+token spend** — ~144 cloud sessions/day whose entire output was "still open,
+still green, re-arm in 1h". Nothing in any prompt asked for it; the agents
+armed it themselves. They left no trace in git, issues or CI, because each was
+told not to comment when nothing changed.
+
+**You don't need it.** CI gates the merge, auto-merge lands content PRs the
+moment they go green, and the account-wide auditor alerts if a runner goes
+dark. If a PR fails CI or hits a conflict, the next scheduled run of that agent
+picks it up. If something genuinely needs a human, say so once in the PR body
+or one comment, then exit — never poll for the answer.
+
+This lives here, not only in `docs/agents/routine-invariants.md`, because
+interactive sessions never read runner prompts — and interactive sessions are
+where the loops were armed.
+
+## Never discard uncommitted work
+
+Do not run `git restore`, `git checkout -- <file>`, `git clean`, or
+`git reset --hard` unless explicitly asked to throw work away. If the tree
+looks wrongly "modified" (e.g. every file at once), suspect line endings or
+filemode config — investigate, never "clean up" by reverting. This repo is
+developed on Windows against a Unix-normalised tree, so whole-tree CRLF churn
+is the expected false alarm, not a real diff. When in doubt, `git stash`.
+
+## Don't stop to ask
+
+The founders are non-coders. Do not ask them technical or workflow questions
+you can decide yourself — make the call, state it in one line, keep moving.
+
+Yours: branch/file naming, test framework details, refactor order, commit
+granularity, which command variant to run, foreground vs background work.
+
+Ask only for: the three decision-authority items above, product questions,
+anything expensive to reverse, or a genuine spec gap where guessing wastes
+hours.
+
+## Definition of done
+
+- Acceptance criteria from the spec are met
+- All tests pass, including new ones for this change
+- Docs updated if behaviour or architecture changed
+- No new secrets, keys, or credentials committed
+
+Do not report work as complete if any item is unmet. Say what's missing
+instead.
 
 ## Verify before committing
 
@@ -82,6 +142,9 @@ outcomes**, not code line-by-line. Full role split: `docs/roles.md`.
 - `docs/brief/`: original product spec (read first). `docs/adr/`,
   `docs/DECISIONS.md`: decisions. `docs/agents/`: runner prompts + registry.
   `docs/roles.md`: who owns what. `docs/marketing/`, `docs/research/`.
+  `docs/ux/foray-m3-prototype.html`: current interactive UX reference for M3
+  (onboarding, today menu, player, transitions, library, settings, etc.) — see
+  `docs/ux/README.md`.
 
 ## Conventions
 
@@ -90,6 +153,19 @@ outcomes**, not code line-by-line. Full role split: `docs/roles.md`.
 - localStorage keys keep the legacy `cp_` prefix (renaming would wipe user state).
 - `user_id` on every backend table and route — no single-tenant schema shortcuts.
 - Every LLM call routes through the cost-metering budget guard.
+- PR descriptions open with a 1–2 sentence plain-language **TL;DR for
+  reviewers** (what it does + why it matters), then `---`, then detail. The
+  founders review by outcome, not by reading the diff.
+- Branches: `feature/<short-name>`, `fix/<short-name>`. Bot content branches
+  use the prefixes listed in `.github/workflows/automerge-nightly.yml`.
+
+## For future sessions
+
+If you notice a recurring instruction the founders keep repeating, propose
+adding it here. If it's a lesson that would apply to the *next* JW project
+too, propose it for `JW-Incorporated/starter-kit`'s `LESSONS.md` in the same
+week — that repo is only worth having if it grows, and the window in which a
+lesson lives only in someone's head is exactly when it repeats.
 
 ## Automation
 

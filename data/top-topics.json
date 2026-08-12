@@ -1028,7 +1028,7 @@
       "taxonomy_nodes": [
         "engineering/energy-grid"
       ],
-      "notes": "engineering/energy-fusion is the closer node in taxonomy but is the known-mistag node (issue #12) — mapped to energy-grid instead where possible"
+      "notes": "engineering/energy-fusion is the closer node in taxonomy but was avoided here due to the mistag bug (issue #12, now fixed — see data/discover.json); kept on energy-grid since 'clean energy'/'renewable energy' search intent is broader than fusion specifically, not revisited as part of the mistag fix"
     },
     {
       "id": "tv-film",

@@ -113,7 +113,9 @@
         "cleantech"
       ],
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-fusion",
+        "engineering/energy-grid",
+        "automotive"
       ],
       "related": [
         "energy",
@@ -136,7 +138,8 @@
         "fuel-cells"
       ],
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-fusion",
+        "engineering/energy-grid"
       ],
       "related": [
         "fusion",
@@ -156,7 +159,8 @@
         "atmosphere"
       ],
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-fusion",
+        "engineering/energy-grid"
       ],
       "related": [
         "clean-energy",
@@ -272,7 +276,8 @@
         "automation"
       ],
       "topics": [
-        "engineering/precision-mfg"
+        "engineering/precision-mfg",
+        "engineering/ai-robotics"
       ],
       "related": [
         "ai",
@@ -318,7 +323,8 @@
         "mercenaries"
       ],
       "topics": [
-        "history/military-ancient"
+        "history/military-ancient",
+        "history/military-modern"
       ],
       "related": [
         "ancient-history",
@@ -498,7 +504,7 @@
         "mussolini"
       ],
       "topics": [
-        "history/military-ancient",
+        "history/military-modern",
         "espionage/cold-war-tech"
       ],
       "related": [
@@ -716,6 +722,25 @@
         "cooking",
         "bbq",
         "biology"
+      ]
+    },
+    "nutrition": {
+      "terms": [
+        "nutrition",
+        "nutrition-science",
+        "diet",
+        "protein",
+        "supplements",
+        "weight-loss",
+        "sports-nutrition"
+      ],
+      "topics": [
+        "health/nutrition"
+      ],
+      "related": [
+        "food-science",
+        "medicine",
+        "sports"
       ]
     },
     "coffee": {
@@ -979,7 +1004,8 @@
         "writers"
       ],
       "topics": [
-        "linguistics/language"
+        "linguistics/language",
+        "culture/books"
       ],
       "related": [
         "language",
@@ -1225,7 +1251,6 @@
         "transit",
         "urban-planning",
         "cities",
-        "design",
         "roads",
         "underground"
       ],
@@ -1236,7 +1261,22 @@
       "related": [
         "construction",
         "bridges",
-        "engineering"
+        "engineering",
+        "design"
+      ]
+    },
+    "design": {
+      "terms": [
+        "design",
+        "product-design",
+        "architecture"
+      ],
+      "topics": [
+        "culture/design"
+      ],
+      "related": [
+        "infrastructure",
+        "celebrities"
       ]
     },
     "bridges": {
@@ -1262,24 +1302,14 @@
         "sports",
         "sport",
         "athletes",
-        "athletics",
         "football",
-        "soccer",
-        "baseball",
-        "basketball",
-        "nba",
-        "tennis",
-        "racquets",
         "olympics",
         "world-cup",
-        "track-cycling",
-        "bobsled",
         "motorsport",
-        "formula-1",
-        "sports-history",
-        "sports-equipment"
+        "formula-1"
       ],
       "topics": [
+        "sports",
         "sports/biomechanics"
       ],
       "related": [
@@ -1441,10 +1471,12 @@
         "absurdist",
         "roasting",
         "sketch-comedy",
-        "silly"
+        "silly",
+        "stand-up"
       ],
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "comedy/stand-up"
       ],
       "related": [
         "celebrities",
@@ -1461,13 +1493,15 @@
         "movies",
         "film",
         "films",
+        "television",
         "snl",
         "acting",
         "broadway",
         "theater"
       ],
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "tv-film"
       ],
       "related": [
         "comedy",
@@ -1634,6 +1668,32 @@
         "ancient-history",
         "books",
         "true-crime"
+      ]
+    },
+    "paranormal": {
+      "terms": [
+        "paranormal",
+        "supernatural"
+      ],
+      "topics": [
+        "paranormal"
+      ],
+      "related": [
+        "storytelling",
+        "true-crime"
+      ]
+    },
+    "fiction": {
+      "terms": [
+        "fiction",
+        "audio-drama"
+      ],
+      "topics": [
+        "fiction/drama"
+      ],
+      "related": [
+        "storytelling",
+        "paranormal"
       ]
     },
     "true-crime": {
@@ -1885,15 +1945,64 @@
         "empathy",
         "anxiety",
         "mindfulness",
-        "emotions"
+        "emotions",
+        "mental-health",
+        "grief",
+        "addiction",
+        "recovery"
       ],
       "topics": [
-        "psychology/decision-making"
+        "psychology/decision-making",
+        "health/mental"
       ],
       "related": [
         "decision-making",
         "medicine",
         "philosophy"
+      ]
+    },
+    "relationships": {
+      "terms": [
+        "relationships",
+        "dating",
+        "marriage"
+      ],
+      "topics": [
+        "relationships"
+      ],
+      "related": [
+        "psychology",
+        "parenting"
+      ]
+    },
+    "parenting": {
+      "terms": [
+        "parenting",
+        "fatherhood",
+        "motherhood",
+        "family"
+      ],
+      "topics": [
+        "kids-family/parenting"
+      ],
+      "related": [
+        "kids-content",
+        "relationships",
+        "psychology"
+      ]
+    },
+    "kids-content": {
+      "terms": [
+        "kids",
+        "stories-for-kids",
+        "family"
+      ],
+      "topics": [
+        "kids-family/stories"
+      ],
+      "related": [
+        "parenting",
+        "storytelling"
       ]
     },
     "earth-science": {
@@ -2101,7 +2210,9 @@
       ],
       "topics": [
         "craft/filmmaking",
-        "craft/photography"
+        "craft/photography",
+        "tv-film",
+        "tv-film/reviews"
       ],
       "related": [
         "photography",
@@ -2268,6 +2379,7 @@
         "game-industry"
       ],
       "topics": [
+        "gaming",
         "gaming/design"
       ],
       "related": [
@@ -2293,7 +2405,8 @@
         "caffeine"
       ],
       "topics": [
-        "medicine/neuroscience"
+        "medicine/neuroscience",
+        "health/mental"
       ],
       "related": [
         "neuroscience",
@@ -2791,6 +2904,7 @@
     "workshop": {
       "terms": [
         "workshop",
+        "woodworking",
         "jigs",
         "jig",
         "veneer",
