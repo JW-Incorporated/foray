@@ -65,6 +65,8 @@ const FLOORS = {
   "tools/segments/transcript-normalize.test.mjs": 24,
   "tools/segments/merge-segments.test.mjs": 39,
   "tools/transcribe/fetch-audio.test.mjs": 64,
+  "tools/corpus/fetcher.test.mjs": 22,
+  "tools/corpus/extract.test.mjs": 21,
 };
 
 for (const [rel, floor] of Object.entries(FLOORS)) {
