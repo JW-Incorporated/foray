@@ -136,6 +136,12 @@ jobs:
         # everything above for the same reason: `data-and-site` is the
         # required check in protect-main.
         run: node --test "tools/segments/*.test.mjs"
+      - name: Transcription-pipeline tests
+        # Same job for the same reason as the two above: `data-and-site` is the
+        # required check, so a suite in a new job would gate nothing. Includes
+        # the assertion that no downloaded audio is git-tracked (issue #120),
+        # which is only meaningful when it runs on every PR.
+        run: node --test "tools/transcribe/*.test.mjs"
       - name: Validate data/segments.json
         # Schema gate on the segment pool (#106, ADR-0007). Every record
         # carries the provenance it was validated against, so everything
