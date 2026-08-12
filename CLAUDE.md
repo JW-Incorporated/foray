@@ -180,10 +180,10 @@ deleted later by a PR that auto-merges, and a deleted suite passes CI.
   (onboarding, today menu, player, transitions, library, settings, etc.) — see
   `docs/ux/README.md`.
 
-## Research corpus (local-only) — search it before reasoning from memory
+## Research corpus — search it before reasoning from memory
 
 The 54 curated sources in `docs/research/foray-research-dossier.md` are scraped
-into a searchable SQLite+FTS5 corpus (52 ingested, 453 chunks at time of
+into a searchable SQLite+FTS5 corpus (52 ingested, 480 chunks at time of
 writing — `stats` prints the live numbers; the two failures are named in
 `docs/research/corpus/dead-links.md`). Nine areas: podcast
 infrastructure, speech processing/ASR, topic segmentation, retrieval and
@@ -216,11 +216,22 @@ that failed to fetch (404), so on loudness the corpus holds AES's *overview*
 page and not the recommendation — quote the latter and you are back to quoting
 from memory. `stats` gives per-area coverage, `dead-links.md` names every gap.
 
-**It exists only on the machine that built it.** The DB lives in
+**The digests are committed; the searchable DB is not.** Every checkout —
+including cloud runners — has `docs/research/corpus/digests.md`: what each of
+the 54 sources establishes, in our own words, with 3–6 key facts and the
+redistribution verdict per source. `corpus-index.json` beside it is the same
+content as data, plus url, `content_sha256`, and chunk/token counts. Read those
+first; they need no database and no network. **No source text is committed** —
+this repo is public, so the sources' own prose stays in `data-local/` (see
+`docs/DECISIONS.md`). So `search` finds phrases the digests do not carry, and
+only on the building machine.
+
+**The DB itself exists only on the machine that built it.** It lives in
 `data-local/corpus/`, which is gitignored, so cloud runners (nightly refresh,
-classification agents on GitHub Actions) and other checkouts do not have it and
-cannot query it — never write a runner prompt or doc that tells them to. It is
-regenerable from the committed dossier plus the network:
+classification agents on GitHub Actions) and other checkouts cannot run
+`search`/`stats` — never write a runner prompt or doc that tells them to; point
+them at `digests.md` instead. The DB is regenerable from the committed dossier
+plus the network:
 
 ```
 node tools/corpus/corpus.mjs init
