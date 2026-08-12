@@ -59,6 +59,7 @@ const FLOORS = {
   "test/app-security.test.js": 18,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
+  "tools/segments/sweep-transcripts.test.mjs": 26,
 };
 
 for (const [rel, floor] of Object.entries(FLOORS)) {
