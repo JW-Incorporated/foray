@@ -13175,6 +13175,43 @@
       "batch_id": "fresh-2026-07-28-05022d73",
       "classified_at": "2026-07-28T16:53:44.063Z"
     },
+    "1193045798": {
+      "topics": [
+        "religion/buddhism",
+        "education",
+        "computing",
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The 12 Steps and Buddhism - from Judith Ragir and others focuses on buddhis",
+      "display_title": "The 12 Steps and Buddhism - from Judith",
+      "blurb": "This series includes talks about the 12 Steps and Buddhism. Recent episodes include step 1",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
     "1193068130": {
       "topics": [
         "true-crime"
@@ -62710,13 +62747,1412 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-12-88f0e5db",
       "classified_at": "2026-08-12T00:51:02.976Z"
+    },
+    "1736143730": {
+      "topics": [
+        "medicine",
+        "science",
+        "health/mental",
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Infinite Health with Dr. Arasi Maran focuses on medicine based on episode c",
+      "display_title": "Infinite Health with Dr. Arasi Maran",
+      "blurb": "Infinite Health with Dr. Recent episodes include hormone replacement therapy: separating f",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1736344886": {
+      "topics": [
+        "news",
+        "news/commentary",
+        "tv-film/reviews",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Don Lemon Show focuses on news & current affairs based on episode conte",
+      "display_title": "The Don Lemon Show",
+      "blurb": "With three decades of award-winning journalism and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1736397134": {
+      "topics": [
+        "space",
+        "science",
+        "aviation",
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "science",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bedtime Astronomy focuses on space based on episode content.",
+      "display_title": "Bedtime Astronomy",
+      "blurb": "Welcome Bedtime Astronomy Podcast. Recent episodes include astronomers finally cracked the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1736503820": {
+      "topics": [
+        "math",
+        "science",
+        "health/mental",
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "MATLAB Unboxed: A Journey with Marco focuses on math based on episode conte",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1737278150": {
+      "topics": [
+        "sports/baseball",
+        "news",
+        "hobbies",
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Is This A Great Game, Or What? focuses on baseball based on episode content",
+      "display_title": "Is This A Great Game, Or What?",
+      "blurb": "Hall of Fame Baseball Writer Tim Kurkjian is joined by his.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1737704348": {
+      "topics": [
+        "aviation",
+        "tv-film/reviews",
+        "computing",
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Pilot Life focuses on aviation based on episode content.",
+      "display_title": "The Pilot Life",
+      "blurb": "The Pilot Life takes you behind the cockpit and into the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1737715790": {
+      "topics": [
+        "religion/christianity",
+        "religion/islam",
+        "medicine",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "religion/islam",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "space",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stay True with Madison Prewett Troutt focuses on christianity based on epis",
+      "display_title": "Stay True with Madison Prewett Troutt",
+      "blurb": "What is truth? And how do I \"stay true\" to it? Stay True is.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1737815102": {
+      "topics": [
+        "culture/design",
+        "hobbies",
+        "gaming",
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Games Every Designer Should Play focuses on design based on episode content",
+      "display_title": "Games Every Designer Should Play",
+      "blurb": "This is ’Games Every Designer Should Play,’ the podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1738060112": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ماهرالمعيقلي - القرآن الكريم focuses on islam based on episode content.",
+      "display_title": "ماهرالمعيقلي - القرآن الكريم",
+      "blurb": "القرآن الكريم كامل بصوت الشيخ ماهر المعيقلي. Recent episodes include 114 - سورة الناس.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1738264274": {
+      "topics": [
+        "computing",
+        "news/tech",
+        "news/commentary",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Data Security Decoded focuses on computing based on episode content.",
+      "display_title": "Data Security Decoded",
+      "blurb": "Data Security Decoded provides actionable, vendor-agnostic.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1738311008": {
+      "topics": [
+        "religion/christianity",
+        "tv-film/reviews",
+        "computing",
+        "kids-family/education"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "HORROR 101 with Dr. AC focuses on christianity based on episode content.",
+      "display_title": "HORROR 101 with Dr. AC",
+      "blurb": "HORROR 101 with Dr. Recent episodes include ep 160 - the bad seed (1956) — the original ev",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1738445966": {
+      "topics": [
+        "business/startups",
+        "medicine",
+        "gaming",
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Splatter Effect focuses on startups & deep tech based on episode conten",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1738707602": {
+      "topics": [
+        "kids-family/education",
+        "hobbies",
+        "gaming",
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family Trivia With Dad & Lad focuses on education for kids based on episode",
+      "display_title": "Family Trivia With Dad & Lad",
+      "blurb": "Family Trivia with Dad & Lad is the ultimate kid-friendly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1738841174": {
+      "topics": [
+        "sports/endurance",
+        "hobbies",
+        "gaming",
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Aqua Pod - Scottish Swimming Podcast focuses on endurance based on epis",
+      "display_title": "The Aqua Pod - Scottish Swimming Podcast",
+      "blurb": "Welcome to The Aqua Pod - a podcast by Scottish Swimming,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1738928708": {
+      "topics": [
+        "hobbies",
+        "gaming",
+        "religion/buddhism",
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Board Game Homies focuses on hobbies & leisure based on episode content.",
+      "display_title": "Board Game Homies",
+      "blurb": "A group of friends play, review, and share about all things.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1739321540": {
+      "topics": [
+        "science/physics"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Вселенная поможет | Всё о визуализации focuses on physics based on episode ",
+      "display_title": "Вселенная поможет | Всё о визуализации",
+      "blurb": "Привет, меня зовут Никоненко Алексей, я инженер-программист.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1739638142": {
+      "topics": [
+        "nature/earth-science",
+        "news/commentary",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Future of Denial focuses on earth science based on episode content.",
+      "display_title": "Future of Denial",
+      "blurb": "The age of denial is over, we are told. Recent episodes include theses on reactionaries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1739740112": {
+      "topics": [
+        "kids-family/education",
+        "aviation",
+        "health/mental",
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unlock This! focuses on education for kids based on episode content.",
+      "display_title": "Unlock This!",
+      "blurb": "Join Anna, Leo, & Percy on adventures through the past and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1740170954": {
+      "topics": [
+        "aviation",
+        "news",
+        "health/mental",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dronecast: Rethinking Public Safety, One Drone at a Time focuses on aviatio",
+      "display_title": "Dronecast: Rethinking Public Safety, One Drone at a",
+      "blurb": "Welcome to Dronecast: Rethinking Public Safety, One Drone.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1740178076": {
+      "topics": [
+        "computing",
+        "engineering",
+        "science",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI + a16z focuses on computing based on episode content.",
+      "display_title": "AI + a16z",
+      "blurb": "Artificial intelligence is changing everything from art to.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1740178082": {
+      "topics": [
+        "tv-film/reviews",
+        "computing",
+        "sports/endurance",
+        "culture/art"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Ace Advice Podcast focuses on film & tv reviews based on episode conten",
+      "display_title": "The Ace Advice Podcast",
+      "blurb": "The Ace Advice podcast with Coach Cece and Coach Marissa is.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1740188858": {
+      "topics": [
+        "tv-film/reviews",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sugar on Apple TV focuses on film & tv reviews based on episode content.",
+      "display_title": "Sugar on Apple TV",
+      "blurb": "The DVR Podcast Network dives into the mysterious, film.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1740199670": {
+      "topics": [
+        "medicine",
+        "science",
+        "tv-film/reviews",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hormones, Metabolism & You! focuses on medicine based on episode content.",
+      "display_title": "Hormones, Metabolism & You!",
+      "blurb": "Your hormones control everything—from energy levels to.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1740530132": {
+      "topics": [
+        "religion/christianity",
+        "hobbies",
+        "gaming",
+        "tv-film/reviews"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.7
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Natural Six focuses on christianity based on episode content.",
+      "display_title": "Natural Six",
+      "blurb": "Natural Six is a chaotic, character-driven Dungeons &.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1740563090": {
+      "topics": [
+        "aviation",
+        "computing",
+        "engineering"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Envinadas focuses on aviation based on episode content.",
+      "display_title": "Envinadas",
+      "blurb": "Mariana Botas, Daniela Lujan y Jessica Segura platican y.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1741546916": {
+      "topics": [
+        "nature/earth-science",
+        "news/commentary",
+        "health/mental",
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Carbon Market Conversations: A Podcast by ICAP focuses on earth science bas",
+      "display_title": "Carbon Market Conversations: A Podcast by ICAP",
+      "blurb": "This is Carbon Market Conversations: A Podcast by ICAP,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1741562696": {
+      "topics": [
+        "science",
+        "health/mental",
+        "tv-film/reviews",
+        "computing"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bonding and Beer focuses on science based on episode content.",
+      "display_title": "Bonding and Beer",
+      "blurb": "Welcome to Bonding and Beer, the dental podcast hosted by.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1741574582": {
+      "topics": [
+        "computing",
+        "engineering",
+        "news",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The TED AI Show focuses on computing based on episode content.",
+      "display_title": "The TED AI Show",
+      "blurb": "Sure, some predictions about AI are just hype – but others.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1741593134": {
+      "topics": [
+        "news",
+        "tv-film/reviews",
+        "computing",
+        "culture/art"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Honey Jam Podcast focuses on news & current affairs based on episode conten",
+      "display_title": "Honey Jam Podcast",
+      "blurb": "Jump into the weekly adventures with Janice and Jessica as.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1741829042": {
+      "topics": [
+        "medicine",
+        "space",
+        "health/mental",
+        "tv-film/reviews"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "space",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dads And Daddies focuses on medicine based on episode content.",
+      "display_title": "Dads And Daddies",
+      "blurb": "Dads and Daddies features frank, unrehearsed conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1742273984": {
+      "topics": [
+        "medicine",
+        "science",
+        "tv-film/reviews",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mayo Clinic Aging Forward focuses on medicine based on episode content.",
+      "display_title": "Mayo Clinic Aging Forward",
+      "blurb": "\"Aging Forward\" brings you expert conversations on healthy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1742274110": {
+      "topics": [
+        "medicine",
+        "science",
+        "health/mental",
+        "tv-film/reviews"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mayo Clinic on Nutrition focuses on medicine based on episode content.",
+      "display_title": "Mayo Clinic on Nutrition",
+      "blurb": "\"Mayo Clinic on Nutrition\" digs into the latest nutrition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1742627756": {
+      "topics": [
+        "science",
+        "gaming",
+        "tv-film/reviews",
+        "business/startups"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Courtside Sessions focuses on science based on episode content.",
+      "display_title": "Courtside Sessions",
+      "blurb": "Learn from the best. Recent episodes include the racket, the mindset, & the top 10 comebac",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1742756204": {
+      "topics": [
+        "tv-film/reviews",
+        "business/startups",
+        "computing",
+        "culture/art"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Great Tom Cruise Cake Quest focuses on film & tv reviews based on episo",
+      "display_title": "The Great Tom Cruise Cake Quest",
+      "blurb": "A Podcast where one man tries to get a cake from Tom Cruise. Recent episodes include top g",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1742864402": {
+      "topics": [
+        "news",
+        "news/commentary",
+        "space",
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        },
+        {
+          "node": "space",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "It Girl with Bailey Taylor focuses on news & current affairs based on episo",
+      "display_title": "It Girl with Bailey Taylor",
+      "blurb": "Through intimate, unfiltered conversations with fashion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1742967932": {
+      "topics": [
+        "education",
+        "computing",
+        "kids-family/education",
+        "sports/endurance"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Learning Easy English focuses on education based on episode content.",
+      "display_title": "Learning Easy English",
+      "blurb": "Improve your English with these short easy podcasts. Recent episodes include real easy eng",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1743036794": {
+      "topics": [
+        "medicine",
+        "space",
+        "tv-film/reviews",
+        "computing"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "space",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Earnings Cheat Sheet With IBD focuses on medicine based on episode content.",
+      "display_title": "Earnings Cheat Sheet With IBD",
+      "blurb": "A weekly preview of upcoming quarterly results from.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1743040670": {
+      "topics": [
+        "tv-film/reviews",
+        "computing",
+        "culture/art",
+        "engineering"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adventures of Sam Spade Radio focuses on film & tv reviews based on episode",
+      "display_title": "Adventures of Sam Spade Radio",
+      "blurb": "Rediscover the gritty charm of classic detective radio with.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
+    },
+    "1743096956": {
+      "topics": [
+        "space",
+        "science",
+        "computing",
+        "news/tech"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nik Nocturnal Podcast focuses on space based on episode content.",
+      "display_title": "Nik Nocturnal Podcast",
+      "blurb": "Nik Nocturnal’s talks with legendary guests in the modern.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-e0b1e666",
+      "classified_at": "2026-08-12T08:50:40.519Z"
     }
   },
-  "built_at": "2026-08-12T00:51:02.976Z",
+  "built_at": "2026-08-12T08:50:40.519Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-12-88f0e5db",
+    "last_batch_id": "fresh-2026-08-12-e0b1e666",
     "last_batch_tier": 1
   }
 }
