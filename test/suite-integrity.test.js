@@ -62,6 +62,7 @@ const FLOORS = {
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
   "tools/segments/transcript-normalize.test.mjs": 24,
+  "tools/segments/merge-segments.test.mjs": 39,
   "tools/transcribe/fetch-audio.test.mjs": 64,
 };
 
