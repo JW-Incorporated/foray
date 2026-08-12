@@ -248,7 +248,15 @@ test("a VTT missing its WEBVTT header still parses, with a warning", () => {
 });
 
 test("CRLF line endings and a UTF-8 BOM parse identically to plain LF", () => {
-  const lf = fixture("webvtt-basic.vtt");
+  /* Normalise to LF FIRST rather than trusting the bytes on disk. This repo is
+     developed on Windows, where git's autocrlf rewrites the fixture at checkout
+     time — so a naive `.replace(/\n/g, "\r\n")` on an already-CRLF file yields
+     "\r\r\n" and the parser correctly finds nothing. That failure is a property
+     of the developer's checkout, not of the code under test, and it is
+     invisible on the Linux CI runner. `.gitattributes` now pins the fixtures,
+     but constructing both variants explicitly here means the test states what
+     it actually means regardless of how the file arrived. */
+  const lf = fixture("webvtt-basic.vtt").replace(/\r\n/g, "\n");
   const crlf = "﻿" + lf.replace(/\n/g, "\r\n");
   assert.deepEqual(normalize(crlf, "text/vtt").cues, normalize(lf, "text/vtt").cues);
 });
