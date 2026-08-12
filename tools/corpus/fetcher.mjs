@@ -38,6 +38,9 @@ export function createFetcher({
   now = () => Date.now(),
   defaultDelayMs = DEFAULT_DELAY_MS,
   attemptTimeoutMs = ATTEMPT_TIMEOUT_MS,
+  /* Optional cross-process gate (hostgate.mjs). The in-process limiter can't
+   * see sibling area-ingestion processes; the gate can. */
+  hostGate = null,
 } = {}) {
   /* host -> { chain: Promise, nextAllowedAt: number, robots: parsed|null } */
   const hosts = new Map();
@@ -57,6 +60,7 @@ export function createFetcher({
     const run = s.chain.then(async () => {
       const wait = s.nextAllowedAt - now();
       if (wait > 0) await sleep(wait);
+      if (hostGate) await hostGate.reserve(host, delayMs);
       try {
         return await fn();
       } finally {
@@ -190,9 +194,35 @@ export function createFetcher({
       if (len > RESPONSE_CAP) {
         return { ok: false, status: res.status, finalUrl: urlObj.href, contentType: res.headers.get("content-type"), body: null, notes: [...notes, `response ${len} bytes exceeds ${RESPONSE_CAP} cap`] };
       }
-      const buf = Buffer.from(await res.arrayBuffer());
-      if (buf.length > RESPONSE_CAP) {
-        return { ok: false, status: res.status, finalUrl: urlObj.href, contentType: res.headers.get("content-type"), body: null, notes: [...notes, `response ${buf.length} bytes exceeds ${RESPONSE_CAP} cap`] };
+      // Enforce the cap WHILE streaming: content-length can be absent
+      // (chunked) or a lie, and buffering-then-checking would already have
+      // paid the memory cost the cap exists to prevent.
+      let buf;
+      if (res.body?.getReader) {
+        const reader = res.body.getReader();
+        const parts = [];
+        let total = 0;
+        let overflow = false;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          total += value.byteLength;
+          if (total > RESPONSE_CAP) {
+            overflow = true;
+            await reader.cancel();
+            break;
+          }
+          parts.push(value);
+        }
+        if (overflow) {
+          return { ok: false, status: res.status, finalUrl: urlObj.href, contentType: res.headers.get("content-type"), body: null, notes: [...notes, `response exceeded ${RESPONSE_CAP} cap mid-stream`] };
+        }
+        buf = Buffer.concat(parts.map((p) => Buffer.from(p)));
+      } else {
+        buf = Buffer.from(await res.arrayBuffer());
+        if (buf.length > RESPONSE_CAP) {
+          return { ok: false, status: res.status, finalUrl: urlObj.href, contentType: res.headers.get("content-type"), body: null, notes: [...notes, `response ${buf.length} bytes exceeds ${RESPONSE_CAP} cap`] };
+        }
       }
       return {
         ok: true,

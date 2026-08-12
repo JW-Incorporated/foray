@@ -342,3 +342,30 @@ Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
   checkpoint refuses to start rather than quietly restarting, and a run where
   no show succeeded writes nothing and exits non-zero. One real failure this
   run: omega tau (`CERT_HAS_EXPIRED`).
+
+## 2026-08-12 (research corpus)
+
+- **Research corpus data model** (`tools/corpus/`, PLAN: `docs/research/corpus/PLAN.md`,
+  announcement: root `STATE.md`). The ~57-source research dossier
+  (`docs/research/foray-research-dossier.md`) is scraped into a corpus DB that
+  later feeds agent context, retrieval experiments, and an embedding backfill.
+  Decisions expensive to reverse, recorded before ingestion ran:
+  - **SQLite via built-in `node:sqlite`** (zero native deps), single file at
+    `data-local/corpus/corpus.db` — **gitignored, not LFS**: the corpus is fully
+    regenerable from the committed dossier + the network, so repo history is the
+    wrong place for ~100MB of fetched bytes. Migrations are numbered `.sql`
+    files tracked via `PRAGMA user_version`, shaped for a mechanical lift to
+    Postgres+pgvector (the FTS5 index is isolated in its own migration; the
+    `chunks.embedding BLOB` column stays NULL until a dedicated backfill pass —
+    consistent with the DURABLE-WORK anti-list on speculative embeddings).
+  - **`documents` is append-only fetch history; `chunks` exist only for the
+    current document** of each source — history stays queryable, search never
+    double-counts a refetched page.
+  - **The dossier markdown IS the manifest**: titles/URLs/areas/why-notes are
+    parsed verbatim (test-pinned), never hand-copied.
+  - **Politeness is enforced twice**: per-process rate limiter (≥2s/host or
+    robots Crawl-delay, robots.txt respected, honest UA with contact) plus a
+    cross-process host gate (lock-dir mutex under `data-local/corpus/hostgate/`)
+    because ingestion runs one process per dossier area in parallel and several
+    hosts appear in multiple areas. Same "legally boring" posture as playback:
+    fetch politely, archive privately, never republish.

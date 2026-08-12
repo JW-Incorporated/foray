@@ -87,7 +87,10 @@ function makeTurndown() {
  */
 export function htmlToMarkdown(html, url) {
   const notes = [];
-  const { document } = parseHTML(html);
+  // linkedom returns a document without documentElement for fragment/plain
+  // input, which crashes Readability — wrap anything that isn't a full page.
+  const looksLikeDoc = /<html[\s>]/i.test(html.slice(0, 2000));
+  const { document } = parseHTML(looksLikeDoc ? html : `<html><body>${html}</body></html>`);
   const title =
     document.querySelector("title")?.textContent?.trim() ||
     document.querySelector("h1")?.textContent?.trim() ||
