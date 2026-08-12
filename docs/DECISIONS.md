@@ -196,6 +196,69 @@ Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
   accepts `mcp_connections: []` with a 200 and silently keeps the
   `Claude_Code_Remote` connector, so removing it is UI-only. That belongs in
   the starter kit, per its own "keeping it alive" rule.
+- **Auto-merge widened to tiers 1–4 (Wyatt, 2026-08-11).** Goal stated
+  directly: *"get to the point where I pretty much never approve a PR and we
+  merge most items just after autonomous checks."* The governing principle is
+  the starter kit's — *removing a human gate raises the bar on whatever is
+  upstream of it* — so the allowlist was widened only where a mechanical check
+  already catches the bad version of the change, and the gap was built where it
+  didn't.
+  - **T1 `data/`** — already covered by `ci.yml`'s data invariants (session
+    refs, cross-file dupes, taxonomy coverage, `audio_url` scheme, tokened-URL
+    secret leaks, DAI flags in both directions) plus `copyRules.test.ts`.
+  - **T2 `docs/`** — low blast radius, with governance paths denied.
+  - **T3 `player/`, `tools/`, `test/`** — already have `node --test` suites in
+    a required check.
+  - **T4 `app.js`, `styles.css`, `search-engine.js`** — gated on new coverage
+    built in this change (below), because `node --check` is a *syntax* check
+    and would have passed an XSS regression, a CSP violation, or a
+    `javascript:` URL.
+- **A DENIED list now overrides the allowlist**, containing the files that
+  define the gates and the operating rules: `.github/`, `.claude/`, `CLAUDE.md`,
+  `docs/DECISIONS.md`, `docs/adr/`, `docs/roles.md`,
+  `docs/agents/routine-invariants.md`, `backend/src/config/`. The reasoning is
+  structural, not stylistic: **a bot that can auto-merge a change to its own
+  checks has no checks** — one PR widens the allowlist or rewrites the standing
+  instructions every future session reads, and every downstream guarantee is
+  gone. Same shape as keeping `Claude_Code_Remote` off every routine but the
+  auditor. `.github/`/`.claude/` are denied *and* absent from ALLOWED, so a
+  careless future widening still cannot expose them. Verified against 12 path
+  cases including the mixed one (a single denied file blocks an otherwise
+  allowed PR).
+- **`test/app-security.test.js` (new, 18 tests)**: `esc()` behaviour (all five
+  entities, script-tag and attribute-breakout payloads, ampersand-first
+  ordering, null/undefined coercion), `safeUrl()` scheme rejection
+  (`javascript:` incl. mixed case, `data:`, `vbscript:`, `file:`, `blob:`,
+  protocol-relative, malformed), and static invariants that were previously
+  enforced by nothing: every interpolated `href`/`src` passes through
+  `safeUrl`, no inline `style=`, no `<script`, no `javascript:` in source, and
+  localStorage keys keep the `cp_` prefix. Dependency-free — loads `app.js` in
+  a `node:vm` with a stub whose `fetch` never settles, which parks the
+  top-level `init()` at its first await so the hoisted declarations are
+  reachable with no DOM work. **Mutation-tested**: an unguarded `href`, an
+  injected inline `style`, and a weakened `esc()` were each confirmed to fail
+  the suite before `app.js` was restored byte-identical.
+- **`test/suite-integrity.test.js` (new)**: committed per-suite test-count
+  floors. `test/` and `player/` being allowlisted means a PR could otherwise
+  gut a suite and still pass CI — a suite with nothing in it passes trivially,
+  and the two-step version (weaken the gate, then land what it would have
+  caught) involves no human at any point. Also fails when a new suite appears
+  with no floor. Verified by truncating the security suite and confirming the
+  build breaks. Honest limit, documented in the file: it cannot distinguish a
+  real test from an empty one, and gutting the gate now requires editing two
+  files rather than one — it makes deletion loud, not impossible.
+- **Audit found while writing the above**: `${query}` and `subjectBlurb()` both
+  looked like unescaped injection sites on grep. Neither is — `${query}` is
+  assigned via `textContent`, and `subjectBlurb()`'s whole return value is
+  wrapped in `esc()` at its single call site. No XSS existed; recorded so the
+  next reader doesn't re-investigate.
+- **Still open, and required before "never approve a PR" is honest**: nothing
+  currently watches *what merged*. The account-wide auditor checks routine
+  invariants, not merge outcomes. A weekly digest — what auto-merged, which
+  paths, what landed with zero human eyes, as one evolving issue rather than
+  one per run — is the missing complement. Also noted: `ios-kit` is not a
+  required check in `protect-main`, which is harmless while `ios/` stays off
+  the allowlist (it does) but would not be if that changed.
 - **Deliberately not adopted: the `autonomous-templates/` Fable-orchestrator
   set.** It is a workflow change (orchestrator model, five agent roles, four
   enforcement hooks, `STATE.md`/`MAP.md`/`PLAN.md`), not a docs merge, and its

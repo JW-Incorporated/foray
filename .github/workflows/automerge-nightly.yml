@@ -65,11 +65,50 @@ jobs:
             exit 0
           fi
 
-          # Paths a bot content run is allowed to touch. Anything else -> human.
-          # data/ is the generated-content tree: catalogue, classifications,
-          # tags, segments. Code, CI, docs and backend/ are deliberately absent.
+          # DENIED wins over ALLOWED and is checked first.
+          #
+          # These are the files that DEFINE the gates, the operating rules, or
+          # the deploy. A bot that can auto-merge a change to its own checks has
+          # no checks: one PR widens the allowlist, weakens a required job, or
+          # rewrites the standing instructions every future session reads, and
+          # every downstream guarantee is gone. Same reasoning as keeping the
+          # Claude_Code_Remote connector off every routine but the auditor.
+          #
+          # .github/ and .claude/ are not in ALLOWED either — they are listed
+          # here so that carelessly widening ALLOWED later cannot expose them.
+          DENIED_PREFIXES='
+          .github/
+          .claude/
+          CLAUDE.md
+          docs/DECISIONS.md
+          docs/adr/
+          docs/roles.md
+          docs/agents/routine-invariants.md
+          backend/src/config/
+          '
+
+          # Paths a bot run may touch, by tier (docs/curation/... § auto-merge):
+          #   T1 data/         generated content; covered by the data invariants
+          #                    in ci.yml (refs, dupes, taxonomy, audio scheme,
+          #                    tokened-URL leaks, DAI flags) + copy rules
+          #   T2 docs/         low blast radius; governance paths denied above
+          #   T3 player/ tools/ test/   covered by node --test suites in ci.yml
+          #   T4 app.js styles.css search-engine.js
+          #                    covered by test/app-security.test.js (esc/safeUrl
+          #                    behaviour + CSP/href static invariants) and
+          #                    node --check. See that file's header for what
+          #                    this coverage does NOT include.
+          # backend/ is deliberately absent: its suite is strong, but nothing
+          # has asked for agent-authored backend PRs to land unread yet.
           ALLOWED_PREFIXES='
           data/
+          docs/
+          player/
+          tools/
+          test/
+          app.js
+          styles.css
+          search-engine.js
           '
 
           labels=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name')
@@ -88,6 +127,18 @@ jobs:
 
           while IFS= read -r f; do
             [ -z "$f" ] && continue
+
+            # Denied first — it overrides the allowlist unconditionally.
+            while IFS= read -r prefix; do
+              [ -z "$prefix" ] && continue
+              case "$f" in
+                "$prefix"*)
+                  echo "PR #$PR touches protected path '$f' — leaving it for a human."
+                  exit 0
+                  ;;
+              esac
+            done <<<"$(echo "$DENIED_PREFIXES" | tr -d ' ')"
+
             ok=0
             while IFS= read -r prefix; do
               [ -z "$prefix" ] && continue
@@ -96,7 +147,7 @@ jobs:
               esac
             done <<<"$(echo "$ALLOWED_PREFIXES" | tr -d ' ')"
             if [ "$ok" -eq 0 ]; then
-              echo "PR #$PR touches non-content path '$f' — leaving it for a human."
+              echo "PR #$PR touches non-allowlisted path '$f' — leaving it for a human."
               exit 0
             fi
           done <<<"$files"

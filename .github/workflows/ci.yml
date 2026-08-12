@@ -105,6 +105,14 @@ jobs:
         # `data-and-site` is already a required check in the protect-main
         # ruleset; a new job would not be enforced until the ruleset changed.
         run: node --test "player/**/*.test.js"
+      - name: app.js security invariants
+        # Tier 4 auto-merge gate (.github/workflows/automerge-nightly.yml).
+        # app.js previously had ONLY `node --check` — a syntax check that would
+        # pass an XSS regression, a CSP violation, or a javascript: URL. This
+        # suite is what replaces the human read now that app.js can auto-merge.
+        # Same job for the same reason as above: it must be inside an already
+        # required check to actually gate anything.
+        run: node --test "test/*.test.js"
       - name: Refresh-pipeline helper tests
         run: node --test "tools/refresh/*.test.mjs"
       - name: Validate semantic-index.json
