@@ -167,6 +167,35 @@ Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
   to free `<podcast:transcript>` only; and the merge validator must exist before
   extraction runs, since an LLM paraphrasing an anchor produces a boundary that
   can never be resolved and fails silently at playback.
+- **`data/segments.json` schema + `tools/segments/merge-segments.mjs` shipped
+  (#106).** The durable output of the extraction pipeline, and its validator,
+  built before any extraction runs. Two calls worth recording because they are
+  expensive to change once a fan-out has written thousands of records:
+  - **What "verbatim" means for an anchor.** Both sides are canonicalised —
+    NFKC, lowercased, apostrophes elided, every other non-alphanumeric run
+    collapsed to a single space — and compared as a whole-word subsequence.
+    That forgives only artefacts of *how text was written down* (case, doubled
+    spaces, hyphenation, smart quotes, `that's` == `thats`) and rejects every
+    artefact of *rewriting* (`that is` for `that's`, `30` for `thirty`,
+    synonyms, tense). Punctuation becomes a space so `hand-waving` matches
+    `hand waving`; apostrophes are deleted rather than spaced so contractions
+    do not split. Digits are deliberately not spelled out: the test that
+    matters is whether a resolver could find the anchor in the *listener's*
+    transcript, and it could not. Two extra guards, free once the transcript
+    is indexed: an anchor under 4 words is not a location, and an anchor whose
+    every occurrence is >120s from the timestamp it claims means the timeline
+    cache is junk even though the words are real.
+  - **Provenance lives in the record.** Each segment stores
+    `transcript_source` (`publisher` | `asr-local`) and `dai_suspected`, so
+    the file is self-validating: `merge-segments.mjs --check` re-enforces
+    everything except verbatim-ness offline, which is what lets CI reject a
+    malformed or hand-edited `data/segments.json` without refetching a single
+    transcript. ADR-0007's DAI relaxation is enforced there too — both anchors
+    required on a DAI item; a non-DAI item may omit them but merges
+    `needs_review: true`, because a publisher can re-upload a static file too.
+  - Idempotency is byte-level: an unchanged merge writes nothing at all, not
+    even a fresh `built_at`. 39 tests, one deliberate violation per check;
+    mutation-verified (see the PR) rather than assumed.
 - **Starter-kit merge** (`JW-Incorporated/starter-kit`, reviewed 2026-08-11).
   Foray was missing several hard-won items:
   - **`CLAUDE.md` had no "never babysit your own PR" rule** — the kit's #1
