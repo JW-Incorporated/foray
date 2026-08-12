@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-12T08:37:13.094Z",
+  "built_at": "2026-08-12T16:38:55.637Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-12-a0c52608",
+    "last_batch_id": "fresh-2026-08-12-8a458c44",
     "last_batch_tier": 1
   },
   "entries": {
@@ -191749,10 +191749,30 @@
     },
     "1843613644": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book club podcast featuring interviews with authors and in-depth discussions of various audiobook titles, genres, and storytelling.",
+      "display_title": "Earsay: The Audible and iHeart Audiobook Club",
+      "blurb": "A book club podcast hosted by Kal Penn featuring conversations with authors, comedians, and guests about beloved audiobooks across thrillers, comedy, fantasy, and exclusive Audible Originals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1843649030": {
       "topics": [
@@ -191905,7 +191925,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fan-driven deep dive podcast analyzing chapters of Dungeon Crawler Carl fantasy-sci-fi series with wild theories and fandom discussion.",
+      "display_title": "The Apocalypse Will Be Podcasted",
+      "blurb": "A fan podcast breaking down chapters of Dungeon Crawler Carl, featuring wild theories, foreshadowing hunts, and deep discussions for readers of this fantasy-sci-fi series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1844372921": {
       "topics": [
@@ -191916,10 +191951,30 @@
     },
     "1844385976": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.92
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert-led podcast series examining Jane Austen's life, works, and historical context through locations and period settings.",
+      "display_title": "Jane Austen's Paper Trail",
+      "blurb": "A six-part series from The Conversation exploring Jane Austen's life and times through visits to Bath, Lyme Regis, York, and other settings mentioned in her novels.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1844409167": {
       "topics": [
@@ -191976,10 +192031,30 @@
     },
     "1844572486": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.88
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Archive of classic sci-fi radio dramas from the golden age of broadcasting, featuring space adventures, aliens, and time travel themes.",
+      "display_title": "Old Time Sci-Fi Radio",
+      "blurb": "Classic science fiction radio dramas from the 1950s-1980s, featuring space adventures, alien encounters, and time travel stories from the golden age of broadcasting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1844600303": {
       "topics": [
@@ -192219,10 +192294,29 @@
     "1845073720": {
       "topics": [
         "fiction/comedy",
-        "comedy"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Supernatural comedy audio drama blending improvisation, tabletop roleplay, and sound design with Irish folklore and 1990s nostalgia.",
+      "display_title": "The Bad Articles",
+      "blurb": "A supernatural comedy audio drama from Felbryn Studios blending improvised comedy, tabletop RPG elements, and Irish folklore into standalone investigations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1845107703": {
       "topics": [
@@ -192249,10 +192343,30 @@
     },
     "1845148042": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.93
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's bedtime podcast combining gentle movement, stretches, meditation, and storytelling to help kids wind down and develop healthy sleep habits.",
+      "display_title": "CoComelon & Headspace - Wiggle To Wind Down",
+      "blurb": "A CoComelon and Headspace collaboration featuring gentle movement, stretches, and bedtime stories designed to help children develop healthy sleep habits.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1845155084": {
       "topics": [
@@ -192272,10 +192386,35 @@
     },
     "1845378880": {
       "topics": [
-        "math"
+        "math",
+        "science",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with Cambridge Mathematics Faculty researchers discussing pure math, applied math, statistics, and theoretical physics.",
+      "display_title": "Voices of Mathematics",
+      "blurb": "Interviews from Cambridge's Mathematics Faculty exploring topics from number theory and geometry to quantum physics and cosmology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1845380383": {
       "topics": [
@@ -192493,10 +192632,30 @@
     },
     "1846195822": {
       "topics": [
-        "comedy/interviews"
+        "comedy/interviews",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.92
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy interview podcast where Maggie Winters unpacks big and small life-changing discoveries with comedian guests in a casual, playful format.",
+      "display_title": "Literally Life Changing",
+      "blurb": "Comedian Maggie Winters interviews fellow comedians about life-changing discoveries, from workout routines to spiritual breakthroughs, with a humorous take.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1846198705": {
       "topics": [
@@ -192555,10 +192714,35 @@
     },
     "1846631710": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "health/nutrition",
+        "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.88
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wellness podcast with author and influencer discussing beauty, fitness, longevity, and women's health with expert guests.",
+      "display_title": "Live & Well",
+      "blurb": "Melissa Magsaysay hosts conversations with dermatologists, fitness innovators, and health experts on wellness, longevity, and women's health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1846635355": {
       "topics": [
@@ -192601,10 +192785,30 @@
     },
     "1847060038": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "history/military-modern"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Geopolitical analysis podcast exploring American empire dynamics, global conflicts, and international power shifts with expert guests.",
+      "display_title": "Turbulence",
+      "blurb": "Dylan Saba and M Ceniza navigate geopolitical chaos, from regional wars to US hegemony, discussing the end of American empire dynamics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1847071497": {
       "topics": [
@@ -192663,7 +192867,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.92
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pro trail runners sharing unfiltered conversations about racing, training, mountain life, and the lifestyle of ultra-distance running.",
+      "display_title": "Hemming and Hawing",
+      "blurb": "Pro trail runners Tabor and Eli Hemming discuss racing highs, training lows, and life in the mountains with honesty and humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1847480625": {
       "topics": [
@@ -192892,17 +193115,65 @@
     },
     "1847970742": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ballet podcast featuring candid interviews with dancers, choreographers, and physical therapists about discipline, injury, and artistry.",
+      "display_title": "Pushing Over the Box",
+      "blurb": "Hosted by young dancer Jasmine Jain, featuring interviews with principal dancers, choreographers, and ballet professionals on discipline and resilience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1847976910": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "health/nutrition",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Menopause expert discusses perimenopause, HRT, hormones, and midlife health with functional medicine and humor-focused approach.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1847995986": {
       "topics": [
@@ -192967,10 +193238,30 @@
     },
     "1848185680": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.88
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast focusing on cases at the intersection of hunting, fishing, and outdoor life with original investigative reporting.",
+      "display_title": "Blood Trails",
+      "blurb": "MeatEater's true crime series exploring investigations where hunting and fishing collide with violence, featuring original reporting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1848208861": {
       "topics": [
@@ -192997,17 +193288,60 @@
     },
     "1848365152": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Capitol Hill reporters exploring major policy fights and legislative developments with interviews from Washington newsmakers.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1848382288": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.88
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime saga about identical twin brothers, one imprisoned for a murder he didn't commit, exploring sacrifice and family bonds.",
+      "display_title": "Blood Will Tell",
+      "blurb": "A true crime saga of Vietnamese-American identical twins—one wrongly imprisoned for murder—exploring brotherhood, sacrifice, and truth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1848424550": {
       "topics": [
@@ -193228,17 +193562,57 @@
     },
     "1849060648": {
       "topics": [
-        "health/alternative"
+        "health/alternative",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Alternative health and wellness podcast covering toxins, natural products, and unconventional health topics. Some episodes promote questionable claims.",
+      "display_title": "Cultivate Elevate's Podcast",
+      "blurb": "Alternative wellness podcast exploring natural health practices, detoxification, and avoiding environmental toxins.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1849139692": {
       "topics": [
-        "travel"
+        "travel",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.92
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel podcast featuring immersive stories from adventurous travelers with cultural encounters, food, and transformation narratives.",
+      "display_title": "Wayfinder",
+      "blurb": "Travel writer Daniel Scheffler shares immersive stories of beauty, adventure, and cultural transformation from travelers worldwide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1849178171": {
       "topics": [
@@ -193257,10 +193631,30 @@
     },
     "1849179004": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis coaching podcast with unfiltered Monday commentary on professional matches and player performances.",
+      "display_title": "Intuitive Tennis Podcast",
+      "blurb": "Nikola Aracic, founder of Intuitive Tennis methodology, shares Monday morning commentary on professional tennis and coaching insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1849180978": {
       "topics": [
@@ -193316,10 +193710,38 @@
     },
     "1849196080": {
       "topics": [
-        "health/alternative"
+        "health/alternative",
+        "education/self-improvement",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.82
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Wellness podcast blending science with alternative health claims about cellular health, intuition, and consciousness. Some claims lack scientific grounding.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1849219121": {
       "topics": [
@@ -193407,7 +193829,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quranic recitation podcast by Abdul Rahman Saad with classical Quranic readings in Arabic.",
+      "display_title": "Abdul Rahman Saad",
+      "blurb": "Classical Quranic recitations by acclaimed reciter Abdul Rahman Saad, featuring complete surahs in beautiful melodic style.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1849447111": {
       "topics": [
@@ -193462,19 +193899,57 @@
     },
     "1849758826": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.88
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Geopolitics and culture analysis podcast examining political strategy, discourse, and power structures through anthropological lens.",
+      "display_title": "Rufo & Lomez",
+      "blurb": "Christopher Rufo and Jonathan Keeperman dissect news, discourse, and culture through an anthropological lens exploring power structures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1849765834": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "medicine",
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Clinical cardiology and electrophysiology podcast reviewing high-impact cardiac research with real-world clinical perspectives.",
+      "display_title": "EP Edge Journal Watch",
+      "blurb": "Dr. Niraj Sharma reviews high-impact cardiac electrophysiology research, distilling evidence into clinically meaningful insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1849776514": {
       "topics": [
@@ -193608,17 +194083,60 @@
     },
     "1849994842": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.88
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Award-winning journalists McKay Coppins and Jane Clayson Johnson discuss complex policy and cultural topics with respect and nuance.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1850002930": {
       "topics": [
-        "nature"
+        "nature",
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.88
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investigative series about a major poaching case in New Hampshire that uncovers prison crime and enforcement coordination failures.",
+      "display_title": "Operation Night Cat",
+      "blurb": "NHPR investigative series following a complex poaching case that reveals additional crimes within a state prison.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1850297689": {
       "topics": [
@@ -193648,7 +194166,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pittsburgh Pirates fan podcast with analysis, player interviews, and trade discussions from former players and analysts.",
+      "display_title": "Bucco Territory",
+      "blurb": "Pittsburgh Pirates podcast with fresh analysis and insights from former players Josh Harrison and hosts Noah Hiles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1850387935": {
       "topics": [
@@ -193659,10 +194192,30 @@
     },
     "1850405926": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast exploring decorative arts, interior design, and material culture through conversations with designers, architects, and artists.",
+      "display_title": "Handle with Care",
+      "blurb": "Adam Charlap Hyman and Laura Kugel discuss decorative arts, design, collecting, and material culture with irreverent experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1850472770": {
       "topics": [
@@ -193703,10 +194256,30 @@
     },
     "1850584150": {
       "topics": [
-        "sports/golf"
+        "sports/golf",
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf podcast featuring interviews with authors of golf books, discussing stories and philosophy of the game.",
+      "display_title": "That's Good. Pick it Up!",
+      "blurb": "Golf writer Nate Oxman interviews authors of golf books, exploring stories and ideas that make the game meaningful.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1850603732": {
       "topics": [
@@ -193765,10 +194338,37 @@
     "1850796052": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health/fitness",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.65
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Health podcast on reducing toxins in homes, food, and environment through science-backed steps with expert guests.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1850799015": {
       "topics": [
@@ -193825,10 +194425,30 @@
     },
     "1850962012": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.88
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Specialty chemicals industry podcast exploring leadership, innovation, and trends in chemical manufacturing and materials.",
+      "display_title": "Speciality Sessions",
+      "blurb": "Kelham Partners podcast exploring people, ideas, and trends in specialty chemicals through leadership conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1850976302": {
       "topics": [
@@ -193839,10 +194459,30 @@
     },
     "1850987140": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weight loss podcast documenting personal journey with Mounjaro medication, including side effects, diet changes, and health transformation.",
+      "display_title": "Phill Double L",
+      "blurb": "Honest weight loss journey documenting experiences with Mounjaro, covering side effects, diet, plateaus, and life transformation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1850987970": {
       "topics": [
@@ -194111,10 +194751,30 @@
     },
     "1851522004": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast celebrating Calvin and Hobbes comics' 40th anniversary with 40 episodes exploring characters, philosophy, and themes.",
+      "display_title": "The Magic of Calvin and Hobbes",
+      "blurb": "Celebrating Calvin and Hobbes' 40th anniversary with episodes exploring the comic strip's characters, philosophy, and cultural impact.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1851577528": {
       "topics": [
@@ -194289,7 +194949,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Colorado Avalanche podcast with former NHL players and long-time broadcast host discussing hockey, games, and insider perspectives.",
+      "display_title": "Puck Around and Pod Out",
+      "blurb": "Former NHL stars and broadcast host discuss the Avalanche and NHL hockey with insider humor and expert analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1851925239": {
       "topics": [
@@ -194498,7 +195173,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket podcast from Jomboy Media with sharp analysis, recaps, and coverage of IPL, World Cups, and international tournaments.",
+      "display_title": "That's Cricket",
+      "blurb": "Jomboy Media's cricket coverage featuring sharp analysis, daily recaps, and creator-led commentary on IPL and international cricket.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1852333819": {
       "topics": [
@@ -194520,7 +195210,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Warhammer 40K lore podcast with calming narration over ambient sound for bedtime listening or deep focus.",
+      "display_title": "Warhammer 40k Lore to Sleep To",
+      "blurb": "Warhammer 40K lore narrated in a calm, meditative tone over ambient thunderstorms and space sounds for sleep or focus.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1852468983": {
       "topics": [
@@ -194534,14 +195239,49 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "USMNT analysis podcast with experts breaking down US soccer news, player developments, and World Cup performance.",
+      "display_title": "Inside American Soccer",
+      "blurb": "Tom Bogert and Tab Ramos analyze USMNT news, player development, and US soccer strategy with informed expert perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1852555900": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.88
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Arabic-language lectures and courses on philosophy, relationships, success, and personal development by Yasser Al-Hazimi.",
+      "display_title": "دورات ومحاضرات ياسر الحزيمي",
+      "blurb": "Yasser Al-Hazimi's lectures on philosophy, relationships, personal development, and life wisdom in Arabic.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1852559233": {
       "topics": [
@@ -194552,10 +195292,30 @@
     },
     "1852589062": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.82
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Arabic-language mental health and philosophy podcast with psychiatrist discussing disorders, psychology, and wellness.",
+      "display_title": "وفي أنفسكم",
+      "blurb": "Psychiatrist Dr. Anis Ibn Auf and Yasser Al-Hazimi discuss mental health topics, psychological disorders, and well-being in Arabic.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1852589555": {
       "topics": [
@@ -194574,10 +195334,30 @@
     },
     "1852594324": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.88
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Arabic-language podcast exploring identity, existence, life purpose, and overcoming failure through philosophical conversations.",
+      "display_title": "خطوة",
+      "blurb": "Arabic series exploring self-discovery, meaning of existence, identity, and finding one's role through philosophical dialogue.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1852607127": {
       "topics": [
@@ -194588,10 +195368,30 @@
     },
     "1852611580": {
       "topics": [
-        "business/management"
+        "business/management",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.88
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cattle market podcast with ranching experts analyzing livestock prices, trends, and forecasts three times weekly.",
+      "display_title": "The Cattle Market Guys",
+      "blurb": "Cattle market experts Brock and Jim break down livestock prices, trends, and forecasts with ranching wisdom.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1852618120": {
       "topics": [
@@ -194667,7 +195467,22 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Irreverent livestock and agriculture podcast with raw humor, show world banter, and unfiltered conversation.",
+      "display_title": "Unhinged",
+      "blurb": "Sue Lacy and Bryan from JudgingPro bring raw, unfiltered livestock talk mixing show world gossip with agriculture culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1852897815": {
       "topics": [
@@ -194734,7 +195549,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quranic podcast with thematic groupings of connected verses, recitation by Mishary Al-Afasy, and English translations.",
+      "display_title": "Thematic Quran",
+      "blurb": "The Qur'an organized by themes—mercy, justice, family, gratitude—with recitation and English translation for contemplation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1853347080": {
       "topics": [
@@ -194883,10 +195713,33 @@
     },
     "1853720824": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Jewish life podcast exploring relationships, faith, community, and cultural identity through rabbi's conversations.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1853729741": {
       "topics": [
@@ -195037,10 +195890,30 @@
     },
     "1854074098": {
       "topics": [
-        "fiction/drama"
+        "fiction/drama",
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Charles Dickens ghost stories narrated by David Suchet with sound design, music, and dramatic production.",
+      "display_title": "Charles Dickens Ghost Stories",
+      "blurb": "David Suchet reads Dickens' chilling ghost stories with sound design and original music, including A Christmas Carol.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1854161367": {
       "topics": [
@@ -195087,10 +195960,30 @@
     },
     "1854471424": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.88
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "PBS News interview podcast with in-depth conversations on current events, books, and topics explaining the modern world.",
+      "display_title": "Settle In with PBS News",
+      "blurb": "PBS hosts long-form conversations with authors, experts, and thinkers on contemporary issues, culture, and current affairs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-8a458c44",
+      "classified_at": "2026-08-12T16:38:55.637Z"
     },
     "1854501132": {
       "topics": [
