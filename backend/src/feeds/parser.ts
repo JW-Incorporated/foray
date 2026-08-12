@@ -19,6 +19,8 @@ export interface ParsedEpisode {
   seasonNumber: number | null;
   episodeNumber: number | null;
   transcriptUrl: string | null;
+  timedTranscriptUrl: string | null;
+  timedTranscriptType: string | null;
   chaptersUrl: string | null;
   warnings: string[];
 }
@@ -89,6 +91,26 @@ function firstOf<T>(v: T | T[] | undefined | null): T | null {
   if (v === undefined || v === null) return null;
   if (Array.isArray(v)) return v.length > 0 ? (v[0] as T) : null;
   return v;
+}
+
+/**
+ * Transcript formats that carry timestamps, in preference order. Only these
+ * can anchor a segment boundary (ADR 0007) — `text/plain` and `text/html`
+ * are prose with no timeline, which is why they are absent here even though
+ * `text/plain` is the third most published format in the wild.
+ */
+const TIMED_TRANSCRIPT_TYPES = ["text/vtt", "application/srt", "application/x-subrip", "application/json"];
+
+/**
+ * Normalizes a `<podcast:transcript type="...">` value for comparison:
+ * lowercased, trimmed, parameters dropped ("text/vtt; charset=utf-8" →
+ * "text/vtt"). Returns null for a missing or non-string attribute, so a
+ * malformed tag simply fails to match rather than throwing.
+ */
+function normalizeMimeType(raw: string | null): string | null {
+  if (raw === null) return null;
+  const base = raw.split(";")[0]?.trim().toLowerCase();
+  return base ? base : null;
 }
 
 function parsePubDate(raw: string | null): { iso: string | null; warning?: string } {
@@ -280,6 +302,21 @@ function parseItem(rawItem: unknown, idx: number): ParsedEpisode {
     null;
   const transcriptUrl = preferredTranscript ? attrOf(preferredTranscript, "url") : null;
 
+  // Second, independent pick for segmentation. `transcriptUrl` above prefers
+  // text/plain because Tier-1 enrichment only asks "what is this episode
+  // about"; a segment boundary needs a timeline, so it cannot reuse that
+  // choice. Shows publish ~2.9 transcript tags each, so the two consumers
+  // genuinely disagree often — hence a second field rather than a reorder.
+  let timedTranscript: unknown = null;
+  for (const type of TIMED_TRANSCRIPT_TYPES) {
+    timedTranscript = transcriptList.find((t) => normalizeMimeType(attrOf(t, "type")) === type) ?? null;
+    if (timedTranscript) break;
+  }
+  // A tag with no usable url is no better than no tag at all — report the pair
+  // as absent rather than handing downstream a type it cannot fetch.
+  const timedTranscriptUrl = timedTranscript ? attrOf(timedTranscript, "url") : null;
+  const timedTranscriptType = timedTranscriptUrl ? normalizeMimeType(attrOf(timedTranscript, "type")) : null;
+
   const chaptersUrl = attrOf(item["podcast:chapters"], "url");
 
   return {
@@ -299,6 +336,8 @@ function parseItem(rawItem: unknown, idx: number): ParsedEpisode {
     seasonNumber,
     episodeNumber,
     transcriptUrl,
+    timedTranscriptUrl,
+    timedTranscriptType,
     chaptersUrl,
     warnings
   };
