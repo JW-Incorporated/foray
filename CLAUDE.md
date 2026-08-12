@@ -108,9 +108,21 @@ instead.
 
 - Backend: `cd backend && npm test` (includes `test/copyRules.test.ts`, which
   gates ALL user-facing copy in `data/*.json`).
+- Root suites: `node --test "test/*.test.js"` — the app.js security invariants
+  **and** `test/suite-integrity.test.js`, the floor check that guards every
+  `player/` and `tools/` suite. Run it for any change under those trees.
+- The pipeline suite your change touches: `node --test "tools/refresh/*.test.mjs"`
+  (likewise `tools/segments/`, `tools/transcribe/`, `player/**/*.test.js`).
+  `tools/corpus/` has its own deps: `cd tools/corpus && npm test`.
 - Site JS: `node --check app.js`
 - Data integrity: CI (`.github/workflows/ci.yml`) validates all JSON + session
   episode refs on push.
+
+**A new test suite needs a floor in the same change.** Adding
+`tools/**/*.test.mjs` or `player/**/*.test.js` without an entry in `FLOORS` in
+`test/suite-integrity.test.js` fails CI ("every suite on disk is covered by a
+floor"). That is deliberate, not friction: an unfloored suite can be quietly
+deleted later by a PR that auto-merges, and a deleted suite passes CI.
 
 ## Product principles (supersede everything, including marketing findings)
 
