@@ -40,7 +40,7 @@ jobs:
       - name: Validate JSON data files
         run: |
           node -e "
-            const files = ['data/session.json','data/taxonomy.json','data/validated-links.json','data/discover.json','data/catalog.json','data/personas.json','data/ladders.json','data/top-topics.json','data/topic-coverage-report.json','data/segments.json','manifest.json'];
+            const files = ['data/session.json','data/taxonomy.json','data/validated-links.json','data/discover.json','data/catalog.json','data/personas.json','data/ladders.json','data/top-topics.json','data/topic-coverage-report.json','data/transcript-availability.json','data/segments.json','manifest.json'];
             for (const f of files) { require('./' + f); console.log('ok', f); }
             const s = require('./data/session.json');
             const refs = [...s.cards.flatMap(c=>[c.episode_id,...(c.alternates||[])]), ...s.categories.flatMap(c=>c.groups.flatMap(g=>g.episode_ids))];
@@ -93,6 +93,22 @@ jobs:
             if (strayFlag.length) { console.error('items without audio carry dai_suspected:', strayFlag.map(i=>i.id||i.title).slice(0,10)); process.exit(1); }
             const dai = withAudio.filter(i=>i.dai_suspected).length;
             console.log('dai_suspected:', dai + '/' + withAudio.length, '(' + (withAudio.length - dai) + ' precise-seek eligible)');
+            // 6. Transcript availability index (issue #104). Two invariants,
+            // both cheap and both expensive to discover late.
+            const ta = require('./data/transcript-availability.json');
+            const taEpisodes = ta.shows.flatMap(s => s.episodes || []);
+            // (a) It is an INDEX. A transcript body landing here is ~400MB of
+            // repo growth against a 44MB data/ directory, and the pipeline's
+            // rule is fetch-extract-discard.
+            const bodyish = taEpisodes.filter(e => Object.values(e).some(v => typeof v === 'string' && v.length > 2000));
+            if (bodyish.length) { console.error('transcript-availability.json stores transcript-body-sized strings:', bodyish.length); process.exit(1); }
+            // (b) has_timestamps must agree with the recorded format. It is what
+            // decides whether a segment boundary can be anchored (ADR-0007); a
+            // drifted flag promises an anchor that fails silently at playback.
+            const TIMED = new Set(['text/vtt','application/srt','application/x-subrip','application/json']);
+            const badFlag = taEpisodes.filter(e => e.has_timestamps !== TIMED.has(e.transcript_type));
+            if (badFlag.length) { console.error('has_timestamps disagrees with transcript_type:', badFlag.slice(0,5)); process.exit(1); }
+            console.log('transcript availability:', ta.summary.episodes_with_transcript + '/' + ta.summary.episodes_total, '(' + ta.summary.transcript_coverage_pct + '%,', ta.summary.episodes_with_timed_transcript, 'anchorable)');
             console.log('data invariants ok');
           "
       - name: Syntax-check site JS
@@ -116,8 +132,9 @@ jobs:
       - name: Refresh-pipeline helper tests
         run: node --test "tools/refresh/*.test.mjs"
       - name: Segment-pipeline helper tests
-        # Transcript normaliser (#105). Same job as everything above for the
-        # same reason: `data-and-site` is the required check in protect-main.
+        # Fixtures only, no network — see the suites' headers. Same job as
+        # everything above for the same reason: `data-and-site` is the
+        # required check in protect-main.
         run: node --test "tools/segments/*.test.mjs"
       - name: Transcription-pipeline tests
         # Same job for the same reason as the two above: `data-and-site` is the

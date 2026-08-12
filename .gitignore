@@ -10,6 +10,12 @@ data/catalog-breadth-intl.json
 *.checkpoint
 data-local/
 
+# Sweep checkpoint (tools/segments/sweep-transcripts.mjs). Machine state for
+# resuming a killed run, not content — the committed artefact is
+# data/transcript-availability.json.
+data/transcript-progress.json
+data/*.json.tmp
+
 # Downloaded episode audio (tools/transcribe/fetch-audio.mjs, issue #120).
 # A streaming pipeline, not an archive: files exist only between download and
 # transcription and are deleted by cleanup(). Committing one would be tens of

@@ -89,7 +89,7 @@ genuinely token-bound work already sitting on the shelf.
 routine in `docs/agents/runners.md`, and fan out. The one open question is
 pacing, which the orchestrator decides.
 
-### Lane B — transcript availability sweep (ungated, small build)
+### Lane B — transcript availability sweep (BUILT, ran 2026-08-12)
 
 Before anything can extract segments, we need to know *where free
 transcripts actually are*. Today nothing records this: the refresh pipeline
@@ -106,18 +106,50 @@ timed pair, never `transcriptUrl`.
 This is a deterministic fetch job — **not** agent work. Codify it
 (`CLAUDE.md` rule 6):
 
-`tools/segments/sweep-transcripts.mjs`
-- For every show with a `feed_url`, fetch the feed once, politely.
-- Per episode record: `transcript_url`, `transcript_type`
-  (`text/plain` / `application/json` / `text/vtt` / `application/srt`),
-  `chapters_url`, `dai_suspected` (via the existing `dai.mjs` host
-  resolution), `duration_sec`.
-- Checkpoint to `data/transcript-progress.json` so it resumes.
-- Emit `data/transcript-availability.json`.
+`tools/segments/sweep-transcripts.mjs` (issue #104) — built, dependency-free,
+tested by `tools/segments/sweep-transcripts.test.mjs` (26 cases, fixtures only).
 
-Known shape from the 2026-08-11 probe of the 213 curated shows: transcript
-coverage is ~17% of DAI shows and ~10% of non-DAI, against ~5% for
-chapters. Expect the breadth tier to differ — measure it, do not assume.
+- For every show with a `feed_url`, fetch the feed once, politely: concurrency
+  6 plus a per-host minimum interval (the feeds cluster onto a few CDNs, so
+  concurrency alone is not politeness), honest User-Agent with a contact
+  address, `Retry-After`-aware backoff on 429/5xx, 30s timeout.
+- Per episode record: `guid`, `title`, `pub_date`, `duration_sec`,
+  `transcript_url`, `transcript_type`, **`has_timestamps`**,
+  `transcript_types` (every format the episode publishes), `chapters_url`.
+- Per show record: `dai_suspected` + `enclosure_host` (via `tools/refresh/
+  dai.mjs`, reused not reimplemented), counts for every episode, and
+  `status`/`error_code` on failure.
+- Checkpoint to `data/transcript-progress.json` (gitignored; machine state)
+  after **each show**, atomically. Verified by SIGKILL mid-run: the restart
+  swept only the remaining shows.
+- Emit `data/transcript-availability.json`. **Episode rows are kept only for
+  episodes with a transcript or chapters** — counts cover all 82,043, but
+  storing every barren row would quadruple the file for data no lane can use.
+  `--all-episodes` overrides.
+
+Two rules the script enforces structurally: it has **no code path that fetches
+a `transcript_url`** (a body index would be ~400MB), and every failure exits
+through a coded error (`HTTP_404`, `TIMEOUT`, `EMPTY_FEED`, `NOT_RSS`,
+`NETWORK`…) that lands in the show record — a run where no show succeeded
+refuses to write an index at all.
+
+**Measured 2026-08-12 over the 213 curated shows** (212 fetched; omega tau's
+certificate has expired), 82,043 episodes:
+
+| | episodes | with a transcript | |
+|---|---|---|---|
+| all | 82,043 | 8,012 | **9.8%** |
+| DAI (144 shows) | 59,768 | 7,966 | **13.3%** |
+| non-DAI (68 shows) | 22,275 | 46 | **0.2%** |
+
+Only **7,515 (9.2%)** carry a *timestamped* format, i.e. ~500 transcribed
+episodes are prose and cannot anchor a boundary. Chapters: 732 (0.9%).
+Formats across 23,219 tags — vtt 7,063, srt 6,848, plain 6,632, html 1,268,
+json 787, x-subrip 621 (~2.9 tags per transcribed episode). The corpus is also
+**concentrated**: 30 of 213 shows publish any transcript, 25 publish a timed
+one, and Stuff You Should Know (2,850) + Odd Lots (1,251) alone are half of it.
+This confirms epic #102's finding independently. Expect the breadth tier to
+differ — measure it, do not assume.
 
 **This is the single highest-value thing to build first**, because it turns
 "which episodes can we work on for free?" from a guess into a list, and
