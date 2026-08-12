@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-11T16:33:34.941Z",
+  "built_at": "2026-08-12T00:31:27.299Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-11-7dcb7a0a",
+    "last_batch_id": "fresh-2026-08-12-c55a6e5a",
     "last_batch_tier": 1
   },
   "entries": {
@@ -168990,11 +168990,25 @@
     },
     "1773167029": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College swimming news and athlete interviews.",
+      "display_title": "The College Swimming Podcast",
+      "blurb": "Latest college swimming news and interviews with top athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1773173097": {
       "topics": [
@@ -169005,10 +169019,30 @@
     },
     "1773173407": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional accounting CPE credits through podcast format.",
+      "display_title": "Becker Accounting Podcasts",
+      "blurb": "CPE-accredited accounting education covering tax, careers, and audit topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1773197394": {
       "topics": [
@@ -169022,7 +169056,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep Quranic study and Islamic spiritual development.",
+      "display_title": "Bayyinah Podcast",
+      "blurb": "Detailed Quranic study and Arabic language instruction for Islamic learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1773330038": {
       "topics": [
@@ -169071,11 +169120,30 @@
     },
     "1773569173": {
       "topics": [
-        "space",
-        "science"
+        "space/rockets",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily SpaceX and Starlink news with AI analysis.",
+      "display_title": "SpaceX Daily",
+      "blurb": "AI-curated daily coverage of SpaceX, Starship, and Starlink launches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1773578243": {
       "topics": [
@@ -169294,10 +169362,30 @@
     },
     "1774600735": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/after-shows",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Newcomer watches Married at First Sight with veteran fan.",
+      "display_title": "MAFS Virgin",
+      "blurb": "Longtime fan introduces newcomer to Married at First Sight seasons.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1774604476": {
       "topics": [
@@ -169335,10 +169423,30 @@
     },
     "1774956085": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/after-shows",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy watch-along of ABC's procedural drama.",
+      "display_title": "First Respodcast",
+      "blurb": "Comedic episode-by-episode breakdown of ABC's 9-1-1 procedural drama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1775065416": {
       "topics": [
@@ -169456,10 +169564,30 @@
     },
     "1775769511": {
       "topics": [
-        "music"
+        "music",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual behind-scenes conversations with musicians during kitchen singing.",
+      "display_title": "Counter-Melodies",
+      "blurb": "Candid music industry interviews with artists during kitchen singing sessions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1775791962": {
       "topics": [
@@ -169566,7 +169694,22 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional beach volleyball news and athlete interviews.",
+      "display_title": "Grit",
+      "blurb": "Beach volleyball news and interviews with pro athletes and coaches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1776246773": {
       "topics": [
@@ -169648,10 +169791,30 @@
     },
     "1776404389": {
       "topics": [
-        "culture/art"
+        "craft/photography",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wildlife photographers share stories, adventures, and technical skills.",
+      "display_title": "Wildlife Conversations",
+      "blurb": "Wildlife photographers share stories, techniques, and conservation experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1776435464": {
       "topics": [
@@ -169969,10 +170132,30 @@
     },
     "1777795285": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "architecture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Critical architecture discourse with scholars and designers.",
+      "display_title": "The Architectural Review",
+      "blurb": "Architecture criticism and conversations about global design and ecology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1777800582": {
       "topics": [
@@ -170009,14 +170192,49 @@
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TikTok Shop affiliate monetization and ecommerce strategy.",
+      "display_title": "Affiliate Academy",
+      "blurb": "TikTok Shop affiliate tips and strategies for maximizing earnings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1777868347": {
       "topics": [
-        "music"
+        "music",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly electronic and dance music DJ mixes with artist features.",
+      "display_title": "Golden Era Radio",
+      "blurb": "Weekly electronic and dance music sets with new tracks and throwbacks.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1777882501": {
       "topics": [
@@ -170024,7 +170242,26 @@
         "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided sleep meditations, hypnosis, and affirmations with binaural beats.",
+      "display_title": "Sleep Escape",
+      "blurb": "Guided sleep meditations and hypnosis to fall asleep and stay asleep.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1777908471": {
       "topics": [
@@ -170078,7 +170315,22 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert chemistry discussions on analytical methods and compliance.",
+      "display_title": "Chromatography Life",
+      "blurb": "Analytical chemistry experts discuss chromatography methods and innovation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1778060368": {
       "topics": [
@@ -170209,21 +170461,85 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hunting stories, outdoor gear reviews, and backcountry adventure tales.",
+      "display_title": "Born Primitive Outdoor Podcast",
+      "blurb": "Hunting stories and outdoor gear discussions for backcountry adventures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1778500885": {
       "topics": [
-        "medicine"
+        "health/mental",
+        "medicine/neuroscience"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sleep science and neuroscience approaches to restorative rest.",
+      "display_title": "Sleep Reimagined",
+      "blurb": "Sleep science and neuroscience approaches to restorative rest and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1778523355": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "psychology",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist meditation and spiritual recovery practices for addiction.",
+      "display_title": "Dharma and Recovery",
+      "blurb": "Buddhist practice and meditation for addiction recovery and mental wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1778573232": {
       "topics": [
@@ -170378,10 +170694,30 @@
     },
     "1779160795": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beauty business education focused on spray tanning entrepreneurship.",
+      "display_title": "GLOW TF UP",
+      "blurb": "Beauty business insights and spray tanning tips for professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1779163850": {
       "topics": [
@@ -170504,7 +170840,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese TikTok viral songs and trending music compilation.",
+      "display_title": "2025抖音热歌排行榜",
+      "blurb": "Compilation of trending Chinese music from TikTok and social media.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1779743638": {
       "topics": [
@@ -170635,10 +170986,30 @@
     },
     "1780522639": {
       "topics": [
+        "news/commentary",
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly five-minute roundup of major podcast industry stories.",
+      "display_title": "The Podcast Top 5",
+      "blurb": "Weekly five-minute roundup of top podcast industry news and trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1780626820": {
       "topics": [
@@ -170717,10 +171088,30 @@
     },
     "1781118823": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Newsletter operator strategies for email growth and monetization.",
+      "display_title": "Growth In Reverse",
+      "blurb": "Newsletter growth strategies and monetization tactics from successful creators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1781216958": {
       "topics": [
@@ -170790,10 +171181,30 @@
     },
     "1781687341": {
       "topics": [
-        "food"
+        "education",
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.85
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "WSET wine certification prep with expert tasting techniques.",
+      "display_title": "Wine Educate",
+      "blurb": "WSET wine certification prep with tasting techniques and regional studies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1781745123": {
       "topics": [
@@ -170813,10 +171224,30 @@
     },
     "1781848837": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spirited hockey discussion and off-topic comedy banter.",
+      "display_title": "NHL Unscripted",
+      "blurb": "Hockey broadcast veterans discuss NHL news and digress into comedy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1781852698": {
       "topics": [
@@ -170828,10 +171259,30 @@
     },
     "1781875045": {
       "topics": [
+        "comedy",
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast celebrating anime, games, and nerd culture.",
+      "display_title": "MobCast Mafia",
+      "blurb": "Comedy podcast exploring anime, games, and nerd culture diversity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1781877544": {
       "topics": [
@@ -171149,15 +171600,54 @@
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Social media strategy and client acquisition without burnout.",
+      "display_title": "Social Media Marketing",
+      "blurb": "Social media strategies for small business client acquisition without daily posting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1784162413": {
       "topics": [
         "space",
-        "science"
+        "science",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Universe mysteries through space exploration and science.",
+      "display_title": "Cosmos in a Pod",
+      "blurb": "Accessible space science and astronomy covering solar system discoveries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1784251002": {
       "topics": [
@@ -171230,17 +171720,51 @@
     "1784392987": {
       "topics": [
         "nature/earth-science",
-        "science"
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Documentary on soil restoration and regenerative agriculture.",
+      "display_title": "SOIL",
+      "blurb": "Six-part documentary on soil restoration and regenerative agriculture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1784496589": {
       "topics": [
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly farm walks exploring wildlife and rural biodiversity.",
+      "display_title": "Chris Skinner's Countryside",
+      "blurb": "Weekly nature walks from a biodiversity-focused farm with wildlife observations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1784529112": {
       "topics": [
@@ -171267,10 +171791,30 @@
     },
     "1784549779": {
       "topics": [
-        "automotive"
+        "automotive",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Diesel performance mechanics, tuning, and truck building expertise.",
+      "display_title": "Power Driven Podcast",
+      "blurb": "Diesel truck performance tips, tuning, and mechanical expertise breakdown.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1784569918": {
       "topics": [
@@ -171301,7 +171845,26 @@
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scripted comedy narrative set in fictional 1994 wrestling territory.",
+      "display_title": "Reno Championship Wrestling",
+      "blurb": "Scripted comedy narrative about a fictional wrestling promotion in 1994.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1784609266": {
       "topics": [
@@ -171414,10 +171977,29 @@
     "1785204769": {
       "topics": [
         "news/tech",
-        "computing"
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technical AI research news and model release breakdowns.",
+      "display_title": "Neural Intel Pod",
+      "blurb": "Technical AI news and research breakdowns for engineers and builders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1785271797": {
       "topics": [
@@ -171451,10 +172033,30 @@
     },
     "1785414451": {
       "topics": [
-        "automotive"
+        "automotive",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adventure motorcycle rally stories and record-breaking riding experiences.",
+      "display_title": "ADV Cannonball",
+      "blurb": "Adventure motorcycle rally stories and record-breaking riding experiences worldwide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1785415307": {
       "topics": [
@@ -171533,7 +172135,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily five-minute Tanya study and Jewish mystical teachings.",
+      "display_title": "Let's Talk Tanya",
+      "blurb": "Five-minute daily Tanya study covering Jewish mysticism and spirituality.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1785985876": {
       "topics": [
@@ -171576,10 +172193,30 @@
     },
     "1786294165": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese stand-up comedy xiangsheng performance compilation.",
+      "display_title": "爆笑经典相声",
+      "blurb": "Classic Chinese stand-up comedy performances in xiangsheng style.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1786330034": {
       "topics": [
@@ -171648,7 +172285,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Persian-language astronomy and space exploration discussions.",
+      "display_title": "ایستگاه فضایی",
+      "blurb": "Persian-language astronomy and space exploration for curious audiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1786606514": {
       "topics": [
@@ -171719,10 +172375,35 @@
     },
     "1786880317": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "education",
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional TV writers break down acclaimed show episodes.",
+      "display_title": "In The Cut Podcast",
+      "blurb": "TV writers professionally break down acclaimed television episodes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-12-c55a6e5a",
+      "classified_at": "2026-08-12T00:31:27.299Z"
     },
     "1787024140": {
       "topics": [
