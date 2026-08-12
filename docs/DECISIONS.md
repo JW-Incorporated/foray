@@ -115,3 +115,154 @@ Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 - **Changes**: warm off-white light palette (was cold gray) with theme-aware shadow tokens (`--shadow`) for real card elevation in both themes; serif headlines on card subject names, the subject-queue page header, and the topbar wordmark; branch color moved from a full-height card border (read as a spreadsheet row) to a small dot on the kicker line; consistent shadow applied to cards, episode rows, and the playlist-search input/button for visual cohesion.
 - **Verified in both card and queue-detail views** via browser automation, light mode (dark mode not independently verified this pass — same token system, should track, but not confirmed pixel-by-pixel).
 - **Not done here**: no icon/illustration system, no motion beyond the existing tap-scale, no changes to the in-app player UI (`#foray-player`) or drawer — this pass touched only the home page and subject-queue page, where the user's feedback was specifically pointed.
+
+## 2026-08-11 (segment anchoring, the chapters investigation, and a starter-kit merge)
+
+- **Playback ruling (Wyatt), resolving #63 §3's open fork:** a Foray plays
+  **seek-and-stop against the publisher's original enclosure**. It never
+  produces a concatenated or otherwise derived audio artefact. This was the
+  posture `docs/marketing/05-legal-risk-memo.md` §1 and #63 already argued for;
+  it is now decided rather than assumed, because a product mockup under
+  consideration described the feature as "clipping" and "stitching," which reads
+  as the rejected Stitcher/Luminary behaviour even though the same UX is
+  buildable the compliant way. Copy must follow the mechanism: no user-facing
+  language implying we produce a new audio file.
+- **Chapters were investigated as a DAI workaround and rejected on two
+  independent grounds** (`docs/adr/0007-segment-anchoring.md` option 2).
+  *Structurally*: a `<podcast:chapters>` tag points at a static JSON file at a
+  fixed URL — the same bytes for every listener, with no per-listener mechanism
+  in Podcasting 2.0 and no way for a stitcher to correlate the chapters fetch
+  with a particular stitch. So chapter offsets are authored against the
+  un-stitched master and drift exactly like our own timestamps.
+  `player/seek-policy.js` already names this precise case as its canonical
+  `FOREIGN` example. *Empirically*: probed all 213 curated shows' live feeds
+  (209 fetched) — only **10 (4.8%)** publish chapters at all, and the split is
+  **7/136 (5.1%) of DAI shows** vs 3/73 (4.1%) of non-DAI. The seven are small
+  indie shows on Buzzsprout/Transistor/Captivate, several of them thin (Acquired
+  publishes chapters on 1 of 216 episodes). There is no version of this that
+  unlocks a meaningful catalogue. The same probe found `<podcast:transcript>` at
+  roughly 3× chapter coverage on DAI shows (23/136, 16.9%), which is what
+  pointed at the accepted option.
+- **ADR-0007 accepted: segments are dual-anchored.** Every segment carries a
+  timeline cache (`start_sec`/`end_sec` + `reference_duration_sec`) *and*
+  content anchors (`start_anchor`/`end_anchor`, verbatim transcript text at each
+  edge). Timestamps are an optimisation; the anchor is the truth. At playback,
+  a drifted duration triggers anchor re-resolution rather than a bad cut, and an
+  unresolvable anchor skips the segment rather than playing the wrong place.
+  The load-bearing reason is **durability of extraction output**: a segment
+  stored as bare timestamps is scoped to one copy of one file and rots when a
+  publisher re-uploads, re-encodes, or changes ad load. This was decided *before*
+  any bulk extraction ran, because getting it wrong invalidates every segment
+  produced. Consequence for #65: the validator's hard `dai_suspected: false`
+  requirement relaxes to "a DAI source is permitted iff both anchors are present."
+  It does **not** make DAI sources v1-playable — that still needs downloads (#29).
+- **Also recorded (DAI exposure is growing):** 903 of 1,309 playable items in
+  `data/discover.json` are now `dai_suspected` — 69%, up from the 64% recorded
+  when #63 was written. The timestamp-only eligible pool is shrinking, which is
+  an independent argument for anchoring.
+- **Segment-extraction architecture written** (`docs/curation/segment-extraction-pipeline.md`),
+  reusing `tools/classify/`'s proven prepare → agent → merge shape rather than
+  inventing a second one. Two findings shaped it: full-corpus Whisper is ≈$20k
+  (73,719 episodes) and is *dollar*-bound not token-bound, so the fan-out routes
+  to free `<podcast:transcript>` only; and the merge validator must exist before
+  extraction runs, since an LLM paraphrasing an anchor produces a boundary that
+  can never be resolved and fails silently at playback.
+- **Starter-kit merge** (`JW-Incorporated/starter-kit`, reviewed 2026-08-11).
+  Foray was missing several hard-won items:
+  - **`CLAUDE.md` had no "never babysit your own PR" rule** — the kit's #1
+    lesson (~69% of Swift2's scheduled agent spend) and marked KEEP VERBATIM.
+    Foray had it only as a checklist item for *new routines* in
+    `routine-invariants.md`, which interactive sessions never read — and
+    interactive sessions are where the loops were armed. Now in `CLAUDE.md`.
+  - Added: never-discard-uncommitted-work (with the Windows/CRLF false-alarm
+    note), don't-stop-to-ask, definition of done, the PR TL;DR convention, and
+    the instruction to propose lessons back to the starter kit.
+  - **`.github/workflows/automerge-nightly.yml` gated on branch name, not
+    path** — the kit is explicit that the safety model must be path-based. This
+    was wrong in both directions: any PR from a `nightly/*` branch auto-merged
+    on green *regardless of what it touched* (app.js, CI workflows, backend/),
+    and the `classify/*` runners' PRs never auto-merged at all, which is why
+    PR #86 sat open for 8 days. Now path-gated to `data/`, with a `hold` /
+    `founder-decision` label escape hatch and an `AUTOMERGE_FREEZE` repo
+    variable as an instant kill switch — both of which matter materially more
+    with a large fan-out about to run.
+  - **`docs/agents/runners.md` was fiction**: it listed two runners, both
+    "pending", while seven were live. This is verbatim the kit's lesson *"a
+    registry that is not enforced becomes fiction."* Rewritten with the real
+    fleet, plus the model-tiering section `routine-invariants.md` referenced
+    but which did not exist.
+- **Flowing back to the kit** (not done in this pass, owed): Foray's
+  `routine-invariants.md` documents a gotcha the kit's copy lacks — the API
+  accepts `mcp_connections: []` with a 200 and silently keeps the
+  `Claude_Code_Remote` connector, so removing it is UI-only. That belongs in
+  the starter kit, per its own "keeping it alive" rule.
+- **Auto-merge widened to tiers 1–4 (Wyatt, 2026-08-11).** Goal stated
+  directly: *"get to the point where I pretty much never approve a PR and we
+  merge most items just after autonomous checks."* The governing principle is
+  the starter kit's — *removing a human gate raises the bar on whatever is
+  upstream of it* — so the allowlist was widened only where a mechanical check
+  already catches the bad version of the change, and the gap was built where it
+  didn't.
+  - **T1 `data/`** — already covered by `ci.yml`'s data invariants (session
+    refs, cross-file dupes, taxonomy coverage, `audio_url` scheme, tokened-URL
+    secret leaks, DAI flags in both directions) plus `copyRules.test.ts`.
+  - **T2 `docs/`** — low blast radius, with governance paths denied.
+  - **T3 `player/`, `tools/`, `test/`** — already have `node --test` suites in
+    a required check.
+  - **T4 `app.js`, `styles.css`, `search-engine.js`** — gated on new coverage
+    built in this change (below), because `node --check` is a *syntax* check
+    and would have passed an XSS regression, a CSP violation, or a
+    `javascript:` URL.
+- **A DENIED list now overrides the allowlist**, containing the files that
+  define the gates and the operating rules: `.github/`, `.claude/`, `CLAUDE.md`,
+  `docs/DECISIONS.md`, `docs/adr/`, `docs/roles.md`,
+  `docs/agents/routine-invariants.md`, `backend/src/config/`. The reasoning is
+  structural, not stylistic: **a bot that can auto-merge a change to its own
+  checks has no checks** — one PR widens the allowlist or rewrites the standing
+  instructions every future session reads, and every downstream guarantee is
+  gone. Same shape as keeping `Claude_Code_Remote` off every routine but the
+  auditor. `.github/`/`.claude/` are denied *and* absent from ALLOWED, so a
+  careless future widening still cannot expose them. Verified against 12 path
+  cases including the mixed one (a single denied file blocks an otherwise
+  allowed PR).
+- **`test/app-security.test.js` (new, 18 tests)**: `esc()` behaviour (all five
+  entities, script-tag and attribute-breakout payloads, ampersand-first
+  ordering, null/undefined coercion), `safeUrl()` scheme rejection
+  (`javascript:` incl. mixed case, `data:`, `vbscript:`, `file:`, `blob:`,
+  protocol-relative, malformed), and static invariants that were previously
+  enforced by nothing: every interpolated `href`/`src` passes through
+  `safeUrl`, no inline `style=`, no `<script`, no `javascript:` in source, and
+  localStorage keys keep the `cp_` prefix. Dependency-free — loads `app.js` in
+  a `node:vm` with a stub whose `fetch` never settles, which parks the
+  top-level `init()` at its first await so the hoisted declarations are
+  reachable with no DOM work. **Mutation-tested**: an unguarded `href`, an
+  injected inline `style`, and a weakened `esc()` were each confirmed to fail
+  the suite before `app.js` was restored byte-identical.
+- **`test/suite-integrity.test.js` (new)**: committed per-suite test-count
+  floors. `test/` and `player/` being allowlisted means a PR could otherwise
+  gut a suite and still pass CI — a suite with nothing in it passes trivially,
+  and the two-step version (weaken the gate, then land what it would have
+  caught) involves no human at any point. Also fails when a new suite appears
+  with no floor. Verified by truncating the security suite and confirming the
+  build breaks. Honest limit, documented in the file: it cannot distinguish a
+  real test from an empty one, and gutting the gate now requires editing two
+  files rather than one — it makes deletion loud, not impossible.
+- **Audit found while writing the above**: `${query}` and `subjectBlurb()` both
+  looked like unescaped injection sites on grep. Neither is — `${query}` is
+  assigned via `textContent`, and `subjectBlurb()`'s whole return value is
+  wrapped in `esc()` at its single call site. No XSS existed; recorded so the
+  next reader doesn't re-investigate.
+- **Still open, and required before "never approve a PR" is honest**: nothing
+  currently watches *what merged*. The account-wide auditor checks routine
+  invariants, not merge outcomes. A weekly digest — what auto-merged, which
+  paths, what landed with zero human eyes, as one evolving issue rather than
+  one per run — is the missing complement. Also noted: `ios-kit` is not a
+  required check in `protect-main`, which is harmless while `ios/` stays off
+  the allowlist (it does) but would not be if that changed.
+- **Deliberately not adopted: the `autonomous-templates/` Fable-orchestrator
+  set.** It is a workflow change (orchestrator model, five agent roles, four
+  enforcement hooks, `STATE.md`/`MAP.md`/`PLAN.md`), not a docs merge, and its
+  hooks require `bash` + `python3` — the kit's own README flags Windows as
+  needing WSL or a port. Its §9 guidance is adopted in spirit here regardless:
+  *autonomy is bought with verification, not permission*, which is exactly why
+  the segment merge validator is sequenced before the fan-out.
