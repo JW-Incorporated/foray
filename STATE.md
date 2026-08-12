@@ -16,6 +16,10 @@ docs/. Completed workstreams move to their plan doc's retro section.
 Done same day: 52/54 dossier sources ingested (480 chunks, ~272k est. tokens),
 searchable via `node tools/corpus/corpus.mjs search "..."`. Reports:
 `docs/research/corpus/coverage.md` + `dead-links.md`. Retro in the plan doc.
+Follow-up (`corpus/corpus-visibility`): the corpus itself stays machine-local,
+but `docs/research/corpus/digests.md` + `corpus-index.json` carry the research
+into every checkout — per-source digests we wrote, plus a redistribution
+verdict for each source. Rationale: `docs/DECISIONS.md`, 2026-08-12 part 2.
 One open item for Wyatt: PR #149 (ci.yml step to execute the corpus suites —
 CI/CD is his call). The embedding backfill is a future, separate pass.
 
