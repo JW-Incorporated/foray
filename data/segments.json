@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "notes": "Anchored segment pool (issue #106). Schema: docs/adr/0007-segment-anchoring.md; field-by-field reference in tools/segments/README.md. Written ONLY by tools/segments/merge-segments.mjs — never by hand, because every record here has been checked against the transcript its anchors were authored from, and a hand-edited one has not. Empty until the Lane C extraction fan-out runs (docs/curation/segment-extraction-pipeline.md).",
+  "segments": []
+}

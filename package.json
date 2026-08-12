@@ -3,6 +3,6 @@
   "private": true,
   "description": "Root manifest. Convenience test script only — deliberately NO dependencies and NO build step; the site is served static from this directory (see CLAUDE.md). Note the absence of \"type\": \"module\": app.js and search-engine.js are classic browser scripts and must stay CommonJS-interpreted for the tools/ scripts that require() them. ES-module semantics are scoped to player/package.json.",
   "scripts": {
-    "test": "node --test \"player/**/*.test.js\""
+    "test": "node --test \"player/**/*.test.js\" \"test/*.test.js\""
   }
 }
