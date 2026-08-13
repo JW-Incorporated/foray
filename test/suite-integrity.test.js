@@ -74,7 +74,9 @@ const FLOORS = {
   "tools/corpus/ftsquery.test.mjs": 21,
   "tools/corpus/eval.test.mjs": 16,
   "tools/corpus/ingest.test.mjs": 11,
-  "tools/corpus/embeddings.test.mjs": 32,
+  "tools/corpus/embeddings.test.mjs": 39,
+  "tools/corpus/search.test.mjs": 24,
+  "tools/corpus/backfill.test.mjs": 24,
 };
 
 for (const [rel, floor] of Object.entries(FLOORS)) {
