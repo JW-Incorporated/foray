@@ -64191,6 +64191,28 @@
       "batch_id": "fresh-2026-08-12-a9521203",
       "classified_at": "2026-08-12T16:51:43.022Z"
     },
+    "1743751250": {
+      "topics": [
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal and supernatural stories from real accounts.",
+      "display_title": "陳為民的鬼王怪談",
+      "blurb": "來聽陳為民分享精彩的真實靈異事件！ 從被遺忘的巷弄到著名的歷史建築， 每一處都有著不為人知的故事和神秘的眼睛在暗處凝視",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:49:56.889Z"
+    },
     "1744058438": {
       "topics": [
         "craft/diy-home"
@@ -64310,6 +64332,38 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-12-a9521203",
       "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1745176184": {
+      "topics": [
+        "paranormal",
+        "fiction/drama",
+        "history/military-modern"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal and supernatural stories from real accounts.",
+      "display_title": "Someone Is Killing The Wolfhounds",
+      "blurb": "Based on a true story.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:49:56.889Z"
     },
     "1745599466": {
       "topics": [
@@ -64567,6 +64621,33 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-12-a9521203",
       "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1747222904": {
+      "topics": [
+        "religion/islam",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Husband-wife conversations on Islamic family life.",
+      "display_title": "BnB Edition",
+      "blurb": "Husband and Wife conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
     },
     "1747559084": {
       "topics": [
@@ -64951,13 +65032,817 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-12-a9521203",
       "classified_at": "2026-08-12T16:51:43.022Z"
+    },
+    "1751292386": {
+      "topics": [
+        "health/mental",
+        "relationships",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Guide to navigating relationships with ADHD.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 14w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1751495120": {
+      "topics": [
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language instruction and learning resource.",
+      "display_title": "Dev and Doc: AI For Healthcare Podcast",
+      "blurb": "Bringing doctors and developers together to unlock the potential of AI in healthcare.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1751519210": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "The Brooke Ashley",
+      "blurb": "Sit back, relax and pour a glass of champagne as we kii about our fave reality shows, celeb gossip and everything else under sun!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1751522312": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and humorous entertainment.",
+      "display_title": "Julia Louis-Dreyfus - Biography Flash",
+      "blurb": "Julia Louis-Dreyfus: A Stellar Career in Comedy and DramaJulia Scarlett Elizabeth Louis-Dreyfus was born on January 13, 1961, in New York City.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1751578088": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "Brutal Film Girl Experiment",
+      "blurb": "Two longtime friends meet once a week to share some laughs and watch a classic cult, horror, or disturbing arthouse film.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1752132476": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "Move Daily Talks",
+      "blurb": "Where people like us do things like this: We move daily in our fitness, wellness and nutrition, and we help you to do the same!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1752366968": {
+      "topics": [
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and humorous entertainment.",
+      "display_title": "Shut the F*** Up Nick Lachey",
+      "blurb": "On this podcast, Ellyn Marsh and Daisy Eagan recap one of the most iconic reality shows on television, Love is Blind.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1752525548": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "Couch to Kona Podcast",
+      "blurb": "Welcome to the Couch to Kona show with Todd Wakefield and Drew Jordan, two rookie pro triathletes sharing their journey from the starting line to the...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1752596006": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "Office Drama",
+      "blurb": "Welcome to ✨ Office Drama ✨ (formerly JOMO) - a work-culture talk show about the inner drama behind career breakthroughs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1753480742": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "Savvy Marketing for Small Business",
+      "blurb": "Savvy Marketing for Small Business: Quick, Simple Tips for Busy Entrepreneurs Looking to Boost Sales and Master the Art of Marketing is your go-to pod...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1753498970": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "The Music Business Buddy",
+      "blurb": "The Music Business Buddy is a podcast about the future of music careers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1753818800": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "Gutter Boys",
+      "blurb": "Join two comic creators, JB Roe and Cam del Rosario, as they navigate the comic business from the ground floor and discuss the minor highs and deep, e...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1753828400": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "Rainy Sleep - Heavy Rain and Thunder Sounds",
+      "blurb": "Escape into the soothing sounds of heavy rain and thunder with \"Rainy Sleep - Heavy Rain and Thunder Sounds.\" Perfect for those seeking a peaceful nig...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1753906808": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "Tarot Is F*cking Cool",
+      "blurb": "Tarot iis Fuckiing Cool - The Return Due to the sheer unprecedented bloodlust for more, Final Girls, Ruby Wednesday and Amelia Whitehouse have teamed...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1754416166": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "Stakelbeck Tonight with Erick Stakelbeck",
+      "blurb": "Host Erick Stakelbeck takes listeners around the world—from Jerusalem to London to Washington, D.C., and points beyond—with cutting edge commentary, a...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1754781902": {
+      "topics": [
+        "paranormal",
+        "relationships",
+        "education",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.9
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal and supernatural stories from real accounts.",
+      "display_title": "The Chainsaw Girls",
+      "blurb": "A horror podcast hosted by professional wrestlers Allysin Kay and Laura (aka Allie/The Bunny ) Hosted on Acast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:49:56.889Z"
+    },
+    "1755485708": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "The David Greene Show",
+      "blurb": "Welcome to Real Talk Real Estate with David Greene, the show where we pull back the curtain and dive into the thrilling world of real estate business...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1755859718": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations and guidance on relationships and partnerships.",
+      "display_title": "Horseshoe Theory",
+      "blurb": "Jreg and Art Chad talk with YouTubers, artists, and academics about the nature of creativity and meaning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1755936902": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hobby and leisure interest content.",
+      "display_title": "Go Flush Yourself",
+      "blurb": "Go Flush Yourself is an upland hunting podcast focusing on hunting with flushing dogs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1755975308": {
+      "topics": [
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content and instruction.",
+      "display_title": "Data Science Decoded",
+      "blurb": "We discuss seminal mathematical papers (sometimes really old 😎 ) that have shaped and established the fields of machine learning and data science as...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1756322834": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations and guidance on relationships and partnerships.",
+      "display_title": "No Cap by CRE Daily",
+      "blurb": "Commercial real estate is a $20 trillion industry and a force that shapes America’s economic fabric and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1756398416": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "The David Ellefson Show",
+      "blurb": "**The David Ellefson Show featuring Joshua Toomey** is a dynamic podcast where David Ellefson and Joshua Toomey dive into conversations with David’s p...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1756624058": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "Lignite Energy Council Podcast",
+      "blurb": "Fueling the Future - Inside North Dakota's Coal Industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1756726796": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "Podcast Italiano Principiante | Learn Italian (Beginners)",
+      "blurb": "Impara l’italiano da zero con un podcast per principianti.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1756742882": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "DaBaddest Radio",
+      "blurb": "DaBaddest Radio, hosted by Bretman Rock, is a confidence boosting show where he's bringing his signature style and attitude to each episode.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1757332100": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "Most Valuable Agent with Matt Hannaford",
+      "blurb": "Welcome to Most Valuable Agent – the podcast that gives baseball players, prospects, and fans an exclusive behind-the-scenes look at what it takes to...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1757808956": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic teachings and community discussions.",
+      "display_title": "Badr Al-Turki",
+      "blurb": "Badr Al-Turki, also spelled Badr Bin Muhammad Al-Turki, is a distinguished Quran reciter from Saudi Arabia.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1757809184": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic teachings and community discussions.",
+      "display_title": "Abdullah Al Khalaf",
+      "blurb": "Abdullah Al Khalaf also spelled Abdullah Al-Khalaf or Abdullah bin Khalaf is a Quran reciter from Saudi Arabia.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1759064066": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "Sounds Southern",
+      "blurb": "Sounds Southern immerses listeners in the tranquil and vibrant field recordings of North Mississippi’s hill country.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1759075328": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1759282388": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1759292414": {
+      "topics": [
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language instruction and learning resource.",
+      "display_title": "School of Speech",
+      "blurb": "Every Monday morning, host Carolyn Dolby sits down with practicing SLPs, academic researchers, and leading experts to talk about all aspects of school...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1759848794": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "קיקטוק",
+      "blurb": "קיקטוק מבית ״אול אין״ בהנחיית רועי זריהן והפרשן גילי ורמוט.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1760038622": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "All on the Table with Katie Lee Biegel",
+      "blurb": "Food is the great connector and a universal commonality.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
+    },
+    "1760085356": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify with high confidence from available signal.",
+      "display_title": "The Bench WOW Podcast",
+      "blurb": "A World of Warcraft Podcast by YumyTV, Tettles, and Squishei.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3aa406be",
+      "classified_at": "2026-08-13T00:50:25.593Z"
     }
   },
-  "built_at": "2026-08-12T16:51:43.022Z",
+  "built_at": "2026-08-13T00:50:25.593Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-12-a9521203",
+    "last_batch_id": "fresh-2026-08-13-3aa406be",
     "last_batch_tier": 1
   }
 }
