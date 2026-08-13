@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-13T08:12:31.355Z",
+  "built_at": "2026-08-13T16:25:49.567Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-13-80a98d41",
+    "last_batch_id": "fresh-2026-08-13-238f1dee",
     "last_batch_tier": 1
   },
   "entries": {
@@ -192023,7 +192023,22 @@
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and interviews with filmmakers.",
+      "display_title": "Why This Film?",
+      "blurb": "🎬 Exploring the Criterion Collection, one spine at a time.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1844431199": {
       "topics": [
@@ -192058,10 +192073,25 @@
     },
     "1844534310": {
       "topics": [
-        "craft"
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DIY and home crafts with expert guests.",
+      "display_title": "HWS die HandWerkerShow",
+      "blurb": "Handwerk trifft Unterhaltung! In HWS – Der Podcast dreht sich alles um die bunte Welt des Handwerks.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1844572486": {
       "topics": [
@@ -192090,14 +192120,44 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice and baby sleep expertise.",
+      "display_title": "Well Rested Mama Unswaddled",
+      "blurb": "Your go-to podcast for baby and toddler sleep solutions, overcoming parenting challenges, and all things messy motherhood.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1844680236": {
       "topics": [
-        "automotive"
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DIY and home crafts with expert guests.",
+      "display_title": "Let's Be RONest\" with Ron Bergenholtz",
+      "blurb": "Let’s Be RONest presented by Nitto Tire is where we get real about cars, racing and life at large.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1844687216": {
       "topics": [
@@ -192146,18 +192206,47 @@
     },
     "1844807568": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and interviews with filmmakers.",
+      "display_title": "Nature Unheard",
+      "blurb": "Nature Unheard: a new EBRD podcast What if nature could speak? What would forests, rivers and coral reefs tell us about the state of our planet? In Na...",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1844842662": {
       "topics": [
-        "sports/cricket"
+        "automotive/racing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motorsports and racing culture interviews.",
+      "display_title": "Beefy & Beaumont 'Old Boys New Balls!'",
+      "blurb": "Cricket legend Sir Ian Botham and rugby icon Sir Bill Beaumont team up for 'Old Boys New Balls!' — the podcast where two old mates swap tales from the...",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1844878529": {
       "topics": [
@@ -192233,7 +192322,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby news and player conversations.",
+      "display_title": "She's the Champ",
+      "blurb": "She's the Champ is the women's rugby podcast dedicated to everything Championship rugby in England.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1845137427": {
       "topics": [
@@ -192260,11 +192364,25 @@
     },
     "1845191478": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and interviews with filmmakers.",
+      "display_title": "Becoming Self Made",
+      "blurb": "Becoming Self Made is a video podcast presented by Relay and hosted by Wall Street Journal bestselling author and money expert Mike Michalowicz.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1845378880": {
       "topics": [
@@ -192389,18 +192507,47 @@
     },
     "1845956430": {
       "topics": [
-        "business/management"
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and interviews with filmmakers.",
+      "display_title": "Beyond the Paycheck",
+      "blurb": "Beyond the Paycheck brings you candid conversations with CHROs and top people leaders who are rethinking how compensation and benefits impact more than just employee bank accounts.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1845977556": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and interviews with filmmakers.",
+      "display_title": "El Cine Underground",
+      "blurb": "Welcome to El Cine Underground — where we expose the film history they left us out of.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1845980031": {
       "topics": [
@@ -192475,10 +192622,25 @@
     },
     "1846156488": {
       "topics": [
-        "tv-film/animation"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice and baby sleep expertise.",
+      "display_title": "ASMR Pokemon Roleplay Whispers Tingles",
+      "blurb": "Welcome.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1846195822": {
       "topics": [
@@ -192596,11 +192758,25 @@
     },
     "1846948974": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice and baby sleep expertise.",
+      "display_title": "My Mom Died",
+      "blurb": "Grief is messy, awkward, and sometimes weirdly funny, and no one tells you what to do when it happens to you.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1847060038": {
       "topics": [
@@ -192648,17 +192824,47 @@
     },
     "1847442024": {
       "topics": [
-        "culture/fashion"
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DIY and home crafts with expert guests.",
+      "display_title": "COUCH by Lena Situations",
+      "blurb": "Je m’appelle Lena Mahfouf, mais sur internet, on me connaît sous le nom de Lena Situations.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1847467068": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and interviews with filmmakers.",
+      "display_title": "The Love Boat Podcast",
+      "blurb": "Set sail with original cast members Fred Grandy (Gopher), Ted Lange (Isaac), and Jill Whelan (Vicki) as they reunite for The Love Boat Podcast: Exciting and New.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1847477440": {
       "topics": [
@@ -192699,18 +192905,50 @@
     },
     "1847541900": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and interviews with filmmakers.",
+      "display_title": "DVD Commentary: The Original Podcast",
+      "blurb": "Listen to audio commentaries while you watch a film!.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1847626476": {
       "topics": [
-        "sports/rugby"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Parenting advice and baby sleep expertise.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1847631973": {
       "topics": [
@@ -192920,10 +193158,25 @@
     },
     "1848120606": {
       "topics": [
-        "relationships"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice and baby sleep expertise.",
+      "display_title": "Better Call Sexton",
+      "blurb": "America’s Lawyer James J.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1848156557": {
       "topics": [
@@ -193167,11 +193420,28 @@
     },
     "1848884874": {
       "topics": [
-        "sports",
-        "news"
+        "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Football/soccer team coverage and news.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1848929263": {
       "topics": [
@@ -193353,15 +193623,45 @@
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified per genre prior.",
+      "display_title": "ياسر الدوسري | Yasser Al Dosari",
+      "blurb": "#لا_تهجروا_القرآن.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1849411620": {
       "topics": [
         "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political news and commentary.",
+      "display_title": "The Last Line of Defense",
+      "blurb": "In this era of uncertainty, knowledge is power.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1849419652": {
       "topics": [
@@ -193431,10 +193731,25 @@
     },
     "1849683306": {
       "topics": [
-        "culture/design"
+        "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion, beauty, and lifestyle commentary.",
+      "display_title": "DESIGN NOW: Cultural Collisions",
+      "blurb": "A forum for exploring design in our culture – not just its role in our lives now, but focusing on the radical changes that are happening.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1849728711": {
       "topics": [
@@ -193716,11 +194031,25 @@
     },
     "1850793408": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and interviews with filmmakers.",
+      "display_title": "The Coastal Call Podcast",
+      "blurb": "The Coastal Call, presented by the Center for Climate, Coastal, and Marine Studies at Fairfield University, brings listeners to the frontlines of impa...",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1850796052": {
       "topics": [
@@ -193852,11 +194181,25 @@
     },
     "1851061932": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "automotive/racing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motorsports and racing culture interviews.",
+      "display_title": "Unraveling Me",
+      "blurb": "Join host Kara Rubinstein Deyerin as she speaks with people who, like her, are impacted by NPE's (non-parental events), DNA surprises, adoption, assis...",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1851062105": {
       "topics": [
@@ -193910,10 +194253,25 @@
     },
     "1851305010": {
       "topics": [
-        "culture/design"
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DIY and home crafts with expert guests.",
+      "display_title": "Loose Threads & Stitches: A Quilting Podcast",
+      "blurb": "Love quilting? So do we! Loose Threads & Stitches is the cozy, fun, and slightly chaotic quilting podcast you didn’t know you needed.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1851307432": {
       "topics": [
@@ -193933,11 +194291,25 @@
     },
     "1851315396": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "automotive/racing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motorsports and racing culture interviews.",
+      "display_title": "The SMB Deal Hunter Podcast",
+      "blurb": "Every week, Helen Guo interviews successful acquisition entrepreneurs, independent sponsors, and investors who have acquired businesses.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1851375459": {
       "topics": [
@@ -193999,10 +194371,25 @@
     },
     "1851610818": {
       "topics": [
-        "culture/art"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice and baby sleep expertise.",
+      "display_title": "Art Happens: The Divine Mess of Art History",
+      "blurb": "Art Happens: The Divine Mess of Art History is where masterpieces meet mayhem.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1851683631": {
       "topics": [
@@ -194095,10 +194482,25 @@
     },
     "1852111386": {
       "topics": [
-        "relationships"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice and baby sleep expertise.",
+      "display_title": "The Psychology of Relationships",
+      "blurb": "Every couple has a story: the sparks, the late-night talks, the fights about nothing, and the moments that change everything.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1852121174": {
       "topics": [
@@ -194251,10 +194653,28 @@
     },
     "1852592496": {
       "topics": [
-        "gaming"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Parenting advice and baby sleep expertise.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1852594324": {
       "topics": [
@@ -194287,10 +194707,25 @@
     },
     "1852682436": {
       "topics": [
-        "tv-film/after-shows"
+        "automotive/racing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motorsports and racing culture interviews.",
+      "display_title": "PLURIBUS for the Rest of Us",
+      "blurb": "Right after each new episode of PLURIBUS, we post our Instant Take with raw, unfiltered reactions, then follow up a few days later with a full recap and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1852843330": {
       "topics": [
@@ -194595,10 +195030,25 @@
     },
     "1854169416": {
       "topics": [
-        "sports/rugby"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice and baby sleep expertise.",
+      "display_title": "La Cuillère, le podcast rugby par Gauthier Baudin",
+      "blurb": "La Cuillère, le podcast rugby par Gauthier Baudin.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1854194292": {
       "topics": [
@@ -194632,7 +195082,25 @@
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Film criticism and interviews with filmmakers.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1854256395": {
       "topics": [
@@ -194643,10 +195111,25 @@
     },
     "1854454728": {
       "topics": [
-        "travel"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice and baby sleep expertise.",
+      "display_title": "InteleCast - InteleTravel Official Podcast",
+      "blurb": "Join a podcast and get hands on training & tips from the travel industries TOP executives and InteleTravel.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1854471424": {
       "topics": [
@@ -194660,14 +195143,44 @@
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physics education and explanation.",
+      "display_title": "فیزیک با یاور",
+      "blurb": "سلام.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1854537564": {
       "topics": [
-        "food"
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and interviews with filmmakers.",
+      "display_title": "Bobby on the Beat",
+      "blurb": "Bobby on the Beat is a podcast hosted by Chef Bobby Flay that tackles the behind-the-scenes and insights of Bobby Flay’s life and career.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1854562735": {
       "topics": [
@@ -194734,7 +195247,22 @@
         "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design culture and creative discussion.",
+      "display_title": "Staple Day: The Field Notes Podcast",
+      "blurb": "Occasional episodes featuring conversations about Field Notes Brand limited-edition quarterly releases and other matters, focusing on American printing, publishing and design.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1854913915": {
       "topics": [
@@ -194746,10 +195274,25 @@
     },
     "1854932136": {
       "topics": [
-        "relationships"
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and interviews with filmmakers.",
+      "display_title": "The Affair Recovery Podcast",
+      "blurb": "If your life has been shattered by infidelity, The Affair Recovery Podcast provides the help you need to get unstuck and move forward.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1855109847": {
       "topics": [
@@ -194813,11 +195356,28 @@
     },
     "1855462722": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Parenting advice and baby sleep expertise.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-238f1dee",
+      "classified_at": "2026-08-13T16:25:49.567Z"
     },
     "1855549216": {
       "topics": [
