@@ -115,48 +115,32 @@ jobs:
         run: |
           node --check app.js
           node --check search-engine.js
-      - name: Player state-machine tests
-        # Pure reducer, no DOM and no dependencies — see player/queue-state.js.
-        # Both suites live in this job (rather than their own) because
-        # `data-and-site` is already a required check in the protect-main
-        # ruleset; a new job would not be enforced until the ruleset changed.
-        run: node --test "player/**/*.test.js"
-      - name: app.js security invariants
-        # Tier 4 auto-merge gate (.github/workflows/automerge-nightly.yml).
-        # app.js previously had ONLY `node --check` — a syntax check that would
-        # pass an XSS regression, a CSP violation, or a javascript: URL. This
-        # suite is what replaces the human read now that app.js can auto-merge.
-        # Same job for the same reason as above: it must be inside an already
-        # required check to actually gate anything.
-        run: node --test "test/*.test.js"
-      - name: Refresh-pipeline helper tests
-        run: node --test "tools/refresh/*.test.mjs"
-      - name: Segment-pipeline helper tests
-        # Fixtures only, no network — see the suites' headers. Same job as
-        # everything above for the same reason: `data-and-site` is the
-        # required check in protect-main.
-        run: node --test "tools/segments/*.test.mjs"
-      - name: Transcription-pipeline tests
-        # Same job for the same reason as the two above: `data-and-site` is the
-        # required check, so a suite in a new job would gate nothing. Includes
-        # the assertion that no downloaded audio is git-tracked (issue #120),
-        # which is only meaningful when it runs on every PR.
-        run: node --test "tools/transcribe/*.test.mjs"
-      - name: Corpus tooling tests
-        # tools/corpus suites are floored in test/suite-integrity.test.js but
-        # were not executed anywhere in CI until this step — the floor stops a
-        # suite being silently deleted; only this step makes it actually run.
-        # Same job as the other tools/ suites for the same reason:
-        # data-and-site is the required check. All suites are self-contained
-        # (fixtures + temp DBs; no network, no data-local/ — verified by
-        # running the full set on a checkout with no corpus DB present).
-        # npm ci is scoped to tools/corpus; the repo root stays dependency-free.
-        # --experimental-sqlite: node:sqlite is flagged on Node 22.x (this
-        # job's version); the flag is accepted and redundant on >=23.4.
-        run: |
-          cd tools/corpus
-          npm ci
-          node --experimental-sqlite --test *.test.mjs
+      - name: Test suites (all of them — discovered, not listed)
+        # ONE step for every committed suite: player/, test/, and everything
+        # under tools/, including packages that carry their own dependencies.
+        #
+        # This replaced six per-directory steps (issue #140). Those steps were
+        # a list someone had to remember to extend: a suite landing in a new
+        # tools/<dir>/ executed nowhere, while test/suite-integrity.test.js —
+        # which scans tools/ RECURSIVELY — floored it immediately. Floored but
+        # unrun is worse than unfloored: it reads as coverage and is not.
+        #
+        # tools/ci/run-suites.mjs discovers suites exactly the way
+        # suite-integrity does, and suite-integrity asserts the two agree in
+        # both directions. So the invariant now holds by construction:
+        # anything floored is executed, anything executed is floored. Neither
+        # this file nor that one names a suite directory any more.
+        #
+        # Dependency-carrying directories (tools/corpus today) are handled by
+        # the runner, not by an exception here: it runs `npm ci` and `npm test`
+        # inside any directory whose package.json declares a test script, so
+        # that package owns its own flags (corpus needs --experimental-sqlite
+        # on this job's Node 22). The repo root stays dependency-free.
+        #
+        # Same job as before, deliberately: `data-and-site` is the required
+        # check in the protect-main ruleset, so a suite moved to a new job
+        # would gate nothing until that ruleset changed.
+        run: node tools/ci/run-suites.mjs
 
       - name: Validate data/segments.json
         # Schema gate on the segment pool (#106, ADR-0007). Every record
