@@ -66,18 +66,19 @@ A single spec page defining how an RSS item advertises machine-readable transcri
 - url: https://podcastindex-org.github.io/docs-api/
 - redistribution: allow
 - license: MIT
-- license-evidence: https://github.com/Podcastindex-org/docs-api/blob/master/LICENSE — GitHub licenses API for Podcastindex-org/docs-api returns spdx_id MIT with LICENSE at repo root, and this URL is that repo's GitHub Pages deployment; moot in practice since the captured extraction contains no source prose.
+- license-evidence: https://github.com/Podcastindex-org/docs-api/blob/master/LICENSE — GitHub licenses API for Podcastindex-org/docs-api returns spdx_id MIT with LICENSE at repo root, and this URL is that repo's GitHub Pages deployment.
 - verified: web
 
-The captured extraction is effectively empty: the crawl retrieved only a logo image reference and a stray interface control label, roughly 79 characters of text. The documentation published at this URL is a JavaScript-rendered OpenAPI browser, so a static HTML fetch followed by a readability pass yields no endpoint definitions, no description of the authentication scheme, and no schemas. Nothing in the stored artifact establishes anything substantive about the API. The finding that matters for a curation product is therefore operational rather than technical: any corpus source that is a single-page API reference rendered client-side needs a different acquisition path, either the underlying OpenAPI specification file from the documentation repository or a headless-browser render, before it can be treated as evidence of anything. Until that re-fetch happens, every Podcast Index API detail the corpus might want to rely on, including the request-signing scheme, endpoint shapes and rate limits, remains unverified here.
+This page is a RapiDoc-rendered OpenAPI browser (a custom element that builds its UI inside a shadow DOM after load), so the original static fetch captured only loading chrome. Recovered via a real-browser render of the narrative front matter — the prose sections, not the per-endpoint parameter/schema tables RapiDoc generates from the spec file. It establishes the shape of the API rather than the full reference: PodcastIndex.org is a free, developer-facing index maintained by Podcast Index LLC under an MIT-licensed docs repo, offering search, feed and episode lookups without requiring the caller to crawl RSS feeds directly. Authentication is an Amazon-style signed-request scheme — a free API key plus secret, with four required headers per call (User-Agent, X-Auth-Date, X-Auth-Key, Authorization) rather than a bearer token alone. The page also points at first- and third-party client libraries in a dozen-plus languages and a maintained Postman collection, both useful shortcuts for a prototype integration. The exhaustive per-endpoint schema (query parameters, response shapes for search/by-feed/by-episode/trending calls) is not captured here — that detail lives in the live rendered page or the OpenAPI spec file the docs repo publishes, not in this digest.
 
 **Key facts**
 
-- Stored markdown is 258 bytes; fetch notes recorded a thin extraction of 79 characters
-- http_status was 200 but the page is JS-rendered, so the static fetch captured no API content
-- The URL is a GitHub Pages project site served from the Podcastindex-org/docs-api repository
-- No endpoints, authentication scheme, or rate limits are recoverable from the stored artifact
-- Re-fetch via the raw OpenAPI spec or a headless render is required before citing this source
+- PodcastIndex.org API is maintained by Podcast Index LLC; the docs repository and this generated site are MIT-licensed.
+- Auth scheme: register a free API key, sign each request Amazon-style, and send four required headers — User-Agent, X-Auth-Date, X-Auth-Key, Authorization.
+- Client libraries are community-maintained across a dozen-plus languages/ecosystems (Java, .NET, Node.js, PHP, Python, Ruby, Swift, Kotlin, Go, and more), linked from the docs page rather than published by Podcast Index itself.
+- A Postman collection and environment file are published for exploring the API without writing a signing client first.
+- Endpoint-level detail (query parameters, response schemas per operation) lives only in the live rendered page / OpenAPI spec file, not in this digest or the archived capture.
+- Original fetch (before 2026-08-13) captured only page-load chrome (~79 characters) because the docs render client-side; recovered via a browser capture per `tools/corpus/README.md#rendered-html-route`.
 
 ---
 
@@ -276,20 +277,21 @@ A law-firm client alert summarizing Goldman v. Breitbart News Network, LLC, 302 
 
 ## 12. AES TD1004.1.15-10 — Loudness for streaming/network playback
 
-- url: https://www.aes.org/technical/documents/AESTD1004_1_15_10.pdf
+- url: https://aes.org/wp-content/uploads/2024/01/AESTD1004_1_15_10.pdf
 - redistribution: deny
 - license: All rights reserved (AES)
-- license-evidence: https://www.aes.org/technical/documents/AESTD1004_1_15_10.pdf — Not fetched (301 to 404); AES technical documents carry no redistribution grant in any case.
-- verified: inferred
+- license-evidence: https://aes.org/community/technical-council/aestd1004-recommendation-for-loudness-of-audio-streaming-and-network-file-playback-2015/ — AES technical documents carry no redistribution grant; the landing page and PDF both display standard AES copyright with no Creative Commons or reuse mark.
+- verified: web
 
-Not in the corpus: the AES loudness recommendation for streaming and network playback was listed in the dossier as the normalization target to apply per segment, but the URL now redirects into a 404 — AES reorganised its technical-document tree. Nothing about this source was captured, so no number in this index comes from it, and the dossier note (a target near -16 LUFS with a -1 dBTP ceiling and a warning about loudness jumps where external material is spliced in) is the dossier author's recollection rather than a verified quotation. The nearest thing the corpus does hold is source 36, the AES loudness-normalization overview page, which cites the later TD1008 targets and links out rather than restating them. Anyone who needs the actual figures should find the current AES URL, repoint the dossier entry, and re-run `corpus refetch 12` — the manifest loader is idempotent by URL, so editing the dossier and reloading is the whole fix.
+Recovered: the original URL 301-redirected into a 404 because AES restructured its technical-document tree in 2024; the PDF now lives under `aes.org/wp-content/uploads/`, linked from a landing page that itself states this document "was superseded by AES TD1008 ... published on September 24, 2021" — so this is a 2015 recommendation AES itself now points past, not the association's current guidance. With that caveat, TD1004 (edited by Bob Katz for the AES Study Group on Streaming Loudness) is the source of the -16 to -20 LUFS target range the dossier cites: it defines target loudness as the desired level for a stream in LUFS, distinguishes it from *absolute* loudness (measured in LUFS relative to full scale) and *relative* loudness (measured in LU relative to a reference), and states the core motivation plainly — mismatched levels between a streamed track and surrounding content, or between a streamed asset and inserted material, are audible as jarring jumps that TD1004 exists to prevent. For Foray this is the primary-document backing for normalizing every stitched segment (and any AI-narrated bridge) to a common target before assembly, rather than trusting individual publishers' mastering levels.
 
 **Key facts**
 
-- Fetch outcome: HTTP 301 to a URL that returns 404; recorded in dead-links.md, zero chunks indexed.
-- The loudness figures attributed to this document in the dossier are unverified — treat them as a lead, not a citation.
-- Closest captured substitute: source 36 (AES loudness-normalization overview), which references TD1008.
-- Fix path: locate the current AES URL, edit the dossier line, re-run load-manifest, then `corpus refetch 12`.
+- Superseded: the AES landing page states TD1004 "was superseded by AES TD1008 ... published on September 24, 2021" — TD1008 is the association's current recommendation; TD1004 is retained as the historical 2015 document.
+- Defines target loudness as the desired/intended loudness of a stream, expressed in LUFS, and separately defines absolute loudness (LUFS relative to full scale) versus relative loudness (LU relative to a reference level).
+- States the document's core rationale in its own terms: loudness mismatches between a stream and surrounding content, or where external material is spliced in, are perceived as jarring jumps — the reason per-segment/per-track normalization matters.
+- Archived PDF is 10 pages, edited by Bob Katz for the AES Study Group on Streaming Loudness, originally published October 19, 2015 (Version 1.0).
+- Companion overview page (source 36, `aes.org/resources/audio-topics/loudness-project/loudness-normalization/`) cites TD1008's newer numeric targets rather than TD1004's; the two documents should not be conflated when citing a specific LUFS figure.
 
 ## 13. Apple AVFoundation Editing Guide
 
@@ -322,7 +324,7 @@ This is the archived AVFoundation Programming Guide chapter on editing, and it i
 - license-evidence: https://policies.google.com/terms — Google's Terms of Service state that Google retains the intellectual property rights in its own content and grant no Creative Commons or general redistribution license; blog.google posts carry no separate open-license mark.
 - verified: web
 
-Google's launch post for NotebookLM Audio Overviews, dated September 11, 2024 and written by a Google Labs product manager. It announces a one-click feature that turns a user's uploaded sources -- documents, slides, charts, web URLs -- into a two-host synthetic conversation that summarizes the material, draws connections across it and can be downloaded for offline listening. For Foray this is the most prominent shipped precedent for AI-narrated audio built on top of someone else's source material, and it is most useful as a model for framing and disclosure rather than for engineering detail: Google states plainly that the generated discussion reflects only the uploaded sources and is not a comprehensive or objective account of the topic, and it enumerates the feature's limitations in the launch post itself rather than burying them. The named limitations are directly relevant to interstitial generation at scale -- generation latency measured in minutes for large inputs, English-only hosts, occasional inaccuracies, and no ability to interrupt the hosts. Note the extraction is thin (a single chunk of the launch post); it contains no usage statistics and no technical description of the generation stack.
+Google's launch post for NotebookLM Audio Overviews, dated September 11, 2024 and written by a Google Labs product manager. It announces a one-click feature that turns a user's uploaded sources -- documents, slides, charts, web URLs -- into a two-host synthetic conversation that summarizes the material, draws connections across it and can be downloaded for offline listening. For Foray this is the most prominent shipped precedent for AI-narrated audio built on top of someone else's source material, and it is most useful as a model for framing and disclosure rather than for engineering detail: Google states plainly that the generated discussion reflects only the uploaded sources and is not a comprehensive or objective account of the topic, and it enumerates the feature's limitations in the launch post itself rather than burying them. The named limitations are directly relevant to interstitial generation at scale -- generation latency measured in minutes for large inputs, English-only hosts, occasional inaccuracies, and no ability to interrupt the hosts. The capture is the complete launch post (recovered via a browser render per `tools/corpus/README.md#rendered-html-route`, replacing an earlier partial static-fetch extraction); it still contains no usage statistics and no technical description of the generation stack, because the post itself never discloses either.
 
 **Key facts**
 
@@ -710,7 +712,7 @@ Spotify's WSDM 2026 industry paper on collapsing separate ad-targeting and conte
 - license-evidence: https://www.apple.com/legal/internet-services/terms/site.html — Apple's site Terms of Use forbid republishing or distributing site content without express written consent, and forum posts are additionally authored by third-party developers who granted no redistribution license to us.
 - verified: web
 
-A short Apple Developer Forums thread in which a developer queues remote MP3 files in AVQueuePlayer and hears a very short gap at each track transition, with a noticeably worse delay (around a second) when routing to AirPlay. The captured extraction is thin -- a single chunk containing the original question, a small Swift snippet, and what reads as the poster's own follow-up conclusion, without the surrounding thread structure or reply attribution. Its value to Foray is the diagnosis rather than the complaint: the poster reports that generated tone files in WAV played back seamlessly, while the same tones converted to MP3 acquired a comparable gap, and concludes the queue player itself is capable of gapless transitions when the underlying files genuinely are gapless. That points the blame at MP3 encoder/decoder padding rather than at the player class. For a product stitching third-party podcast enclosures -- which are overwhelmingly MP3 and were each encoded independently -- this is the warning that naive AVQueuePlayer queueing will expose encoder padding at every segment boundary, and that the fix has to address the audio data (composition, trimmed time ranges, or buffered rendering) rather than a player flag.
+A short Apple Developer Forums thread (one original post, one reply, both from the same developer) in which a developer queues remote MP3 files in AVQueuePlayer and hears a very short gap at each track transition, with a noticeably worse delay (around a second) when routing to AirPlay. Its value to Foray is the diagnosis rather than the complaint: the poster reports that generated tone files in WAV played back seamlessly, while the same tones converted to MP3 acquired a comparable gap, and concludes the queue player itself is capable of gapless transitions when the underlying files genuinely are gapless. That points the blame at MP3 encoder/decoder padding rather than at the player class. For a product stitching third-party podcast enclosures -- which are overwhelmingly MP3 and were each encoded independently -- this is the warning that naive AVQueuePlayer queueing will expose encoder padding at every segment boundary, and that the fix has to address the audio data (composition, trimmed time ranges, or buffered rendering) rather than a player flag.
 
 **Key facts**
 
@@ -719,7 +721,7 @@ A short Apple Developer Forums thread in which a developer queues remote MP3 fil
 - Poster's own test: WAV tone files played gaplessly; the same tones re-encoded to MP3 introduced a comparable gap, implicating MP3 encoder padding rather than AVQueuePlayer.
 - Stated conclusion: AVQueuePlayer performs gapless playback correctly when the source files themselves contain no leading/trailing silence.
 - Environment given is dated (Xcode 10.1, macOS 10.14.1, iOS 12.1), so behavior should be re-verified on current iOS.
-- Extraction is thin: one chunk, no reply-by-reply thread structure captured.
+- Capture recovered via a browser render per `tools/corpus/README.md#rendered-html-route`; both posts (OP + the OP's own follow-up) are attributed, replacing an earlier extraction that ran the two together.
 
 ## 34. Apple Developer Forum — Multiple AVPlayer instances + AirPlay 2
 
@@ -738,7 +740,7 @@ An Apple Developer Forums thread about apps that play two audio streams simultan
 - Reported workaround: set AVAudioSession category .playback with options [.duckOthers] and do not use the .longFormAudio policy -- both streams then reach AirPlay 2.
 - Documented cost of that workaround: loss of lock screen / Control Center playback controls, which for a podcast app is effectively disqualifying.
 - Community observation that at least one major meditation app also does not support AirPlay with simultaneous narration plus music.
-- Extraction is thin: one chunk, replies run together without clear per-post attribution beyond the Apple engineer's.
+- Capture recovered via a browser render per `tools/corpus/README.md#rendered-html-route`; all four posters (OP plus three named repliers, Mar–Apr 2021) are now individually attributed, replacing an earlier extraction that ran replies together.
 
 ## 35. StreamingKit (GitHub)
 
@@ -791,13 +793,15 @@ The AES Loudness Project's explainer on what loudness normalization actually is 
 - license-evidence: https://huggingface.co/terms-of-service — Close call: Hugging Face's terms do grant each user a license to reproduce and distribute Content in public Repositories, but what was captured here is Hugging Face's own rendered platform chrome rather than repository Content, and the Space itself displays no license -- so no specific grant covers this text.
 - verified: web
 
-Effectively nothing usable was captured. The extraction is a single chunk of roughly 60 characters consisting of the Hugging Face Space loading chrome -- a message about fetching metadata from the Docker repository, and the word Refreshing. The Space is a client-side application whose leaderboard is rendered after boot, so a static fetch captures only the shell; no model names, no Elo ratings, no vote counts and no methodology description were retrieved. What the corpus entry establishes is therefore only positional: TTS Arena V2 exists as a crowdsourced blind pairwise-comparison leaderboard for TTS naturalness, and it is the obvious open benchmark to consult when choosing a narrator voice for AI-generated interstitials. Any actual ranking data for that decision has to be obtained another way -- by loading the Space interactively, or via whatever underlying results dataset the maintainers publish. This entry should be treated as a pointer, not as evidence about any specific TTS system's quality. The extraction is thin to the point of being empty of substance.
+Effectively nothing usable was captured, and a real-browser render doesn't fix that here: confirmed 2026-08-13 that the Space's actual app runs inside a cross-origin, sandboxed iframe served from a separate `*.hf.space` subdomain, so neither a static fetch nor an in-page text/accessibility read from the parent `huggingface.co` document can see into it -- the parent page's own DOM shows only a loading placeholder ("Refreshing" / "docker space app"). The Arena tab additionally requires clicking "Synthesize" to reveal any pairing before a model or score is shown at all, so even a successful render of the iframe's current state would show a blank comparison screen, not leaderboard data -- this is genuinely interactive, session-driven content, not a JS-rendered static page. The Space's own README (checked at `huggingface.co/spaces/TTS-AGI/TTS-Arena-V2/blob/main/README.md`) carries no methodology text, only build metadata and a pointer to `github.com/TTS-AGI/TTS-Arena`, a different URL than the one in the dossier. Per corpus policy (`tools/corpus/README.md#rendered-html-route`: "if a page cannot be recovered honestly ... leave it thin, record why"), this stays thin rather than substituting a different URL's content under this source's citation. What the corpus entry establishes is therefore only positional: TTS Arena V2 is a crowdsourced blind pairwise-comparison leaderboard for TTS naturalness, and the obvious open benchmark to consult when choosing a narrator voice -- but any actual ranking data has to come from loading the Space interactively (or the maintainers' underlying results dataset), not from this corpus.
 
 **Key facts**
 
-- Extraction is empty of substance: one chunk of Hugging Face Space loading chrome (Docker metadata fetch notice plus a refresh indicator), roughly 60 characters.
-- The page is a JS/client-rendered Hugging Face Space, so leaderboard content cannot be obtained by static fetch.
-- No model names, Elo scores, vote counts, sample sizes or methodology were captured.
+- Extraction is empty of substance: one chunk of Hugging Face's own loading chrome (Docker metadata fetch notice plus a refresh indicator), roughly 60 characters.
+- Confirmed 2026-08-13: the Arena app renders inside a cross-origin sandboxed iframe on a separate `*.hf.space` origin; the parent page's DOM and accessibility tree cannot see the iframe's content at all (not merely "not yet rendered").
+- Even a successful iframe render requires an interactive "Synthesize" click per comparison before any model name or score appears -- session-driven, not a one-time static render.
+- The Space's README points to a different URL (`github.com/TTS-AGI/TTS-Arena`) as its source repo; not substituted here per corpus policy of not silently swapping what a citation points at.
+- No model names, Elo scores, vote counts, sample sizes or methodology were captured; this entry is a pointer, not evidence about any specific TTS system's quality.
 - Space is maintained under the TTS-AGI org; usable as a pointer to the open TTS naturalness benchmark, not as a data source in its current captured form.
 
 ## 38. Amazon Polly pricing (official)
@@ -837,6 +841,7 @@ An OpenAI developer-community thread from late March 2025 in which users try to 
 - Reported failure mode: a one-minute script generated over three minutes of audio with the last ~2.5 minutes silence, and was billed for the full duration -- argues for post-generation duration checks and silence trimming.
 - Suggested mitigation in-thread is preprocessing/filtering out non-speech segments from the output until the API addresses it.
 - All figures are unofficial user observations; the thread itself points to platform.openai.com/docs/pricing as the authority, and posters state they are not OpenAI-affiliated.
+- Re-captured via a browser render (`tools/corpus/README.md#rendered-html-route`) covering all 9 posts, including a later tangent (not summarized above) where a different poster asks about Whisper transcription quality and is told results are comparable across models with some improvement on less-common languages.
 
 ## 40. ElevenLabs pricing (official)
 
@@ -1077,22 +1082,24 @@ A vendor-authored practitioner guide arguing that an LLM judge is not a metric b
 - Notes prompts are not portable across judge models, so instructions must be retested per model
 - Vendor context: Evidently is an open-source eval library with a claimed 25M+ downloads
 
-## 52. A Survey on LLM-as-a-Judge (ScienceDirect)
+## 52. A Survey on LLM-as-a-Judge (arXiv 2411.15594)
 
-- url: https://www.sciencedirect.com/science/article/pii/S2666675825004564
-- redistribution: deny
-- license: All rights reserved (Elsevier)
-- license-evidence: https://www.sciencedirect.com/science/article/pii/S2666675825004564 — Not fetched (403 bot wall); Elsevier hosts no redistribution grant for this article.
-- verified: inferred
+- url: https://arxiv.org/abs/2411.15594
+- redistribution: allow
+- license: CC0-1.0
+- license-evidence: https://arxiv.org/abs/2411.15594 — The abstract page's "Rights to this article" link points at creativecommons.org/publicdomain/zero/1.0/ — the authors' own per-article choice, distinct from arXiv's site-wide metadata license; confirmed by reading the page's rendered links this session (2026-08-13).
+- verified: web
 
-Not in the corpus: ScienceDirect answered the fetch with HTTP 403 (bot wall), so this survey of LLM-as-a-judge methods contributed nothing to the index — no abstract, no taxonomy, no chunks. The dossier listed it for a rigorous taxonomy of judging methods, their biases, and pipeline design. Per the corpus policy, a bot wall is recorded and reported rather than worked around, so no workaround was attempted. The evaluation-harness ground this source was meant to cover is partly held by three sources that did fetch: 51 (a practitioner guide to LLM-as-a-judge), 53 (best-practice write-up) and 54 (a CC BY paper measuring scoring bias in judges). If the survey itself is needed, the route is a licensed copy through an institutional subscription, read by a human — not a re-scrape.
+Recovered by repointing this source at its open preprint: the dossier's original URL was the same paper's journal republication on ScienceDirect (Gu, Jiang, Shi et al., published in *The Innovation*, pii S2666675825004564), which bot-walls automated fetches. The arXiv preprint (v6, Oct 2025) carries identical authorship and abstract and is CC0-dedicated by the authors, so it is both the accessible copy and, being public domain, the licensing-safer one to cite — a real change from the ScienceDirect original, which would have been deny-by-default Elsevier copyright. The paper surveys "LLM-as-a-Judge" — using an LLM to evaluate another model's (or its own) output — and organizes the field around one question: how to make that evaluation reliable. It walks through the mechanics practitioners actually tune (in-context examples, which base model to use as judge, how to post-process a raw judge response into a score, and pipeline design), then a separate section on strategies to *improve* reliability (prompt design, giving the judge more capability such as tool use or multi-step reasoning, and output-stage fixes), then a section on how to *measure* whether a judge is reliable at all — agreement with human raters, documented bias types, adversarial robustness, and a critique of how the field currently does meta-evaluation. It closes with applications (ML research, plus domain-specific uses) and named open problems (interpretability of a judge's reasoning, temporal drift as backbone models change, ethical/social implications of automating evaluation). For Foray's evaluation harness (segment self-containedness, bridge coherence) this is the structural map: which of those levers we've implemented, which biases apply to our specific judging tasks, and which meta-evaluation traps to avoid when we score our own scorer.
 
 **Key facts**
 
-- Fetch outcome: HTTP 403 from ScienceDirect; recorded in dead-links.md, zero chunks indexed.
-- Corpus policy (PLAN.md): bot walls and paywalls are recorded, never circumvented.
-- Coverage substitutes that did fetch: sources 51, 53 and 54.
-- Elsevier content would be deny-by-default for redistribution even if it had fetched.
+- Same paper as the dossier's original ScienceDirect citation (Gu, Jiang, Shi, Tan, Zhai, Xu et al.); this preprint (arXiv:2411.15594v6, revised Oct 2025) is CC0-dedicated by the authors — redistribution verdict changed from deny (ScienceDirect/Elsevier) to allow.
+- Structures the field around one question — how to build a *reliable* LLM-as-a-Judge — and separates "how judges are built" (in-context learning, judge model choice, output post-processing, pipeline design) from "how to make them more reliable" (prompt design, capability enhancement, output-stage optimization).
+- Devotes a full section to measuring judge reliability itself: agreement with human judgments, a taxonomy of biases, adversarial robustness, and a critique of common meta-evaluation practice.
+- Proposes its own reliability-oriented benchmark for scoring LLM-as-a-Judge systems, alongside a companion resource site (`awesome-llm-as-a-judge.github.io`).
+- Names open problems directly relevant to a product judge: interpretability of a judge's stated reasoning, drift as the underlying backbone model changes over time, and multimodal ("MLLM-as-a-Judge") extension.
+- Recovered 2026-08-13 via `corpus repoint-url 52 <arxiv-url>` + `refetch` after the ScienceDirect URL 403'd; see `tools/corpus/README.md` for the repoint procedure. Prior coverage from sources 51, 53 and 54 remains complementary, not superseded.
 
 ## 53. LLM-as-a-Judge best practices (DeepEval)
 

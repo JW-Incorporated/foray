@@ -183,8 +183,8 @@ deleted later by a PR that auto-merges, and a deleted suite passes CI.
 ## Research corpus — search it before reasoning from memory
 
 The 54 curated sources in `docs/research/foray-research-dossier.md` are scraped
-into a searchable SQLite+FTS5 corpus (52 ingested, 451 chunks at time of
-writing — `stats` prints the live numbers; the two failures are named in
+into a searchable SQLite+FTS5 corpus (54/54 ingested, 558 chunks at time of
+writing — `stats` prints the live numbers; any future gaps are named in
 `docs/research/corpus/dead-links.md`). Nine areas: podcast
 infrastructure, speech processing/ASR, topic segmentation, retrieval and
 recommendation, audio assembly, TTS, prior art, legal/policy, LLM pipeline
@@ -210,11 +210,17 @@ papers, Podcast Namespace issue #254 — and a model's recollection of what a
 court or a standards body actually said is confidently wrong often enough that
 one search is cheaper than the rework.
 
-**Check what it actually has before citing it.** Coverage is not uniform: AES
-TD1004.1.15-10, the loudness recommendation itself, is one of the two sources
-that failed to fetch (404), so on loudness the corpus holds AES's *overview*
-page and not the recommendation — quote the latter and you are back to quoting
-from memory. `stats` gives per-area coverage, `dead-links.md` names every gap.
+**Check what it actually has before citing it.** Coverage is not uniform across
+chunk-per-source (a short Apple forum thread is legitimately one chunk; a
+200-page PDF is dozens) — `stats` gives per-area coverage, `dead-links.md`
+names every gap when one exists. As of 2026-08-13 there are none: AES
+TD1004.1.15-10 (the loudness recommendation itself) was recovered at AES's
+current URL after their document tree moved, and every other source that once
+fetched thin (a handful of JS-rendered pages) was recovered via a
+browser-rendered capture — see `tools/corpus/README.md#rendered-html-route`
+and `#a-source-moved`. One source, TTS Arena V2, stays genuinely thin: its
+leaderboard lives behind a cross-origin sandboxed iframe no fetch or render
+can see into.
 
 **The digests are committed; the searchable DB is not.** Every checkout —
 including cloud runners — has `docs/research/corpus/digests.md`: what each of
