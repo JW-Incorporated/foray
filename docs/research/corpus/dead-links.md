@@ -1,6 +1,6 @@
 # Research corpus — dead / degraded links
 
-Generated 2026-08-13T00:06:37.043Z by `corpus report` — do not hand-edit.
+Generated 2026-08-12T16:51:46.266Z by `corpus report` — do not hand-edit.
 Policy (PLAN.md): failures are recorded and reported, not worked around.
 
 2 sources need attention:

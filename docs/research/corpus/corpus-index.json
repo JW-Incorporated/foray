@@ -1,6 +1,6 @@
 {
   "schema": "foray.research-corpus-index/1",
-  "generated_at": "2026-08-13T00:06:36.784Z",
+  "generated_at": "2026-08-13T00:05:22.223Z",
   "generator": "node tools/corpus/corpus.mjs export-index --write",
   "policy": "Index + our own digests only. No third-party source text is committed to this public repo: the corpus's raw bytes and markdown extractions stay in data-local/corpus/ (gitignored). license.redistribution records, per source, whether republishing that source's text would be permitted.",
   "regeneration": {
