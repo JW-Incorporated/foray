@@ -1,5 +1,58 @@
 # Foray UX prototypes
 
+## `foray-mockup.jsx` — the front-end design, going forward (REFERENCE ONLY)
+
+**Status: adopted as the design direction. Explicitly NOT to be implemented
+yet.** Joey's call, 2026-08-13. Nobody should port this into `app.js`, start an
+iOS build from it, or add React to this repo on the strength of it. It is here
+to be *read* — it exists so that backend work is built toward a known front end
+instead of guessing at one, and so the eventual implementation isn't designed
+twice.
+
+A single self-contained React component file (1,562 lines): design tokens,
+sample data, and thirteen screens — login, welcome, preferences, home, search,
+create, library, show, full player, mini player, share sheet, feedback sheet,
+thumbs. It does not build here and is not wired to anything; `docs/` is not on
+any build path, and CI does not compile it.
+
+### What it commits us to, and why the backend should care
+
+The mockup is not just a look. Its data shapes are a de facto contract, and
+they are more demanding than what the backend emits today.
+
+- **A Foray is a flat timeline of segments**, not an episode. `FORAYS[].segments[]`
+  alternates `kind: "narrator"` and `kind: "source"`; each carries `dur`, each
+  source carries its show, episode title and date. Playback maps a position to
+  `(segment index, offset into segment)` — see `segAt()`. Anything the curation
+  engine emits has to reduce to that shape.
+- **`BUILD_STEPS` is a claim about the pipeline** (lines 152–158), shown to the
+  user while they wait: *search 2.4M episodes → choose the strongest segments →
+  clip just the relevant parts → record narrator bridges → stitch it together.*
+  That is five backend capabilities, and the third one — clipping exactly the
+  right audio — is the one the research corpus says is hardest, because dynamic
+  ad insertion moves offsets per download (`docs/adr/0007-segment-anchoring.md`).
+  The UI promising it does not make it true; treat that screen as a requirement
+  with a known risk attached, not a solved problem.
+- **On-demand creation is a first-class screen.** `CreateScreen` lets a user
+  type any subject and get a custom Foray built for them, with a length choice
+  (~20 / ~40 / ~75 min). Today's backend builds a daily menu of whole episodes;
+  this is a substantially larger ask, and it is the screen most likely to drive
+  scope.
+- **Narrator bridges are everywhere in the design** — intro, between every pair
+  of sources, and an outro. Same structural gap the M3 prototype already
+  flagged below: the real session doc has no TTS items at all.
+
+### Frictions to know about before anyone implements it
+
+- It imports `react` and `lucide-react`. The repo root is deliberately
+  dependency-free with no build step (see `package.json`'s own description), so
+  adopting this is a stack decision, not a file copy — it needs an ADR.
+- It pulls Fraunces and DM Sans from Google Fonts via `@import` (line 1480).
+  The live site runs a strict CSP with no inline styles or external fetches
+  (`CLAUDE.md` § Conventions), so those fonts would have to be self-hosted.
+- Sample data is fictional. The podcasts, episodes and follower counts are
+  illustrative, not a catalogue.
+
 ## `foray-m3-prototype.html` — M3 interactive prototype
 
 A single self-contained HTML file — no build step, no dependencies to install.
