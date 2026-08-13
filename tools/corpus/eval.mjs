@@ -17,7 +17,8 @@
  * query flipping from found to not-found.
  */
 
-import { search, sourcesInOrder, MODES } from "./search.mjs";
+import { search, sourcesInOrder, resolveModel, MODES } from "./search.mjs";
+import { loadMatrix } from "./embeddings.mjs";
 
 /** Rank (1-indexed) of the first primary hit, or 0 if none in the list. */
 function firstHitRank(order, primary) {
@@ -26,6 +27,27 @@ function firstHitRank(order, primary) {
 }
 
 const gain = (id, q) => (q.primary.includes(id) ? 2 : (q.secondary ?? []).includes(id) ? 1 : 0);
+
+/**
+ * TRUE Recall@5: what fraction of a query's primaries came back in the top 5.
+ *
+ * This was `top5.some(id => primary.includes(id))` — which is HIT RATE, not
+ * recall, and the difference silently decided this corpus's retrieval
+ * strategy. Ten of the fifteen gold queries have two or three primaries, so
+ * a run that finds one of q1's three sources scored a perfect 1.000. That
+ * pinned keyword search at the ceiling **by definition**, which in turn made
+ * "must beat the baseline on Recall@5" unpassable by any mode, forever — and
+ * the resulting "embeddings cannot improve recall here" read as a fact about
+ * the corpus when it was a fact about the metric.
+ *
+ * Hit rate is still worth reporting (it answers "did the user get *an*
+ * answer"), so it survives as `hit5`. It is just not what recall means.
+ */
+const recallAt = (order, q, k) => {
+  if (!q.primary.length) return 0;
+  const top = order.slice(0, k);
+  return q.primary.filter((id) => top.includes(id)).length / q.primary.length;
+};
 
 function ndcgAt(order, q, k) {
   let dcg = 0;
@@ -56,6 +78,16 @@ export async function runEval(db, gold, { mode = "keyword", limit = 8, ...opts }
   const perQuery = [];
   let downgraded = null;
 
+  /* Load the vector matrix ONCE for the whole run. `search` falls back to
+   * loading it per call, which for 15 queries x 3 modes meant 30 reloads of a
+   * 1268x384 matrix — the eval would have been partly measuring its own I/O.
+   * Skipped entirely for keyword, which must never touch the vector tables. */
+  let index = opts.index ?? null;
+  if (!index && mode !== "keyword") {
+    const model = resolveModel(db, opts.modelSpec ?? null);
+    if (model) index = loadMatrix(db, model.id);
+  }
+
   for (const q of gold.queries) {
     /* A query that ERRORS is a legitimate measurement, not a reason to abort
      * the run — recording the old raw-passthrough behaviour (which threw
@@ -63,7 +95,7 @@ export async function runEval(db, gold, { mode = "keyword", limit = 8, ...opts }
      * a before-number at all. */
     let rows = [], match = null, error = null, ranMode = mode;
     try {
-      const r = await search(db, q.q, { ...opts, mode, limit });
+      const r = await search(db, q.q, { ...opts, mode, limit, index });
       ({ rows, match } = r);
       ranMode = r.mode;
       if (r.notice) downgraded = r.notice;
@@ -77,10 +109,14 @@ export async function runEval(db, gold, { mode = "keyword", limit = 8, ...opts }
       id: q.id,
       q: q.q,
       found: rank > 0,
-      recall5: order.slice(0, 5).some((id) => q.primary.includes(id)) ? 1 : 0,
+      /* Did the user get AT LEAST ONE right answer in the top 5. */
+      hit5: order.slice(0, 5).some((id) => q.primary.includes(id)) ? 1 : 0,
+      /* What FRACTION of the right answers came back. See recallAt. */
+      recall5: recallAt(order, q, 5),
       rr: rank ? 1 / rank : 0,
-      ndcg10: ndcgAt(order, q, limit),
+      ndcg: ndcgAt(order, q, limit),
       top5: order.slice(0, 5),
+      primaries: q.primary.length,
       firstHitRank: rank,
       negativesInTop5: negatives,
       ranMode,
@@ -101,9 +137,13 @@ export async function runEval(db, gold, { mode = "keyword", limit = 8, ...opts }
     aggregate: {
       queries: perQuery.length,
       found: perQuery.filter((r) => r.found).length,
+      hit5: mean((r) => r.hit5),
       recall5: mean((r) => r.recall5),
-      mrr10: mean((r) => r.rr),
-      ndcg10: mean((r) => r.ndcg10),
+      /* Named for what they are. These were `mrr10`/`ndcg10` while the depth
+       * they are actually computed at follows `--limit` (8 by default), so
+       * every --json consumer read a "@10" that was never 10. */
+      mrr: mean((r) => r.rr),
+      ndcg: mean((r) => r.ndcg),
       errors: perQuery.filter((r) => r.error).length,
       negativeHits: perQuery.reduce((a, r) => a + r.negativesInTop5.length, 0),
     },
@@ -138,8 +178,22 @@ export function compareToBaseline(baseline, candidate) {
     .map((r) => ({ id: r.id, q: r.q, from: base.get(r.id).firstHitRank, to: r.firstHitRank }));
 
   const dRecall = candidate.aggregate.recall5 - baseline.aggregate.recall5;
-  const dMrr = candidate.aggregate.mrr10 - baseline.aggregate.mrr10;
-  const dNdcg = candidate.aggregate.ndcg10 - baseline.aggregate.ndcg10;
+  const dMrr = candidate.aggregate.mrr - baseline.aggregate.mrr;
+  const dNdcg = candidate.aggregate.ndcg - baseline.aggregate.ndcg;
+
+  /* A baseline already at 1.000 cannot be beaten, so a gate demanding
+   * "> baseline" is not a high bar — it is an IMPOSSIBLE one, and reporting
+   * its failure as evidence about the candidate would be a lie by
+   * construction. Say so instead of returning a quiet false. */
+  const saturated = [];
+  if (baseline.aggregate.recall5 >= 1) saturated.push("Recall@5");
+  if (baseline.aggregate.mrr >= 1) saturated.push("MRR");
+
+  /* A candidate that silently fell back to keyword for some or all queries is
+   * not a measurement of that candidate. Its numbers may even win — they are
+   * partly the baseline's own. */
+  const trustworthy = !candidate.downgraded;
+
   return {
     baseline: baseline.mode,
     candidate: candidate.mode,
@@ -148,8 +202,10 @@ export function compareToBaseline(baseline, candidate) {
     dRecall, dMrr, dNdcg,
     noRegression: regressions.length === 0,
     beatsOnBoth: dRecall > 0 && dMrr > 0,
+    saturated,
+    trustworthy,
     /* The single boolean the default-mode decision hangs on. */
-    earnsDefault: regressions.length === 0 && dRecall > 0 && dMrr > 0,
+    earnsDefault: trustworthy && regressions.length === 0 && dRecall > 0 && dMrr > 0,
   };
 }
 
@@ -161,11 +217,11 @@ export function formatEval(result) {
   L.push(`mode: ${result.mode}   depth: top-${k} (the CLI's own default)`);
   if (result.downgraded) L.push(`!! DOWNGRADED: ${result.downgraded}`);
   L.push("");
-  L.push(` id  found  rr     ndcg@${String(k).padEnd(2)} top-5 sources                 query`);
+  L.push(` id  found  rr     rec@5  ndcg@${String(k).padEnd(2)} top-5 sources                 query`);
   for (const r of result.perQuery) {
     L.push(
       `${String(r.id).padStart(3)}  ${(r.error ? "ERR" : r.found ? "yes" : "NO ").padEnd(5)}  ` +
-        `${r.rr.toFixed(2)}   ${r.ndcg10.toFixed(3)}   ` +
+        `${r.rr.toFixed(2)}   ${r.recall5.toFixed(2)}   ${r.ndcg.toFixed(3)}   ` +
         `${r.top5.join(",").padEnd(28).slice(0, 28)}  ${r.q}` +
         (r.error ? `  [${r.error}]` : "") +
         (r.negativesInTop5.length ? `  [!negative: ${r.negativesInTop5.join(",")}]` : "")
@@ -174,10 +230,14 @@ export function formatEval(result) {
   const a = result.aggregate;
   L.push("");
   L.push(
-    `found ${a.found}/${a.queries}   Recall@5 ${a.recall5.toFixed(3)}   ` +
-      `MRR@${k} ${a.mrr10.toFixed(3)}   nDCG@${k} ${a.ndcg10.toFixed(3)}` +
+    `hit@5 ${a.found}/${a.queries}   Recall@5 ${a.recall5.toFixed(3)}   ` +
+      `MRR@${k} ${a.mrr.toFixed(3)}   nDCG@${k} ${a.ndcg.toFixed(3)}` +
       (a.errors ? `   ERRORED ${a.errors}` : "") +
       (a.negativeHits ? `   negatives-in-top5 ${a.negativeHits}` : "")
+  );
+  L.push(
+    `(Recall@5 is the FRACTION of each query's primaries retrieved, averaged. ` +
+    `hit@5 counts queries with at least one.)`
   );
   return L.join("\n");
 }
@@ -207,10 +267,10 @@ export function formatComparison(results, { baselineMode = "keyword" } = {}) {
   L.push("");
   L.push(`  metric      ${modes.map((m) => m.slice(0, 7).padStart(9)).join("")}`);
   const row = (label, get) => L.push(`  ${label.padEnd(12)}${results.map((r) => get(r).padStart(9)).join("")}`);
-  row("found", (r) => `${r.aggregate.found}/${r.aggregate.queries}`);
+  row("hit@5", (r) => `${r.aggregate.found}/${r.aggregate.queries}`);
   row("Recall@5", (r) => r.aggregate.recall5.toFixed(3));
-  row(`MRR@${k}`, (r) => r.aggregate.mrr10.toFixed(3));
-  row(`nDCG@${k}`, (r) => r.aggregate.ndcg10.toFixed(3));
+  row(`MRR@${k}`, (r) => r.aggregate.mrr.toFixed(3));
+  row(`nDCG@${k}`, (r) => r.aggregate.ndcg.toFixed(3));
   row("neg-in-top5", (r) => String(r.aggregate.negativeHits));
 
   const baseline = results.find((r) => r.mode === baselineMode);
@@ -226,6 +286,14 @@ export function formatComparison(results, { baselineMode = "keyword" } = {}) {
         `   regressions ${c.regressions.length}` +
         `   -> ${c.earnsDefault ? "EARNS the default" : "does NOT earn the default"}`
       );
+      /* Without this line, an unpassable gate and a genuinely losing
+       * candidate print the same verdict. */
+      if (c.saturated.length) {
+        L.push(`      NOTE: the baseline is at 1.000 on ${c.saturated.join(", ")} — that term cannot be beaten, only tied.`);
+      }
+      if (!c.trustworthy) {
+        L.push(`      NOTE: this run DOWNGRADED, so its numbers are partly the baseline's own — not a measurement of ${cand.mode}.`);
+      }
       for (const r of c.regressions) L.push(`      REGRESSION q${r.id} (was rank ${r.wasRank}, now not found): ${r.q}`);
       for (const r of c.rankLosses) L.push(`      rank loss  q${r.id}: ${r.from} -> ${r.to}: ${r.q}`);
     }
