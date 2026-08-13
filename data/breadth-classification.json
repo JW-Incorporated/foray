@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-12T17:06:14.315Z",
+  "built_at": "2026-08-13T00:57:23.864Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-12-658568f5",
+    "last_batch_id": "fresh-2026-08-13-4215d701",
     "last_batch_tier": 1
   },
   "entries": {
@@ -75215,7 +75215,22 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Survivors recount harrowing true crime stories and near-death experiences.",
+      "display_title": "I Survived",
+      "blurb": "True crime stories of survival and overcoming violent circumstances.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1500934146": {
       "topics": [
@@ -184012,7 +184027,22 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content on physical chemistry fundamentals and applications.",
+      "display_title": "Physical Chemistry Fundamentals",
+      "blurb": "Textbook-based chemistry lessons covering electrochemistry and lab techniques.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1828075438": {
       "topics": [
@@ -184126,7 +184156,26 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast analyzing 1985's most significant films and cultural impact.",
+      "display_title": "A Blockbuster Year: 1985",
+      "blurb": "Hosts discuss pivotal 1985 films including Back to the Future and The Breakfast Club.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1828666204": {
       "topics": [
@@ -184213,11 +184262,25 @@
     },
     "1829138861": {
       "topics": [
-        "fiction/comedy",
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese stand-up comedy performance.",
+      "display_title": "郭德纲单口高清版《张小乙下南京》",
+      "blurb": "Stand-up comedy performance by Chinese comedian Guo Degang.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1829207363": {
       "topics": [
@@ -184262,10 +184325,25 @@
     },
     "1829456999": {
       "topics": [
-        "sports/tennis"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis-focused podcast content.",
+      "display_title": "Tennis in Barba 🎾",
+      "blurb": "Tennis news and podcast content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1829499340": {
       "topics": [
@@ -184476,10 +184554,28 @@
     },
     "1830505769": {
       "topics": [
-        "sports/golf"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Golf psychology and instruction podcast.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1830530855": {
       "topics": [
@@ -184540,19 +184636,47 @@
     },
     "1830748805": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Dallas Cowboys news updates.",
+      "display_title": "Dallas Cowboys News Today | 2 Min News",
+      "blurb": "Two-minute daily news digest of Dallas Cowboys coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1830754769": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Dallas Cowboys news updates.",
+      "display_title": "Los Angeles Rams News Today | 2 Min",
+      "blurb": "Two-minute daily news digest of Dallas Cowboys coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1830773815": {
       "topics": [
@@ -184673,10 +184797,25 @@
     },
     "1831127045": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Ms Crystal's Podcast Program",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1831173652": {
       "topics": [
@@ -184687,10 +184826,25 @@
     },
     "1831215569": {
       "topics": [
-        "sports/rugby"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Football-focused podcast content.",
+      "display_title": "Tackles and Tensions",
+      "blurb": "Football analysis and discussion podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1831256179": {
       "topics": [
@@ -184848,10 +185002,30 @@
     },
     "1832095445": {
       "topics": [
-        "aviation"
+        "tv-film/history",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast analyzing 1985's most significant films and cultural impact.",
+      "display_title": "Winged Victory w/ Rob and Scott",
+      "blurb": "Hosts discuss pivotal 1985 films including Back to the Future and The Breakfast Club.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1832097658": {
       "topics": [
@@ -184926,7 +185100,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Archive of 1971 Ralph Emery music radio show.",
+      "display_title": "The Ralph Emery Show 1971 Season",
+      "blurb": "Vintage 1971 archive of the Ralph Emery Show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1832332623": {
       "topics": [
@@ -185109,10 +185298,25 @@
     },
     "1833075179": {
       "topics": [
-        "sports/football"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Dallas Cowboys news updates.",
+      "display_title": "THE BLUE PRINT: A podcast on the Michigan",
+      "blurb": "Two-minute daily news digest of Dallas Cowboys coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1833077699": {
       "topics": [
@@ -185209,12 +185413,25 @@
     },
     "1833325979": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Precision Signals",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1833333553": {
       "topics": [
@@ -185233,10 +185450,25 @@
     },
     "1833463409": {
       "topics": [
-        "sports/fantasy"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Stokastic MLB DFS",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1833485222": {
       "topics": [
@@ -185248,10 +185480,25 @@
     },
     "1833520463": {
       "topics": [
-        "nature"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Shark and Awe",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1833544764": {
       "topics": [
@@ -185396,10 +185643,25 @@
     },
     "1834157069": {
       "topics": [
-        "business/marketing"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Trevor Buck Podcast",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1834163410": {
       "topics": [
@@ -185483,11 +185745,25 @@
     },
     "1834390919": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Learn European Portuguese | A1 → B1",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1834414307": {
       "topics": [
@@ -185518,10 +185794,25 @@
     },
     "1834448027": {
       "topics": [
-        "business/careers"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Leadership Lab: Confidence Skills, Emotional Intelligence, and Career",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1834477502": {
       "topics": [
@@ -185541,10 +185832,25 @@
     },
     "1834485863": {
       "topics": [
-        "nature"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "The Hoofcare Companion",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1834486410": {
       "topics": [
@@ -185685,10 +185991,25 @@
     },
     "1835081063": {
       "topics": [
-        "craft/diy-home"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Bloommates",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1835143677": {
       "topics": [
@@ -185780,10 +186101,25 @@
     },
     "1835386103": {
       "topics": [
-        "sports/soccer"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Dallas Cowboys news updates.",
+      "display_title": "RTL Foot",
+      "blurb": "Two-minute daily news digest of Dallas Cowboys coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1835422995": {
       "topics": [
@@ -185917,10 +186253,25 @@
     },
     "1835683781": {
       "topics": [
-        "culture/books"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Dallas Cowboys news updates.",
+      "display_title": "Plot Twist, Please",
+      "blurb": "Two-minute daily news digest of Dallas Cowboys coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1835731322": {
       "topics": [
@@ -186036,11 +186387,25 @@
     },
     "1836318077": {
       "topics": [
-        "music",
-        "history"
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Survivors recount harrowing true crime stories and near-death experiences.",
+      "display_title": "The Hip Hop Files",
+      "blurb": "True crime stories of survival and overcoming violent circumstances.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1836334065": {
       "topics": [
@@ -186160,18 +186525,47 @@
     },
     "1836539969": {
       "topics": [
-        "sports",
-        "news"
+        "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content on physical chemistry fundamentals and applications.",
+      "display_title": "California Golden Bears Football Today | 2 Min",
+      "blurb": "Textbook-based chemistry lessons covering electrochemistry and lab techniques.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1836620687": {
       "topics": [
-        "culture/books"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Dare to Lead by Brené Brown, Book Summary,",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1836669880": {
       "topics": [
@@ -186220,10 +186614,25 @@
     },
     "1836797351": {
       "topics": [
-        "culture/art"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Her Shrink Ray Eye Podcast",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1836803724": {
       "topics": [
@@ -186256,10 +186665,25 @@
     },
     "1836955475": {
       "topics": [
-        "philosophy"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Pub and Porch: Applied Stoicism",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1836972249": {
       "topics": [
@@ -186404,11 +186828,25 @@
     },
     "1837305827": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "She's In Progress",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1837319709": {
       "topics": [
@@ -186419,10 +186857,25 @@
     },
     "1837337819": {
       "topics": [
-        "music"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "607Unc Presents Streets Unplugged",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1837410733": {
       "topics": [
@@ -186440,10 +186893,25 @@
     },
     "1837438235": {
       "topics": [
-        "business/marketing"
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports-themed podcast.",
+      "display_title": "Marketing Brew Weekly",
+      "blurb": "Sports podcast with Rob and Scott.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1837453939": {
       "topics": [
@@ -186469,10 +186937,28 @@
     },
     "1837500809": {
       "topics": [
-        "sports/golf"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Golf psychology and instruction podcast.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1837569178": {
       "topics": [
@@ -186556,10 +187042,25 @@
     },
     "1837796303": {
       "topics": [
-        "nature"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Citizen Zoo’s Rewilding Podcast",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1837800218": {
       "topics": [
@@ -186606,10 +187107,25 @@
     },
     "1838054087": {
       "topics": [
-        "business/management"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Badass Softie",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1838151487": {
       "topics": [
@@ -186692,17 +187208,47 @@
     },
     "1838470913": {
       "topics": [
-        "travel"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Dallas Cowboys news updates.",
+      "display_title": "Cruise Talk Weekly",
+      "blurb": "Two-minute daily news digest of Dallas Cowboys coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1838501585": {
       "topics": [
-        "business/management"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Dallas Cowboys news updates.",
+      "display_title": "Workplace Therapy with Dr. Abby Medcalf",
+      "blurb": "Two-minute daily news digest of Dallas Cowboys coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1838505248": {
       "topics": [
@@ -186768,11 +187314,25 @@
     },
     "1838578913": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Dallas Cowboys news updates.",
+      "display_title": "The Hammer Daily",
+      "blurb": "Two-minute daily news digest of Dallas Cowboys coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1838729298": {
       "topics": [
@@ -186812,10 +187372,28 @@
     },
     "1838984435": {
       "topics": [
-        "sports/golf"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Golf psychology and instruction podcast.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1839047169": {
       "topics": [
@@ -186850,11 +187428,25 @@
     },
     "1839106001": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast program content; insufficient description detail.",
+      "display_title": "Icons Of Fright",
+      "blurb": "Podcast program by Ms. Crystal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1839266646": {
       "topics": [
@@ -186892,11 +187484,25 @@
     },
     "1839285239": {
       "topics": [
-        "news/tech",
-        "computing"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hip-hop music and history podcast.",
+      "display_title": "The Hip Hop Files",
+      "blurb": "Hip-hop music, history, and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-4215d701",
+      "classified_at": "2026-08-13T00:57:23.864Z"
     },
     "1839297336": {
       "topics": [
