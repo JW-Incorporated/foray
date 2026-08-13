@@ -42,8 +42,8 @@ function ndcgAt(order, q, k) {
  */
 export function runEval(db, gold, { mode = "keyword", limit = 8, ...opts } = {}) {
   /* Depth defaults to the CLI's own --limit. Evaluating deeper than users
-   * ever see inflates nDCG for free (at 25 this set scores 0.865 against
-   * 0.790 at 8) and measures a product nobody uses. Pass --limit to explore. */
+   * ever see inflates nDCG for free (at 25 this set scores 0.864 against
+   * 0.788 at 8) and measures a product nobody uses. Pass --limit to explore. */
   const perQuery = gold.queries.map((q) => {
     if (mode !== "keyword") throw new Error(`unknown eval mode: ${mode}`);
     /* A query that ERRORS is a legitimate measurement, not a reason to abort
