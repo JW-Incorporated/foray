@@ -43,6 +43,20 @@ export function archivePath(dir, sourceId, slugSource, ext) {
 }
 
 /** Repo-relative display form (stable across machines, for DB storage). */
-export function relToCorpusRoot(fullPath) {
-  return path.relative(CORPUS_ROOT, fullPath).split(path.sep).join("/");
+export function relToCorpusRoot(fullPath, root = CORPUS_ROOT) {
+  return path.relative(root, fullPath).split(path.sep).join("/");
 }
+
+/* The archive layout under ANY root. `RAW_DIR`/`MARKDOWN_DIR` above are just
+ * these applied to the real corpus root.
+ *
+ * These exist because the ingestion path used to hard-code the module-level
+ * constants, which meant a unit test calling `ingestSource` against a temp
+ * DATABASE still wrote its fixtures into the real `data-local/corpus/`
+ * archive — and, once `removeStaleArchives` landed, DELETED whatever real
+ * artifact happened to share its source id. That is how `npm test` came to
+ * destroy source 1's archived markdown on the machine that built the corpus.
+ * The root is now a parameter, so a test that opens a temp DB gets a temp
+ * archive too, and the two can no longer diverge. */
+export const rawDirIn = (root) => path.join(root, "raw");
+export const markdownDirIn = (root) => path.join(root, "markdown");

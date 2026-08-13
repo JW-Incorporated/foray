@@ -30,6 +30,12 @@ const INDEX_PATH = path.join(REPO_ROOT, "docs", "research", "corpus", "corpus-in
 
 const tmpDb = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), "corpus-export-")), "test.db");
 
+/* Temp archive root for every ingest here. A temp DATABASE used to imply
+ * nothing about where the archive files landed, so these fixtures wrote (and,
+ * once removeStaleArchives existed, deleted) real files under
+ * data-local/corpus/ by source id. See db.test.mjs's note. */
+const ARCHIVE = fs.mkdtempSync(path.join(os.tmpdir(), "corpus-export-archive-"));
+
 const entry = (over = {}) => {
   const f = {
     id: 1,
@@ -180,7 +186,7 @@ test("buildIndex: joins fetch facts to authored digests", async () => {
     async fetchUrl(url) {
       return { ok: true, status: 200, finalUrl: url, contentType: "text/plain", body: Buffer.from("# T\n\n" + "Sentence of real content. ".repeat(60)), notes: [] };
     },
-  }, src[0]);
+  }, src[0], { corpusRoot: ARCHIVE });
 
   const index = buildIndex(db, parseDigests(digestsFor(db)), { generatedAt: "TEST-TIME" });
   assert.equal(index.schema, INDEX_SCHEMA);
@@ -210,7 +216,7 @@ test("buildIndex: no chunk text, no source prose, ever reaches the index", async
     async fetchUrl(url) {
       return { ok: true, status: 200, finalUrl: url, contentType: "text/plain", body: Buffer.from(`# T\n\n${secret}. ` + "Sentence of real content. ".repeat(60)), notes: [] };
     },
-  }, src[0]);
+  }, src[0], { corpusRoot: ARCHIVE });
 
   const json = serializeIndex(buildIndex(db, parseDigests(digestsFor(db))));
   assert.ok(!json.includes(secret), "index must not carry scraped text");

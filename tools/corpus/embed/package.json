@@ -1,0 +1,12 @@
+{
+  "name": "foray-corpus-embed",
+  "private": true,
+  "type": "module",
+  "description": "QUARANTINE, not a package. @huggingface/transformers pulls in onnxruntime-node; the whole tree measures 373MB installed (208MB of it onnxruntime-node's binaries for six platforms, 90MB of onnxruntime-web that Node never loads, 19MB of sharp for images nothing here uses). tools/corpus/ has advertised zero native dependencies since it was built, so this is a stack change rather than a feature. Keeping it in its own package.json means `cd tools/corpus && npm ci` (what CI runs) never installs it, the fixture-only test suite never needs it, and `corpus search --mode keyword` — the default — works with it entirely absent. Install it deliberately: cd tools/corpus/embed && npm install.",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.7.6"
+  }
+}

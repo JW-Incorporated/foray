@@ -11,6 +11,38 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Completed workstreams
 
+### corpus/embeddings — the embedding backfill: a measured NO (2026-08-13, COMPLETE)
+
+Branch `corpus/embeddings` (migration 0003: `embedding_models` +
+`chunk_embeddings`, replacing the single `chunks.embedding` column; the
+quarantined runtime; `search --mode`; a three-mode eval). Ran end to end:
+1256 vectors in ~1 minute, local, keyless, $0. **The answer is no — the default
+search mode stays `keyword`, and the corpus is left on its original chunking
+with no vectors stored.** Keyword beat both candidates on every metric in every
+configuration; hybrid is −0.122 Recall@5, −0.028 MRR, −0.104 nDCG and loses one
+gold query outright. Embeddings additionally require a re-chunk that costs
+keyword a further 0.074 MRR. Full numbers, per query:
+`docs/research/corpus/PLAN.md`'s 2026-08-13 retro. Embeddings do genuinely
+answer paraphrase queries keyword cannot, which is why the capability is
+committed rather than reverted — opt-in, ~65s to reproduce.
+- **Caught in review, worth knowing:** the first draft of this verdict rested
+  on a metric labelled `Recall@5` that was actually hit rate, pinning the
+  baseline at 1.000 and making one gate unpassable by construction. Fixed,
+  tested, re-measured; the conclusion held and got stronger.
+- **Owned directories:** `tools/corpus/`, `docs/research/corpus/`.
+- **Dependency note:** `tools/corpus/embed/` carries `@huggingface/transformers`
+  (**373MB installed**, measured). It is a separate package.json; CI's
+  `npm ci` in `tools/corpus` never installs it, the whole test suite runs on a
+  stub embedder, and `search --mode keyword` works with it absent.
+- **A real bug fixed on the way:** the corpus test suite was writing fixtures
+  into the real `data-local/corpus/` archive, and since #161's
+  `removeStaleArchives` was *deleting* real archived markdown on every
+  `npm test`. Archive root is now a parameter alongside the DB.
+- **Shared files touched, each its own commit:** `test/suite-integrity.test.js`
+  (floors, tools/corpus 175 → 279), `docs/DECISIONS.md`, `CLAUDE.md`.
+- **Out of scope, untouched:** `data/*.json`, `tools/segments|transcribe|refresh`,
+  `backend/`, `app.js`, `.github/`.
+
 ### corpus/refetch-weak-sources — recover the 8 weakest corpus sources (2026-08-13, COMPLETE)
 
 PR: `corpus/refetch-weak-sources`. Recovered both dead links (source 12 AES

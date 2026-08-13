@@ -417,3 +417,88 @@ Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
   machine rebuilds the whole corpus with `init` → `load-manifest` →
   `ingest --all`, and the committed `content_sha256` per source says whether a
   rebuild matches this snapshot or the upstream page has changed since.
+
+## 2026-08-13 (research corpus, part 3: embedding storage and model choice)
+
+Recorded before the backfill ran, per workflow rule 4. The measured OUTCOME —
+including whether semantic search earned the default — is appended to
+`docs/research/corpus/PLAN.md`'s retro, not here; this entry is the choice and
+its reasoning.
+
+- **Vectors do NOT go in `chunks.embedding`. That column is dropped**
+  (migration `0003_embeddings.sql`), and replaced by a registry
+  (`embedding_models`) plus a join table (`chunk_embeddings`, composite PK
+  `(chunk_id, model_id)`, `ON DELETE CASCADE` from `chunks`). 0001 reserved
+  one BLOB column for "the" model; that reservation cannot survive a second
+  one. Under the Postgres+pgvector lift this schema has been written for since
+  day one, a vector column's **dimension lives in the column type**
+  (`vector(384)`), so one column physically cannot hold a 384-dim and a
+  768-dim model at once — you would end up adding a column per model and
+  teaching every reader which one is live. The join table is the shape that
+  survives a model swap: a new model is one registry row plus N vector rows,
+  and the old vectors stay queryable while the new ones backfill. Keeping the
+  old column beside the new table would have been worse than either: two
+  places to write, one of them wrong.
+- **The cascade is a correctness mechanism, not tidiness.** `corpus rechunk`
+  rewrites `chunks` wholesale, and a vector keyed to a chunk id that no longer
+  exists is the classic stale-index bug — search returning text that was never
+  embedded, or missing text that was. `ON DELETE CASCADE` makes that
+  structurally impossible instead of merely remembered, and the backfill's own
+  coverage count then reports the corpus as unembedded, which is the truth.
+  `rechunk` additionally refuses to run at all while any vector exists unless
+  told `--drop-embeddings`, so the loss is always a decision.
+- **Prefix asymmetry is stored as registry DATA, not written into caller
+  code.** BGE-family models are trained so that queries carry an instruction
+  prefix and passages carry none; E5 prefixes both sides, GTE neither. Applying
+  the wrong convention degrades every single result and **raises no error** —
+  the numbers just get quietly worse. So `query_prefix` and `passage_prefix`
+  are columns on `embedding_models`, read by the retriever off the row it is
+  already loading. `registerModel` refuses to redefine any space-defining field
+  (dim, pooling, normalization, quantization, passage prefix) of an existing
+  model in place, because every stored vector was produced under the old
+  settings; the new configuration gets its own revision and its own id.
+- **The blob format is bare little-endian float32, L2-normalized at write, no
+  header** — element count is `byteLength / 4`, and a trigger asserts
+  `length(vector) = 4 * dim` on every insert and update. Deliberately
+  byte-compatible with **sqlite-vec**'s convention, so if brute-force scanning
+  hundreds of vectors ever stops being instant, `vec0` becomes a virtual table
+  over these same bytes instead of a re-encoding migration. Normalizing at
+  write is what makes similarity a plain dot product over one flat matrix. A
+  zero or non-finite vector throws at the write rather than being stored: it
+  would score zero against every query forever, i.e. a chunk silently invisible
+  to search.
+- **The model is `Xenova/bge-small-en-v1.5` (384-dim, q8 ONNX, MIT), run
+  locally on CPU via `@huggingface/transformers` — keyless, offline, $0.** No
+  paid API, consistent with decision-authority item 3 and with this repo's
+  keyless posture. (Anthropic publishes no embeddings endpoint, so "just use
+  the model we already pay for" was never an option here.) Weights live in
+  `data-local/models/` via an explicitly set cache directory — never
+  `node_modules`, never a default global cache — and nothing about the model is
+  ever committed.
+- **The runtime is quarantined in `tools/corpus/embed/`, with its own
+  `package.json`.** `onnxruntime-node` is ~250MB of native binaries, and
+  `tools/corpus/` has advertised zero native dependencies since it was built.
+  That is a stack change, not a feature, so it is opt-in: base corpus tooling,
+  the entire fixture-only test suite, and `search --mode keyword` all work with
+  the runtime **entirely absent**, and CI (which installs only
+  `tools/corpus/package.json`) proves it on every PR by never installing it.
+  `--mode hybrid` on a checkout without the runtime degrades to keyword search
+  with a one-line notice rather than failing — the CLI must never hard-fail for
+  someone who only wants keyword search.
+- **The backfill is gated on measurement, and a negative result is a valid
+  outcome.** The default mode flips only if a candidate beats fixed-keyword on
+  both Recall@5 and MRR with no query regressing from found to not-found;
+  otherwise the default stays `keyword` and the numbers say so. Vector-only is
+  reported either way — it is the number that distinguishes "the model isn't
+  helping" from "the fusion isn't helping". **Outcome: the default did not
+  move; see `docs/research/corpus/PLAN.md`'s 2026-08-13 retro.**
+- **A gate is only as honest as its metric, so the metric is now part of the
+  decision.** This pass shipped with `Recall@5` computed as *hit rate* — 1.0 if
+  any one of a query's expected sources came back — which scored the keyword
+  baseline a perfect 1.000 and made "beat the baseline on Recall@5"
+  unpassable by construction. Real recall (fraction of expected sources
+  retrieved) puts that baseline at 0.867, with real headroom. `compareToBaseline`
+  now reports a saturated baseline explicitly rather than returning a quiet
+  `false`, refuses to credit a run that silently downgraded, and has tests.
+  The standing rule: **a retrieval metric that reads 1.000 on the first try is
+  a bug until proven otherwise.**

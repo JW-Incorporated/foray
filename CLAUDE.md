@@ -196,6 +196,25 @@ node tools/corpus/corpus.mjs stats                           # per-area coverage
 node tools/corpus/corpus.mjs report                          # coverage + dead links
 ```
 
+**Search is keyword, and that is a measured choice, not a gap.** The embedding
+backfill was built and run on 2026-08-13: local, keyless, $0
+(`Xenova/bge-small-en-v1.5` on CPU). `--mode vector` and `--mode hybrid` work,
+and **keyword beat both on every metric in every configuration tested** —
+hybrid is −0.122 Recall@5, −0.028 MRR, −0.104 nDCG, and drops one gold query
+entirely. Embeddings also need a re-chunk to 400 real tokens (62% of the corpus
+exceeds the model's limit otherwise), which costs keyword a further 0.074 MRR.
+Numbers, per query and in aggregate, in `docs/research/corpus/PLAN.md`'s retro.
+Do not re-open this without re-measuring the keyword baseline on your own
+chunking first. The 373MB runtime is opt-in (`tools/corpus/embed/`),
+uninstalled by default, and CI never touches it.
+
+**If you touch `corpus eval`, read its retro first.** That pass shipped a
+metric labelled `Recall@5` that was actually hit rate, which pinned the
+baseline at 1.000 and made one of the two acceptance gates unpassable by
+construction — and the resulting verdict was written into five documents before
+anyone noticed. A retrieval metric that reads 1.000 on the first try is a bug
+until proven otherwise.
+
 Full CLI and schema: `tools/corpus/README.md`. Deps are scoped to that
 directory, so once per checkout: `cd tools/corpus && npm install` — without it
 every subcommand above dies with `ERR_MODULE_NOT_FOUND`, not a usage error.

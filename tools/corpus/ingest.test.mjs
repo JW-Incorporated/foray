@@ -11,13 +11,54 @@ import os from "node:os";
 import path from "node:path";
 import { openMigrated } from "./db.mjs";
 import { ingestCapturedText } from "./ingest.mjs";
-import { CORPUS_ROOT } from "./paths.mjs";
-
 const tmpDb = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), "corpus-ingest-")), "t.db");
 
-/* Distinct, unlikely-to-collide id/title so this suite's archive files never
- * shadow another suite's or a real ingested source's on disk (data-local/ is
- * shared, disposable, gitignored — see export-index.test.mjs precedent). */
+/* --- the structural guard on the archive-deletion bug -------------------- */
+
+test("no test in this directory ingests without naming its own archive root", () => {
+  /* `corpusRoot` still defaults to the real CORPUS_ROOT, because the CLI needs
+   * that — so nothing stops the NEXT test from omitting it and silently
+   * reintroducing the bug that deleted source 1's archive on every `npm test`.
+   * A hand-check at review time does not survive contact with a future PR;
+   * this does. Same spirit as test/suite-integrity.js: make the wrong thing
+   * fail loudly rather than trusting everyone to remember. */
+  const dir = import.meta.dirname;
+  const WRITERS = /\b(ingestSource|ingestCapturedText|ingestMany|rechunkAll)\s*\(/g;
+  const offenders = [];
+  for (const file of fs.readdirSync(dir).filter((f) => f.endsWith(".test.mjs"))) {
+    const src = fs.readFileSync(path.join(dir, file), "utf8");
+    for (const m of src.matchAll(WRITERS)) {
+      // Take the call's argument list, balanced to its closing paren.
+      let depth = 0, end = m.index + m[0].length - 1;
+      for (; end < src.length; end++) {
+        if (src[end] === "(") depth++;
+        else if (src[end] === ")" && --depth === 0) break;
+      }
+      const call = src.slice(m.index, end + 1);
+      // `import {…}` lines and the guard's own regex are not calls.
+      if (call.includes("corpusRoot") || call.includes("capture(") || call.includes("ingestOpts")) continue;
+      offenders.push(`${file}: ${call.replace(/\s+/g, " ").slice(0, 90)}`);
+    }
+  }
+  assert.deepEqual(
+    offenders, [],
+    "these calls would write to the REAL data-local/corpus/ archive — pass an explicit corpusRoot:\n" + offenders.join("\n")
+  );
+});
+
+/* This suite's own archive root.
+ *
+ * The previous defence was a high, "unlikely-to-collide" source id, on the
+ * assumption that fixture files landing in the real `data-local/corpus/` were
+ * harmless clutter. They were not: `removeStaleArchives` deletes every file
+ * sharing a source id's filename prefix, so a suite that seeded id 1 silently
+ * deleted the REAL source 1's archived markdown on the machine that built the
+ * corpus. `ingestCapturedText` and `ingestSource` now take the archive root as
+ * a parameter, so a temp database gets a temp archive and cannot reach the
+ * real one at all. */
+const ARCHIVE = fs.mkdtempSync(path.join(os.tmpdir(), "corpus-ingest-archive-"));
+const capture = (over = {}) => ({ corpusRoot: ARCHIVE, ...over });
+
 let nextId = 90001;
 
 function seededSource(db, over = {}) {
@@ -46,7 +87,7 @@ test("ingestCapturedText: stores a document and at least one chunk", () => {
   const db = openMigrated(tmpDb(), { create: true });
   const source = seededSource(db);
 
-  const result = ingestCapturedText(db, source, REAL_PARAGRAPH);
+  const result = ingestCapturedText(db, source, REAL_PARAGRAPH, capture());
 
   assert.equal(result.outcome, "ok");
   assert.ok(result.chunks >= 1);
@@ -64,14 +105,14 @@ test("ingestCapturedText: archives raw .txt and markdown under the source's id/s
   const db = openMigrated(tmpDb(), { create: true });
   const source = seededSource(db, { title: "A Rendered Thread" });
 
-  ingestCapturedText(db, source, REAL_PARAGRAPH);
+  ingestCapturedText(db, source, REAL_PARAGRAPH, capture());
 
   const doc = db.prepare("SELECT * FROM documents WHERE source_id = ?").get(source.id);
   assert.match(doc.raw_path, /^raw\/\d+-a-rendered-thread\.txt$/);
   assert.match(doc.markdown_path, /^markdown\/\d+-a-rendered-thread\.md$/);
 
-  const rawFull = path.join(CORPUS_ROOT, doc.raw_path);
-  const mdFull = path.join(CORPUS_ROOT, doc.markdown_path);
+  const rawFull = path.join(ARCHIVE, doc.raw_path);
+  const mdFull = path.join(ARCHIVE, doc.markdown_path);
   assert.ok(fs.existsSync(rawFull));
   assert.ok(fs.existsSync(mdFull));
   assert.equal(fs.readFileSync(rawFull, "utf8"), REAL_PARAGRAPH.trim());
@@ -82,7 +123,7 @@ test("ingestCapturedText: records http_status 200 and a fetch_notes trail naming
   const db = openMigrated(tmpDb(), { create: true });
   const source = seededSource(db);
 
-  ingestCapturedText(db, source, REAL_PARAGRAPH, { tool: "chrome-devtools-mcp" });
+  ingestCapturedText(db, source, REAL_PARAGRAPH, capture({ tool: "chrome-devtools-mcp" }));
 
   const doc = db.prepare("SELECT * FROM documents WHERE source_id = ?").get(source.id);
   assert.equal(doc.http_status, 200);
@@ -93,7 +134,7 @@ test("ingestCapturedText: default tool label is 'browser capture'", () => {
   const db = openMigrated(tmpDb(), { create: true });
   const source = seededSource(db);
 
-  ingestCapturedText(db, source, REAL_PARAGRAPH);
+  ingestCapturedText(db, source, REAL_PARAGRAPH, capture());
 
   const doc = db.prepare("SELECT * FROM documents WHERE source_id = ?").get(source.id);
   assert.match(doc.fetch_notes, /rendered capture via browser capture/);
@@ -104,7 +145,7 @@ test("ingestCapturedText: refuses text under 50 chars", () => {
   const source = seededSource(db);
 
   assert.throws(
-    () => ingestCapturedText(db, source, "too short"),
+    () => ingestCapturedText(db, source, "too short", capture()),
     /too short/
   );
   assert.equal(
@@ -120,7 +161,7 @@ test("ingestCapturedText: refuses a capture that is only separator characters", 
   const separatorOnly = "-".repeat(80);
 
   assert.throws(
-    () => ingestCapturedText(db, source, separatorOnly),
+    () => ingestCapturedText(db, source, separatorOnly, capture()),
     /zero chunks/
   );
 });
@@ -129,8 +170,8 @@ test("ingestCapturedText: identical text on a second call is a no-op ('unchanged
   const db = openMigrated(tmpDb(), { create: true });
   const source = seededSource(db);
 
-  const first = ingestCapturedText(db, source, REAL_PARAGRAPH);
-  const second = ingestCapturedText(db, source, REAL_PARAGRAPH);
+  const first = ingestCapturedText(db, source, REAL_PARAGRAPH, capture());
+  const second = ingestCapturedText(db, source, REAL_PARAGRAPH, capture());
 
   assert.equal(first.outcome, "ok");
   assert.equal(second.outcome, "unchanged");
@@ -145,9 +186,9 @@ test("ingestCapturedText: changed text on a recapture supersedes the prior chunk
   const db = openMigrated(tmpDb(), { create: true });
   const source = seededSource(db);
 
-  ingestCapturedText(db, source, REAL_PARAGRAPH);
+  ingestCapturedText(db, source, REAL_PARAGRAPH, capture());
   const updated = REAL_PARAGRAPH + " A brand-new sentence that was not there before, added on recapture.";
-  const second = ingestCapturedText(db, source, updated);
+  const second = ingestCapturedText(db, source, updated, capture());
 
   assert.equal(second.outcome, "ok");
   const chunks = db.prepare(`
@@ -174,37 +215,37 @@ test("ingestCapturedText: capturedAt is accepted but does not change outcome sha
   const db = openMigrated(tmpDb(), { create: true });
   const source = seededSource(db);
 
-  const result = ingestCapturedText(db, source, REAL_PARAGRAPH, { capturedAt: "2026-08-12T00:00:00.000Z" });
+  const result = ingestCapturedText(db, source, REAL_PARAGRAPH, capture({ capturedAt: "2026-08-12T00:00:00.000Z" }));
   assert.equal(result.outcome, "ok");
 
   const doc = db.prepare("SELECT * FROM documents WHERE source_id = ?").get(source.id);
-  const md = fs.readFileSync(path.join(CORPUS_ROOT, doc.markdown_path), "utf8");
+  const md = fs.readFileSync(path.join(ARCHIVE, doc.markdown_path), "utf8");
   assert.match(md, /captured: 2026-08-12T00:00:00\.000Z/);
 });
 
-test("ingestCapturedText: never writes an archive path outside CORPUS_ROOT", () => {
+test("ingestCapturedText: never writes an archive path outside the archive root", () => {
   const db = openMigrated(tmpDb(), { create: true });
   // A hostile-looking title (scraped titles are untrusted in the fetch path;
   // a captured source's title comes from the same `sources` row, so the same
   // guard in paths.mjs must hold here too).
   const source = seededSource(db, { title: "../../etc/passwd" });
 
-  ingestCapturedText(db, source, REAL_PARAGRAPH);
+  ingestCapturedText(db, source, REAL_PARAGRAPH, capture());
 
   const doc = db.prepare("SELECT * FROM documents WHERE source_id = ?").get(source.id);
-  const rawFull = path.resolve(CORPUS_ROOT, doc.raw_path);
-  const mdFull = path.resolve(CORPUS_ROOT, doc.markdown_path);
-  assert.ok(rawFull.startsWith(path.resolve(CORPUS_ROOT, "raw") + path.sep));
-  assert.ok(mdFull.startsWith(path.resolve(CORPUS_ROOT, "markdown") + path.sep));
+  const rawFull = path.resolve(ARCHIVE, doc.raw_path);
+  const mdFull = path.resolve(ARCHIVE, doc.markdown_path);
+  assert.ok(rawFull.startsWith(path.resolve(ARCHIVE, "raw") + path.sep));
+  assert.ok(mdFull.startsWith(path.resolve(ARCHIVE, "markdown") + path.sep));
 });
 
 test("ingestCapturedText: a title change between captures removes the old archive files, not just the new ones", () => {
   const db = openMigrated(tmpDb(), { create: true });
   const source = seededSource(db, { title: "Original Title" });
 
-  ingestCapturedText(db, source, REAL_PARAGRAPH);
+  ingestCapturedText(db, source, REAL_PARAGRAPH, capture());
   const idPrefix = `${String(source.id).padStart(3, "0")}-`;
-  const rawBefore = fs.readdirSync(path.join(CORPUS_ROOT, "raw")).filter((f) => f.startsWith(idPrefix));
+  const rawBefore = fs.readdirSync(path.join(ARCHIVE, "raw")).filter((f) => f.startsWith(idPrefix));
   assert.deepEqual(rawBefore, [`${idPrefix}original-title.txt`]);
 
   // Retitle the source (e.g. load-manifest refreshed it from an edited
@@ -212,10 +253,10 @@ test("ingestCapturedText: a title change between captures removes the old archiv
   // so the new file lands at a different name than the old one.
   db.prepare("UPDATE sources SET title = ? WHERE id = ?").run("A Renamed Source", source.id);
   const renamed = db.prepare("SELECT * FROM sources WHERE id = ?").get(source.id);
-  ingestCapturedText(db, renamed, REAL_PARAGRAPH + " Extra sentence to change the hash on recapture.");
+  ingestCapturedText(db, renamed, REAL_PARAGRAPH + " Extra sentence to change the hash on recapture.", capture());
 
-  const rawAfter = fs.readdirSync(path.join(CORPUS_ROOT, "raw")).filter((f) => f.startsWith(idPrefix));
-  const mdAfter = fs.readdirSync(path.join(CORPUS_ROOT, "markdown")).filter((f) => f.startsWith(idPrefix));
+  const rawAfter = fs.readdirSync(path.join(ARCHIVE, "raw")).filter((f) => f.startsWith(idPrefix));
+  const mdAfter = fs.readdirSync(path.join(ARCHIVE, "markdown")).filter((f) => f.startsWith(idPrefix));
   assert.deepEqual(rawAfter, [`${idPrefix}a-renamed-source.txt`], "the old-title raw file must not be left behind");
   assert.deepEqual(mdAfter, [`${idPrefix}a-renamed-source.md`], "the old-title markdown file must not be left behind");
 });

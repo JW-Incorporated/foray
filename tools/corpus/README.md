@@ -53,11 +53,16 @@ node tools/corpus/corpus.mjs ingest --all            # fetch+extract+chunk
 node tools/corpus/corpus.mjs ingest --area 4         # one dossier area
 node tools/corpus/corpus.mjs ingest-captured --source 2 --file capture.txt
                                                       # ingest a rendered-page text capture
-node tools/corpus/corpus.mjs search "server test"    # FTS5 keyword search
-node tools/corpus/corpus.mjs search "x" --explain    # show the MATCH built
+node tools/corpus/corpus.mjs search "server test"    # keyword search (the default)
+node tools/corpus/corpus.mjs search "x" --mode hybrid # keyword + vectors, RRF-fused
+node tools/corpus/corpus.mjs search "x" --explain    # show the mode + MATCH built
 node tools/corpus/corpus.mjs search "x" --raw        # literal FTS5 syntax
 node tools/corpus/corpus.mjs rechunk                 # re-chunk offline from archives
+node tools/corpus/corpus.mjs rechunk --tokenizer     # …sized for the embedding model
+node tools/corpus/corpus.mjs token-histogram         # real token lengths vs the model limit
+node tools/corpus/corpus.mjs embed                   # backfill chunk vectors (opt-in runtime)
 node tools/corpus/corpus.mjs eval                    # score retrieval on the gold set
+node tools/corpus/corpus.mjs eval --all-modes        # all three modes + the gates
 node tools/corpus/corpus.mjs stats                   # per-area coverage
 node tools/corpus/corpus.mjs refetch 12              # force re-ingest one source
 node tools/corpus/corpus.mjs report --write          # coverage.md + dead-links.md
@@ -175,6 +180,104 @@ The whole gain is the query builder; re-chunking contributes exactly zero to
 these numbers (it is correctness hygiene, and it matters for the embedding
 pass, not for bm25).
 
+## Semantic search — measured, and NOT the default
+
+`--mode vector` and `--mode hybrid` exist and work. **Neither is the default,
+because neither earned it.** The full experiment and its numbers are in
+`docs/research/corpus/PLAN.md`'s 2026-08-13 retro; the short version:
+
+| corpus chunking | mode | hit@5 | Recall@5 | MRR@8 | nDCG@8 |
+|---|---|---|---|---|---|
+| **chars/4, 500–1000 est — as shipped** | **keyword** | 15/15 | **0.867** | **0.902** | **0.789** |
+| chars/4 (62% of vectors truncated) | vector | 12/15 | 0.633 | 0.633 | 0.553 |
+| chars/4 (62% of vectors truncated) | hybrid | 14/15 | 0.689 | 0.789 | 0.655 |
+| bge tokenizer, 100–400 real | keyword | 15/15 | 0.867 | 0.828 | 0.754 |
+| bge tokenizer, 100–400 real | vector | 12/15 | 0.622 | 0.650 | 0.564 |
+| bge tokenizer, 100–400 real | hybrid | 14/15 | 0.744 | 0.800 | 0.650 |
+
+**Keyword wins every metric in every configuration**, and both candidates lose
+at least one query outright. Two gates decide the default, and they are code
+(`compareToBaseline` in `eval.mjs`), not prose: **no query may regress from
+found to not-found**, and the candidate must beat fixed-keyword on **both**
+Recall@5 and MRR. Hybrid fails all three terms (−0.122 Recall@5, −0.028 MRR,
+and it drops q12 entirely). On top of that, embeddings *require* the re-chunk —
+62% of the corpus was over bge's 512-token limit at the old chunk size, and
+truncating it instead is the second and third rows above, which are worse — and
+that re-chunk costs keyword a further 0.074 MRR.
+
+**`Recall@5` here means recall**: the fraction of a query's expected sources
+retrieved, averaged. It briefly meant *hit rate* (1.0 if any one of them came
+back), which pinned the keyword baseline at 1.000 and made "beat the baseline
+on Recall@5" unpassable by construction. `hit5` is that number, under its own
+name. If a baseline ever reads 1.000 again, suspect the metric before believing
+the verdict — `compareToBaseline` now says so out loud.
+
+What embeddings genuinely do is answer questions phrased in words the corpus
+never uses ("why do the numbers stop lining up after the adverts change" finds
+the DAI sources; keyword returns nothing relevant). The gold set cannot see
+that, because its questions were written by someone reading the corpus. That
+is a real capability and it is why this code is committed — but it is an
+anecdote until someone writes a paraphrase gold set, and an anecdote does not
+flip a default.
+
+**The corpus on this machine is left on the default chunking with no vectors.**
+To reproduce the experiment (~65 seconds):
+
+```
+cd tools/corpus/embed && npm install    # ~373MB, see below — once per machine
+node tools/corpus/corpus.mjs token-histogram          # the gate: measure first
+node tools/corpus/corpus.mjs rechunk --tokenizer --drop-embeddings
+node tools/corpus/corpus.mjs embed
+node tools/corpus/corpus.mjs eval --all-modes
+node tools/corpus/corpus.mjs rechunk --drop-embeddings   # …and back
+```
+
+### The runtime is quarantined, and that is the point
+
+`tools/corpus/embed/` has its **own `package.json`** holding the only heavy
+dependency in this tree: `@huggingface/transformers`, which pulls
+`onnxruntime-node`. Measured installed size: **373MB** — `onnxruntime-node`
+alone is 208MB (binaries for six platforms; this one loads 33MB),
+`onnxruntime-web` is 90MB of dead weight in Node, `sharp` another 19MB for
+image handling nothing here uses.
+
+`tools/corpus/` has advertised zero native dependencies since it was built, so
+this is a stack change rather than a feature, and it is opt-in:
+
+- `cd tools/corpus && npm ci` — **what CI runs** — never installs it.
+- The whole fixture-only test suite passes without it (a deterministic stub
+  embedder stands in; no model is ever downloaded in CI).
+- `search --mode keyword` works with `embed/` absent, and `--mode hybrid`
+  **degrades to keyword with a one-line notice** rather than failing. The CLI
+  never hard-fails for someone who only wants keyword search.
+
+Model weights (33MB) live in `data-local/models/` via an explicitly set cache
+directory — never `node_modules`, never a global cache. `dtype: 'q8'` is
+explicit because Node/CPU otherwise defaults to fp32. After the first run the
+loader sets `allowRemoteModels` false, so it is offline and reproducible.
+Nothing about the model is committed.
+
+### How the modes work
+
+- **vector** — `Xenova/bge-small-en-v1.5`, 384-dim, CLS pooling, L2-normalized
+  at write so similarity is a plain dot product over one flat matrix. The
+  encoder sees `"{source title} — {heading path}\n\n{chunk text}"`;
+  `chunks.text` is stored unchanged. The **query prefix comes from the
+  registry row**, never from caller code — BGE prefixes queries only, and
+  getting that backwards degrades every result without erroring.
+- **hybrid** — Reciprocal Rank Fusion, k=60, over both arms' ranks (Cormack,
+  Clarke & Buettcher, SIGIR 2009 — source 29 in this very corpus). RRF ignores
+  scores entirely, which is why a bm25 score and a cosine similarity fuse with
+  no normalization and no tuning. Both arms retrieve deeper than the display
+  limit before fusing; fusing two lists of exactly `--limit` throws away the
+  agreement evidence that makes fusion work.
+- **the length gate** — `token-histogram` runs the model's own tokenizer over
+  the exact strings that would be encoded and prints the truncation rate.
+  bge truncates at 512 tokens **silently**: the tail of an over-long chunk is
+  simply absent from its vector while `search` keeps displaying it. At the
+  chars/4 chunk size, 62% of this corpus was over the line. Never embed
+  without running this first.
+
 `rechunk` rebuilds every chunk from the archived markdown — no network, no
 refetch. That is what `data-local/corpus/markdown/` is for: when a chunking
 rule changes, the corpus rebuilds offline in seconds.
@@ -182,10 +285,47 @@ rule changes, the corpus rebuilds offline in seconds.
 Schema (migrations/): `sources` (the parsed dossier — the dossier markdown IS
 the manifest), `documents` (append-only fetch history; the newest 2xx row is
 the current document), `chunks` (current document only, ~500–1000 est. tokens,
-heading-path tagged, `embedding` NULL until the backfill pass), `chunks_fts`
-(FTS5, trigger-synced). Parallel area ingestion is safe: WAL + busy_timeout
-on the DB, and a cross-process host gate (`hostgate.mjs`) keeps sibling
-processes from co-hammering a shared host.
+heading-path tagged), `chunks_fts` (FTS5, trigger-synced), and — since 0003 —
+`embedding_models` + `chunk_embeddings` (see below). Parallel area ingestion is
+safe: WAL + busy_timeout on the DB, and a cross-process host gate
+(`hostgate.mjs`) keeps sibling processes from co-hammering a shared host.
+
+## Vector storage
+
+`chunks.embedding`, the single BLOB column 0001 reserved for "the" model, is
+**gone** as of migration 0003. It could not survive a second model: under the
+Postgres+pgvector lift this schema is written for, a vector column's dimension
+lives in the column type, so one column physically cannot hold a 384-dim and a
+768-dim model at once. Two tables replace it:
+
+- **`embedding_models`** — the registry: name, revision, dim, pooling,
+  normalized, quantization, and **both prefixes**. BGE-family models want an
+  instruction prefix on QUERIES and none on PASSAGES; E5 prefixes both sides,
+  GTE neither. Getting that backwards degrades every result and raises no
+  error, so the convention is stored as DATA on the model row and read by the
+  retriever, never hard-coded in whichever caller runs next.
+- **`chunk_embeddings`** — `(chunk_id, model_id)` composite PK, `vector BLOB`,
+  `ON DELETE CASCADE` from `chunks`. The cascade is the point: `rechunk`
+  rewrites `chunks` wholesale, and vectors keyed to chunk ids that no longer
+  exist are the classic stale-index bug. Cascading makes it structurally
+  impossible rather than merely remembered — and `rechunk` refuses to run at
+  all while vectors exist unless you pass `--drop-embeddings`.
+
+A `BEFORE INSERT`/`BEFORE UPDATE` trigger asserts `length(vector) = 4 * dim`.
+Nothing else stands between a truncated write and a corpus of silently-wrong
+similarities.
+
+The blob is **bare little-endian float32, L2-normalized at write**, with no
+header — the element count is `byteLength / 4`. That is sqlite-vec's own
+convention, so if a brute-force scan ever stops being instant, `vec0` becomes
+a virtual table over these same bytes rather than a re-encoding migration.
+Normalizing at write is what makes similarity a plain dot product.
+`vectors.mjs` carries the one non-obvious hazard: `node:sqlite` returns a BLOB
+as a `Uint8Array` that may be a view at an arbitrary `byteOffset`, and
+`new Float32Array(u8.buffer, u8.byteOffset, n)` throws on any offset that is
+not a multiple of 4 — which depends on the row, not the code, so it fails in
+production on some rows and never in a small test. Every read goes through
+`readVectorInto`, which checks alignment and falls back to a `DataView` copy.
 
 ## What leaves this machine
 
@@ -231,6 +371,16 @@ which sources changed upstream since 2026-08-12. Two sources are known dead
 cd tools/corpus && npm install && npm test
 ```
 
-Fixture-only, no network, no real sleeps (injected clock). Suites are floored
-in `test/suite-integrity.test.js` like every `tools/` suite. A ci.yml step is
-deliberately NOT added here — CI is Wyatt's surface; proposed separately.
+Fixture-only, no network, no real sleeps (injected clock), **no embedding
+runtime and no model download** — `backfill.test.mjs` and `search.test.mjs`
+inject a deterministic stub embedder instead. Suites are floored in
+`test/suite-integrity.test.js` like every `tools/` suite, and CI runs them via
+`npm ci`, which installs `tools/corpus/package.json` only.
+
+Every test that ingests passes an explicit archive root. That is not
+housekeeping: `ingestSource` used to take its DB as a parameter but its
+archive directory from a module constant, so a suite seeding source id 1 wrote
+into the real `data-local/corpus/` — and, once `removeStaleArchives` landed,
+*deleted* the real source 1's archived markdown every time someone ran
+`npm test` on the machine that built the corpus. The root is a parameter now,
+so a temp database implies a temp archive.
