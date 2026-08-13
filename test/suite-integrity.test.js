@@ -73,7 +73,7 @@ const FLOORS = {
   "tools/corpus/chunk.test.mjs": 16,
   "tools/corpus/ftsquery.test.mjs": 21,
   "tools/corpus/eval.test.mjs": 15,
-  "tools/corpus/ingest.test.mjs": 10,
+  "tools/corpus/ingest.test.mjs": 11,
 };
 
 for (const [rel, floor] of Object.entries(FLOORS)) {
