@@ -18,7 +18,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { routeUrl, htmlToMarkdown, pdfToMarkdown, issueToMarkdown, looksLikePdf } from "./extract.mjs";
 import { chunkMarkdown, estTokens } from "./chunk.mjs";
-import { RAW_DIR, MARKDOWN_DIR, CORPUS_ROOT, archivePath, relToCorpusRoot } from "./paths.mjs";
+import { CORPUS_ROOT, rawDirIn, markdownDirIn, archivePath, relToCorpusRoot } from "./paths.mjs";
 
 const sha256 = (buf) => crypto.createHash("sha256").update(buf).digest("hex");
 
@@ -55,11 +55,13 @@ function removeStaleArchives(dir, sourceId, keepFullPath) {
  * across both functions risked one gaining a fix (e.g. to the supersession
  * query) that the other silently missed.
  */
-function archiveAndCommit(db, source, { rawBody, rawExt, markdown, headerLine, httpStatus, contentHash, notes }) {
-  fs.mkdirSync(RAW_DIR, { recursive: true });
-  fs.mkdirSync(MARKDOWN_DIR, { recursive: true });
-  const rawFull = archivePath(RAW_DIR, source.id, source.title, rawExt);
-  const mdFull = archivePath(MARKDOWN_DIR, source.id, source.title, "md");
+function archiveAndCommit(db, source, { rawBody, rawExt, markdown, headerLine, httpStatus, contentHash, notes, corpusRoot = CORPUS_ROOT, chunkOptions }) {
+  const rawDir = rawDirIn(corpusRoot);
+  const markdownDir = markdownDirIn(corpusRoot);
+  fs.mkdirSync(rawDir, { recursive: true });
+  fs.mkdirSync(markdownDir, { recursive: true });
+  const rawFull = archivePath(rawDir, source.id, source.title, rawExt);
+  const mdFull = archivePath(markdownDir, source.id, source.title, "md");
 
   /* archivePath names files `<id>-<slug>.<ext>`, and both the slug (from
    * the source's title) and the extension (from the acquisition route —
@@ -69,8 +71,8 @@ function archiveAndCommit(db, source, { rawBody, rawExt, markdown, headerLine, h
    * silently accumulating in raw/ and markdown/ every time a source's route
    * changes. Sweep any other archive file for this source id before writing
    * the new one — best-effort; a missing stale file is not an error. */
-  removeStaleArchives(RAW_DIR, source.id, rawFull);
-  removeStaleArchives(MARKDOWN_DIR, source.id, mdFull);
+  removeStaleArchives(rawDir, source.id, rawFull);
+  removeStaleArchives(markdownDir, source.id, mdFull);
 
   fs.writeFileSync(rawFull, rawBody);
 
@@ -82,8 +84,13 @@ function archiveAndCommit(db, source, { rawBody, rawExt, markdown, headerLine, h
   ].join("\n");
   fs.writeFileSync(mdFull, header + markdown, "utf8");
 
+  /* documents.token_count stays on the chars/4 heuristic no matter what unit
+   * the chunker was given: it is the number `stats`, `report` and the
+   * committed corpus-index compare across every source and every snapshot,
+   * and silently changing its unit under a re-chunk would make those numbers
+   * incomparable to the ones already published. */
   const tokenCount = estTokens(markdown);
-  const chunks = chunkMarkdown(markdown);
+  const chunks = chunkMarkdown(markdown, chunkOptions);
 
   db.exec("BEGIN");
   try {
@@ -92,7 +99,7 @@ function archiveAndCommit(db, source, { rawBody, rawExt, markdown, headerLine, h
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
       source.id, httpStatus, contentHash,
-      relToCorpusRoot(rawFull), relToCorpusRoot(mdFull),
+      relToCorpusRoot(rawFull, corpusRoot), relToCorpusRoot(mdFull, corpusRoot),
       tokenCount, notes.join("; ")
     ).lastInsertRowid;
 
@@ -115,7 +122,7 @@ function archiveAndCommit(db, source, { rawBody, rawExt, markdown, headerLine, h
  * Ingest one source row. Returns a summary object; never throws for
  * fetch-level failures.
  */
-export async function ingestSource(db, fetcher, source, { force = false } = {}) {
+export async function ingestSource(db, fetcher, source, { force = false, corpusRoot = CORPUS_ROOT, chunkOptions } = {}) {
   const route = routeUrl(source.url);
   const notes = route.note ? [route.note] : [];
 
@@ -196,6 +203,8 @@ export async function ingestSource(db, fetcher, source, { force = false } = {}) 
     httpStatus: res.status,
     contentHash: hash,
     notes,
+    corpusRoot,
+    chunkOptions,
   });
 
   return {
@@ -235,7 +244,7 @@ export function writeChunks(db, docId, chunks) {
  * being reproducible from a fresh ingest. */
 const ARCHIVE_HEADER = /^<!--\s*corpus source [\s\S]*?-->\s*/;
 
-export function rechunkAll(db, { onDoc, corpusRoot = CORPUS_ROOT, dropEmbeddings = false } = {}) {
+export function rechunkAll(db, { onDoc, corpusRoot = CORPUS_ROOT, dropEmbeddings = false, chunkOptions = undefined } = {}) {
   const docs = db.prepare(`
     SELECT d.id, d.source_id, d.markdown_path, s.title
     FROM documents d
@@ -261,6 +270,12 @@ export function rechunkAll(db, { onDoc, corpusRoot = CORPUS_ROOT, dropEmbeddings
       `Re-chunk before backfilling, or pass --drop-embeddings and re-run the backfill afterwards.`
     );
   }
+  /* Note the flag DISABLES THE GUARD; it does not delete anything itself. A
+   * document whose archive is missing is skipped below, so its chunks — and
+   * therefore its vectors — survive. The end state can legitimately be
+   * partial coverage, which is why the count destroyed is returned and
+   * printed rather than assumed to be all of them. */
+  const embeddedBefore = embedded;
 
   const before = db.prepare("SELECT COUNT(*) n FROM chunks").get().n;
   const missing = [];
@@ -272,7 +287,7 @@ export function rechunkAll(db, { onDoc, corpusRoot = CORPUS_ROOT, dropEmbeddings
       const full = path.join(corpusRoot, d.markdown_path);
       if (!fs.existsSync(full)) { missing.push(d.markdown_path); continue; }
       const markdown = fs.readFileSync(full, "utf8").replace(ARCHIVE_HEADER, "");
-      const chunks = chunkMarkdown(markdown);
+      const chunks = chunkMarkdown(markdown, chunkOptions);
       /* chunkMarkdown promises never to empty a document that had content,
        * but that guard cannot see the DB. An archive file that is empty or
        * truncated (writeFileSync is not atomic — a crash mid-ingest leaves
@@ -290,7 +305,11 @@ export function rechunkAll(db, { onDoc, corpusRoot = CORPUS_ROOT, dropEmbeddings
   /* Count after the commit so the number describes the DB, not the subset we
    * happened to rewrite. */
   const after = db.prepare("SELECT COUNT(*) n FROM chunks").get().n;
-  return { documents: docs.length, before, after, missing, emptied };
+  const embeddedAfter = db.prepare("SELECT COUNT(*) n FROM chunk_embeddings").get().n;
+  return {
+    documents: docs.length, before, after, missing, emptied,
+    droppedEmbeddings: embeddedBefore - embeddedAfter,
+  };
 }
 
 /**
@@ -316,7 +335,7 @@ export function rechunkAll(db, { onDoc, corpusRoot = CORPUS_ROOT, dropEmbeddings
  * @param {{capturedAt?: string, tool?: string}} [meta]
  * @returns {{sourceId:number, outcome:"ok"|"unchanged", chunks?:number, tokens?:number}}
  */
-export function ingestCapturedText(db, source, capturedText, { capturedAt = new Date().toISOString(), tool = "browser capture" } = {}) {
+export function ingestCapturedText(db, source, capturedText, { capturedAt = new Date().toISOString(), tool = "browser capture", corpusRoot = CORPUS_ROOT, chunkOptions } = {}) {
   const text = String(capturedText ?? "").trim();
   if (text.length < 50) {
     throw new Error(`captured text too short (${text.length} chars) — refusing to ingest a near-empty capture`);
@@ -338,7 +357,7 @@ export function ingestCapturedText(db, source, capturedText, { capturedAt = new 
   /* Checked before any fs write so a rejected capture never leaves an
    * orphaned raw/markdown file behind (archiveAndCommit re-chunks the same
    * text below; chunking is pure and cheap, so this recompute is harmless). */
-  if (!chunkMarkdown(text).length) {
+  if (!chunkMarkdown(text, chunkOptions).length) {
     throw new Error("captured text produced zero chunks — nothing worth indexing");
   }
 
@@ -351,6 +370,8 @@ export function ingestCapturedText(db, source, capturedText, { capturedAt = new 
     httpStatus: 200,
     contentHash: hash,
     notes,
+    corpusRoot,
+    chunkOptions,
   });
 
   return { sourceId: source.id, outcome: "ok", chunks: chunks.length, tokens: tokenCount, notes };
