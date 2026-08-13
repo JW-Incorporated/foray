@@ -1,6 +1,6 @@
 {
   "schema": "foray.research-corpus-index/1",
-  "generated_at": "2026-08-12T23:15:51.888Z",
+  "generated_at": "2026-08-13T00:05:22.223Z",
   "generator": "node tools/corpus/corpus.mjs export-index --write",
   "policy": "Index + our own digests only. No third-party source text is committed to this public repo: the corpus's raw bytes and markdown extractions stay in data-local/corpus/ (gitignored). license.redistribution records, per source, whether republishing that source's text would be permitted.",
   "regeneration": {
@@ -16,7 +16,7 @@
   "totals": {
     "sources": 54,
     "ingested": 52,
-    "chunks": 480,
+    "chunks": 451,
     "estimated_tokens": 271418,
     "redistribution_allowed": 16,
     "redistribution_denied": 38
@@ -315,7 +315,7 @@
         "http_status": 200,
         "content_sha256": "796e7f6c47c4bf98dbfec88cd73abe07dc546e3a96550964d7b910a9e0c7a85c",
         "estimated_tokens": 7402,
-        "chunks": 15,
+        "chunks": 11,
         "notes": "arXiv abs→pdf"
       },
       "local_archive": {
@@ -475,7 +475,7 @@
         "http_status": 200,
         "content_sha256": "f8b493c142eb82be817e4fc7a259c404777107d798157033683bd78b58cd7cd2",
         "estimated_tokens": 11070,
-        "chunks": 19,
+        "chunks": 17,
         "notes": ""
       },
       "local_archive": {
@@ -555,7 +555,7 @@
         "http_status": 200,
         "content_sha256": "a58c0bbd976d3b657d36ff67e0bd170c5e236568239d6f97843b3c6a9ac25792",
         "estimated_tokens": 11377,
-        "chunks": 19,
+        "chunks": 17,
         "notes": "arXiv abs→pdf"
       },
       "local_archive": {
@@ -715,7 +715,7 @@
         "http_status": 200,
         "content_sha256": "3f58afbdc9b6f106c48ca0b274a72631fc7f39eeb333f0588d8eac3581b19db9",
         "estimated_tokens": 13357,
-        "chunks": 30,
+        "chunks": 22,
         "notes": ""
       },
       "local_archive": {
@@ -755,7 +755,7 @@
         "http_status": 200,
         "content_sha256": "7d5b0702aa120ec8cbe7541ba87da8fd4bcfcfde6b3fa538578db3d45b1ec9d9",
         "estimated_tokens": 10024,
-        "chunks": 20,
+        "chunks": 14,
         "notes": ""
       },
       "local_archive": {
@@ -834,7 +834,7 @@
         "http_status": 200,
         "content_sha256": "14df683a585a451a500a7d1dc4fbe5883b62731bda8b710441318d521b529ef5",
         "estimated_tokens": 7093,
-        "chunks": 13,
+        "chunks": 11,
         "notes": "arXiv abs→pdf"
       },
       "local_archive": {
@@ -874,7 +874,7 @@
         "http_status": 200,
         "content_sha256": "f9ed98daed6ec5ef2670de81ea2d46749ecb8cdefe26df6baa246634f4373e7b",
         "estimated_tokens": 12784,
-        "chunks": 19,
+        "chunks": 16,
         "notes": "arXiv abs→pdf"
       },
       "local_archive": {
@@ -914,7 +914,7 @@
         "http_status": 200,
         "content_sha256": "5c1f9f1fe0d80f67d82041bbe151ea17437bc7a7d9a920564cf122d1b09eafb5",
         "estimated_tokens": 2393,
-        "chunks": 5,
+        "chunks": 4,
         "notes": ""
       },
       "local_archive": {
@@ -1036,7 +1036,7 @@
         "http_status": 200,
         "content_sha256": "f9e220539467a8c575de5f2457bc39d3bc636048d3bc5f0bc80813d42a7368a4",
         "estimated_tokens": 9712,
-        "chunks": 18,
+        "chunks": 17,
         "notes": "readability"
       },
       "local_archive": {
