@@ -15,7 +15,7 @@
 9. **Podcast Namespace Issue #254 (DAI breaks timestamps)** — https://github.com/Podcastindex-org/podcast-namespace/issues/254 — the single biggest technical threat to fixed offsets.
 10. **Hunley v. Instagram (9th Cir. 2023, official opinion)** — https://cdn.ca9.uscourts.gov/datastore/opinions/2023/07/17/22-15293.pdf — the "server test" and its erosion; core to your legal risk.
 11. **Goldman v. Breitbart analysis (Loeb & Loeb)** — https://www.loeb.com/en/insights/publications/2018/02/goldman-v-breitbart-news-network-llc — rejects the server test; the contradicting authority.
-12. **AES TD1004.1.15-10 (Loudness for streaming/network playback)** — https://www.aes.org/technical/documents/AESTD1004_1_15_10.pdf — the -16 LUFS normalization standard you must apply across stitched segments.
+12. **AES TD1004.1.15-10 (Loudness for streaming/network playback)** — https://aes.org/wp-content/uploads/2024/01/AESTD1004_1_15_10.pdf — the -16 LUFS normalization standard you must apply across stitched segments.
 13. **Apple AVFoundation Editing Guide (AVMutableComposition)** — https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/AVFoundationPG/Articles/03_Editing.html — the composition API for multi-source assembly.
 14. **NotebookLM Audio Overviews (Google blog)** — https://blog.google/innovation-and-ai/products/notebooklm-audio-overviews/ — the closest shipped prior art for AI-narrated audio synthesis.
 15. **Chromaprint / AcoustID** — https://acoustid.org/chromaprint — acoustic fingerprinting for realigning offsets against DAI drift.
@@ -82,7 +82,7 @@
 - **Apple Developer Forum — AVQueuePlayer gapless playback** — https://developer.apple.com/forums/thread/111413 — Practitioners note small gaps between remote MP3s in AVQueuePlayer. *Why it matters:* warns that naive queueing produces audible gaps; you likely need composition or buffered rendering.
 - **Apple Developer Forum — Multiple AVPlayer instances + AirPlay 2** — https://developer.apple.com/forums/thread/105877 — Only one player can play through AirPlay 2; must mix via AVMutableComposition or AVSampleBufferAudioRenderer. *Why it matters:* a concrete architectural constraint for bridge+segment mixing.
 - **StreamingKit (GitHub)** — https://github.com/asurasunil/StreamingKit — Gapless audio streaming library supporting HTTP progressive download and differing formats. *Why it matters:* an alternative to AVFoundation for gapless streaming of heterogeneous CDN sources.
-- **AES TD1004.1.15-10 — Loudness for streaming/network playback** — https://www.aes.org/technical/documents/AESTD1004_1_15_10.pdf — Recommends target between -16 and -20 LUFS, -1 dBTP limiter, and explicitly to "avoid loudness jumps when external material is inserted." *Why it matters:* the standard you apply per-segment so stitched clips don't jar.
+- **AES TD1004.1.15-10 — Loudness for streaming/network playback** — https://aes.org/wp-content/uploads/2024/01/AESTD1004_1_15_10.pdf — Recommends target between -16 and -20 LUFS, -1 dBTP limiter, and explicitly to "avoid loudness jumps when external material is inserted." *Why it matters:* the standard you apply per-segment so stitched clips don't jar. *Note:* AES's document tree moved this PDF in 2024; the AES site itself now marks TD1004 as superseded by TD1008 (2021), which we do not separately ingest here.
 - **AES Loudness Normalization overview** — https://aes.org/resources/audio-topics/loudness-project/loudness-normalization/ — Explains upward/downward normalization workflows for batch processing. *Why it matters:* batch-normalize segments at ingest. *Note:* Apple Podcasts targets -16 LUFS stereo / -19 LUFS mono; Spotify normalizes to ~-14 LUFS.
 
 ### 6. TTS & AI Narration
@@ -115,7 +115,7 @@
 ### 9. LLM Pipeline Engineering
 
 - **LLM-as-a-Judge complete guide (Evidently AI)** — https://www.evidentlyai.com/llm-guide/llm-as-a-judge — Treats building a judge as a small ML project starting from a labeled dataset. *Why it matters:* how to evaluate bridge quality and segment coherence at scale.
-- **A Survey on LLM-as-a-Judge (ScienceDirect)** — https://www.sciencedirect.com/science/article/pii/S2666675825004564 — Taxonomy of judging methods, biases, and pipeline design. *Why it matters:* rigorous grounding for your evaluation harness.
+- **A Survey on LLM-as-a-Judge (arXiv 2411.15594)** — https://arxiv.org/abs/2411.15594 — Taxonomy of judging methods, biases, and pipeline design; same paper (Gu, Jiang et al.) later published in *The Innovation* and mirrored on ScienceDirect (pii S2666675825004564), which bot-walls automated fetches — this is the open preprint of the identical text, CC0-licensed by the authors. *Why it matters:* rigorous grounding for your evaluation harness.
 - **LLM-as-a-Judge best practices (DeepEval)** — https://deepeval.com/blog/llm-as-a-judge — Covers prompt regression testing, CI/CD integration, G-Eval, DAG metrics. *Why it matters:* prompt regression testing for your segmentation/curation prompts.
 - **Evaluating Scoring Bias in LLM-as-a-Judge (arXiv 2506.22316)** — https://arxiv.org/pdf/2506.22316 — Documents systematic biases in LLM judges. *Why it matters:* caveats when trusting automated quality scores.
 
