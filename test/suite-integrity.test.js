@@ -116,7 +116,7 @@ const SUITE_RE = /\.test\.(js|mjs|cjs)$/;
  * suite, and listing it would need a floor on the number of floors. */
 const SELF = "test/suite-integrity.test.js";
 
-function findSuites(relDir) {
+function findSuites(relDir, match = SUITE_RE) {
   const abs = path.join(ROOT, relDir);
   // Missing is fine (see the header): a directory that has not been created
   // yet simply contributes no suites, and starts contributing the moment it
@@ -128,8 +128,8 @@ function findSuites(relDir) {
     if (entry.isDirectory()) {
       // Vendored/generated trees are not ours to floor.
       if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
-      out.push(...findSuites(rel));
-    } else if (SUITE_RE.test(entry.name)) {
+      out.push(...findSuites(rel, match));
+    } else if (match.test(entry.name)) {
       out.push(rel);
     }
   }
@@ -139,7 +139,7 @@ function findSuites(relDir) {
 test("every suite on disk is covered by a floor", () => {
   // A new suite that nobody floors is a gate that can be silently deleted
   // later. Catch it at the moment it is added, which is the only cheap moment.
-  const found = SCANNED_DIRS.flatMap(findSuites)
+  const found = SCANNED_DIRS.flatMap((d) => findSuites(d))
     .filter((f) => f !== SELF)
     .sort();
 
@@ -149,6 +149,32 @@ test("every suite on disk is covered by a floor", () => {
     "these suites have no committed floor — add them to FLOORS in " +
       "test/suite-integrity.test.js with the suite's current test count:\n" +
       unfloored.join("\n")
+  );
+});
+
+/* Node's own default test discovery matches more spellings than this repo's
+ * convention does — `*-test.js`, `*_test.js`, `test-*.js`, `test.js`, and
+ * anything under a `test/` directory. SUITE_RE matches only `*.test.*`. So a
+ * file named `dai-test.mjs` is invisible to BOTH this scan and the CI runner:
+ * they agree perfectly, the closure test below passes, and the file is dark —
+ * while `npm test` inside a package would run it, so its author sees it pass
+ * locally.
+ *
+ * `test-*` is deliberately NOT flagged: tools/test-search.mjs is a script, not
+ * a suite, and an allowlist for it would be the hand-maintained list this
+ * whole mechanism exists to delete. The three spellings below have no such
+ * collision, so they can be rejected outright. */
+const NEAR_MISS_RE = /(^|[-_])test\.(js|mjs|cjs)$/;
+
+test("no file is named in a way discovery cannot see", () => {
+  const nearMisses = SCANNED_DIRS.flatMap((d) => findSuites(d, NEAR_MISS_RE))
+    .filter((f) => !SUITE_RE.test(f))
+    .sort();
+  assert.deepStrictEqual(
+    nearMisses, [],
+    "these look like test files but do not match this repo's convention " +
+      "(*.test.js/.mjs/.cjs), so neither the floor check nor tools/ci/run-suites.mjs " +
+      "will see them — rename them:\n" + nearMisses.join("\n")
   );
 });
 
@@ -171,16 +197,28 @@ test("every suite on disk is covered by a floor", () => {
  * The last one is what catches a NARROWING of discovery — dropping `.cjs`,
  * dropping a scanned tree, an exclusion added to the runner. Both scans have
  * to be edited in the same way, in the same PR, for coverage to shrink
- * quietly, and by then it is a deliberate act in a visible diff. Duplicated
- * discovery logic is the point here, not an oversight: two independent
- * implementations that must agree is the check.
+ * quietly, and by then it is a deliberate act in a visible diff. The
+ * duplicated discovery logic is deliberate — importing findSuites from the
+ * runner would make the comparison below a tautology — though be honest about
+ * what it buys: one implementation and one copy, written together, mostly
+ * catches ACCIDENTS. The hard guarantee against a total narrowing (a plan so
+ * small it no longer contains these checks) is the runner's ANCHOR_SUITES,
+ * asserted below.
  *
  * `plan.errors` is the runner refusing to guess — a suite under a
  * dependency-carrying package.json with no `test` script. Failing here means
  * CI would not have run it. */
 test("every suite on disk is executed by the CI runner", async () => {
-  const { planSuiteRuns } = await import("../tools/ci/run-suites.mjs");
+  const { planSuiteRuns, missingAnchors } = await import("../tools/ci/run-suites.mjs");
   const plan = planSuiteRuns(ROOT);
+
+  // The runner refuses to run a plan missing these (they are the suites that
+  // verify discovery itself, this file among them). Asserted here too so the
+  // failure names the cause rather than showing up as a plan/scan mismatch.
+  assert.deepStrictEqual(
+    missingAnchors(plan), [],
+    "the CI runner's anchor suites are not in its own plan — discovery is broken"
+  );
 
   assert.deepStrictEqual(
     plan.errors, [],
@@ -188,7 +226,7 @@ test("every suite on disk is executed by the CI runner", async () => {
   );
 
   const planned = plan.groups.flatMap((g) => g.suites).sort();
-  const found = SCANNED_DIRS.flatMap(findSuites).sort();
+  const found = SCANNED_DIRS.flatMap((d) => findSuites(d)).sort();
   assert.deepStrictEqual(
     planned, found,
     "the CI runner's plan and this file's scan disagree about what the suites " +
