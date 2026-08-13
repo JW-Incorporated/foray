@@ -1,6 +1,6 @@
 # Research corpus — coverage report
 
-Generated 2026-08-13T00:06:37.042Z by `corpus report` — do not hand-edit.
+Generated 2026-08-13T00:06:54.257Z by `corpus report` — do not hand-edit.
 
 **52/54 sources ingested** · 451 chunks · ~271k estimated tokens.
 
