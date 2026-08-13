@@ -7,6 +7,12 @@ scale one person cannot hand-author.
 Companion to `docs/adr/0007-segment-anchoring.md` (the boundary
 representation — **read that first, it blocks this**) and epic #63.
 
+Primary sources for the drift and transcript questions live in the *research*
+corpus — not the transcript/episode corpus this document measures:
+`docs/research/corpus/digests.md`, entries 9 (Podcast Namespace #254 — DAI
+breaks timestamps), 19 (Castos DAI mechanics), 1 (`<podcast:transcript>` spec)
+and 3 (WhisperX).
+
 ---
 
 ## 1. Reuse the shape that already worked

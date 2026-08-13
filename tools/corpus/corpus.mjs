@@ -82,15 +82,19 @@ async function main() {
   const args = parseArgs(rest);
 
   switch (cmd) {
+    /* Only the bootstrap commands (init, load-manifest) may CREATE the db;
+     * every other command opens with the default create: false and gets a loud
+     * "no corpus database here" error on a checkout that never built one —
+     * instead of a silently created empty db answering "zero results". */
     case "init": {
-      const db = openMigrated();
+      const db = openMigrated(undefined, { create: true });
       const v = db.prepare("PRAGMA user_version").get().user_version;
       console.log(`corpus db ready (schema v${v})`);
       break;
     }
 
     case "load-manifest": {
-      const db = openMigrated();
+      const db = openMigrated(undefined, { create: true });
       const dossier = args.dossier ?? DEFAULT_DOSSIER;
       const entries = parseDossierFile(dossier);
       const n = loadManifest(db, entries);
@@ -101,6 +105,9 @@ async function main() {
 
     case "ingest":
     case "refetch": {
+      // Both need sources rows that only load-manifest writes, so neither may
+      // create the db: a bare `ingest --all` on a fresh checkout should get
+      // the "no corpus database" error, not a silently created empty db.
       const db = openMigrated();
       const force = cmd === "refetch" || Boolean(args.force);
       const sources = cmd === "refetch"

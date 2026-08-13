@@ -6,6 +6,13 @@ pass (no transcript fetching, no Whisper integration); `episodes.
 transcript_status` (migration 0003) and `episode_enrichment.tier = 2`
 (migration 0004) reserve the storage shape this design writes into.
 
+**Primary sources.** `docs/research/corpus/digests.md` digests the research
+behind this ladder: entries 1 (`<podcast:transcript>` tag spec — step 1's
+contract), 3 and 20 (WhisperX paper + implementation — the step-4 ingest
+architecture) and 4 (pyannote diarization). Full text is searchable via
+`node tools/corpus/corpus.mjs search` where the corpus DB exists (CLAUDE.md
+§ Research corpus).
+
 ## Context
 01_PROMPT.md item 3 asks for an ordering of preference among
 `<podcast:transcript>`, publisher-hosted transcripts, YouTube captions for

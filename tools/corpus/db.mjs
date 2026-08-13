@@ -19,8 +19,26 @@ const MIGRATIONS_DIR = path.join(
   "migrations"
 );
 
-export function openDb(dbPath = DB_PATH) {
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+/* `create` is an explicit intent, defaulting to false, because DatabaseSync
+ * silently CREATES an empty db when the file is absent — and on any checkout
+ * without data-local/corpus/ (the DB is machine-local, gitignored) that turned
+ * `search`/`stats` into "zero results" instead of "no corpus here". An empty
+ * answer from a missing database is how someone concludes the corpus is empty
+ * rather than absent, and quietly stops trusting it. Only the bootstrap
+ * commands (init, load-manifest) pass create: true. */
+export function openDb(dbPath = DB_PATH, { create = false } = {}) {
+  if (!create && !fs.existsSync(dbPath)) {
+    throw new Error(
+      `no corpus database at ${dbPath}\n` +
+        `The corpus DB is machine-local (data-local/ is gitignored) and exists only on the machine\n` +
+        `that built it — this is not an empty corpus, it is an absent one. To build it here:\n` +
+        `  node tools/corpus/corpus.mjs init\n` +
+        `  node tools/corpus/corpus.mjs load-manifest\n` +
+        `  node tools/corpus/corpus.mjs ingest --all\n` +
+        `No DB needed: the committed digests cover all 54 sources — docs/research/corpus/digests.md.`
+    );
+  }
+  if (create) fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA busy_timeout = 15000");
@@ -60,8 +78,8 @@ export function migrate(db, migrationsDir = MIGRATIONS_DIR) {
   return { from: current, to: Math.max(current, ...files.map((f) => Number(f.slice(0, 4))), 0), applied };
 }
 
-export function openMigrated(dbPath = DB_PATH) {
-  const db = openDb(dbPath);
+export function openMigrated(dbPath = DB_PATH, opts = {}) {
+  const db = openDb(dbPath, opts);
   migrate(db);
   return db;
 }

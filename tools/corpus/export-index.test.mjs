@@ -152,7 +152,7 @@ test("parseDigests: rejects a non-http url and an empty document", () => {
 /* ------------------------------------------------------------ index join */
 
 function seeded() {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   loadManifest(db, [
     {
       area: 8, area_name: "Legal / Policy Landscape", title: "Court Opinion",

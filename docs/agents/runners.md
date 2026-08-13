@@ -30,7 +30,7 @@ Wyatt's standing decision is to leave the cadence as-is.
 
 | Runner | Purpose | Gate |
 |--------|---------|------|
-| **foray-segment-extract** | Segment proposal from free transcripts — see `docs/curation/segment-extraction-pipeline.md` Lane C | #64 ruling + ADR-0007 (accepted) + the merge validator existing first |
+| **foray-segment-extract** | Segment proposal from free transcripts — see `docs/curation/segment-extraction-pipeline.md` Lane C | #64 ruling + ADR-0007 (accepted) + the merge validator existing first + a prompt that points at `docs/research/corpus/digests.md` (segment boundaries and DAI drift are the research corpus's strongest area; the corpus DB is machine-local, so the prompt must cite the digests, never the CLI) |
 
 ## Model tiering
 
