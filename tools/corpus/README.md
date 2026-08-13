@@ -70,7 +70,9 @@ now turns user text into quoted, ORed phrase arms — the user's bytes become
 data, never grammar — and `--raw` is the escape hatch for deliberate FTS5.
 
 `eval` scores a committed gold set (`eval/gold-queries.json`: 15 questions,
-expected source ids) on Recall@5 / MRR@10 / nDCG@10, per query and aggregate.
+expected source ids) on Recall@5 / MRR@8 / nDCG@8 — the MRR and nDCG cut-off
+follows `--limit`, so it is 8 by default and moves with the flag — per query
+and aggregate.
 It exists so that no claim about retrieval quality has to be taken on faith.
 The answer key was cross-checked by a second, fresh-context agent working
 only from the dossier and coverage.md; where the two disagreed the file
@@ -82,8 +84,25 @@ records the disagreement instead of resolving it. Measured on this corpus:
 | built query | **15/15** | **1.000** | **0.902** | **0.788** |
 
 Measured at top-8, which is `search`'s own default — evaluating deeper than
-users ever see inflates nDCG for free (the same run scores 0.865 at depth 25)
+users ever see inflates nDCG for free (the same run scores 0.864 at depth 25)
 and measures a product nobody uses. `--limit` changes both.
+
+**What these numbers do not measure.** Two blind spots, both structural:
+
+1. *The query set is not independent.* The 15 questions were written by the
+   session that wrote the fix, after it had seen which inputs broke, and four
+   of them (2, 5, 6, 13) are verbatim the crash/silent-zero repros. Those were
+   guaranteed to score zero before. Excluding all four, the before/after on
+   the remaining 11 is **3/11 → 11/11** — smaller, still large, and not
+   circular. Quote that one when the set is challenged.
+2. *Operator queries are invisible to it.* Every gold question is natural
+   language, so nothing here exercises FTS5 syntax — which the builder now
+   treats as literal text. `term*` (prefix), `col:term` (column filter) and
+   `NEAR`/`AND`/`OR` are no longer operators: `gapl*` finds "gapless" via
+   `--raw` and finds nothing without it. That is a deliberate trade (questions
+   are the common case, syntax was the rare one), but it is a real behaviour
+   change for anyone who learned the old syntax, and no number above reflects
+   it. `--raw` is the escape hatch for all of them.
 
 The whole gain is the query builder; re-chunking contributes exactly zero to
 these numbers (it is correctness hygiene, and it matters for the embedding

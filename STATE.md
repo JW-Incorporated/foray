@@ -13,8 +13,10 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ### corpus — research corpus ingestion (Joey's Claude, 2026-08-12, COMPLETE)
 
-Done same day: 52/54 dossier sources ingested (480 chunks, ~272k est. tokens),
-searchable via `node tools/corpus/corpus.mjs search "..."`. Reports:
+Done same day: 52/54 dossier sources ingested (480 chunks as first ingested,
+~272k est. tokens; the chunker later stopped emitting bare `---` page-break
+chunks, so the same 52 sources now rebuild as **451** — 29 junk chunks gone,
+no source lost), searchable via `node tools/corpus/corpus.mjs search "..."`. Reports:
 `docs/research/corpus/coverage.md` + `dead-links.md`. Retro in the plan doc.
 Follow-up (`corpus/corpus-visibility`): the corpus itself stays machine-local,
 but `docs/research/corpus/digests.md` + `corpus-index.json` carry the research
