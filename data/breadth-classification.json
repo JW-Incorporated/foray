@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-12T16:16:29.665Z",
+  "built_at": "2026-08-13T00:14:53.833Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-12-2dcb8e9c",
+    "last_batch_id": "fresh-2026-08-13-3f15bc6e",
     "last_batch_tier": 1
   },
   "entries": {
@@ -37194,10 +37194,33 @@
     },
     "1241386674": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Documentary-style true crime stories featuring unsolved murder cases and forensic investigation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1242126464": {
       "topics": [
@@ -183887,10 +183910,40 @@
     },
     "1819094022": {
       "topics": [
-        "music"
+        "sports/football",
+        "sports/endurance",
+        "music",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "BV Weekly coverage and discussion.",
+      "display_title": "BV Weekly",
+      "blurb": "BV Weekly is a podcast presented by the long-running music publication BrooklynVegan.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1819340251": {
       "topics": [
@@ -184212,10 +184265,33 @@
     },
     "1820071812": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Religious teachings and commentary based on sacred texts.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1820085883": {
       "topics": [
@@ -184462,10 +184538,50 @@
     },
     "1820996352": {
       "topics": [
-        "news/daily"
+        "news/daily",
+        "medicine",
+        "sports/endurance",
+        "news/politics",
+        "travel",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news briefing covering current events and politics.",
+      "display_title": "Here's the Scoop",
+      "blurb": "Here’s the Scoop from NBC News is the daily news fix you need — quick, clear, and conversational.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1821025318": {
       "topics": [
@@ -184763,17 +184879,72 @@
     },
     "1821811140": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "medicine/neuroscience",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations with scientists about research, innovation, and discoveries in chemistry.",
+      "display_title": "Life\\'s Chemistry Unleashed: Dialogues at the Edge of",
+      "blurb": "Life\\'s Chemistry Unleashed: Conversations at the Edge of Discovery Welcome to the podcast, where curiosity meets innovation and discovery knows no bo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1821811320": {
       "topics": [
-        "science/chemistry"
+        "music",
+        "medicine",
+        "health",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music news, reviews, and discussions focusing on indie rock and contemporary music.",
+      "display_title": "Where Great Minds Meet",
+      "blurb": "Where Great Minds Meet brings together visionary guests—from Chancellor Gary May and Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1821811365": {
       "topics": [
@@ -184805,10 +184976,50 @@
     },
     "1821815904": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "music",
+        "medicine",
+        "science",
+        "health",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations with scientists about research, innovation, and discoveries in chemistry.",
+      "display_title": "The Making of KOLs: The New Chemist Podcast’s",
+      "blurb": "Welcome to the podcast, where curiosity meets innovation and discovery knows no boundaries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1821815910": {
       "topics": [
@@ -184888,10 +185099,45 @@
     },
     "1821977832": {
       "topics": [
-        "fiction/drama"
+        "music",
+        "fiction/drama",
+        "sports/endurance",
+        "health",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music news, reviews, and discussions focusing on indie rock and contemporary music.",
+      "display_title": "WKGF Presents: The Witching Hour - Coast to",
+      "blurb": "WKGF Presents The Witching Hour is a fully scripted podcast series disguised as a late-night radio call-in show from the 80s, hosted by the fun-loving.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1822142909": {
       "topics": [
@@ -184962,18 +185208,67 @@
     },
     "1822594182": {
       "topics": [
-        "sports/rugby"
+        "sports/rugby",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Maul Street Journal coverage and discussion.",
+      "display_title": "The Maul Street Journal",
+      "blurb": "A proper fans podcast for every level of American Rugby - if you just want to know more about the game or if you are a seasoned supporter,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1822603650": {
       "topics": [
-        "sports",
-        "news"
+        "sports/baseball",
+        "science/chemistry",
+        "science",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        },
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unfiltered with Ricky Bo and Bill Colaru coverage and discussion.",
+      "display_title": "Unfiltered with Ricky Bo and Bill Colarulo",
+      "blurb": "Welcome to 'Unfiltered with Ricky Bo & Bill Colarulo' &mdash; the bold, unapologetic Philly sports show that delivers truth, not fluff.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1822605865": {
       "topics": [
@@ -185176,10 +185471,30 @@
     },
     "1823554338": {
       "topics": [
+        "news/daily",
         "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news briefing covering current events and politics.",
+      "display_title": "The Naturist Vibe",
+      "blurb": "Ethical naturism is about more than taking your clothes off.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1823556505": {
       "topics": [
@@ -185230,24 +185545,104 @@
     },
     "1823836104": {
       "topics": [
-        "travel"
+        "business/marketing",
+        "sports/endurance",
+        "business",
+        "travel",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations about effective marketing strategies and advertising channels.",
+      "display_title": "One More Run, the Podcast",
+      "blurb": "One More Run (The Podcast) is a show dedicated to helping runners—especially those training for a runDisney race—feel confident, prepared, and inspire.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1823898516": {
       "topics": [
-        "automotive"
-      ],
-      "confidence": "high",
-      "source": "genre-map"
-    },
-    "1823944404": {
-      "topics": [
+        "automotive",
         "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motorcycle culture, riding experiences, and Harley-Davidson community.",
+      "display_title": "Motostate Podcast",
+      "blurb": "Motostate Podcast is about Motorcycles, Life and Everything in-between.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
+    },
+    "1823944404": {
+      "topics": [
+        "sports/endurance",
+        "medicine",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The GLP-1 coverage and discussion.",
+      "display_title": "The GLP-1 Podcast Show",
+      "blurb": "A whole new era of communication in GLP-1 is here! Now you’ve got the sharpest minds in GLP-1 research right in your pocket.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1823969777": {
       "topics": [
@@ -185259,10 +185654,30 @@
     },
     "1824154176": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Blackhawks Daily | Chicago Blackhawks Da coverage and discussion.",
+      "display_title": "Blackhawks Daily | Chicago Blackhawks Daily Podcast",
+      "blurb": "Blackhawks Daily is the Chicago Blackhawks podcast that covers every Blackhawks story, every single day.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1824249251": {
       "topics": [
@@ -185379,10 +185794,35 @@
     },
     "1825089900": {
       "topics": [
-        "religion/hinduism"
+        "business/marketing",
+        "business",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations about effective marketing strategies and advertising channels.",
+      "display_title": "Bhagavad Gita (Hindi)",
+      "blurb": "Yatharth Geeta Audio Hindi As on - yatharthgeeta.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1825090969": {
       "topics": [
@@ -185403,7 +185843,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nasha Masterstroke coverage and discussion.",
+      "display_title": "Nasha Masterstroke",
+      "blurb": "In this podcast, RJ Sandeep regales us with nostalgic moments of our cricketing past.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1825201502": {
       "topics": [
@@ -185722,10 +186177,30 @@
     },
     "1826127702": {
       "topics": [
-        "sports/rugby"
+        "sports/rugby",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Inter Pro Show coverage and discussion.",
+      "display_title": "The Inter Pro Show",
+      "blurb": "We have a presenter from each of the provinces so they can be as one-eyed as they like but the other three will keep them balanced! Irish rugby needs .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1826129788": {
       "topics": [
@@ -185826,10 +186301,30 @@
     },
     "1826577216": {
       "topics": [
-        "nature"
+        "nature",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Birding observations, wildlife news, and ornithological discussions.",
+      "display_title": "stormcabbirds birding podcast",
+      "blurb": "I am a YouTube bird vlogger, photographer, and videographer by day, and a London Taxi driver by night.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1826578192": {
       "topics": [
@@ -185966,10 +186461,35 @@
     },
     "1827219378": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "business",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations about effective marketing strategies and advertising channels.",
+      "display_title": "Mail Unleashed with Rory Sutherland",
+      "blurb": "Welcome to Mail Unleashed.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1827341560": {
       "topics": [
@@ -186119,7 +186639,22 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news briefing covering current events and politics.",
+      "display_title": "The Morning Meeting",
+      "blurb": "Every weekday morning, the executives who run America’s television news networks chair a key gathering of their anchors, correspondents, and producers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1828015362": {
       "topics": [
@@ -186400,10 +186935,40 @@
     },
     "1828965186": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "sports/endurance",
+        "news/daily",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Off The Ivy: A Chicago Cubs coverage and discussion.",
+      "display_title": "Off The Ivy: A Chicago Cubs Podcast",
+      "blurb": "Off the Ivy is your daily dose of Chicago Cubs talk.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1829011348": {
       "topics": [
@@ -186438,10 +187003,25 @@
     },
     "1829287404": {
       "topics": [
-        "sports/tennis"
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spin The Racket coverage and discussion.",
+      "display_title": "Spin The Racket",
+      "blurb": "This is the recreational tennis pod.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1829355705": {
       "topics": [
@@ -186559,17 +187139,52 @@
     },
     "1830098658": {
       "topics": [
-        "sports/golf"
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical insights and expert discussions on health treatments and research.",
+      "display_title": "Fringe Coverage - LPGA Golf Podcast",
+      "blurb": "Entertaining and educational golf podcast bringing you the stories, swings, and stars of the LPGA Tour.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1830104844": {
       "topics": [
-        "culture/design"
+        "business/startups",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "No clear category match.",
+      "display_title": "Creative Slash",
+      "blurb": "Have you ever wondered what secrets drive the most profound, successful, famous, and unique creatives? Then the Creative Slash podcast is for you.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1830107601": {
       "topics": [
@@ -186595,10 +187210,35 @@
     },
     "1830254784": {
       "topics": [
+        "sports/endurance",
+        "health",
         "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hotels with History coverage and discussion.",
+      "display_title": "Hotels with History",
+      "blurb": "Join Richard E.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1830289027": {
       "topics": [
@@ -186776,11 +187416,35 @@
     },
     "1830920814": {
       "topics": [
-        "sports",
-        "news"
+        "sports/football",
+        "medicine",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "New York Jets News Today | 2 Min News |  coverage and discussion.",
+      "display_title": "New York Jets News Today | 2 Min",
+      "blurb": "Hosted by Corey with the Story, New York Jets News Today delivers daily coverage of the Jets with fast, focused updates on games, player performances,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1830992336": {
       "topics": [
@@ -186795,14 +187459,48 @@
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedic storytelling performance featuring Chinese classical legends.",
+      "display_title": "郭德纲单口高清版",
+      "blurb": "High-quality audio performance of classical comedic storytelling adapted from Ming Dynasty literature.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:53.833Z"
     },
     "1831058526": {
       "topics": [
-        "culture/books"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music news, reviews, and discussions focusing on indie rock and contemporary music.",
+      "display_title": "Atomic Habits by James Clear, Book Summary, Podcast,",
+      "blurb": "Audiobook on Audible (with membership trial) : https://amzn.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1831066449": {
       "topics": [
@@ -186816,7 +187514,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis Hall of Fame interviews revealing mindset and strategies of legendary champions.",
+      "display_title": "TennisWorthy",
+      "blurb": "Conversations with tennis greats exploring mental foundations and career milestones of Hall of Famers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:53.833Z"
     },
     "1831109032": {
       "topics": [
@@ -186917,10 +187630,25 @@
     },
     "1831558152": {
       "topics": [
-        "news/commentary"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music news, reviews, and discussions focusing on indie rock and contemporary music.",
+      "display_title": "Conversate with Killer Mike",
+      "blurb": "Check in and Conversate with Killer Mike and friends every week as they discuss life, Atlanta hip-hop culture, cars, business, books, and whatever els.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1831604960": {
       "topics": [
@@ -186932,10 +187660,30 @@
     },
     "1831666548": {
       "topics": [
+        "kids-family/stories",
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama adaptation of classic Chinese novel for children emphasizing cultural heritage.",
+      "display_title": "西游记有声童话",
+      "blurb": "Child-friendly audio dramatization of Journey to the West featuring adventure, mythology, and cultural learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:53.833Z"
     },
     "1831759257": {
       "topics": [
@@ -186961,10 +187709,28 @@
     },
     "1831961202": {
       "topics": [
-        "nature/pets"
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Medical insights and expert discussions on health treatments and research.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1832065629": {
       "topics": [
@@ -187035,11 +187801,25 @@
     },
     "1832126550": {
       "topics": [
-        "music",
-        "history"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music news, reviews, and discussions focusing on indie rock and contemporary music.",
+      "display_title": "Time Will Tell - The Story Of \"It's",
+      "blurb": "Let’s go! Time Will Tell is a podcast dedicated to diving deep into Drake Bell’s iconic album \"It’s Only Time\".",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1832203183": {
       "topics": [
@@ -187050,10 +187830,35 @@
     },
     "1832209548": {
       "topics": [
-        "sports/fantasy"
+        "sports/football",
+        "sports/endurance",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "FFPC Insider Access coverage and discussion.",
+      "display_title": "FFPC Insider Access",
+      "blurb": "The FFPC gives you insider access to the top fantasy football analysts and high stakes players in this weekly show on the Bettor Sports Network.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1832239099": {
       "topics": [
@@ -187065,10 +187870,40 @@
     },
     "1832321430": {
       "topics": [
-        "sports/basketball"
+        "business/marketing",
+        "business",
+        "health",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations about effective marketing strategies and advertising channels.",
+      "display_title": "TarHeel247 - A UNC Basketball podcast with John",
+      "blurb": "Carolina blue runs deep — and so do the stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1832331486": {
       "topics": [
@@ -187127,10 +187962,45 @@
     },
     "1832360658": {
       "topics": [
-        "kids-family/education"
+        "business/marketing",
+        "news/daily",
+        "business",
+        "education",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations about effective marketing strategies and advertising channels.",
+      "display_title": "Well This Wasn't The Plan!",
+      "blurb": "We never expected to homeschool.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1832444776": {
       "topics": [
@@ -187245,10 +188115,30 @@
     },
     "1832757204": {
       "topics": [
-        "sports/football"
+        "sports/football",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Forward Progress - A Chicago Bears coverage and discussion.",
+      "display_title": "Forward Progress - A Chicago Bears Podcast",
+      "blurb": "When it comes to Chicago Bears talk, Dan Bernstein and Matt Abbatacola have been setting the agenda for decades.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1832790993": {
       "topics": [
@@ -187323,7 +188213,29 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Five-part science series exploring cosmology, black holes, exoplanets, and stellar fusion.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:53.833Z"
     },
     "1833075179": {
       "topics": [
@@ -187349,11 +188261,35 @@
     },
     "1833088926": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "fiction/drama",
+        "sports/endurance",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scripted audio drama series with supernatural and mysterious storytelling.",
+      "display_title": "Dying Out Loud Podcast",
+      "blurb": "Dying Out Loud is a platform hosting vital conversations about living authentically and confronting the realities of mortality.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1833095499": {
       "topics": [
@@ -187364,10 +188300,30 @@
     },
     "1833119982": {
       "topics": [
-        "travel"
+        "news/daily",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news briefing covering current events and politics.",
+      "display_title": "Sisters, Sisters: A Mouselets Podcast",
+      "blurb": "We’re the Mouselets: two sisters who love all things Disney! For years, we’ve shared Disney history, facts, secrets, and tips on social media, and now.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-3f15bc6e",
+      "classified_at": "2026-08-13T00:14:31.325Z"
     },
     "1833189722": {
       "topics": [
