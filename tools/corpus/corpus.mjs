@@ -82,15 +82,19 @@ async function main() {
   const args = parseArgs(rest);
 
   switch (cmd) {
+    /* Only the build commands (init, load-manifest, ingest) may CREATE the db;
+     * every read-oriented command opens with the default create: false and gets
+     * a loud "no corpus database here" error on a checkout that never built one
+     * — instead of a silently created empty db answering "zero results". */
     case "init": {
-      const db = openMigrated();
+      const db = openMigrated(undefined, { create: true });
       const v = db.prepare("PRAGMA user_version").get().user_version;
       console.log(`corpus db ready (schema v${v})`);
       break;
     }
 
     case "load-manifest": {
-      const db = openMigrated();
+      const db = openMigrated(undefined, { create: true });
       const dossier = args.dossier ?? DEFAULT_DOSSIER;
       const entries = parseDossierFile(dossier);
       const n = loadManifest(db, entries);
@@ -101,7 +105,8 @@ async function main() {
 
     case "ingest":
     case "refetch": {
-      const db = openMigrated();
+      // refetch re-ingests an already-loaded source, so it reads, never creates.
+      const db = openMigrated(undefined, { create: cmd === "ingest" });
       const force = cmd === "refetch" || Boolean(args.force);
       const sources = cmd === "refetch"
         ? selectSources(db, { source: args.source ?? args._[0] })

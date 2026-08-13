@@ -39,10 +39,45 @@ function okFetcher(body = "# Title\n\n" + "Real content sentence here. ".repeat(
   };
 }
 
+/* ------------------------------------------------- open: absent vs create */
+
+test("openDb: absent db without create throws actionable error, creates nothing", () => {
+  const dbPath = tmpDb();
+  // The message must say where the db was expected and how to build it —
+  // "no matches" from a silently created empty db is how a fresh checkout
+  // concludes the corpus is empty rather than absent.
+  assert.throws(() => openDb(dbPath), (err) => {
+    assert.match(err.message, /no corpus database at /);
+    assert.ok(err.message.includes(dbPath), "names the expected path");
+    assert.match(err.message, /corpus\.mjs init/);
+    assert.match(err.message, /load-manifest/);
+    assert.match(err.message, /ingest --all/);
+    assert.match(err.message, /digests\.md/);
+    return true;
+  });
+  assert.ok(!fs.existsSync(dbPath), "a failed read-open must not create the db file");
+});
+
+test("openMigrated: absent db without create throws the same error", () => {
+  const dbPath = tmpDb();
+  assert.throws(() => openMigrated(dbPath), /no corpus database at /);
+  assert.ok(!fs.existsSync(dbPath));
+});
+
+test("openDb: create:true builds db and parent dirs; later plain opens succeed", () => {
+  const dbPath = path.join(tmp(), "nested", "deeper", "fresh.db");
+  const db = openMigrated(dbPath, { create: true }); // fresh machine: init path
+  assert.ok(fs.existsSync(dbPath), "create path makes the file (and parents)");
+  db.close();
+  // Once built, read-oriented opens (search/stats/report…) work without create.
+  const again = openMigrated(dbPath);
+  assert.equal(again.prepare("PRAGMA user_version").get().user_version, 2);
+});
+
 /* ----------------------------------------------------------- migrations */
 
 test("migrate: applies all migrations once, then is a no-op", () => {
-  const db = openDb(tmpDb());
+  const db = openDb(tmpDb(), { create: true });
   const first = migrate(db);
   assert.equal(first.applied, 2);
   const second = migrate(db);
@@ -54,14 +89,14 @@ test("migrate: applies all migrations once, then is a no-op", () => {
 test("migrate: failing migration rolls back and does not advance version", () => {
   const dir = tmp();
   fs.writeFileSync(path.join(dir, "0001_bad.sql"), "CREATE TABLE ok(x);\nTHIS IS NOT SQL;");
-  const db = openDb(tmpDb());
+  const db = openDb(tmpDb(), { create: true });
   assert.throws(() => migrate(db, dir), /0001_bad/);
   assert.equal(db.prepare("PRAGMA user_version").get().user_version, 0);
   assert.throws(() => db.prepare("SELECT * FROM ok"));
 });
 
 test("schema: sources url is unique, area range-checked, type whitelisted", () => {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   const ins = db.prepare(
     "INSERT INTO sources (area, area_name, title, url, source_type) VALUES (?,?,?,?,?)"
   );
@@ -72,7 +107,7 @@ test("schema: sources url is unique, area range-checked, type whitelisted", () =
 });
 
 test("schema: deleting a source cascades documents and chunks", () => {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   const s = seedSource(db);
   const docId = db.prepare(
     "INSERT INTO documents (source_id, http_status) VALUES (?, 200)"
@@ -88,7 +123,7 @@ test("schema: deleting a source cascades documents and chunks", () => {
 /* ------------------------------------------------------------------ fts */
 
 test("fts: insert/delete/update keep the index in sync", () => {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   const s = seedSource(db);
   const docId = db.prepare("INSERT INTO documents (source_id, http_status) VALUES (?, 200)").run(s.id).lastInsertRowid;
   const chunkId = db.prepare(
@@ -107,7 +142,7 @@ test("fts: insert/delete/update keep the index in sync", () => {
 });
 
 test("fts: porter stemming matches inflected query terms", () => {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   const s = seedSource(db);
   const docId = db.prepare("INSERT INTO documents (source_id, http_status) VALUES (?, 200)").run(s.id).lastInsertRowid;
   db.prepare(
@@ -120,7 +155,7 @@ test("fts: porter stemming matches inflected query terms", () => {
 /* --------------------------------------------------------------- ingest */
 
 test("ingest: success writes raw+markdown files, doc row, chunks", async () => {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   const s = seedSource(db, { title: "Ingest Happy Path" });
   const r = await ingestSource(db, okFetcher(), s);
   assert.equal(r.outcome, "ok");
@@ -135,7 +170,7 @@ test("ingest: success writes raw+markdown files, doc row, chunks", async () => {
 });
 
 test("ingest: refetch with same content is 'unchanged', no duplicate chunks", async () => {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   const s = seedSource(db);
   const f = okFetcher();
   const r1 = await ingestSource(db, f, s);
@@ -146,7 +181,7 @@ test("ingest: refetch with same content is 'unchanged', no duplicate chunks", as
 });
 
 test("ingest: changed content supersedes old chunks (search sees one copy)", async () => {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   const s = seedSource(db);
   await ingestSource(db, okFetcher("# V1\n\nalpha bravo. " + "pad sentence. ".repeat(40)), s);
   await ingestSource(db, okFetcher("# V2\n\ncharlie delta. " + "pad sentence. ".repeat(40)), s);
@@ -160,7 +195,7 @@ test("ingest: changed content supersedes old chunks (search sees one copy)", asy
 });
 
 test("ingest: fetch failure records a document row with notes, no files", async () => {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   const s = seedSource(db);
   const failFetcher = {
     async fetchUrl(url) {
@@ -176,7 +211,7 @@ test("ingest: fetch failure records a document row with notes, no files", async 
 });
 
 test("ingest: github issue route fetches comments and stores markdown", async () => {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   const s = seedSource(db, {
     url: "https://github.com/o/r/issues/9",
     title: "Issue Nine",
@@ -201,7 +236,7 @@ test("ingest: github issue route fetches comments and stores markdown", async ()
 });
 
 test("ingest: issue comments paginate past 100 and stop on a short page", async () => {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   const s = seedSource(db, { url: "https://github.com/o/r/issues/1", title: "Big Thread", source_type: "issue" });
   const pageCalls = [];
   const mkComment = (i) => ({ user: { login: `u${i}` }, created_at: "2024-01-01T0:0:0Z", body: `comment ${i}` });
@@ -227,7 +262,7 @@ test("ingest: issue comments paginate past 100 and stop on a short page", async 
 /* --------------------------------------------------------------- report */
 
 test("report: coverage rolls up per area; dead links lists failures with reasons", async () => {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   const good = seedSource(db, { area: 4, area_name: "Retrieval & Recommendation", title: "Good Doc" });
   const bad = seedSource(db, { area: 8, area_name: "Legal / Policy Landscape", title: "Paywalled Thing" });
   await ingestSource(db, okFetcher(), good);
@@ -251,7 +286,7 @@ test("report: coverage rolls up per area; dead links lists failures with reasons
 });
 
 test("report: unfetched sources counted separately from failures", () => {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   seedSource(db, { area: 2, area_name: "Speech Processing" });
   const { areas } = coverageData(db);
   assert.equal(areas[0].unfetched, 1);

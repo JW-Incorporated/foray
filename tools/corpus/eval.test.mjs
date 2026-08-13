@@ -16,7 +16,7 @@ import { keywordSearch, sourcesInOrder } from "./search.mjs";
  * real data-local/corpus/ archive. */
 function tmpDb() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "corpus-eval-"));
-  const db = openMigrated(path.join(dir, "t.db"));
+  const db = openMigrated(path.join(dir, "t.db"), { create: true });
   return { db, dir };
 }
 

@@ -94,7 +94,7 @@ test("inferSourceType: domain rules", () => {
 });
 
 test("loadManifest: idempotent, preserves ids, refreshes fields", () => {
-  const db = openMigrated(tmpDb());
+  const db = openMigrated(tmpDb(), { create: true });
   const e = { area: 1, area_name: "A", title: "T1", url: "https://x.com/a", source_type: "docs", why_it_matters: "v1", read_first: 0 };
   loadManifest(db, [e]);
   const id1 = db.prepare("SELECT id FROM sources WHERE url = ?").get(e.url).id;
