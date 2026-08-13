@@ -172,9 +172,15 @@ export async function pdfToMarkdown(buffer, { maxPages = 200 } = {}) {
   }
   await doc.destroy();
 
+  /* Pages join with a plain blank line, NOT a "---" rule. A rule is its own
+   * block to the chunker, so a 200-page PDF used to contribute 200 blocks
+   * whose entire content is "---" — 29 of the corpus's 480 chunks were bare
+   * rules, each carrying a search-index entry and (later) an embedding that
+   * matches nothing meaningfully. PDF page boundaries also fall mid-sentence,
+   * so they were never a semantic boundary worth marking. */
   const markdown = out
     .filter((p) => p.length > 0)
-    .join("\n\n---\n\n")
+    .join("\n\n")
     .trim();
   if (!markdown) notes.push("no extractable text (scanned/image-only pdf?)");
   return { title, markdown, notes };
@@ -192,10 +198,11 @@ export function issueToMarkdown(issue, comments = []) {
     ``,
     issue.body ?? "",
   ];
+  /* No "---" rule between comments: the bold author line already separates
+   * them, and a lone rule becomes a content-free block downstream (see the
+   * page-join note in pdfToMarkdown). */
   for (const c of comments) {
     parts.push(
-      ``,
-      `---`,
       ``,
       `**${c.user?.login ?? "unknown"}** (${(c.created_at ?? "").slice(0, 10)}):`,
       ``,

@@ -18,7 +18,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { routeUrl, htmlToMarkdown, pdfToMarkdown, issueToMarkdown, looksLikePdf } from "./extract.mjs";
 import { chunkMarkdown, estTokens } from "./chunk.mjs";
-import { RAW_DIR, MARKDOWN_DIR, archivePath, relToCorpusRoot } from "./paths.mjs";
+import { RAW_DIR, MARKDOWN_DIR, CORPUS_ROOT, archivePath, relToCorpusRoot } from "./paths.mjs";
 
 const sha256 = (buf) => crypto.createHash("sha256").update(buf).digest("hex");
 
@@ -140,13 +140,7 @@ export async function ingestSource(db, fetcher, source, { force = false } = {}) 
         (SELECT id FROM documents WHERE source_id = ? AND id != ?)
     `).run(source.id, docId);
 
-    const insChunk = db.prepare(`
-      INSERT INTO chunks (document_id, ordinal, heading_path, text, token_count)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    for (const c of chunks) {
-      insChunk.run(docId, c.ordinal, c.heading_path, c.text, c.token_count);
-    }
+    writeChunks(db, docId, chunks);
     db.exec("COMMIT");
   } catch (err) {
     db.exec("ROLLBACK");
@@ -161,6 +155,89 @@ export async function ingestSource(db, fetcher, source, { force = false } = {}) 
     tokens: tokenCount,
     notes,
   };
+}
+
+/** Replace a document's chunks. Caller owns the transaction. */
+export function writeChunks(db, docId, chunks) {
+  db.prepare("DELETE FROM chunks WHERE document_id = ?").run(docId);
+  const ins = db.prepare(`
+    INSERT INTO chunks (document_id, ordinal, heading_path, text, token_count)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  for (const c of chunks) ins.run(docId, c.ordinal, c.heading_path, c.text, c.token_count);
+  return chunks.length;
+}
+
+/**
+ * Re-chunk every current document from its ARCHIVED markdown — no network,
+ * no refetch, no politeness budget spent. This is the whole reason raw+
+ * markdown are archived on disk: when the chunker changes (a boundary rule,
+ * a junk filter, or later a real tokenizer's max length), the corpus can be
+ * rebuilt offline in seconds against bytes we already have.
+ *
+ * @returns {{documents:number, before:number, after:number, missing:string[]}}
+ */
+/* The archive header that ingestSource prepends to the .md file for human
+ * readability. It is NOT part of what ingest chunks, so rechunk must strip it
+ * — otherwise the two paths build different indexes from identical bytes, the
+ * source title and URL leak into searchable body text, and the corpus stops
+ * being reproducible from a fresh ingest. */
+const ARCHIVE_HEADER = /^<!--\s*corpus source [\s\S]*?-->\s*/;
+
+export function rechunkAll(db, { onDoc, corpusRoot = CORPUS_ROOT } = {}) {
+  const docs = db.prepare(`
+    SELECT d.id, d.source_id, d.markdown_path, s.title
+    FROM documents d
+    JOIN sources s ON s.id = d.source_id
+    WHERE d.markdown_path IS NOT NULL
+      AND d.id = (SELECT id FROM documents
+                  WHERE source_id = d.source_id
+                    AND http_status BETWEEN 200 AND 299 AND markdown_path IS NOT NULL
+                  ORDER BY fetched_at DESC, id DESC LIMIT 1)
+    ORDER BY d.source_id
+  `).all();
+
+  /* Refuse to run over embeddings rather than silently discarding them:
+   * chunks are the FK parent, so rewriting them destroys any backfilled
+   * vector. PLAN.md's later pass re-chunks BEFORE embedding for exactly this
+   * reason, and a re-chunk after would be an expensive, silent loss. */
+  const embedded = db.prepare("SELECT COUNT(*) n FROM chunks WHERE embedding IS NOT NULL").get().n;
+  if (embedded > 0) {
+    throw new Error(
+      `${embedded} chunk(s) carry embeddings; re-chunking would discard them. ` +
+      `Re-chunk before backfilling, or clear the embeddings deliberately first.`
+    );
+  }
+
+  const before = db.prepare("SELECT COUNT(*) n FROM chunks").get().n;
+  const missing = [];
+  const emptied = [];
+
+  db.exec("BEGIN");
+  try {
+    for (const d of docs) {
+      const full = path.join(corpusRoot, d.markdown_path);
+      if (!fs.existsSync(full)) { missing.push(d.markdown_path); continue; }
+      const markdown = fs.readFileSync(full, "utf8").replace(ARCHIVE_HEADER, "");
+      const chunks = chunkMarkdown(markdown);
+      /* chunkMarkdown promises never to empty a document that had content,
+       * but that guard cannot see the DB. An archive file that is empty or
+       * truncated (writeFileSync is not atomic — a crash mid-ingest leaves
+       * exactly that) would otherwise delete a source from search while
+       * `stats` still reported it ingested. Skip loudly instead. */
+      if (!chunks.length) { emptied.push(`${d.source_id} (${d.title})`); continue; }
+      writeChunks(db, d.id, chunks);
+      onDoc?.(d, chunks.length);
+    }
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+  /* Count after the commit so the number describes the DB, not the subset we
+   * happened to rewrite. */
+  const after = db.prepare("SELECT COUNT(*) n FROM chunks").get().n;
+  return { documents: docs.length, before, after, missing, emptied };
 }
 
 /** Ingest a set of sources sequentially (the fetcher paces hosts). */

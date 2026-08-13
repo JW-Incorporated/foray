@@ -17,8 +17,25 @@
 
 const MIN_TOKENS = 250;
 const TARGET_MAX = 1000;
+/* A retrieval unit with fewer real words than this cannot answer anything;
+ * it only adds noise to the index (and, later, a meaningless vector). */
+const MIN_WORDS = 5;
 
 export const estTokens = (s) => Math.ceil(s.length / 4);
+
+/* Tokens that carry meaning. `\p{L}` rather than [A-Za-z] because an
+ * ASCII-only test silently deletes non-Latin text, and NUMBERS count because
+ * a results table ("0.750", "-16 LUFS", a pricing grid) is exactly the
+ * content this corpus is mined for — an ASCII-letters-only gate would drop a
+ * whole benchmark table as "junk" while claiming to preserve data points. */
+const realWordCount = (s) => (s.match(/[\p{L}\p{N}][\p{L}\p{N}'’.-]*/gu) || []).length;
+
+/* A thematic break ("---", "***", "___"), a rule of "=", or a line of nothing
+ * but bullets/dashes. These are typography, not content: they were never worth
+ * a block of their own, and as their OWN chunk they are pure index noise.
+ * Deliberately narrow — "0.750" is a data point in a benchmark table and must
+ * survive, so this tests for the ABSENCE of alphanumerics, not for shortness. */
+export const isSeparatorBlock = (s) => /^[\s\-*_=~•·—–+|]+$/.test(s);
 
 function splitOversized(block, maxTokens) {
   const sentences = block.split(/(?<=[.!?])\s+(?=[A-Z0-9"'([])/);
@@ -59,7 +76,11 @@ export function chunkMarkdown(markdown, { minTokens = MIN_TOKENS, maxTokens = TA
 
   const flushBuf = () => {
     const text = buf.join("\n").trim();
-    if (text) blocks.push({ text, headingPath: headingStack.filter(Boolean).join(" > ") });
+    /* Separator blocks are dropped here, before packing, so that the content
+     * on either side of a rule packs together instead of being split by it. */
+    if (text && !isSeparatorBlock(text)) {
+      blocks.push({ text, headingPath: headingStack.filter(Boolean).join(" > ") });
+    }
     buf = [];
   };
 
@@ -150,5 +171,17 @@ export function chunkMarkdown(markdown, { minTokens = MIN_TOKENS, maxTokens = TA
     }
   }
 
-  return chunks;
+  /* Final gate: drop content-free chunks, then renumber so ordinals stay
+   * dense (chunks has UNIQUE(document_id, ordinal); holes would be legal but
+   * would make "chunk 7 of 12" a lie).
+   *
+   * The gate must never empty a document that had content. Several real
+   * sources are a single short paragraph — the Apple Developer Forum threads
+   * are one chunk each — and silently dropping the last chunk would delete a
+   * whole source from search while `stats` still counted it as ingested. So
+   * this filter removes NOISE FROM a document; it is not allowed to remove
+   * the document. */
+  const kept = chunks.filter((c) => realWordCount(c.text) >= MIN_WORDS);
+  const final = kept.length || !chunks.length ? kept : chunks;
+  return final.map((c, i) => ({ ...c, ordinal: i }));
 }

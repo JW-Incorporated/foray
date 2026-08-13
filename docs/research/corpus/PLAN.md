@@ -72,7 +72,9 @@ pattern as `backend/` and `player/`; root stays dependency-free):
   ingestion manifest — no hand-copied URLs.
 - CLI `tools/corpus/corpus.mjs`: `init`, `load-manifest`, `ingest [--area N |
   --source ID | --all]`, `search "query"`, `stats`, `refetch <source_id>`,
-  `report` (writes coverage.md + dead-links.md content).
+  `report` (writes coverage.md + dead-links.md content). Later additions:
+  `rechunk` (offline re-chunk from the archives) and `eval` (score retrieval
+  against the committed gold set) — see the backfill step-1 note below.
 
 ## Workstream C — ingestion runs (after A+B merge)
 
@@ -142,3 +144,41 @@ test") all return correctly-attributed, on-topic chunks.
 4. `sources.url` for the AES standard should be repointed if a new canonical
    AES URL is found (use `corpus refetch 12` after a manifest edit — the
    loader is idempotent by URL, so edit the dossier, reload, refetch).
+
+## Embedding backfill — step 1 (2026-08-12): fix the baseline first
+
+The backfill was planned as four branches. Step 1 landed alone, deliberately,
+as a decision gate: before spending ~250MB of `onnxruntime-node` on semantic
+search, find out how well keyword search does once it *works*.
+
+It did not work. `corpus search` passed raw user text into FTS5 MATCH, so
+ordinary questions either crashed (`?`, `+`, `:`, `-`, quotes, bare
+AND/OR/NEAR — `diarization: who is speaking when` died with `no such column:
+diarization`) or were implicitly ANDed into zero results. On a 15-question
+gold set, 4 errored and only 3 found their source.
+
+| retrieval | found | Recall@5 | MRR@8 | nDCG@8 |
+|---|---|---|---|---|
+| raw passthrough (what shipped in #148) | 3/15 | 0.200 | 0.200 | 0.160 |
+| built query (this pass) | 15/15 | 1.000 | 0.902 | 0.788 |
+
+Also fixed: `pdfToMarkdown` joined pages with `\n\n---\n\n`, so 29 of 480
+chunks were bare rules. Repaired at the extractor and at chunk time; the
+existing corpus rebuilds offline via `corpus rechunk` (480 → 451 chunks, no
+source lost). Re-chunking contributed **zero** to the retrieval numbers.
+
+**The vector question is now open, not settled.** Keyword search finds the
+right source for every question in the set, so the case for embeddings has to
+rest on something the set does not measure: ranking quality within the top 8,
+paraphrase queries that share no vocabulary with the corpus, and questions
+nobody thought to write down. That is a real case, but it is a smaller one
+than it was this morning, and it is the founders' call — see the gold set's
+own caveat that 15 queries cannot resolve small differences.
+
+Two gold-set findings worth keeping regardless:
+- Queries 2 and 12 are partly **orphaned** by the two ingest failures (AES
+  TD1004 404, ScienceDirect 403). The numeric LUFS target may exist nowhere
+  in the corpus. These are the best tests for a retriever that confabulates
+  coverage.
+- 3 chunks in the IAB PDFs extract as letter-spaced text
+  (`A b o u t T h i s`), a pdfjs item-joining artifact. Not fixed here.

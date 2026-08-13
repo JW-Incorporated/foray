@@ -1,0 +1,141 @@
+{
+  "about": [
+    "Retrieval answer key for `node tools/corpus/corpus.mjs eval`.",
+    "",
+    "HOW IT WAS BUILT, AND WHY THAT MATTERS. The 15 questions and a first",
+    "answer key were written by the same session that then tuned retrieval",
+    "against them — a self-marking exam. So a second, fresh-context agent",
+    "derived its own key for the same 15 questions from ONLY the dossier and",
+    "coverage.md, with no access to the first key or the reasoning behind it.",
+    "Where the two disagreed, the disagreement is recorded in `reconciliation`",
+    "rather than silently resolved: a query whose correct answer two readers",
+    "cannot agree on is telling you something about the query, and about the",
+    "corpus, that a tidy consensus number would hide.",
+    "",
+    "`primary`   — a system that misses all of these has failed the question.",
+    "`secondary` — legitimately relevant; credited, but not required.",
+    "`negative`  — plausible-looking distractors that should NOT rank highly.",
+    "",
+    "SCORING (see eval.mjs): Recall@5 over `primary`, MRR@10 over `primary`,",
+    "nDCG@10 with gain 2 for primary and 1 for secondary. Scored on distinct",
+    "SOURCE ids in result order, not chunks.",
+    "",
+    "STANDING CAVEAT: 15 questions over 52 sources is a smoke test. It",
+    "reliably detects 'broken' and 'clearly better'. It cannot resolve a",
+    "two-point nDCG difference, and no one should present it as if it could.",
+    "The primary safety gate is not the aggregate — it is that no query may",
+    "regress from found to not-found."
+  ],
+  "unretrievable_sources": {
+    "12": "AES TD1004 loudness — 404 at ingest. The document that actually states the numeric LUFS target is NOT in the corpus.",
+    "52": "ScienceDirect LLM-as-a-Judge survey — 403 bot-wall. The most on-point source for query 12 is absent."
+  },
+  "queries": [
+    {
+      "id": 1,
+      "q": "how does DAI break timestamps",
+      "primary": [9, 19, 48],
+      "secondary": [42, 41],
+      "reconciliation": "Both keys agree. Independent pass ranked 9 first (authoritative standards statement), 19 as the source that quantifies the drift, 48 as the real-world bug report."
+    },
+    {
+      "id": 2,
+      "q": "what loudness target for stitched segments",
+      "primary": [36],
+      "secondary": [13],
+      "reconciliation": "DISAGREEMENT, and the first key was wrong. It listed source 12 (AES TD1004) as an expected hit; 12 404'd at ingest and has zero chunks, so it can never be retrieved. Worse, the independent pass argues the numeric target (-16 to -20 LUFS) may exist NOWHERE in the ingested corpus — 36 covers normalization workflow, not necessarily a number. This query is therefore partly ORPHANED, and that is exactly why it stays in the set: it is a test of whether a retriever admits it has nothing rather than confabulating coverage."
+    },
+    {
+      "id": 3,
+      "q": "does the server test cover embedded images",
+      "primary": [10, 46, 11],
+      "secondary": [47],
+      "reconciliation": "DISAGREEMENT on ordering. First key led with 47 (Fordham Law Review); independent pass demoted it to secondary because it has only 1 chunk and is barely retrievable, and promoted 46 (Perfect 10 — the origin of the server test, literally about thumbnails). Independent view adopted. It also flags the question as ambiguous: the corpus's real thrust is whether the doctrine extends to AUDIO, which this phrasing does not ask."
+    },
+    {
+      "id": 4,
+      "q": "how do I fuse BM25 and vector results",
+      "primary": [30, 29],
+      "secondary": [24],
+      "reconciliation": "Both keys agree on the pair; they differ on order. 29 is the canonical RRF paper but only 5 chunks; 30 is 15 chunks and lexically far closer to 'BM25 + vector'. Independent pass ranks 30 first on retrievability while conceding 29 is the more authoritative answer. Left unordered — both are primary."
+    },
+    {
+      "id": 5,
+      "q": "diarization: who is speaking when",
+      "primary": [4],
+      "secondary": [20, 3, 21],
+      "reconciliation": "Both keys agree. Coverage is thin (4 has 7 chunks); 20 matters only because WhisperX delegates diarization to pyannote."
+    },
+    {
+      "id": 6,
+      "q": "aligning word-level timestamps in long audio",
+      "primary": [3, 20],
+      "secondary": [21, 1],
+      "negative": [15, 22],
+      "reconciliation": "Both keys agree. Independent pass contributed the `negative` list: Chromaprint (15, 22) matches 'align' strongly but means OFFSET realignment, not word alignment. Best distractor test in the set."
+    },
+    {
+      "id": 7,
+      "q": "where do I split a podcast into topics",
+      "primary": [7, 25, 26],
+      "secondary": [16, 6, 23],
+      "reconciliation": "DISAGREEMENT — independent pass added 16 (Podcast Namespace chapters tag), which the first key missed entirely. Its argument: the question is ambiguous between 'which algorithm finds boundaries' and 'what boundaries already exist', and reusing published chapters is the cheapest real answer for a podcast while being invisible to semantic matching. Added as secondary; a good case for the founders that the corpus knows things the query author did not."
+    },
+    {
+      "id": 8,
+      "q": "cold start recommendations for new users",
+      "primary": [8],
+      "secondary": [32, 31],
+      "reconciliation": "Both keys agree. Independent pass notes this is a discrimination test: 32 and 31 are cold-start for ITEMS (ads, promotions), same phrase, different problem. Ranking them above 8 would be a real miss."
+    },
+    {
+      "id": 9,
+      "q": "audio fingerprinting to detect a repeated ad",
+      "primary": [15, 22],
+      "secondary": [9, 19],
+      "reconciliation": "DISAGREEMENT on whether the question is fair. Independent pass calls it poorly targeted: no source covers ad DETECTION, only fingerprinting for offset realignment, and the dossier itself flags Chromaprint's fit for spoken clips as unproven. Both primaries are 2-chunk sources. Kept, with the caveat recorded — a low score here is a fact about the corpus, not about the retriever."
+    },
+    {
+      "id": 10,
+      "q": "gapless playback of queued items on iOS",
+      "primary": [33, 35],
+      "secondary": [13, 34],
+      "reconciliation": "Both keys agree. Independent pass flags the risk that 33 (the literal bullseye) is a 1-chunk source and may lose to 13 (14 chunks) which answers a different question — composition, not queueing. Watch this one when comparing modes."
+    },
+    {
+      "id": 11,
+      "q": "what does TTS cost per character",
+      "primary": [38, 39, 40],
+      "negative": [37],
+      "reconciliation": "Both keys agree on the trio. Independent pass adds a precision trap worth watching: 40 (ElevenLabs) has the most chunks but prices by subscription credits, NOT per character, so it will likely rank first while answering the question worst. 37 (TTS Arena) is quality-only and is marked negative."
+    },
+    {
+      "id": 12,
+      "q": "how do I stop an LLM judge from favouring long answers",
+      "primary": [54],
+      "secondary": [51, 53],
+      "reconciliation": "DISAGREEMENT with a caveat both keys accept. The best source (52, a taxonomy of judging biases) 403'd at ingest. Independent pass is explicitly UNCERTAIN whether 54 names verbosity/length bias specifically or only scoring bias generally, and notes the question asks for MITIGATION while the corpus mostly DOCUMENTS bias — which argues for promoting 51 and 53. Left as written, flagged as the second partly-orphaned query."
+    },
+    {
+      "id": 13,
+      "q": "can I republish someone's podcast audio",
+      "primary": [50],
+      "secondary": [43],
+      "reconciliation": "DISAGREEMENT, and the first key was over-broad. It listed 10 (Hunley) as expected; the independent pass points out that every legal source except 50 is about linking/embedding WITHOUT hosting a copy — the opposite of republishing. 10, 46 and 11 were dropped from the key on that argument. 43 (Overcast's 1-minute cap) kept as practice-not-law."
+    },
+    {
+      "id": 14,
+      "q": "how are podcast downloads counted as a listen",
+      "primary": [5],
+      "secondary": [18],
+      "reconciliation": "Both keys agree. Independent pass flags a framing bug in the QUESTION: IAB counts downloads, not listens, and 18 is the source that makes exactly that point — so 18 matters more than its 2 chunks suggest."
+    },
+    {
+      "id": 15,
+      "q": "why did the clip-sharing apps die",
+      "primary": [44, 45],
+      "secondary": [42, 43, 41],
+      "reconciliation": "Both keys agree on sources; independent pass warns the corpus documents THAT they died, not WHY — the causal account lives in the dossier author's own TL;DR, not in any ingested source. Expect weak, inferential retrieval regardless of mode."
+    }
+  ]
+}

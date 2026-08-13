@@ -183,7 +183,7 @@ deleted later by a PR that auto-merges, and a deleted suite passes CI.
 ## Research corpus — search it before reasoning from memory
 
 The 54 curated sources in `docs/research/foray-research-dossier.md` are scraped
-into a searchable SQLite+FTS5 corpus (52 ingested, 480 chunks at time of
+into a searchable SQLite+FTS5 corpus (52 ingested, 451 chunks at time of
 writing — `stats` prints the live numbers; the two failures are named in
 `docs/research/corpus/dead-links.md`). Nine areas: podcast
 infrastructure, speech processing/ASR, topic segmentation, retrieval and
