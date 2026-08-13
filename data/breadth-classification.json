@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-13T00:37:35.188Z",
+  "built_at": "2026-08-13T08:39:20.556Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-13-2ac39c11",
+    "last_batch_id": "fresh-2026-08-13-8916c9a1",
     "last_batch_tier": 1
   },
   "entries": {
@@ -205393,10 +205393,39 @@
     "1894259224": {
       "topics": [
         "space",
-        "science"
+        "religion/spirituality",
+        "engineering/energy-fusion",
+        "history/military-modern"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Digital DNA focuses on space and spirituality.",
+      "display_title": "Digital DNA: Synthesis of Mind & Machine",
+      "blurb": "Beyond the binary lies a field of infinite awareness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1894266723": {
       "topics": [
@@ -205446,10 +205475,40 @@
     },
     "1894630468": {
       "topics": [
-        "religion/spirituality"
+        "space",
+        "religion/christianity",
+        "engineering/ai-robotics",
+        "automotive/racing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Neville Goddard Podcast focuses on space and christianity.",
+      "display_title": "The Neville Goddard Podcast",
+      "blurb": "The Neville Goddard Podcast is dedicated to bringing Neville's timeless ideas into a modern, immersive format you can return to again and again.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1894669466": {
       "topics": [
@@ -205485,10 +205544,40 @@
     },
     "1894863040": {
       "topics": [
-        "relationships"
+        "space",
+        "religion/buddhism",
+        "relationships",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Just Us Girls focuses on space and buddhism.",
+      "display_title": "Just Us Girls",
+      "blurb": "Just Us Girls podcast feels exactly like catching up with your best friends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1894866069": {
       "topics": [
@@ -205758,11 +205847,43 @@
     },
     "1895239450": {
       "topics": [
-        "sports",
-        "news"
+        "sports/soccer",
+        "sports/football",
+        "sports/basketball",
+        "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/golf",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Season 7 Espisodes focuses on soccer and football.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1895241621": {
       "topics": [
@@ -205853,10 +205974,40 @@
     },
     "1895355832": {
       "topics": [
-        "culture/design"
+        "space/rockets",
+        "engineering/ai-robotics",
+        "transport/trains",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Women of ASICS focuses on rockets and ai-robotics.",
+      "display_title": "The Women of ASICS",
+      "blurb": "Women of ASICS is a new five part podcast series by HURS in partnership with ASICS.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1895357318": {
       "topics": [
@@ -206059,17 +206210,71 @@
     "1895888068": {
       "topics": [
         "space",
+        "culture/fashion",
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "101 Sleepy Facts focuses on space and fashion.",
+      "display_title": "101 Sleepy Facts",
+      "blurb": "Discovery Channel-style documentary narration on space, cosmology, and mind-expanding science discoveries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1895894854": {
       "topics": [
-        "science/physics"
+        "space/rockets",
+        "science/physics",
+        "sports/cricket",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.8
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/cricket",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The New Feynman Lectures focuses on rockets and physics.",
+      "display_title": "The New Feynman Lectures",
+      "blurb": "The New Feynman Lectures features a new generation of brilliant minds pushing the frontiers of physics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1895900328": {
       "topics": [
@@ -206414,10 +206619,40 @@
     },
     "1896316432": {
       "topics": [
-        "culture/performing-arts"
+        "space",
+        "engineering/ai-robotics",
+        "business/marketing",
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Theater Girl focuses on space and ai-robotics.",
+      "display_title": "Theater Girl",
+      "blurb": "We’re swapping roses for stage door bouquets! Join Jackie Maroney (@jackiemaroney_) as she breaks down current Broadway shows, sits down with actors a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896318297": {
       "topics": [
@@ -206463,11 +206698,43 @@
     },
     "1896339310": {
       "topics": [
-        "sports",
-        "news"
+        "space",
+        "sports/basketball",
+        "engineering/ai-robotics",
+        "engineering/energy-fusion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Brooklyn Nets News Today | 2 Min News | The Daily News Now! focuses on space and basketball.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896342396": {
       "topics": [
@@ -206544,10 +206811,40 @@
     },
     "1896444328": {
       "topics": [
-        "travel"
+        "space",
+        "engineering/ai-robotics",
+        "espionage/cold-war-tech",
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Neon Lounge focuses on space and ai-robotics.",
+      "display_title": "The Neon Lounge: A Podcast About Las Vegas",
+      "blurb": "Join Keren, Tony, and Josh as they talk about what's going on downtown, on the Strip, and throughout Las Vegas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896449326": {
       "topics": [
@@ -206626,10 +206923,40 @@
     },
     "1896495556": {
       "topics": [
-        "culture/performing-arts"
+        "engineering/ai-robotics",
+        "culture/books",
+        "medicine/neuroscience",
+        "history/military-ancient"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Mighty VH Podcast focuses on ai-robotics and books.",
+      "display_title": "The Mighty VH Podcast",
+      "blurb": "This ain’t yer mom's podcast. This is a high-voltage, back-alley, nitro-burning, chrome-plated oral history of the loudest, proudest, most uncontainab.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896500003": {
       "topics": [
@@ -206938,10 +207265,40 @@
     },
     "1896657826": {
       "topics": [
-        "nature"
+        "relationships",
+        "espionage/cold-war-tech",
+        "transport/maritime",
+        "cities/urbanism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.75
+        },
+        {
+          "node": "cities/urbanism",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories of Trees focuses on relationships and cold-war-tech.",
+      "display_title": "Stories of Trees",
+      "blurb": "Stories of Trees brings you closer to the people, science, and passion behind urban and community forestry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896661889": {
       "topics": [
@@ -207055,11 +207412,43 @@
     },
     "1896683320": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "space",
+        "engineering/ai-robotics",
+        "automotive/racing",
+        "transport/trains"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sagasu Running focuses on space and ai-robotics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896683907": {
       "topics": [
@@ -207124,10 +207513,40 @@
     },
     "1896715654": {
       "topics": [
-        "fiction/sci-fi"
+        "religion/buddhism",
+        "true-crime",
+        "history/military-modern",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cold Shift focuses on buddhism and true-crime.",
+      "display_title": "Cold Shift",
+      "blurb": "Warm company from a cold and strange place. These are transmissions from Jaran, the facility manager at the Deep Earth Anomaly Department, East Antarc.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896723155": {
       "topics": [
@@ -207246,11 +207665,40 @@
     },
     "1896761866": {
       "topics": [
+        "automotive/racing",
+        "history/military-ancient",
         "sports/endurance",
-        "health/fitness"
+        "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.75
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Yet Another Running Podcast focuses on racing and military-ancient.",
+      "display_title": "Yet Another Running Podcast",
+      "blurb": "3 people who don't know anything about running.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896762691": {
       "topics": [
@@ -207315,10 +207763,40 @@
     },
     "1896770236": {
       "topics": [
-        "food"
+        "space",
+        "relationships",
+        "engineering/ai-robotics",
+        "espionage/cold-war-tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beer with Alan focuses on space and relationships.",
+      "display_title": "Beer with Alan",
+      "blurb": "This podcast is about beer, running, sports, travel, and anything else that's been on my mind.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896770666": {
       "topics": [
@@ -207359,10 +207837,43 @@
     },
     "1896781240": {
       "topics": [
-        "medicine"
+        "relationships",
+        "engineering/ai-robotics",
+        "engineering/energy-fusion",
+        "medicine/neuroscience"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "What I'd Tell My Family with Dr. Todd Levine focuses on relationships and ai-robotics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896782521": {
       "topics": [
@@ -207390,10 +207901,40 @@
     },
     "1896783250": {
       "topics": [
-        "science/physics"
+        "engineering/ai-robotics",
+        "history/military-modern",
+        "culture/design",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "emosh focuses on ai-robotics and military-modern.",
+      "display_title": "emosh",
+      "blurb": "Engineering, manufacturing and how the world works.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896784107": {
       "topics": [
@@ -207426,10 +207967,40 @@
     },
     "1896787654": {
       "topics": [
-        "culture/fashion"
+        "relationships",
+        "sports/football",
+        "engineering/ai-robotics",
+        "espionage/cold-war-tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "An Excellent Fit focuses on relationships and football.",
+      "display_title": "An Excellent Fit",
+      "blurb": "An Excellent Fit is a podcast exploring personal style, and the way we live; dissecting wardrobe essentials, fashion regrets, and the outfits worn for.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896788254": {
       "topics": [
@@ -207498,10 +208069,40 @@
     },
     "1896793630": {
       "topics": [
-        "culture/art"
+        "space",
+        "engineering/ai-robotics",
+        "espionage/cold-war-tech",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Continuous Agitation focuses on space and ai-robotics.",
+      "display_title": "Continuous Agitation",
+      "blurb": "Continuous Agitation is two working photographers with decades of experience still struggling to figure it out.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896796752": {
       "topics": [
@@ -207668,10 +208269,40 @@
     },
     "1896811996": {
       "topics": [
-        "travel"
+        "engineering/ai-robotics",
+        "automotive/racing",
+        "transport/trains",
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Traveling Through with David Prior focuses on ai-robotics and racing.",
+      "display_title": "Traveling Through with David Prior",
+      "blurb": "In Traveling Through, David Prior&mdash;travel writer and founder of experiential travel company Prior&mdash;sits down with friends and culture-makers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896812669": {
       "topics": [
@@ -207705,11 +208336,40 @@
     },
     "1896816532": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "engineering/ai-robotics",
+        "automotive/racing",
+        "espionage/cold-war-tech",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Atmosphere with Emily Gracey focuses on ai-robotics and racing.",
+      "display_title": "Atmosphere with Emily Gracey",
+      "blurb": "Meteorologist Emily Gracey sits down each week with leading scientists, researchers, and experts in weather, climate, earth science, and beyond.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896816953": {
       "topics": [
@@ -207767,10 +208427,40 @@
     },
     "1896823990": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "engineering/ai-robotics",
+        "economics/markets",
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "After Further Review focuses on hockey and ai-robotics.",
+      "display_title": "After Further Review",
+      "blurb": "a Podcast by Marcus Antonelli and Patrick Casey.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896824528": {
       "topics": [
@@ -208101,10 +208791,40 @@
     },
     "1896855904": {
       "topics": [
-        "sports/rugby"
+        "space",
+        "relationships",
+        "sports/soccer",
+        "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/soccer",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Extended Bench - NRL focuses on space and relationships.",
+      "display_title": "Extended Bench - NRL",
+      "blurb": "Join dual premiership winner NRL star James Maloney, journalist Ben Talintyre, and Adrian D'Agostino to get stuck into all the weekly NRL news. news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896855981": {
       "topics": [
@@ -208115,11 +208835,40 @@
     },
     "1896857470": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "space",
+        "religion/christianity",
+        "engineering/ai-robotics",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Profit Pulse focuses on space and christianity.",
+      "display_title": "Profit Pulse",
+      "blurb": "Welcome to Profit Pulse — the heartbeat of modern business!Every week, we dive deep into the world of entrepreneurship, strategy, and growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896858377": {
       "topics": [
@@ -208226,10 +208975,40 @@
     },
     "1896865534": {
       "topics": [
-        "tv-film/after-shows"
+        "space",
+        "relationships",
+        "sports/cricket",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/cricket",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Love Island Tea Time focuses on space and relationships.",
+      "display_title": "Love Island Tea Time",
+      "blurb": "Mimi and Gigi sip tea and dig into Love Island drama, news and lore until Love Island Australia starts in November! Currently unedited! ☕️ New Episode.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896865977": {
       "topics": [
@@ -208274,10 +209053,40 @@
     },
     "1896870280": {
       "topics": [
-        "craft"
+        "space",
+        "relationships",
+        "engineering/ai-robotics",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christine's Home Affairs focuses on space and relationships.",
+      "display_title": "Christine's Home Affairs",
+      "blurb": "As my daily business is mostly related to sewing and second hand dealing, I'll be sharing with you my latest projects and ideas for sewing to sell.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896870622": {
       "topics": [
@@ -208360,17 +209169,80 @@
     },
     "1896876070": {
       "topics": [
-        "news/commentary"
+        "religion/judaism",
+        "engineering/ai-robotics",
+        "espionage/cold-war-tech",
+        "history/military-modern"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Battle for Israel's Soul focuses on judaism and ai-robotics.",
+      "display_title": "The Battle for Israel's Soul",
+      "blurb": "To the casual observer, the fight over Israel’s judicial reform appears to be a quarrel about technicalities and procedures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896876538": {
       "topics": [
-        "medicine"
+        "sports/football",
+        "engineering/ai-robotics",
+        "transport/trains",
+        "espionage/cold-war-tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The AWHONN Labor Lens with Lisa Miller focuses on football and ai-robotics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896876660": {
       "topics": [
@@ -208381,17 +209253,77 @@
     },
     "1896876760": {
       "topics": [
-        "comedy/casual-hangs"
+        "relationships",
+        "kids-family/parenting",
+        "society/law",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bits in the City focuses on relationships and parenting.",
+      "display_title": "Bits in the City",
+      "blurb": "Wanna laugh while doing your dishes?! NYC's Nick Alvino & Gabbi Browdy improvise bits, skits, and your fave Broadway references & pop culture impressi.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896877726": {
       "topics": [
-        "travel"
+        "sports/football",
+        "engineering/ai-robotics",
+        "culture/books",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel Better with Chris - Yellow Productions Podcast focuses on football and ai-robotics.",
+      "display_title": "Travel Better with Chris - Yellow Productions Podcast",
+      "blurb": "Tired of out-of-touch travel influencers and generic advice that doesn&#39;t apply to real life? Welcome to &#34;Travel Better with Chris,&#34; the we.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896878342": {
       "topics": [
@@ -208425,18 +209357,77 @@
     },
     "1896879040": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "sports/football",
+        "engineering/ai-robotics",
+        "automotive/racing",
+        "transport/trains"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "All the Cool Girls focuses on football and ai-robotics.",
+      "display_title": "All the Cool Girls",
+      "blurb": "All the Cool Girls is the podcast destination for transforming career setbacks and unexpected life-altering change into powerful comebacks.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896879208": {
       "topics": [
-        "sports/golf"
+        "relationships",
+        "sports/golf",
+        "engineering/ai-robotics",
+        "espionage/cold-war-tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/golf",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "On In 2 Golf Podcast focuses on relationships and golf.",
+      "display_title": "On In 2 Golf Podcast",
+      "blurb": "Hitting the green in two never felt so good. Welcome to On In 2, the ultimate golf podcast for players who love the game, chase the perfect swing, and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896879365": {
       "topics": [
@@ -208470,10 +209461,40 @@
     },
     "1896882298": {
       "topics": [
-        "religion/judaism"
+        "space",
+        "religion/christianity",
+        "religion/judaism",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/judaism",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "You Wouldn’t Believe - Jewish! focuses on space and christianity.",
+      "display_title": "You Wouldn’t Believe - Jewish!",
+      "blurb": "You Wouldn’t Believe—Jewish! is a podcast of surprising Torah insights, inspiring Jewish stories, and engaging conversations with educators and though.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896884449": {
       "topics": [
@@ -208592,10 +209613,40 @@
     },
     "1896892474": {
       "topics": [
-        "comedy/stand-up"
+        "religion/buddhism",
+        "engineering/ai-robotics",
+        "craft/diy-home",
+        "engineering/energy-grid"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aplalar focuses on buddhism and ai-robotics.",
+      "display_title": "Aplalar",
+      "blurb": "Yılmaz Sisters artık Aplalar. Aplalara kafanızı karıştıran her şeyi sorabilirsiniz. Ama sonra kafanız daha çok karışabilir.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896892745": {
       "topics": [
@@ -208606,10 +209657,40 @@
     },
     "1896893830": {
       "topics": [
-        "culture/books"
+        "religion/christianity",
+        "relationships",
+        "engineering/ai-robotics",
+        "espionage/cold-war-tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wodcast focuses on christianity and relationships.",
+      "display_title": "Wodcast",
+      "blurb": "The Wodcast is a fortnightly podcast exploring the words that shape our lives, cultures, relationships, and imagination.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896893882": {
       "topics": [
@@ -208794,10 +209875,40 @@
     },
     "1896906112": {
       "topics": [
-        "culture/art"
+        "space",
+        "sports/football",
+        "engineering/ai-robotics",
+        "espionage/cold-war-tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Feminist Art Lives focuses on space and football.",
+      "display_title": "Feminist Art Lives",
+      "blurb": "Welcome to Feminist Art Lives, a new podcast series about the encounter between art and feminism across Britain and Ireland, in the words of the artis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896906677": {
       "topics": [
@@ -208847,10 +209958,40 @@
     },
     "1896907564": {
       "topics": [
-        "music"
+        "engineering/ai-robotics",
+        "craft/filmmaking",
+        "music/theory-production",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Road Dogs Podcast focuses on ai-robotics and filmmaking.",
+      "display_title": "The Road Dogs Podcast",
+      "blurb": "The Road Dogs Podcast gives a behind the scenes peek at those that work to make the show happen.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896908028": {
       "topics": [
@@ -208944,10 +210085,40 @@
     },
     "1896911776": {
       "topics": [
-        "comedy/casual-hangs"
+        "space",
+        "engineering/ai-robotics",
+        "engineering/energy-fusion",
+        "math"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Don’t Think So Somehow focuses on space and ai-robotics.",
+      "display_title": "Don’t Think So Somehow",
+      "blurb": "For reasons nobody fully understands, Alistair Green and Rachel Stubbings have decided to start recording their weekly conversations, shining an unnec.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896912868": {
       "topics": [
@@ -208989,10 +210160,40 @@
     },
     "1896913426": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "society/law",
+        "craft/filmmaking",
+        "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serves and Returns focuses on tennis and law.",
+      "display_title": "Serves and Returns",
+      "blurb": "Serves & Returns is the tennis podcast where the game comes first and the debates never end.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896913482": {
       "topics": [
@@ -209258,10 +210459,40 @@
     },
     "1896934294": {
       "topics": [
-        "fiction/sci-fi"
+        "space",
+        "engineering/ai-robotics",
+        "transport/trains",
+        "history/military-modern"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Darth Theorist focuses on space and ai-robotics.",
+      "display_title": "Darth Theorist",
+      "blurb": "Star Wars nerds making Star Wars content for all Star Wars enjoyers! We post 5 times a week of Star Wars \"what if\" scenarios! Subscribe, like, and enj.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896934501": {
       "topics": [
@@ -209296,11 +210527,40 @@
     },
     "1896935092": {
       "topics": [
-        "sports",
-        "news"
+        "sports/soccer",
+        "sports/football",
+        "engineering/ai-robotics",
+        "automotive/racing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Extra Time with Terry Michler focuses on soccer and football.",
+      "display_title": "Extra Time with Terry Michler",
+      "blurb": "Join legendary coach Terry Michler—America's winningest high school soccer coach and founder of CBC Dutch Touch—for EXTRA TIME WITH COACH TERRY MICHLE.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896935199": {
       "topics": [
@@ -209354,10 +210614,40 @@
     },
     "1896937594": {
       "topics": [
-        "comedy/casual-hangs"
+        "space",
+        "engineering/ai-robotics",
+        "economics/markets",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "PPPP Prominent People And Their Prolific Proclamations focuses on space and ai-robotics.",
+      "display_title": "PPPP Prominent People And Their Prolific Proclamations",
+      "blurb": "Organic Conversation. Enriching Moments Of History. Gorilla-style recordings of conversations that take place between the biggest icons, both current .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896937832": {
       "topics": [
@@ -209440,10 +210730,40 @@
     },
     "1896938968": {
       "topics": [
-        "sports/hockey"
+        "sports/basketball",
+        "sports/hockey",
+        "engineering/ai-robotics",
+        "medicine/neuroscience"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Peach State Puck focuses on basketball and hockey.",
+      "display_title": "Peach State Puck",
+      "blurb": "Welcome to Peach State Puck, a hockey podcast covering the game across the state of Georgia and beyond.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "1896941268": {
       "topics": [
@@ -209574,10 +210894,40 @@
     },
     "6781010368": {
       "topics": [
-        "business/management"
+        "relationships",
+        "sports/football",
+        "engineering/ai-robotics",
+        "transport/trains"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Evolving with Jessica Nguyen focuses on relationships and football.",
+      "display_title": "Evolving with Jessica Nguyen",
+      "blurb": "The legal industry is changing fast, and the best legal and business leaders aren't waiting for permission to evolve.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6781119098": {
       "topics": [
@@ -209896,10 +211246,40 @@
     },
     "6783886642": {
       "topics": [
-        "nature"
+        "relationships",
+        "engineering/ai-robotics",
+        "automotive/racing",
+        "transport/trains"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Raising Wild focuses on relationships and ai-robotics.",
+      "display_title": "Raising Wild",
+      "blurb": "This is a podcast about raising kids—and ourselves—a little more feral. On purpose.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6783930855": {
       "topics": [
@@ -210078,11 +211458,40 @@
     },
     "6785314414": {
       "topics": [
+        "space",
+        "engineering/ai-robotics",
         "news/tech",
-        "computing"
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Angry Tech Podcast focuses on space and ai-robotics.",
+      "display_title": "The Angry Tech Podcast",
+      "blurb": "The Angry Tech News Podcast is a weekly show where Liam, Colton, and Ocean spend roughly an hour and a half disagreeing with each other about the late.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6785323857": {
       "topics": [
@@ -210243,10 +211652,40 @@
     },
     "6785864446": {
       "topics": [
-        "business/management"
+        "space",
+        "business/startups",
+        "sports/endurance",
+        "nature/ocean-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Forge with Ryan Miller focuses on space and startups.",
+      "display_title": "The Forge with Ryan Miller",
+      "blurb": "Step into the world of industrial manufacturing through candid conversations with the leaders shaping it.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6785931036": {
       "topics": [
@@ -210257,10 +211696,40 @@
     },
     "6785949658": {
       "topics": [
-        "religion/christianity"
+        "religion/spirituality",
+        "religion/christianity",
+        "relationships",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Silicon Spiritualities focuses on spirituality and christianity.",
+      "display_title": "Silicon Spiritualities",
+      "blurb": "Silicon Spiritualities is a podcast from The Gospel Coalition exploring the deeper questions artificial intelligence raises about work, worship, truth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6786023332": {
       "topics": [
@@ -210298,10 +211767,40 @@
     },
     "6786034516": {
       "topics": [
-        "culture/performing-arts"
+        "engineering/ai-robotics",
+        "espionage/cold-war-tech",
+        "history/military-modern",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kanikapila Vintage focuses on ai-robotics and cold-war-tech.",
+      "display_title": "Kanikapila Vintage",
+      "blurb": "Kanikapila Vintage goes deep into the Hawaii Public Radio archives to present interviews and studio sessions that feature the very best of Hawaiian mu.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6786039120": {
       "topics": [
@@ -210465,10 +211964,40 @@
     },
     "6786507298": {
       "topics": [
-        "religion/spirituality"
+        "space",
+        "relationships",
+        "sports/cricket",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/cricket",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Not Another Healer focuses on space and relationships.",
+      "display_title": "Not Another Healer",
+      "blurb": "For so long I've looked past myself for healing. For someone to tell me what's wrong and how to fix it - OH - And which way to go.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6786512987": {
       "topics": [
@@ -210480,10 +212009,40 @@
     },
     "6786513442": {
       "topics": [
-        "culture/design"
+        "engineering/ai-robotics",
+        "true-crime",
+        "medicine/neuroscience",
+        "history/military-modern"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soft Ratios Radio focuses on ai-robotics and true-crime.",
+      "display_title": "Soft Ratios Radio",
+      "blurb": "Each episode, Hoyd Breton — a designer at Soft Ratios Studio — rounds up the research on something he wants to understand, and two synthetic voices re.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6786580554": {
       "topics": [
@@ -210618,10 +212177,40 @@
     },
     "6787817476": {
       "topics": [
-        "sports/fantasy"
+        "sports/soccer",
+        "sports/football",
+        "engineering/ai-robotics",
+        "transport/trains"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "4th & Fantasy focuses on soccer and football.",
+      "display_title": "4th & Fantasy",
+      "blurb": "Kicking of a new season of 4th & Fantasy for the 2025 NFL Season.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6787827890": {
       "topics": [
@@ -210648,17 +212237,77 @@
     },
     "6787978198": {
       "topics": [
+        "space/rockets",
+        "engineering/ai-robotics",
+        "automotive/racing",
         "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Super Tuesdays with Chris Cillizza and Chuck Todd focuses on rockets and ai-robotics.",
+      "display_title": "Super Tuesdays with Chris Cillizza and Chuck Todd",
+      "blurb": "Longtime political analysts Chris Cillizza and Chuck Todd discuss the latest political news and how those stories will affect upcoming elections.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6788021974": {
       "topics": [
-        "fiction/sci-fi"
+        "engineering/ai-robotics",
+        "transport/trains",
+        "culture/books",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Only Human focuses on ai-robotics and trains.",
+      "display_title": "Only Human: BOUND",
+      "blurb": "Only Human: BOUND. One prisoner. One AI. 10 episodes. A sci-fi audio serial.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6788029589": {
       "topics": [
@@ -210779,10 +212428,40 @@
     },
     "6788390326": {
       "topics": [
-        "sports/fantasy"
+        "religion/spirituality",
+        "sports/soccer",
+        "sports/football",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/soccer",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two Guys One Pod focuses on spirituality and soccer.",
+      "display_title": "Two Guys One Pod",
+      "blurb": "Two Guys One Pod | Powered by League Champ Two Guys One Pod is a fantasy football podcast powered by League Champ , covering everything from best ball.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6788420763": {
       "topics": [
@@ -210810,10 +212489,40 @@
     },
     "6788609986": {
       "topics": [
-        "automotive"
+        "automotive/racing",
+        "computing",
+        "automotive",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.7
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Turn 22 focuses on racing and computing.",
+      "display_title": "Turn 22",
+      "blurb": "Turn 22 is a formula one podcast covering everything from strategy, to tech.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6788785050": {
       "topics": [
@@ -210893,18 +212602,77 @@
     },
     "6788924170": {
       "topics": [
-        "philosophy"
+        "space",
+        "relationships",
+        "engineering/ai-robotics",
+        "transport/trains"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Zusmee’s Podcast focuses on space and relationships.",
+      "display_title": "Zusmee’s Podcast",
+      "blurb": "My personal podcast. zusmee.substack.com.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     },
     "6788957362": {
       "topics": [
-        "sports",
-        "news"
+        "space",
+        "religion/spirituality",
+        "sports/football",
+        "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Brad Galli Show focuses on space and spirituality.",
+      "display_title": "The Brad Galli Show",
+      "blurb": "The Brad Galli Show | Interviews and stories covering Detroit and Michigan sports | Former Sports Director WXYZ Detroit TV | Three-time Michigan Sport.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-8916c9a1",
+      "classified_at": "2026-08-13T08:39:20.556Z"
     }
   }
 }
