@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-13T08:26:18.678Z",
+  "built_at": "2026-08-13T17:03:51.986Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-13-0123585a",
+    "last_batch_id": "fresh-2026-08-13-72c5d5e2",
     "last_batch_tier": 1
   },
   "entries": {
@@ -185042,10 +185042,30 @@
     },
     "1821811365": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth chemistry education with world-renowned scientists.",
+      "display_title": "Life's Chemistry Unleashed",
+      "blurb": "Conversations with leading scientists exploring chemistry research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1821813147": {
       "topics": [
@@ -186485,11 +186505,30 @@
     },
     "1827342249": {
       "topics": [
-        "news",
-        "business"
+        "business/startups",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Enterprise AI adoption, strategy, and workforce readiness.",
+      "display_title": "You can with AI",
+      "blurb": "Real-world perspectives on scaling AI in enterprises.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1827372847": {
       "topics": [
@@ -186511,7 +186550,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist meditation teachings in Vietnamese tradition.",
+      "display_title": "Khóa Giảng Thiền",
+      "blurb": "Theravāda Buddhist meditation lectures and teachings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1827701629": {
       "topics": [
@@ -186526,7 +186580,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation careers, accidents, and professional insights.",
+      "display_title": "The Aerpod",
+      "blurb": "Insider discussions on aviation careers and safety.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1827727783": {
       "topics": [
@@ -186643,10 +186712,29 @@
     "1828238325": {
       "topics": [
         "news/tech",
-        "computing"
+        "economics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tech industry trends, crypto, and financial products.",
+      "display_title": "Seeking Alpha",
+      "blurb": "Two women discussing tech careers, finance, and crypto.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1828262584": {
       "topics": [
@@ -186762,7 +186850,22 @@
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lean methodology transformation stories across industries.",
+      "display_title": "Lean Focus Podcast",
+      "blurb": "Business transformation stories through Lean methodology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1828732605": {
       "topics": [
@@ -186801,10 +186904,30 @@
     },
     "1828762851": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Garden design professionals discuss growing and living.",
+      "display_title": "Garden Gab Podcast",
+      "blurb": "Design professionals discuss gardens and outdoor living.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1828786888": {
       "topics": [
@@ -186817,10 +186940,29 @@
     "1828946787": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Peptide therapy and midlife women health.",
+      "display_title": "Peptides for Women",
+      "blurb": "Functional health exploring peptide therapy for women over 40.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1828954777": {
       "topics": [
@@ -186877,10 +187019,30 @@
     },
     "1829355705": {
       "topics": [
-        "religion/hinduism"
+        "philosophy",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Vedantic philosophy applied to modern physics.",
+      "display_title": "Science Meets Vedanta",
+      "blurb": "Ancient Vedantic teachings examined through science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1829456999": {
       "topics": [
@@ -186963,7 +187125,22 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime trial coverage and legal analysis.",
+      "display_title": "MK True Crime",
+      "blurb": "Live trial coverage and expert legal analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1829991747": {
       "topics": [
@@ -187121,7 +187298,22 @@
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unexplained historical and paranormal mysteries.",
+      "display_title": "The Mystery Kids Podcast",
+      "blurb": "Unexplained historical events for young audiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1830375095": {
       "topics": [
@@ -187294,7 +187486,22 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "48 Laws of Power book summary and strategies.",
+      "display_title": "48 Laws of Power",
+      "blurb": "Breakdown of strategies from Greene book.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1831099854": {
       "topics": [
@@ -187323,7 +187530,22 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home improvement and DIY solutions.",
+      "display_title": "This Old House Radio Hour",
+      "blurb": "Expert advice on renovation and home improvement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1831127045": {
       "topics": [
@@ -187424,10 +187646,30 @@
     },
     "1831759257": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophical and literary works analyzed.",
+      "display_title": "Conversations in Philosophy",
+      "blurb": "Philosophy and literature examined through style.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1831825655": {
       "topics": [
@@ -187457,7 +187699,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Elite swimmers share personal stories and training.",
+      "display_title": "Yanel Pinto Natación",
+      "blurb": "Olympic swimmers discuss resilience and elite performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1832095445": {
       "topics": [
@@ -187547,7 +187808,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Space science, astronomy, and cosmic phenomena.",
+      "display_title": "The Universe As We Know It",
+      "blurb": "Exploration of space, astronomy, and cosmos.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1832360658": {
       "topics": [
@@ -187637,10 +187917,30 @@
     },
     "1832633355": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish sisters discussing life, family, and culture.",
+      "display_title": "The Sisters Chat",
+      "blurb": "Sisters discuss work, relationships, and family candidly.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1832634097": {
       "topics": [
@@ -187662,7 +187962,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sci-fi audio drama about a plague.",
+      "display_title": "Havoc Town",
+      "blurb": "Science fiction audio drama in plague-stricken town.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1832706398": {
       "topics": [
@@ -187684,7 +187999,26 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Figure skating analysis and commentary.",
+      "display_title": "The Rocker Skating Podcast",
+      "blurb": "Sharp analysis and commentary on figure skating.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1832757204": {
       "topics": [
@@ -187698,7 +188032,22 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports betting analysis and fantasy sports tips.",
+      "display_title": "DraftKings Network Daily Bets",
+      "blurb": "Daily sports betting tips from betting experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1832816678": {
       "topics": [
@@ -187812,7 +188161,22 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College football analysis and commentary.",
+      "display_title": "Ringer Tailgate",
+      "blurb": "College football analysis with sharp takes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1833119982": {
       "topics": [
@@ -187967,10 +188331,30 @@
     },
     "1833978909": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical artifacts from antiquity come alive.",
+      "display_title": "If Objects Could Talk",
+      "blurb": "Museum artifacts share stories for young audiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1833981444": {
       "topics": [
@@ -188112,10 +188496,30 @@
     },
     "1834325265": {
       "topics": [
-        "nature"
+        "nature/earth-science",
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Glen Canyon and Lake Powell environmental issues.",
+      "display_title": "Lifeblood",
+      "blurb": "Glen Canyon and Lake Powell environmental stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1834364630": {
       "topics": [
@@ -188235,17 +188639,47 @@
     },
     "1834800903": {
       "topics": [
-        "tv-film/interviews"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Audio content unrelated to podcast taxonomy.",
+      "display_title": "A Lot More",
+      "blurb": "Unspecified audio content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1834888089": {
       "topics": [
-        "food"
+        "culture/pop-culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Japanese idol-related content with unclear focus.",
+      "display_title": "長谷川あかりのシャニカマ",
+      "blurb": "Japanese idol and entertainment content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1834894038": {
       "topics": [
@@ -188300,11 +188734,25 @@
     },
     "1834971759": {
       "topics": [
-        "sports",
-        "news"
+        "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Los Angeles Dodgers baseball news and updates.",
+      "display_title": "LA Dodgers News",
+      "blurb": "Daily baseball news about Los Angeles Dodgers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1835009529": {
       "topics": [
@@ -188345,7 +188793,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedy performances and material.",
+      "display_title": "Tight 5 Comedy Podcast",
+      "blurb": "Stand-up comedy performances and comedy content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1835152396": {
       "topics": [
@@ -188356,11 +188819,30 @@
     },
     "1835161695": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "culture/pop-culture",
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Call Her Daddy podcast summary.",
+      "display_title": "Call Her Daddy Summary",
+      "blurb": "Summary content from popular podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1835184751": {
       "topics": [
@@ -188637,10 +189119,30 @@
     },
     "1836024165": {
       "topics": [
-        "sports/hockey"
+        "sports",
+        "news"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.65
+        },
+        {
+          "node": "news",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Utah sports or local news updates.",
+      "display_title": "Utah Mammoth Daily",
+      "blurb": "Utah-focused daily news updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1836044182": {
       "topics": [
@@ -188658,11 +189160,30 @@
     },
     "1836129705": {
       "topics": [
-        "music",
-        "history"
+        "society/government",
+        "news"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Government and political independence topics.",
+      "display_title": "States of Independence",
+      "blurb": "Government and independence-related content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1836163328": {
       "topics": [
@@ -188746,25 +189267,74 @@
     },
     "1836371073": {
       "topics": [
-        "sports",
-        "news"
+        "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Georgia Bulldogs college football news.",
+      "display_title": "Georgia Bulldogs News",
+      "blurb": "Daily news about Georgia Bulldogs football.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1836383439": {
       "topics": [
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vietnamese Buddhist teachings and dharma.",
+      "display_title": "Pháp Thoại Thích Pháp Hòa",
+      "blurb": "Vietnamese Buddhist dharma teachings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1836429837": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog training and hunting dog instruction.",
+      "display_title": "Cornerstone Gundog Academy",
+      "blurb": "Dog training and hunting dog instruction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1836437900": {
       "topics": [
@@ -188801,7 +189371,22 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ohio State Buckeyes football discussion.",
+      "display_title": "Bill and Doug Show",
+      "blurb": "Ohio State football discussion and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1836496108": {
       "topics": [
@@ -188876,7 +189461,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Climate change science and environmental issues.",
+      "display_title": "Climate Unfcked",
+      "blurb": "Climate change science and environmental content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1836783176": {
       "topics": [
@@ -188909,10 +189513,25 @@
     },
     "1836815799": {
       "topics": [
-        "comedy/stand-up"
+        "culture/pop-culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Pop culture or entertainment discussion.",
+      "display_title": "Tart Talk",
+      "blurb": "Pop culture and entertainment discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1836819568": {
       "topics": [
@@ -188940,8 +189559,23 @@
       "topics": [
         "music"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Lo-fi music or ambient content.",
+      "display_title": "Lo-Fi Vibes",
+      "blurb": "Lo-fi music and ambient soundscapes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1836987791": {
       "topics": [
@@ -189030,10 +189664,30 @@
     },
     "1837319709": {
       "topics": [
-        "craft/diy-home"
+        "education/how-to",
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Blue-collar skills and trades instruction.",
+      "display_title": "Torque & Tape",
+      "blurb": "Blue-collar skills and trades instruction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:44.438Z"
     },
     "1837337819": {
       "topics": [
@@ -189051,10 +189705,30 @@
     },
     "1837415115": {
       "topics": [
-        "sports/football"
+        "culture/design",
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Design or architecture discussion.",
+      "display_title": "Sharp or Square",
+      "blurb": "Design and architecture discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-72c5d5e2",
+      "classified_at": "2026-08-13T17:03:51.986Z"
     },
     "1837438235": {
       "topics": [
