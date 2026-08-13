@@ -66840,13 +66840,968 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-13-ef9715ca",
       "classified_at": "2026-08-13T08:51:54.455Z"
+    },
+    "1768858286": {
+      "topics": [
+        "science",
+        "science/physics",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.95
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volcanologist examining scientific methodology, geophysics, planetary discovery, and history of science.",
+      "display_title": "Whimsical Wavelengths - A Science Podcast",
+      "blurb": "A volcanologist examines how science works through geophysics and planetary discovery.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1768858916": {
+      "topics": [
+        "tv-film",
+        "tv-film/after-shows"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality TV recaps with conversational tone and after-show entertainment gossip focus.",
+      "display_title": "Recap Rodeo",
+      "blurb": "Reality TV recaps and after-show discussion with casual conversational tone.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1769093906": {
+      "topics": [
+        "economics",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.95
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial interviews covering macroeconomics, markets, and monetary policy from expert host.",
+      "display_title": "Monetary Matters with Jack Farley",
+      "blurb": "Financial interviews on macroeconomics, markets, and monetary policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1769225582": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA-focused analysis with film breakdowns and basketball news coverage.",
+      "display_title": "The Kevin O'Connor Show",
+      "blurb": "NBA analysis with film breakdowns and basketball news from expert analyst.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1769253998": {
+      "topics": [
+        "business",
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Management consulting and professional services practices with focus on business methodology.",
+      "display_title": "The Consultant's Way Podcast",
+      "blurb": "Management consulting and professional services practices and approaches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1769260064": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soccer analysis spanning Champions League, MLS with player and analyst interviews.",
+      "display_title": "It's Called Soccer!",
+      "blurb": "Soccer analysis covering Champions League and MLS with player interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1769310788": {
+      "topics": [
+        "music",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "DJ mixes from Ghana featuring Afrobeats with curated artist playlists.",
+      "display_title": "DJ Lord OTB Mixes",
+      "blurb": "DJ mixes from Ghana featuring Afrobeats and curated artist playlists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1769804294": {
+      "topics": [
+        "tv-film/animation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fan analysis and ranking of animation shows including Total Drama and object shows.",
+      "display_title": "Object Opinions, a podcast about Object Shows",
+      "blurb": "Analyzes and ranks animation shows with fan discussion and criticism.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1769915228": {
+      "topics": [
+        "kids-family/parenting",
+        "education",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Therapist-hosted parenting guide for tweens emphasizing social-emotional learning.",
+      "display_title": "The Middle School Mary Poppins Podcast",
+      "blurb": "Parenting advice for tweens from therapist host with social-emotional learning focus.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1769937440": {
+      "topics": [
+        "math",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "High school student examining mathematics through voting systems and classical methods.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1770136136": {
+      "topics": [
+        "kids-family/parenting",
+        "kids-family"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting coach addressing discipline, boundary-setting, and child behavior management.",
+      "display_title": "BratBusters Parenting Podcast",
+      "blurb": "Parenting coach addresses discipline, boundary-setting, and child behavior.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1770963584": {
+      "topics": [
+        "culture/fashion",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion criticism examining cultural intersections through meta-fashion journalism.",
+      "display_title": "refashioned",
+      "blurb": "Fashion criticism examining cultural intersections and meta-fashion journalism.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1771020092": {
+      "topics": [
+        "health/fitness",
+        "health/nutrition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness and nutrition guidance for mothers with wellness coaching and meal focus.",
+      "display_title": "The Stay Fit Mom Podcast",
+      "blurb": "Fitness and nutrition guidance for mothers with meal prep and wellness coaching.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1771201124": {
+      "topics": [
+        "science/chemistry",
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry focus on PFAS elimination with manufacturer guidance for forever chemicals.",
+      "display_title": "All about Exiting PFAS",
+      "blurb": "Examines PFAS forever chemicals from manufacturing perspective with elimination guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1771312490": {
+      "topics": [
+        "tv-film",
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity interviews with Hollywood insiders discussing television and film careers.",
+      "display_title": "The Patrick LabyorSheaux with Patrick Labyorteaux",
+      "blurb": "Celebrity interviews with Hollywood insiders discussing television and film careers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1771507910": {
+      "topics": [
+        "hobbies",
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.95
+        },
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gardening and horticulture covering plant care, English roses, and seasonal techniques.",
+      "display_title": "The Gardener Ben Podcast",
+      "blurb": "Gardening and horticulture guidance covering plant care and seasonal growing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1771549940": {
+      "topics": [
+        "medicine",
+        "medicine/biology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Virology and infectious disease education with diagnostic testing and medical focus.",
+      "display_title": "PASCV: Gone Viral",
+      "blurb": "Virology and infectious disease education with diagnostic testing and medical focus.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1771902158": {
+      "topics": [
+        "fiction/sci-fi",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized science fiction audio drama with colony ship narrative and storytelling.",
+      "display_title": "Deep Space Radio",
+      "blurb": "Serialized science fiction audio drama with ongoing colony ship narrative.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1771917740": {
+      "topics": [
+        "paranormal",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "UFO and paranormal discussion from alternative perspectives with conspiracy focus.",
+      "display_title": "American Alchemy with Jesse Michels",
+      "blurb": "UFO and paranormal topics from alternative viewpoints with conspiracy theory coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1772336162": {
+      "topics": [
+        "adventure/exploration",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bowhunting adventures focused on whitetail deer with outdoor filming and storytelling.",
+      "display_title": "The Watering Hole",
+      "blurb": "Bowhunting adventures and stories featuring whitetail deer and outdoor narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1772641448": {
+      "topics": [
+        "tv-film",
+        "tv-film/history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "James Bond analysis spanning films, books, and cultural impact.",
+      "display_title": "The 007 Files",
+      "blurb": "James Bond analysis covering films, books, and cultural impact.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1772686490": {
+      "topics": [
+        "computing",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical device cybersecurity with healthcare technology and regulatory landscape focus.",
+      "display_title": "The Med Device Cyber Podcast",
+      "blurb": "Medical device cybersecurity covering healthcare technology and regulatory challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1772719946": {
+      "topics": [
+        "comedy/stand-up",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedian hosting comedy podcast with news commentary and satirical humor.",
+      "display_title": "Michelle Wolf's Thought Box",
+      "blurb": "Stand-up comedian hosts comedy podcast with satirical news commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1773330038": {
+      "topics": [
+        "business",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business leader and founder interviews focusing on strategy and entrepreneurship.",
+      "display_title": "James Reed: all about business",
+      "blurb": "Interviews with business leaders and founders covering strategy and entrepreneurial insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1774049804": {
+      "topics": [
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal stories covering ghosts and unexplained phenomena from host Tony Brueski.",
+      "display_title": "Into The Paranormal, Podcast With Tony Brueski",
+      "blurb": "Paranormal stories examining ghosts and unexplained phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1774054706": {
+      "topics": [
+        "sports/volleyball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball analysis with NCAA and international coverage featuring player interviews.",
+      "display_title": "Volley Talk with Sarah Pavan",
+      "blurb": "Volleyball analysis covering NCAA and international competition with player interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1774065248": {
+      "topics": [
+        "craft/woodworking",
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.95
+        },
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Woodturning craft podcast covering lathes, tools, techniques, and conversation.",
+      "display_title": "The Woodturning Podcast",
+      "blurb": "Woodturning craft guidance covering lathes, tools, and techniques.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1774078592": {
+      "topics": [
+        "comedy",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improv comedy show building fictional town with guest comedians collaboratively.",
+      "display_title": "The Town Show",
+      "blurb": "Improv comedy building fictional town with guest comedians through collaborative storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1774287272": {
+      "topics": [
+        "adventure/exploration",
+        "adventure"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.9
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's outdoor adventure focused on backpacking, hiking, and self-discovery.",
+      "display_title": "The Adventurous Reinvention",
+      "blurb": "Women's outdoor adventure covering backpacking and hiking with self-discovery focus.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1774319150": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA statistics analysis with data-driven approach to basketball metrics.",
+      "display_title": "The Big Number",
+      "blurb": "NBA statistics analysis with data-driven approach to basketball metrics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1775197940": {
+      "topics": [
+        "news/daily",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Morning radio show with light news, gossip, and on-air banter format.",
+      "display_title": "Andy and Kat on Majic 95.1 WAJI",
+      "blurb": "Morning radio show featuring light news and entertainment gossip.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1775479604": {
+      "topics": [
+        "kids-family/stories",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pokémon audio stories for children featuring battles, adventures, and narratives.",
+      "display_title": "Pokémon Stories",
+      "blurb": "Children's audio stories featuring Pokémon battles and adventures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1775691320": {
+      "topics": [
+        "health",
+        "health/nutrition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health innovation covering wound care and medical devices with salutogenesis focus.",
+      "display_title": "Health Unlocked: The Power of Salutogenesis",
+      "blurb": "Health innovation and medical devices focusing on wound care and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1775839058": {
+      "topics": [
+        "health",
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Public health advocacy examining pandemic response, disease history, and policy.",
+      "display_title": "Public Health is Dead",
+      "blurb": "Public health advocacy examining pandemic response and disease history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1776212282": {
+      "topics": [
+        "news/daily",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Morning radio show with local news, celebrity gossip, and light entertainment.",
+      "display_title": "Melissa Moore In The Morning",
+      "blurb": "Morning radio show featuring local news and celebrity updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1776258596": {
+      "topics": [
+        "travel",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cruise travel podcast with ship reviews, vacation planning tips, and hacks.",
+      "display_title": "Professor Melissa's Cruise Pod",
+      "blurb": "Cruise travel podcast covering ship reviews and vacation planning tips.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-828fd9fa",
+      "classified_at": "2026-08-13T17:09:34.598Z"
     }
   },
-  "built_at": "2026-08-13T08:51:54.455Z",
+  "built_at": "2026-08-13T17:09:34.598Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-13-ef9715ca",
+    "last_batch_id": "fresh-2026-08-13-828fd9fa",
     "last_batch_tier": 1
   }
 }
