@@ -186,20 +186,31 @@ pass, not for bm25).
 because neither earned it.** The full experiment and its numbers are in
 `docs/research/corpus/PLAN.md`'s 2026-08-13 retro; the short version:
 
-| corpus chunking | mode | found | Recall@5 | MRR@8 | nDCG@8 |
+| corpus chunking | mode | hit@5 | Recall@5 | MRR@8 | nDCG@8 |
 |---|---|---|---|---|---|
-| **chars/4, 500–1000 est — as shipped** | **keyword** | 15/15 | 1.000 | **0.902** | **0.789** |
-| bge tokenizer, 100–400 real | keyword | 15/15 | 1.000 | 0.828 | 0.754 |
-| bge tokenizer, 100–400 real | vector | 13/15 | 0.867 | 0.683 | 0.576 |
-| bge tokenizer, 100–400 real | hybrid | 15/15 | 1.000 | 0.856 | 0.670 |
+| **chars/4, 500–1000 est — as shipped** | **keyword** | 15/15 | **0.867** | **0.902** | **0.789** |
+| chars/4 (62% of vectors truncated) | vector | 12/15 | 0.633 | 0.633 | 0.553 |
+| chars/4 (62% of vectors truncated) | hybrid | 14/15 | 0.689 | 0.789 | 0.655 |
+| bge tokenizer, 100–400 real | keyword | 15/15 | 0.867 | 0.828 | 0.754 |
+| bge tokenizer, 100–400 real | vector | 12/15 | 0.622 | 0.650 | 0.564 |
+| bge tokenizer, 100–400 real | hybrid | 14/15 | 0.744 | 0.800 | 0.650 |
 
-Two gates decide the default, and they are code (`compareToBaseline` in
-`eval.mjs`), not prose: **no query may regress from found to not-found**, and
-the candidate must beat fixed-keyword on **both** Recall@5 and MRR. Keyword
-already answers 15/15, so recall cannot improve — a tied 1.000 is not a win,
-and hybrid's +0.028 MRR is one metric of two. Worse, embeddings *require* the
-re-chunk (62% of the corpus was over bge's 512-token limit at the old chunk
-size), and the re-chunk costs keyword 0.074 MRR — more than hybrid gives back.
+**Keyword wins every metric in every configuration**, and both candidates lose
+at least one query outright. Two gates decide the default, and they are code
+(`compareToBaseline` in `eval.mjs`), not prose: **no query may regress from
+found to not-found**, and the candidate must beat fixed-keyword on **both**
+Recall@5 and MRR. Hybrid fails all three terms (−0.122 Recall@5, −0.028 MRR,
+and it drops q12 entirely). On top of that, embeddings *require* the re-chunk —
+62% of the corpus was over bge's 512-token limit at the old chunk size, and
+truncating it instead is the second and third rows above, which are worse — and
+that re-chunk costs keyword a further 0.074 MRR.
+
+**`Recall@5` here means recall**: the fraction of a query's expected sources
+retrieved, averaged. It briefly meant *hit rate* (1.0 if any one of them came
+back), which pinned the keyword baseline at 1.000 and made "beat the baseline
+on Recall@5" unpassable by construction. `hit5` is that number, under its own
+name. If a baseline ever reads 1.000 again, suspect the metric before believing
+the verdict — `compareToBaseline` now says so out loud.
 
 What embeddings genuinely do is answer questions phrased in words the corpus
 never uses ("why do the numbers stop lining up after the adverts change" finds

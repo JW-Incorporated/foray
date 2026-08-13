@@ -486,10 +486,19 @@ its reasoning.
   with a one-line notice rather than failing — the CLI must never hard-fail for
   someone who only wants keyword search.
 - **The backfill is gated on measurement, and a negative result is a valid
-  outcome.** Keyword search already answers 15/15 on the committed gold set, so
-  recall cannot improve and an unchanged `1.000` is not evidence of anything.
-  The default mode flips only if hybrid beats fixed-keyword on both Recall@5
-  and MRR with no query regressing from found to not-found; otherwise the
-  default stays `keyword` and the numbers say so. Vector-only is reported
-  either way — it is the number that distinguishes "the model isn't helping"
-  from "the fusion isn't helping".
+  outcome.** The default mode flips only if a candidate beats fixed-keyword on
+  both Recall@5 and MRR with no query regressing from found to not-found;
+  otherwise the default stays `keyword` and the numbers say so. Vector-only is
+  reported either way — it is the number that distinguishes "the model isn't
+  helping" from "the fusion isn't helping". **Outcome: the default did not
+  move; see `docs/research/corpus/PLAN.md`'s 2026-08-13 retro.**
+- **A gate is only as honest as its metric, so the metric is now part of the
+  decision.** This pass shipped with `Recall@5` computed as *hit rate* — 1.0 if
+  any one of a query's expected sources came back — which scored the keyword
+  baseline a perfect 1.000 and made "beat the baseline on Recall@5"
+  unpassable by construction. Real recall (fraction of expected sources
+  retrieved) puts that baseline at 0.867, with real headroom. `compareToBaseline`
+  now reports a saturated baseline explicitly rather than returning a quiet
+  `false`, refuses to credit a run that silently downgraded, and has tests.
+  The standing rule: **a retrieval metric that reads 1.000 on the first try is
+  a bug until proven otherwise.**

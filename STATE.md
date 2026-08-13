@@ -13,18 +13,22 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ### corpus/embeddings — the embedding backfill: a measured NO (2026-08-13, COMPLETE)
 
-PRs: `corpus/embeddings-schema` (migration 0003: `embedding_models` +
-`chunk_embeddings`, replacing the single `chunks.embedding` column) and
-`corpus/embeddings-backfill` (the quarantined runtime, `search --mode`,
-three-mode eval). Ran end to end: 1268 vectors in 61s, local, keyless, $0.
-**The answer is no — the default search mode stays `keyword`, and the corpus
-is left on its original chunking with no vectors stored.** Hybrid beat keyword
-on MRR (+0.028) but tied on Recall@5 at the 1.000 ceiling, so it failed the
-committed gate; and embeddings require a re-chunk that costs keyword 0.074 MRR
-— more than hybrid gives back. Vector-only lost two queries outright. Full
-numbers, per query: `docs/research/corpus/PLAN.md`'s 2026-08-13 retro.
-Embeddings do genuinely answer paraphrase queries keyword cannot, which is why
-the capability is committed rather than reverted — opt-in, ~65s to reproduce.
+Branch `corpus/embeddings` (migration 0003: `embedding_models` +
+`chunk_embeddings`, replacing the single `chunks.embedding` column; the
+quarantined runtime; `search --mode`; a three-mode eval). Ran end to end:
+1256 vectors in ~1 minute, local, keyless, $0. **The answer is no — the default
+search mode stays `keyword`, and the corpus is left on its original chunking
+with no vectors stored.** Keyword beat both candidates on every metric in every
+configuration; hybrid is −0.122 Recall@5, −0.028 MRR, −0.104 nDCG and loses one
+gold query outright. Embeddings additionally require a re-chunk that costs
+keyword a further 0.074 MRR. Full numbers, per query:
+`docs/research/corpus/PLAN.md`'s 2026-08-13 retro. Embeddings do genuinely
+answer paraphrase queries keyword cannot, which is why the capability is
+committed rather than reverted — opt-in, ~65s to reproduce.
+- **Caught in review, worth knowing:** the first draft of this verdict rested
+  on a metric labelled `Recall@5` that was actually hit rate, pinning the
+  baseline at 1.000 and making one gate unpassable by construction. Fixed,
+  tested, re-measured; the conclusion held and got stronger.
 - **Owned directories:** `tools/corpus/`, `docs/research/corpus/`.
 - **Dependency note:** `tools/corpus/embed/` carries `@huggingface/transformers`
   (**373MB installed**, measured). It is a separate package.json; CI's
@@ -35,7 +39,7 @@ the capability is committed rather than reverted — opt-in, ~65s to reproduce.
   `removeStaleArchives` was *deleting* real archived markdown on every
   `npm test`. Archive root is now a parameter alongside the DB.
 - **Shared files touched, each its own commit:** `test/suite-integrity.test.js`
-  (floors, tools/corpus 175 → 263), `docs/DECISIONS.md`, `CLAUDE.md`.
+  (floors, tools/corpus 175 → 279), `docs/DECISIONS.md`, `CLAUDE.md`.
 - **Out of scope, untouched:** `data/*.json`, `tools/segments|transcribe|refresh`,
   `backend/`, `app.js`, `.github/`.
 

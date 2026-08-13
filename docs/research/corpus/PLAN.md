@@ -283,6 +283,32 @@ minute; it is opt-in, and the numbers below say why it should stay that way.
 Joey approved running this knowing the recommendation was against it. This is
 the real answer, not a flattering one.
 
+### The measurement bug that nearly published a rigged verdict
+
+The first pass of this retro reported the gates as passed/failed against a
+metric labelled **Recall@5** that was not recall. `eval.mjs` computed
+`top5.some(id => primary.includes(id))` — **hit rate**: 1.0 if *any* one of a
+query's right answers came back. Ten of the fifteen gold queries have two or
+three primaries, so keyword search scored a perfect 1.000 while actually
+retrieving one of q1's three sources, one of q4's two, one of q15's two.
+
+That is not a rounding problem. Gate 2 requires a candidate to *beat* the
+baseline on Recall@5, and a baseline pinned at 1.000 **by construction** cannot
+be beaten by anything, ever. The gate was unpassable, and the first draft of
+this retro reported its failure as a finding about embeddings ("keyword already
+answers every question, so recall cannot improve") when it was a fact about the
+metric. Five documents repeated it.
+
+Fixed: `recall5` is now `|primaries ∩ top5| / |primaries|`, the hit-rate number
+survives under its own name (`hit5`), and `compareToBaseline` reports a
+saturated baseline explicitly instead of returning a quiet `false`. **True
+keyword Recall@5 on the shipped corpus is 0.867, not 1.000** — there was 0.133
+of headroom the whole time. Everything below is re-measured against it.
+
+The lesson generalises past this corpus: a metric that reads 1.000 on the first
+try deserves more suspicion than one that reads 0.6, and a gate whose baseline
+sits at the ceiling is not a strict gate, it is a broken one.
+
 ### Step zero: the tokenizer measurement, which changed everything downstream
 
 `corpus token-histogram` runs the model's own tokenizer over the exact string
@@ -293,10 +319,10 @@ by the chars/4 heuristic to 500–1000 "tokens"):
 |---|---|
 | p50 / p90 / p99 / max | 652 / 1094 / 1569 / 2253 |
 | over bge's 512-token limit | **348 of 558 — 62.4%** |
-| chars/4 drift | real = **1.07x** estimated |
+| chars/4 drift | real = **1.05x** estimated |
 
 So the crude heuristic was not merely crude, it was crude in the *dangerous*
-direction: it undercounts, and its 1000-token ceiling lands around 1070 real
+direction: it undercounts, and its 1000-token ceiling lands around 1050 real
 tokens — double the model's limit. Embedding the corpus as it stood would have
 silently truncated **62% of it**, with `search` still displaying the whole
 chunk. That is the failure mode worth the whole measurement step: nothing
@@ -304,27 +330,35 @@ errors, nothing looks wrong, and two-thirds of the corpus is invisible to the
 retriever that claims to cover it.
 
 Re-chunked with the real tokenizer at 100–400 real tokens (`corpus rechunk
---tokenizer`), 558 → **1268 chunks**: p50 350, p90 412, max 488, **0%
-truncated**, 0.2% within 32 tokens of the limit. Backfill: 1268/1268 vectors
-in **61 seconds** on CPU, no API key, $0.
+--tokenizer`), 558 → **1256 chunks**: p50 ~350, p90 ~412, **0% truncated**,
+0.1% within 32 tokens of the limit. Backfill: 1256/1256 vectors in about a
+minute on CPU, no API key, $0.
 
-### The three modes, side by side
+### Every configuration, measured
 
-15 gold queries, depth top-8 (the CLI's own default), measured on distinct
-source ids. All three modes ran against the same re-chunked corpus.
+15 gold queries, depth top-8 (the CLI's own default), scored on distinct source
+ids. Both chunkings, all three modes — including the one the first draft never
+ran: embedding the **shipped** corpus and accepting bge's truncation, which is
+the only configuration where vectors could be added at zero cost to keyword.
 
-| | found | Recall@5 | MRR@8 | nDCG@8 |
-|---|---|---|---|---|
-| keyword | 15/15 | 1.000 | 0.828 | 0.754 |
-| vector | 13/15 | 0.867 | 0.683 | 0.576 |
-| hybrid (RRF, k=60) | 15/15 | 1.000 | **0.856** | 0.670 |
+| corpus chunking | mode | hit@5 | Recall@5 | MRR@8 | nDCG@8 |
+|---|---|---|---|---|---|
+| **chars/4, 500–1000 est (558 chunks) — as shipped** | **keyword** | 15/15 | **0.867** | **0.902** | **0.789** |
+| chars/4 (62% of vectors truncated) | vector | 12/15 | 0.633 | 0.633 | 0.553 |
+| chars/4 (62% of vectors truncated) | hybrid | 14/15 | 0.689 | 0.789 | 0.655 |
+| bge tokenizer, 100–400 real (1256 chunks) | keyword | 15/15 | 0.867 | 0.828 | 0.754 |
+| bge tokenizer, 100–400 real | vector | 12/15 | 0.622 | 0.650 | 0.564 |
+| bge tokenizer, 100–400 real | hybrid | 14/15 | 0.744 | 0.800 | 0.650 |
 
-Per-query first-hit rank (`MISS` = the source was not in the top 8):
+**Keyword wins every metric in every configuration.** Not "ties at a ceiling" —
+wins, on a metric with room above it.
+
+Per-query first-hit rank on the re-chunked corpus (`MISS` = not in the top 8):
 
 | q | keyword | vector | hybrid | query |
 |---|---|---|---|---|
 | 1 | 1 | 1 | 1 | how does DAI break timestamps |
-| 2 | 1 | 2 | 1 | what loudness target for stitched segments |
+| 2 | 1 | **MISS** | 2 | what loudness target for stitched segments |
 | 3 | 1 | 1 | 1 | does the server test cover embedded images |
 | 4 | 1 | 1 | 1 | how do I fuse BM25 and vector results |
 | 5 | 3 | 2 | 2 | diarization: who is speaking when |
@@ -334,54 +368,52 @@ Per-query first-hit rank (`MISS` = the source was not in the top 8):
 | 9 | 1 | 4 | 1 | audio fingerprinting to detect a repeated ad |
 | 10 | 1 | 1 | 1 | gapless playback of queued items on iOS |
 | 11 | 1 | 1 | 1 | what does TTS cost per character |
-| 12 | 3 | **MISS** | 3 | how do I stop an LLM judge from favouring long answers |
+| 12 | 3 | **MISS** | **MISS** | how do I stop an LLM judge from favouring long answers |
 | 13 | 1 | 2 | 1 | can I republish someone's podcast audio |
 | 14 | 1 | 1 | 1 | how are podcast downloads counted as a listen |
 | 15 | 4 | 2 | 2 | why did the clip-sharing apps die |
 
-**Gate 1 (no query may regress from found to not-found):** hybrid passes,
-vector fails outright — it loses q7 and q12 entirely.
+**Gate 1 (no query may regress from found to not-found):** both candidates
+fail. Hybrid loses q12; vector loses q2, q7 and q12.
 
-**Gate 2 (beat fixed-keyword on BOTH Recall@5 and MRR):** hybrid **fails**.
-Recall is tied at 1.000, and tied is not better — keyword already answered
-every question in the set, so recall had nowhere to go and an unchanged 1.000
-is not a win. MRR does improve (+0.028), but on one metric of two.
+**Gate 2 (beat fixed-keyword on BOTH Recall@5 and MRR):** both fail, on both
+terms. Hybrid is −0.122 Recall@5, −0.028 MRR, −0.104 nDCG.
 
-**Vector-only is reported because it is the diagnostic number**, and it says
-the model is the weak link rather than the fusion: RRF recovers both of the
-queries dense retrieval loses, which is exactly what fusion is for. A better
-model would raise the whole table; better fusion would not.
+**Vector-only is the diagnostic number**, and it says the model is the weak
+link, not the fusion: RRF recovers two of the three queries dense retrieval
+loses. A better encoder would lift the whole table; better fusion would not.
 
-### The finding that actually decides it: re-chunking costs the default mode
+### And the re-chunk costs the default mode on top of that
 
-The comparison above holds chunking constant, which flatters the experiment.
-Embeddings require the re-chunk, so the honest baseline is the corpus as it
-was before any of this:
-
-| corpus chunking | mode | found | Recall@5 | MRR@8 | nDCG@8 |
-|---|---|---|---|---|---|
-| **chars/4, 500–1000 est (558 chunks) — as shipped** | **keyword** | 15/15 | 1.000 | **0.902** | **0.789** |
-| bge tokenizer, 100–400 real (1268 chunks) | keyword | 15/15 | 1.000 | 0.828 | 0.754 |
-| bge tokenizer, 100–400 real | vector | 13/15 | 0.867 | 0.683 | 0.576 |
-| bge tokenizer, 100–400 real | hybrid | 15/15 | 1.000 | 0.856 | 0.670 |
-
-**The best number in the whole table is the configuration we already had.**
-Re-chunking for the embedding model costs keyword search 0.074 MRR and 0.035
-nDCG, and hybrid on the re-chunked corpus (0.856) does not climb back to
-plain keyword on the original (0.902). Embeddings are not neutral here; on
-this measured set they are a net loss, and the loss is paid by the mode that
-answers every query.
+Embeddings *require* the re-chunk (the alternative — truncating 62% of the
+corpus — is the second and third rows of the table, and it is worse). That
+re-chunk costs keyword search **0.074 MRR and 0.035 nDCG**, while leaving its
+Recall@5 untouched at 0.867. So the price is paid entirely in ranking quality,
+by the mode that answers every question, to enable a mode that answers fewer.
 
 The mechanism is worth keeping: scores are computed on **distinct sources**
 within a **chunk-level top-8**. Halving chunk size roughly halves how many
 distinct sources fit in the eight rows a user actually sees, so a retrieval
-depth tuned to the product punishes small chunks. Anyone re-running this
-should change the depth and the chunk size together, or not at all.
+depth tuned to the product punishes small chunks. Anyone re-running this should
+change the depth and the chunk size together, or not at all.
 
-The only way to have both would be two chunkings — a coarse one for FTS5 and
-a fine one for vectors — which means a second chunk table, a second FTS
-index, and two things to keep in sync with `documents`. That is a real
-architecture, not a flag, and nothing measured here justifies it.
+The only way to have both would be two chunkings — coarse for FTS5, fine for
+vectors — meaning a second chunk table, a second FTS index, and two things to
+keep in sync with `documents`. That is an architecture, not a flag, and nothing
+measured here justifies it.
+
+### How much of this the gold set can actually resolve: less than it looks
+
+Two runs of the re-chunked configuration differing **only** in a hard-split
+detail (1253 vs 1256 chunks, from a one-line chunker fix) moved hybrid's MRR by
+0.045 and flipped q12 between found and MISS. The gold set's own standing
+caveat says 15 questions cannot resolve small differences; this is that caveat
+with a number on it.
+
+So the safe reading of the table is the **direction and the size of the gaps**
+— keyword ahead by 0.12 recall and 0.10 nDCG, consistently, in both chunkings —
+not any single decimal. A candidate that had come within 0.01 would have
+deserved a bigger gold set rather than a verdict.
 
 ### What embeddings did do, which no number above captures
 
@@ -396,17 +428,19 @@ by someone looking at the corpus — dense retrieval wins outright:
 
 Sources 9/19 are the DAI-timestamp answer; 25/26 are topic segmentation.
 Keyword returns nothing relevant for either, because the user used none of
-the corpus's words. This is a real capability and it is why the code is
-committed rather than reverted — but two hand-picked queries are an anecdote,
-not a measurement, and they do not overturn a gate. If paraphrase robustness
-ever becomes the goal, the honest next step is a gold set written *without*
-looking at the corpus, not a default flipped on the strength of two examples.
+the corpus's words. (Both were run on the re-chunked, fully-embedded corpus.)
+This is a real capability and it is why the code is committed rather than
+reverted — but two hand-picked queries are an anecdote, not a measurement, and
+they do not overturn a gate that hybrid failed on every term. If paraphrase
+robustness ever becomes the goal, the honest next step is a gold set written
+*without* looking at the corpus, not a default flipped on two examples.
 
 ### Decisions taken
 
 1. **Default mode stays `keyword`** (`DEFAULT_SEARCH_MODE` in `search.mjs`).
-   The gates are encoded in `eval.mjs`'s `compareToBaseline`, so the next
-   person gets the same verdict from the same rule rather than from prose.
+   The gates are encoded in `eval.mjs`'s `compareToBaseline` — now with tests,
+   which it did not have when it first decided this — so the next person gets
+   the same verdict from the same rule rather than from prose.
 2. **The corpus is left on the default chunking, with no vectors stored.**
    Shipping the re-chunked corpus would have degraded the mode everyone
    actually uses. `corpus rechunk --tokenizer && corpus embed` reproduces the
@@ -444,3 +478,15 @@ best at. Before trying a bigger model, though, note that the whole
 experiment's cost centre is the re-chunk, and that cost is measured above —
 any future attempt should re-measure the keyword baseline on its own chunking
 before claiming an improvement.
+
+Two process notes that cost real time here and would again:
+
+- **Check the metric before trusting the verdict.** A gate whose baseline
+  reads 1.000 is not strict, it is broken, and it will happily produce a
+  confident, well-formatted, wrong conclusion. `compareToBaseline` now says
+  "the baseline is at 1.000 on X — that term cannot be beaten, only tied"
+  rather than returning a quiet false.
+- **The decision code needs tests before the decision, not after.** The gates
+  went into this repo untested and immediately decided a stack question. They
+  have tests now, including one that asserts a tie does not count as a win and
+  one that asserts a downgraded run can never earn the default.
