@@ -1,0 +1,20 @@
+# Nothing produced by the transcription harness belongs in git.
+# Keep venv / weights / audio / transcripts in a scratch dir outside the repo;
+# this is only a second line of defence if you run things in place.
+venv/
+.venv/
+models/
+audio/
+results/
+*.mp3
+*.m4a
+*.wav
+# Transcripts are the thing most likely to get dumped here by accident, and a
+# committed one is ~400 KB of text the pipeline is supposed to discard. Blanket
+# *.json is deliberate: add an explicit `!` exception if this directory ever
+# needs a committed JSON file. `package.json` is pre-excepted because the CI
+# suite runner (tools/ci/run-suites.mjs) treats a directory with one as a
+# package to install and run -- silently ignoring it would silently drop this
+# directory's tests.
+*.json
+!package.json
