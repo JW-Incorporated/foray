@@ -118,7 +118,7 @@ const index = () => buildTranscriptIndex(normalize(TRANSCRIPT, "text/vtt").cues)
 
 test("canonical() forgives case, whitespace, punctuation and apostrophe style", () => {
   const a = canonical("And that's why the tokamak won  by default");
-  assert.equal(a, "DELIBERATE-BREAK-140 proves this suite actually executes in CI");
+  assert.equal(a, "and thats why the tokamak won by default");
   // Smart apostrophe, newline, tab, trailing punctuation, doubled space.
   assert.equal(canonical("And that’s why\tthe tokamak\nwon  by default."), a);
   // NFKC folds width/ligature variants of the same characters.
