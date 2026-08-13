@@ -124,8 +124,15 @@ instead.
 - The pipeline suite your change touches: `node --test "tools/refresh/*.test.mjs"`
   (likewise `tools/segments/`, `tools/transcribe/`, `player/**/*.test.js`).
   `tools/corpus/` has its own deps: `cd tools/corpus && npm install && npm test`
-  (`node:sqlite` is flagged on Node 22.x — there, run
-  `node --experimental-sqlite --test *.test.mjs`; unflagged on >=23.4).
+  (that package's `test` script carries `--experimental-sqlite` itself, so it is
+  correct on Node 22.x where `node:sqlite` is flagged, and on >=23.4 where it is
+  not).
+- **Everything CI runs, in one command: `node tools/ci/run-suites.mjs`**
+  (`--list` to see the plan without running it, `--skip-install` to reuse
+  already-installed package deps). CI runs exactly this, so a green run here is
+  a green `data-and-site`. It discovers suites rather than listing them: a new
+  `tools/<dir>/` is picked up the day it lands, and a directory with its own
+  `package.json` + `test` script is installed and run in place.
 - Site JS: `node --check app.js`
 - Data integrity: CI (`.github/workflows/ci.yml`) validates all JSON + session
   episode refs on push.
@@ -135,6 +142,12 @@ instead.
 `test/suite-integrity.test.js` fails CI ("every suite on disk is covered by a
 floor"). That is deliberate, not friction: an unfloored suite can be quietly
 deleted later by a PR that auto-merges, and a deleted suite passes CI.
+
+That file also asserts the opposite direction (issue #140): every floored suite
+must be in `tools/ci/run-suites.mjs`'s execution plan. A suite that is floored
+but never executed is the worse failure of the two — it reads as coverage and
+protects nothing — so the two mechanisms are now pinned to each other and
+cannot drift.
 
 ## Product principles (supersede everything, including marketing findings)
 
