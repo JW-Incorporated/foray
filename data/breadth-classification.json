@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-13T08:57:53.547Z",
+  "built_at": "2026-08-13T17:08:57.059Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-13-c2038d57",
+    "last_batch_id": "fresh-2026-08-13-d7a64438",
     "last_batch_tier": 1
   },
   "entries": {
@@ -191393,10 +191393,29 @@
     "1852247867": {
       "topics": [
         "health/nutrition",
-        "food"
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Evidence-based men's health podcast focusing on nutrition, prostate, urological health.",
+      "display_title": "The Male Room with Dr. Jesse Mills",
+      "blurb": "Dr. Jesse Mills separates health fact from hype with data-driven medicine for men's wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1852272754": {
       "topics": [
@@ -191427,7 +191446,22 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep dives into high-performance truck builds, drag racing, custom automotive projects.",
+      "display_title": "Gas Talk",
+      "blurb": "Behind-the-scenes look at extreme truck builds and the custom automotive lifestyle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1852322957": {
       "topics": [
@@ -191541,10 +191575,29 @@
     "1852589555": {
       "topics": [
         "news/tech",
-        "computing"
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI infrastructure investment analysis with focus on stocks and market opportunities.",
+      "display_title": "Milk Road AI",
+      "blurb": "Tech market analysis and AI stock picks from investors tracking infrastructure and semiconductors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1852592496": {
       "topics": [
@@ -191675,7 +191728,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Lakers and NBA analysis, trade rumors, game reactions.",
+      "display_title": "Hoops Talk",
+      "blurb": "Daily Lakers and NBA coverage with game analysis, trades, and instant postgame reactions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1853094614": {
       "topics": [
@@ -191706,7 +191774,26 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brazilian Portuguese instruction through authentic conversations and grammar lessons.",
+      "display_title": "Speaking Brazilian Podcast",
+      "blurb": "Learn Brazilian Portuguese through authentic conversations with a native instructor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1853453942": {
       "topics": [
@@ -191807,18 +191894,56 @@
     "1853729741": {
       "topics": [
         "medicine/biology",
-        "science",
-        "nature"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with longevity, aging, and biotech leaders about extending human lifespan.",
+      "display_title": "Free Radicals",
+      "blurb": "Conversations with visionaries in longevity science and biotechnology about defeating aging.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1853735207": {
       "topics": [
-        "philosophy"
+        "philosophy/ideas",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Long-form philosophical exploration of history, power, fraud, politics.",
+      "display_title": "The Dan Harumi Podcast",
+      "blurb": "Long-form philosophical discussions ranging from Wall Street to American politics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1853861815": {
       "topics": [
@@ -192117,7 +192242,26 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Trading strategies, market psychology, financial freedom through entrepreneurship.",
+      "display_title": "The Backpack Trader",
+      "blurb": "Trading strategies and financial freedom tips from entrepreneurs and market analysts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1855648416": {
       "topics": [
@@ -192167,11 +192311,30 @@
     },
     "1856214875": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "education/self-improvement",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal transformation and recovery stories, entrepreneurship, overcoming adversity.",
+      "display_title": "GITT Up with Adam Larkin",
+      "blurb": "Stories of personal transformation, business success, and recovery from adversity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1856265741": {
       "topics": [
@@ -192266,17 +192429,52 @@
     },
     "1857738461": {
       "topics": [
-        "health/alternative"
+        "health/alternative",
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Peptide therapy demystified by functional medicine practitioners.",
+      "display_title": "Peptalk: Peptides Unpacked",
+      "blurb": "A functional medicine guide to peptide therapy benefits and applications.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1857886559": {
       "topics": [
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Restored classic radio drama from CBS golden age featuring mystery and suspense.",
+      "display_title": "CBS Radio Mystery Theater",
+      "blurb": "Restored classic radio dramas from the golden age with mystery and suspense.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1857986618": {
       "topics": [
@@ -192291,7 +192489,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soccer analysis and World Cup coverage with focus on global game and rivalries.",
+      "display_title": "First Touch World Cup",
+      "blurb": "Global soccer analysis and World Cup coverage from American and international perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1858007736": {
       "topics": [
@@ -192305,7 +192518,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chelsea FC focused analysis, tactics, transfers, and team news.",
+      "display_title": "Football Therapy",
+      "blurb": "Chelsea FC analysis covering tactics, transfers, player performance, and club decisions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1858091910": {
       "topics": [
@@ -192387,7 +192615,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Restored classic radio broadcasts from golden age spanning drama, mystery, sci-fi.",
+      "display_title": "The 50 Greatest Old Time Radio",
+      "blurb": "Professionally restored classic radio dramas, mysteries, and adventures from the golden age.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1858430616": {
       "topics": [
@@ -192500,11 +192743,30 @@
     },
     "1859065031": {
       "topics": [
-        "space",
-        "science"
+        "religion/spirituality",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astrology and spirituality blended with psychology for personal growth and alignment.",
+      "display_title": "Your Astrological Energy",
+      "blurb": "Psychological astrology and spirituality exploring how planetary energy influences emotions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1859142320": {
       "topics": [
@@ -192560,10 +192822,30 @@
     },
     "1860114911": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI-era marketing strategy from Google with interviews from industry leaders.",
+      "display_title": "Frontier CMO Podcast",
+      "blurb": "AI-powered marketing strategy from Google's VP with interviews of top CMOs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1860126930": {
       "topics": [
@@ -192583,11 +192865,30 @@
     },
     "1860346445": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "health/fitness",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weight loss and health maintenance through behavior change, psychology, practical tools.",
+      "display_title": "LifeLONG",
+      "blurb": "Health and weight loss conversations focused on sustainable behavior change.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1860462739": {
       "topics": [
@@ -192751,7 +193052,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Torah teachings and Jewish spiritual guidance with practical life direction.",
+      "display_title": "Rav Ben's Shmoozem",
+      "blurb": "Torah teachings and Jewish wisdom for spiritual growth and daily living.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1861452241": {
       "topics": [
@@ -192873,11 +193189,30 @@
     },
     "1862890079": {
       "topics": [
-        "music",
-        "history"
+        "music/theory-production",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music history and avant-garde sound exploring culture, technology, underground movements.",
+      "display_title": "Monumental Movement",
+      "blurb": "Music history and avant-garde sound cultures from krautrock to jungle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1862894868": {
       "topics": [
@@ -193140,7 +193475,22 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unofficial Bob's Burgers fan podcast with trivia, interviews, episode discussion.",
+      "display_title": "Bobs and Burgers Podcast",
+      "blurb": "Fan coverage of Bob's Burgers with trivia, interviews, and episode analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1864402340": {
       "topics": [
@@ -193165,10 +193515,30 @@
     },
     "1864634447": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horticulture industry discussion, greenhouse operations, and garden trends.",
+      "display_title": "GH Squad Podcast",
+      "blurb": "Horticulture industry insights from greenhouse and garden center operators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1864734103": {
       "topics": [
@@ -193197,10 +193567,32 @@
     "1864803923": {
       "topics": [
         "space",
-        "science"
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily space and astronomy news covering NASA, SpaceX, Artemis, James Webb.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: banned /fascinat/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1864818003": {
       "topics": [
@@ -193273,7 +193665,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official Traitors US after-show with hosts and contestant interviews.",
+      "display_title": "The Traitors Official Podcast",
+      "blurb": "Official after-show for The Traitors US with analysis and contestant interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1865054486": {
       "topics": [
@@ -193344,10 +193751,30 @@
     },
     "1865545247": {
       "topics": [
+        "food/cooking-science",
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classical cuisine, cooking techniques, food history paired with alcoholic beverages.",
+      "display_title": "Sauced",
+      "blurb": "Classic dishes, cooking techniques, and wine/spirit pairings from former chefs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1865663457": {
       "topics": [
@@ -193407,10 +193834,30 @@
     },
     "1865975225": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Data journalism examining statistics, algorithms, research in daily life.",
+      "display_title": "Control F",
+      "blurb": "Data journalism exploring statistics and algorithms influencing daily decisions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1866046902": {
       "topics": [
@@ -193422,10 +193869,30 @@
     },
     "1866070835": {
       "topics": [
+        "nature/animal-cognition",
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Animal matchups and comparisons with facts about speed, strength, abilities.",
+      "display_title": "Who Would Win",
+      "blurb": "Animal comparison battles with fun facts about speed, strength, and abilities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1866103104": {
       "topics": [
@@ -193613,10 +194080,30 @@
     },
     "1866927041": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism covering Universal's Dark Universe monster movie franchise.",
+      "display_title": "Are You Afraid of the Dark",
+      "blurb": "Analysis of Universal's Dark Universe monster movies and film criticism.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1866928533": {
       "topics": [
@@ -193672,10 +194159,30 @@
     },
     "1867023089": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Supreme Court analysis and legal commentary on constitutional decisions.",
+      "display_title": "Unprecedented",
+      "blurb": "Supreme Court analysis and constitutional law commentary on landmark decisions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1867030167": {
       "topics": [
@@ -193705,7 +194212,26 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music industry anecdotes and stories from performer, songwriter, producer career.",
+      "display_title": "Straight From The Hat",
+      "blurb": "Music industry stories from a performer and composer who worked with legends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1867108446": {
       "topics": [
@@ -193716,10 +194242,30 @@
     },
     "1867119101": {
       "topics": [
-        "business/marketing"
+        "business/careers",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel advisor business guidance on client relations, sales, operations.",
+      "display_title": "The Travel Agent Guide",
+      "blurb": "Business guidance for travel advisors on sales, operations, and client management.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1867137017": {
       "topics": [
@@ -193775,10 +194321,30 @@
     },
     "1867292675": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pregnancy and childbirth education with expert and parent perspectives.",
+      "display_title": "Birth with Babylist",
+      "blurb": "Pregnancy and childbirth guidance from experts and real parent experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1867307301": {
       "topics": [
@@ -193858,7 +194424,22 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL fantasy football strategy, draft analysis, player rankings, league winning picks.",
+      "display_title": "Lineup Fantasy Football",
+      "blurb": "NFL fantasy football strategy with draft rankings, player analysis, and league winners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1867509642": {
       "topics": [
@@ -193893,11 +194474,25 @@
     },
     "1867569197": {
       "topics": [
-        "sports",
-        "news"
+        "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Watford Football Club official updates, player interviews, and team news.",
+      "display_title": "Watford FC Official",
+      "blurb": "Official Watford FC podcast with player interviews, transfers, and team updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1867582765": {
       "topics": [
@@ -193993,7 +194588,22 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book recommendations and author interviews focused on fiction that matters.",
+      "display_title": "FictionMatters",
+      "blurb": "Book recommendations and author interviews exploring fiction that resonates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1867977289": {
       "topics": [
@@ -194027,10 +194637,30 @@
     },
     "1868092499": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family trivia game show for kids and parents with geography, history, science.",
+      "display_title": "Backseat Trivia Rumble",
+      "blurb": "Family trivia game show for kids and parents with history, science, and geography.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1868103210": {
       "topics": [
@@ -194175,10 +194805,30 @@
     },
     "1868497361": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio adventure story for kids about a tooth fairy detective solving a mystery.",
+      "display_title": "Ruby, Tooth Fairy Detective",
+      "blurb": "Audio adventure about a tooth fairy detective solving a mystery across the globe.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:57.059Z"
     },
     "1868538361": {
       "topics": [
@@ -194318,10 +194968,30 @@
     },
     "1869066905": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Membrane technology and industrial filtration insights from industry experts.",
+      "display_title": "Zwitterco Unfiltered",
+      "blurb": "Membrane filtration technology from industry experts in food, biotech, and water.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1869074726": {
       "topics": [
@@ -194455,10 +195125,29 @@
     "1869965513": {
       "topics": [
         "space",
-        "science"
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quick space education covering astronomy, missions, and space race history.",
+      "display_title": "The 10-Minute Universe",
+      "blurb": "Quick astronomy lessons covering space phenomena, missions, and space history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1870029686": {
       "topics": [
@@ -194483,10 +195172,30 @@
     },
     "1870221623": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "engineering/energy-fusion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hydrogen as clean energy solution for heating, transport, industry.",
+      "display_title": "The Only Way Is Hydrogen?",
+      "blurb": "Exploration of hydrogen's role in achieving net zero through energy transition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1870281854": {
       "topics": [
@@ -194508,7 +195217,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA Hall of Famers discuss basketball, entertainment, culture, daily life.",
+      "display_title": "Cousins with Vince and T-Mac",
+      "blurb": "NBA legends Vince Carter and Tracy McGrady discuss basketball, culture, and life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-d7a64438",
+      "classified_at": "2026-08-13T17:08:47.905Z"
     },
     "1870341136": {
       "topics": [
