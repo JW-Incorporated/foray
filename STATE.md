@@ -7,7 +7,32 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
-(none — see completed below)
+### transcription — self-hosted ASR feasibility (Wyatt's Claude, started 2026-08-11)
+
+- **What:** the T-packages of epic #115 — can we transcribe episodes ourselves,
+  and is the output good enough to anchor segments?
+- **Status:** **T1 (#116) is measured and answered** — the environment installs
+  clean, word timestamps are exact, and throughput is **1.33x realtime for
+  `base.en`** / 0.53x for `small.en` / ~0.15x for `medium.en`, at only ~2.4
+  effective threads of 16. That makes a ~20-episode pilot a weekend and the
+  406-episode curated non-DAI pool ~308 hours, i.e. **not feasible on a laptop**
+  — so **T7 (#118, GPU host) is a prerequisite for scale, not an optimisation.**
+  T2 (#117, WER + timestamp drift) is next; **T4/T5 stay on hold until it
+  reports.**
+- **Branch prefix:** `spike/*`, `feat/t*` — PRs only.
+- **Owned directories:** `tools/transcribe/`.
+- **Shared files it touches:** `STATE.md` (this entry) — note that STATE.md is
+  in neither the auto-merge ALLOWED nor DENIED list, so a PR touching it waits
+  for a human.
+- **Heads-up for other sessions — this one is physical, not just a merge
+  conflict:** a whisper run pins this laptop for tens of minutes and **two
+  concurrent runs starve each other** (measured: 0.23 effective threads each,
+  neither finishing). Anything CPU-heavy running alongside a run also
+  invalidates its timing numbers — this cost several hours of remeasurement.
+  Check for a live `python.exe` running `bench.py` before starting long local
+  jobs.
+- **Related:** epic #115, ADR-0004 (transcript acquisition ladder), ADR-0007
+  (segment anchoring).
 
 ## Completed workstreams
 
