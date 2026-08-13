@@ -98,8 +98,26 @@ jobs:
           #                    behaviour + CSP/href static invariants) and
           #                    node --check. See that file's header for what
           #                    this coverage does NOT include.
+          #   T2 STATE.md      the cross-session announcement board. Added
+          #                    2026-08-13 (PR #167 raised it): CLAUDE.md tells
+          #                    every session to announce its workstream there,
+          #                    but STATE.md was in NEITHER list, so obeying that
+          #                    instruction guaranteed a founder merge every
+          #                    time — friction pointing the wrong way. It is a
+          #                    coordination doc, not a gate definition: nothing
+          #                    reads it to decide anything, so a wrong entry
+          #                    misinforms the next session and cannot weaken a
+          #                    check. Same blast radius as docs/, which is why
+          #                    it sits in T2.
           # backend/ is deliberately absent: its suite is strong, but nothing
           # has asked for agent-authored backend PRs to land unread yet.
+          #
+          # BEFORE ADDING ANYTHING HERE: DENIED_PREFIXES above is checked first
+          # and wins, so widening this list cannot expose a denied path. What it
+          # CAN do is let a file land unread whose contents change behaviour.
+          # The test is not "is it low risk?" but "if a bot wrote something
+          # false here, would any gate, instruction or deploy behave
+          # differently?" If yes, it belongs in DENIED, not here.
           ALLOWED_PREFIXES='
           data/
           docs/
@@ -109,6 +127,7 @@ jobs:
           app.js
           styles.css
           search-engine.js
+          STATE.md
           '
 
           labels=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name')
