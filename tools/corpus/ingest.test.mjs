@@ -197,3 +197,25 @@ test("ingestCapturedText: never writes an archive path outside CORPUS_ROOT", () 
   assert.ok(rawFull.startsWith(path.resolve(CORPUS_ROOT, "raw") + path.sep));
   assert.ok(mdFull.startsWith(path.resolve(CORPUS_ROOT, "markdown") + path.sep));
 });
+
+test("ingestCapturedText: a title change between captures removes the old archive files, not just the new ones", () => {
+  const db = openMigrated(tmpDb(), { create: true });
+  const source = seededSource(db, { title: "Original Title" });
+
+  ingestCapturedText(db, source, REAL_PARAGRAPH);
+  const idPrefix = `${String(source.id).padStart(3, "0")}-`;
+  const rawBefore = fs.readdirSync(path.join(CORPUS_ROOT, "raw")).filter((f) => f.startsWith(idPrefix));
+  assert.deepEqual(rawBefore, [`${idPrefix}original-title.txt`]);
+
+  // Retitle the source (e.g. load-manifest refreshed it from an edited
+  // dossier line) and recapture — archivePath's filename is slug-derived,
+  // so the new file lands at a different name than the old one.
+  db.prepare("UPDATE sources SET title = ? WHERE id = ?").run("A Renamed Source", source.id);
+  const renamed = db.prepare("SELECT * FROM sources WHERE id = ?").get(source.id);
+  ingestCapturedText(db, renamed, REAL_PARAGRAPH + " Extra sentence to change the hash on recapture.");
+
+  const rawAfter = fs.readdirSync(path.join(CORPUS_ROOT, "raw")).filter((f) => f.startsWith(idPrefix));
+  const mdAfter = fs.readdirSync(path.join(CORPUS_ROOT, "markdown")).filter((f) => f.startsWith(idPrefix));
+  assert.deepEqual(rawAfter, [`${idPrefix}a-renamed-source.txt`], "the old-title raw file must not be left behind");
+  assert.deepEqual(mdAfter, [`${idPrefix}a-renamed-source.md`], "the old-title markdown file must not be left behind");
+});

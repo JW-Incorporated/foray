@@ -31,6 +31,86 @@ function rawExtFor(kind, contentType, body) {
   return "html";
 }
 
+/** Delete any archive file for `sourceId` in `dir` other than `keepFullPath`
+ * (matched by the `<id>-` filename prefix `archivePath` always writes).
+ * Best-effort: a stale file that's already gone is not an error. */
+function removeStaleArchives(dir, sourceId, keepFullPath) {
+  const prefix = `${String(sourceId).padStart(3, "0")}-`;
+  for (const name of fs.readdirSync(dir)) {
+    if (!name.startsWith(prefix)) continue;
+    const full = path.resolve(dir, name);
+    if (full === keepFullPath) continue;
+    fs.rmSync(full, { force: true });
+  }
+}
+
+/**
+ * Shared tail for every ingestion route (fetch-based or captured): archive
+ * raw + markdown under stable per-source names, chunk the markdown, and
+ * commit the documents/chunks rows in one transaction (insert the new
+ * document, retire the previous document's chunks, write the new ones).
+ * `ingestSource` and `ingestCapturedText` differ only in where their bytes
+ * came from and what provenance line belongs in the archive header —
+ * everything after "we have markdown now" is identical, and duplicating it
+ * across both functions risked one gaining a fix (e.g. to the supersession
+ * query) that the other silently missed.
+ */
+function archiveAndCommit(db, source, { rawBody, rawExt, markdown, headerLine, httpStatus, contentHash, notes }) {
+  fs.mkdirSync(RAW_DIR, { recursive: true });
+  fs.mkdirSync(MARKDOWN_DIR, { recursive: true });
+  const rawFull = archivePath(RAW_DIR, source.id, source.title, rawExt);
+  const mdFull = archivePath(MARKDOWN_DIR, source.id, source.title, "md");
+
+  /* archivePath names files `<id>-<slug>.<ext>`, and both the slug (from
+   * the source's title) and the extension (from the acquisition route —
+   * e.g. a JS-broken .html fetch later replaced by a .txt browser capture)
+   * can change between ingestions. Without cleanup, the OLD file is simply
+   * orphaned: real bytes on disk with no documents row pointing at them,
+   * silently accumulating in raw/ and markdown/ every time a source's route
+   * changes. Sweep any other archive file for this source id before writing
+   * the new one — best-effort; a missing stale file is not an error. */
+  removeStaleArchives(RAW_DIR, source.id, rawFull);
+  removeStaleArchives(MARKDOWN_DIR, source.id, mdFull);
+
+  fs.writeFileSync(rawFull, rawBody);
+
+  const header = [
+    `<!-- corpus source ${source.id}: ${source.title}`,
+    `     url: ${source.url}`,
+    `     ${headerLine} -->`,
+    "",
+  ].join("\n");
+  fs.writeFileSync(mdFull, header + markdown, "utf8");
+
+  const tokenCount = estTokens(markdown);
+  const chunks = chunkMarkdown(markdown);
+
+  db.exec("BEGIN");
+  try {
+    const docId = db.prepare(`
+      INSERT INTO documents (source_id, http_status, content_hash, raw_path, markdown_path, token_count, fetch_notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      source.id, httpStatus, contentHash,
+      relToCorpusRoot(rawFull), relToCorpusRoot(mdFull),
+      tokenCount, notes.join("; ")
+    ).lastInsertRowid;
+
+    db.prepare(`
+      DELETE FROM chunks WHERE document_id IN
+        (SELECT id FROM documents WHERE source_id = ? AND id != ?)
+    `).run(source.id, docId);
+
+    writeChunks(db, docId, chunks);
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+
+  return { chunks, tokenCount };
+}
+
 /**
  * Ingest one source row. Returns a summary object; never throws for
  * fetch-level failures.
@@ -107,45 +187,16 @@ export async function ingestSource(db, fetcher, source, { force = false } = {}) 
   }
   notes.push(...(extracted.notes ?? []));
 
-  /* Archive raw + markdown under stable per-source names. */
-  fs.mkdirSync(RAW_DIR, { recursive: true });
-  fs.mkdirSync(MARKDOWN_DIR, { recursive: true });
   const ext = rawExtFor(route.kind, res.contentType, body);
-  const rawFull = archivePath(RAW_DIR, source.id, source.title, ext);
-  const mdFull = archivePath(MARKDOWN_DIR, source.id, source.title, "md");
-  fs.writeFileSync(rawFull, body);
-
-  const header = [
-    `<!-- corpus source ${source.id}: ${source.title}`,
-    `     url: ${source.url}`,
-    `     fetched: ${res.finalUrl} (${res.status}) -->`,
-    "",
-  ].join("\n");
-  fs.writeFileSync(mdFull, header + (extracted.markdown ?? ""), "utf8");
-
-  const tokenCount = estTokens(extracted.markdown ?? "");
-  const chunks = chunkMarkdown(extracted.markdown ?? "");
-
-  /* One transaction: record the fetch, retire superseded chunks, add new. */
-  db.exec("BEGIN");
-  try {
-    const docId = insertDoc.run(
-      source.id, res.status, hash,
-      relToCorpusRoot(rawFull), relToCorpusRoot(mdFull),
-      tokenCount, notes.join("; ")
-    ).lastInsertRowid;
-
-    db.prepare(`
-      DELETE FROM chunks WHERE document_id IN
-        (SELECT id FROM documents WHERE source_id = ? AND id != ?)
-    `).run(source.id, docId);
-
-    writeChunks(db, docId, chunks);
-    db.exec("COMMIT");
-  } catch (err) {
-    db.exec("ROLLBACK");
-    throw err;
-  }
+  const { chunks, tokenCount } = archiveAndCommit(db, source, {
+    rawBody: body,
+    rawExt: ext,
+    markdown: extracted.markdown ?? "",
+    headerLine: `fetched: ${res.finalUrl} (${res.status})`,
+    httpStatus: res.status,
+    contentHash: hash,
+    notes,
+  });
 
   return {
     sourceId: source.id,
@@ -269,6 +320,9 @@ export function ingestCapturedText(db, source, capturedText, { capturedAt = new 
     throw new Error(`captured text too short (${text.length} chars) — refusing to ingest a near-empty capture`);
   }
 
+  /* ingestSource hashes the raw fetched bytes, pre-extraction; there is no
+   * separate "raw vs. extracted" split for a capture, so this hashes the
+   * captured text itself — deliberate, not an oversight. */
   const hash = sha256(Buffer.from(text, "utf8"));
   const prev = db.prepare(`
     SELECT content_hash FROM documents
@@ -279,50 +333,23 @@ export function ingestCapturedText(db, source, capturedText, { capturedAt = new 
     return { sourceId: source.id, outcome: "unchanged" };
   }
 
-  const chunks = chunkMarkdown(text);
-  if (!chunks.length) {
+  /* Checked before any fs write so a rejected capture never leaves an
+   * orphaned raw/markdown file behind (archiveAndCommit re-chunks the same
+   * text below; chunking is pure and cheap, so this recompute is harmless). */
+  if (!chunkMarkdown(text).length) {
     throw new Error("captured text produced zero chunks — nothing worth indexing");
   }
 
-  fs.mkdirSync(RAW_DIR, { recursive: true });
-  fs.mkdirSync(MARKDOWN_DIR, { recursive: true });
-  const rawFull = archivePath(RAW_DIR, source.id, source.title, "txt");
-  const mdFull = archivePath(MARKDOWN_DIR, source.id, source.title, "md");
-  fs.writeFileSync(rawFull, text, "utf8");
-
-  const header = [
-    `<!-- corpus source ${source.id}: ${source.title}`,
-    `     url: ${source.url}`,
-    `     captured: ${capturedAt} via ${tool} (rendered browser capture, not a network fetch) -->`,
-    "",
-  ].join("\n");
-  fs.writeFileSync(mdFull, header + text, "utf8");
-
-  const tokenCount = estTokens(text);
   const notes = [`rendered capture via ${tool} (see tools/corpus/README.md#rendered-html-route)`];
-
-  db.exec("BEGIN");
-  try {
-    const docId = db.prepare(`
-      INSERT INTO documents (source_id, http_status, content_hash, raw_path, markdown_path, token_count, fetch_notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      source.id, 200, hash,
-      relToCorpusRoot(rawFull), relToCorpusRoot(mdFull),
-      tokenCount, notes.join("; ")
-    ).lastInsertRowid;
-
-    db.prepare(`
-      DELETE FROM chunks WHERE document_id IN
-        (SELECT id FROM documents WHERE source_id = ? AND id != ?)
-    `).run(source.id, docId);
-
-    writeChunks(db, docId, chunks);
-    db.exec("COMMIT");
-  } catch (err) {
-    db.exec("ROLLBACK");
-    throw err;
-  }
+  const { chunks, tokenCount } = archiveAndCommit(db, source, {
+    rawBody: text,
+    rawExt: "txt",
+    markdown: text,
+    headerLine: `captured: ${capturedAt} via ${tool} (rendered browser capture, not a network fetch)`,
+    httpStatus: 200,
+    contentHash: hash,
+    notes,
+  });
 
   return { sourceId: source.id, outcome: "ok", chunks: chunks.length, tokens: tokenCount, notes };
 }

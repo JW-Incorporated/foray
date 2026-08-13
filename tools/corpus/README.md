@@ -51,7 +51,7 @@ node tools/corpus/corpus.mjs repoint-url 12 https://new/url
                                                       # move a source's url, id-stable
 node tools/corpus/corpus.mjs ingest --all            # fetch+extract+chunk
 node tools/corpus/corpus.mjs ingest --area 4         # one dossier area
-node tools/corpus/corpus.mjs ingest-captured --source 37 --file capture.txt
+node tools/corpus/corpus.mjs ingest-captured --source 2 --file capture.txt
                                                       # ingest a rendered-page text capture
 node tools/corpus/corpus.mjs search "server test"    # FTS5 keyword search
 node tools/corpus/corpus.mjs search "x" --explain    # show the MATCH built
@@ -64,9 +64,11 @@ node tools/corpus/corpus.mjs report --write          # coverage.md + dead-links.
 node tools/corpus/corpus.mjs export-index --write    # corpus-index.json (committed)
 ```
 
-## A source moved (dead link recovered at a new URL)
+## A source moved
 
-The dossier is the manifest, so a moved source is fixed there, never in the
+A source moved means the dossier now points at a dead link and you found the
+new canonical URL. The dossier is the manifest, so a moved source is fixed
+there, never in the
 DB directly. But `load-manifest`'s upsert keys off `url` — it is idempotent
 for *re-running the same dossier*, not for *changing a URL*. If you only edit
 the dossier and reload, the old row (still pointing at the dead URL) is left
@@ -86,9 +88,9 @@ node tools/corpus/corpus.mjs load-manifest   # now matches by the (now-shared) u
 node tools/corpus/corpus.mjs refetch 12      # actually fetches the new URL
 ```
 
-## Rendered-HTML route (JS-rendered pages) {#rendered-html-route}
+## Rendered-HTML route
 
-`fetcher.mjs` fetches server-sent bytes. A handful of sources are single-page
+For JS-rendered pages: `fetcher.mjs` fetches server-sent bytes. A handful of sources are single-page
 apps or forum threads whose server-sent bytes are a near-empty shell — the
 content only exists after client-side JS runs. `extract.mjs` already names
 this honestly: `htmlToMarkdown` flags anything under 200 chars as

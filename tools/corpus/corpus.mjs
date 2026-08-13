@@ -113,7 +113,7 @@ async function main() {
      * then `refetch <id>` (actually fetches the new URL). */
     case "repoint-url": {
       const db = openMigrated();
-      const id = numFlag(args._[0], "--source");
+      const id = numFlag(args._[0], "<source_id>");
       const newUrl = args._[1];
       if (!newUrl) throw new Error(`usage: corpus repoint-url <source_id> <new_url>`);
       const r = repointSourceUrl(db, id, newUrl);
