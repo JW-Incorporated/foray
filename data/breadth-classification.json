@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-12T16:42:14.814Z",
+  "built_at": "2026-08-13T00:33:21.528Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-12-a7290643",
+    "last_batch_id": "fresh-2026-08-13-24f4b81b",
     "last_batch_tier": 1
   },
   "entries": {
@@ -177727,7 +177727,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket-focused podcast covering live streaming platforms and coverage.",
+      "display_title": "Smartcric",
+      "blurb": "cricket is more than just a sport; it’s a passion that unites millions of fans worldwide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1802400177": {
       "topics": [
@@ -177739,10 +177754,30 @@
     },
     "1802518411": {
       "topics": [
-        "health/alternative"
+        "health/alternative",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health podcast addressing pain management, functional medicine approaches.",
+      "display_title": "The Pain Free Formula",
+      "blurb": "What if the cramps, poor sleep, and joint pain you have learned to live with come down to one overlooked mineral? A patient's stubborn hamstring cramp",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1802625282": {
       "topics": [
@@ -177787,14 +177822,47 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive passion project featuring classic trucks and custom builds.",
+      "display_title": "KEEPIN' IT CLASSIC podcast",
+      "blurb": "born out of an intense passion for classic trucks, nostalgia, and things that get better with age, this is the keepin’ it classic podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1802714587": {
       "topics": [
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Bedtime stories for children featuring princess narratives.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1802722241": {
       "topics": [
@@ -177875,10 +177943,30 @@
     },
     "1802999197": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog ownership, breeding, showing, and kennel management insights.",
+      "display_title": "The Tack Box Podcast",
+      "blurb": "the tack box podcast is an informative and relaxed show that covers all aspects of dog ownership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1803000536": {
       "topics": [
@@ -177957,10 +178045,30 @@
     },
     "1803249037": {
       "topics": [
-        "comedy/interviews"
+        "comedy/interviews",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedian Jeff Allen interviews guests on personal, spiritual, life topics.",
+      "display_title": "Who Gave Jeff Allen A Podcast?",
+      "blurb": "Veteran comedian interviews guests about life, marriage, faith, and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:21.528Z"
     },
     "1803369340": {
       "topics": [
@@ -177983,7 +178091,26 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports news and analysis podcast.",
+      "display_title": "GoToGuys Podcast",
+      "blurb": "a father-son duo breaking down everything sports, pop culture, and more! 🔥 from epic debates to hot takes, we bring the energy every episode.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1803429047": {
       "topics": [
@@ -178012,7 +178139,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering television series reviews and discussion.",
+      "display_title": "My Sister Wives Podcast",
+      "blurb": "The viewers take control as the Browns are put to the test answering questions. What do the teens really think of the family dress code? Which mom is ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1803625221": {
       "topics": [
@@ -178049,7 +178191,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running and marathon training focused podcast.",
+      "display_title": "The Marathon Podcast",
+      "blurb": "welcome to the marathon podcast! the podcast that sponsors non-sponsored athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1803869819": {
       "topics": [
@@ -178075,11 +178236,25 @@
     },
     "1803984955": {
       "topics": [
-        "music",
-        "history"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive passion project featuring classic trucks and custom builds.",
+      "display_title": "Jazz Focus",
+      "blurb": "exploring the highways and byways of classic recorded jazz - from the ragtime era to the day before yesterday.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1804015544": {
       "topics": [
@@ -178172,7 +178347,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Major League Baseball network podcast.",
+      "display_title": "MLB Network Podcast",
+      "blurb": "3x All-Star and 3x Gold Glover Evan Longoria talks about having his jersey number retired by the Tampa Bay Rays, his illustrious career, and more on t",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1804199832": {
       "topics": [
@@ -178486,10 +178676,33 @@
     },
     "1805769541": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Philosophy-focused content exploring ideas and worldview.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1805868343": {
       "topics": [
@@ -178553,12 +178766,30 @@
     },
     "1805936665": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "health/alternative",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health podcast addressing pain management, functional medicine approaches.",
+      "display_title": "Nature's Apothecary: Roots, Shoots and Remedies",
+      "blurb": "Discussion on the effects of garlic by Abby and Lynn.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1805962115": {
       "topics": [
@@ -178600,10 +178831,30 @@
     },
     "1806121975": {
       "topics": [
-        "business/management"
+        "business/management",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business management and leadership development podcast.",
+      "display_title": "WTF is Business Casual",
+      "blurb": "buckle up for real hr stories that'll make you laugh, cringe, and thank your lucky stars you're not that guy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1806213162": {
       "topics": [
@@ -178623,11 +178874,30 @@
     },
     "1806233971": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business/management",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business management and leadership development podcast.",
+      "display_title": "Quest for Success",
+      "blurb": "**quest for success with dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1806328341": {
       "topics": [
@@ -178865,10 +179135,30 @@
     },
     "1807621183": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home gardening school and landscaping podcast.",
+      "display_title": "The Dallas Garden School",
+      "blurb": "welcome to the dallas garden school podcast, where gardening gets smart, practical, and regionally relevant.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1807644618": {
       "topics": [
@@ -179007,7 +179297,22 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Food and culinary focused podcast.",
+      "display_title": "Old Growth Table",
+      "blurb": "the old growth table is a heartfelt exploration of the rich cultural heritage and culinary traditions of the coast salish people.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1808105903": {
       "topics": [
@@ -179064,7 +179369,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Canadian hockey conversation and analysis podcast.",
+      "display_title": "Canucks Conversation",
+      "blurb": "vancouver canucks hockey podcast hosted by david quadrelli & harman dayal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1808496901": {
       "topics": [
@@ -179097,7 +179417,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science fiction and spooky storytelling podcast.",
+      "display_title": "Spooky Story Time",
+      "blurb": "turn off the lights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1808684702": {
       "topics": [
@@ -179192,10 +179527,30 @@
     },
     "1809140671": {
       "topics": [
-        "sports/soccer"
+        "health/alternative",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health podcast addressing pain management, functional medicine approaches.",
+      "display_title": "Inside Arsenal - with Charles Watts",
+      "blurb": "hello everyone, my name is charles watts and this is my inside arsenal podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1809151473": {
       "topics": [
@@ -179233,10 +179588,30 @@
     },
     "1809160531": {
       "topics": [
-        "sports/golf"
+        "business/management",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business management and leadership development podcast.",
+      "display_title": "The Favorite Chamblee",
+      "blurb": "the favorite chamblee with bailey chamblee and brandel chamblee.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1809170859": {
       "topics": [
@@ -179464,7 +179839,22 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry and chromatography expertise podcast.",
+      "display_title": "Chromatography Experts",
+      "blurb": "In this episode of Chromatography Experts , Patrick Endres of Tosoh Bioscience is joined by Steffi Stephen and Daniele Addis from Axolabs for an in-de",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1809788216": {
       "topics": [
@@ -179604,7 +179994,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf news and expert commentary podcast.",
+      "display_title": "Invested in the Game",
+      "blurb": "every day, in every part of the world, people are drawn to the game of golf.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1810246237": {
       "topics": [
@@ -179612,7 +180017,26 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports news and analysis podcast.",
+      "display_title": "Bookie Beatdown",
+      "blurb": "mma advice to win some coin! brought to you by paul shaughnessy & cody saftic.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1810257918": {
       "topics": [
@@ -179630,10 +180054,30 @@
     },
     "1810288879": {
       "topics": [
-        "business/management"
+        "business/management",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business management and leadership development podcast.",
+      "display_title": "MPWR Podcast | Become The Leader YOU Want",
+      "blurb": "people don't quit jobs, they quit bad leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1810305657": {
       "topics": [
@@ -179653,11 +180097,30 @@
     },
     "1810394623": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "travel",
+        "adventure"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "African wilderness and travel focused podcast.",
+      "display_title": "This is Africa Podcast",
+      "blurb": "This week, Andy sits down with veteran Zimbabwean PH Rob Oostindien for a hard-hitting conversation straight out of the African bush. From late-season",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1810538756": {
       "topics": [
@@ -179680,7 +180143,22 @@
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships and personal life podcast.",
+      "display_title": "Married with the Mugica’s",
+      "blurb": "richard and hailey mugica have made it their goal and passion to challenge how the world views and talks about marriage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1810695711": {
       "topics": [
@@ -179782,10 +180260,25 @@
     },
     "1811197957": {
       "topics": [
-        "medicine"
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and medical information podcast.",
+      "display_title": "Dr. Green Mom® Unfiltered",
+      "blurb": "empowering you to confidently raise your child the way nature intended.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1811206832": {
       "topics": [
@@ -179815,7 +180308,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional soccer analysis and insider commentary.",
+      "display_title": "Los Jefes del Deporte con Álvaro Morales",
+      "blurb": "prepárate para opiniones apasionadas, debates audaces y charlas deportivas sin tapujos.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1811421281": {
       "topics": [
@@ -179933,7 +180441,22 @@
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships and personal life podcast.",
+      "display_title": "The Truth After Dark",
+      "blurb": "One of the hottest rappers in the game, G Herbo, joined the show and got vulnerable about life as a father, growing up in Chicago, dealing with PTSD, ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1811996998": {
       "topics": [
@@ -179981,10 +180504,30 @@
     },
     "1812224899": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu epic and spiritual literature podcast.",
+      "display_title": "Mahabharata - The Epic Tale",
+      "blurb": "welcome to mahabharata: the epic tale.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1812243813": {
       "topics": [
@@ -179999,7 +180542,26 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and AI applications in drug discovery.",
+      "display_title": "Drug Discovery AI Talk",
+      "blurb": "late-breaking advances in ai-enabled drug discovery, including news, research progress, market trends, and interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1812326992": {
       "topics": [
@@ -180076,10 +180638,25 @@
     },
     "1812511339": {
       "topics": [
-        "sports/volleyball"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive passion project featuring classic trucks and custom builds.",
+      "display_title": "The VolleyTribe Podcast",
+      "blurb": "essex rebels women's head coach alex chinery brings you insight and analysis from the world of professional volleyball coaching.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-24f4b81b",
+      "classified_at": "2026-08-13T00:33:05.602Z"
     },
     "1812528408": {
       "topics": [
