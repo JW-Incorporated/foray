@@ -3,7 +3,9 @@
  *
  *   node tools/corpus/corpus.mjs init
  *   node tools/corpus/corpus.mjs load-manifest [--dossier <path>]
+ *   node tools/corpus/corpus.mjs repoint-url <source_id> <new_url>
  *   node tools/corpus/corpus.mjs ingest (--all | --area N | --source ID) [--force]
+ *   node tools/corpus/corpus.mjs ingest-captured --source ID --file <path> [--tool "..."]
  *   node tools/corpus/corpus.mjs search "query" [--limit N] [--raw] [--explain]
  *   node tools/corpus/corpus.mjs rechunk
  *   node tools/corpus/corpus.mjs eval [--gold <path>] [--json]
@@ -19,10 +21,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { openMigrated } from "./db.mjs";
-import { parseDossierFile, loadManifest } from "./manifest.mjs";
+import { parseDossierFile, loadManifest, repointSourceUrl } from "./manifest.mjs";
 import { createFetcher } from "./fetcher.mjs";
 import { createHostGate } from "./hostgate.mjs";
-import { ingestMany, rechunkAll } from "./ingest.mjs";
+import { ingestMany, rechunkAll, ingestCapturedText } from "./ingest.mjs";
 import { coverageMarkdown, deadLinksMarkdown, coverageData } from "./report.mjs";
 import { parseDigests, buildIndex, serializeIndex, diffIndexAgainstDigests, checkVerbatimOverlap } from "./export-index.mjs";
 import { CORPUS_ROOT } from "./paths.mjs";
@@ -103,6 +105,22 @@ async function main() {
       break;
     }
 
+    /* A moved source: edit the dossier's URL, then repoint-url BEFORE
+     * load-manifest — load-manifest's upsert keys off url, so on its own it
+     * cannot see "this is source N under a new URL" and would fork a
+     * duplicate row instead (see manifest.mjs's repointSourceUrl docblock).
+     * Usual next steps after this: `load-manifest` (syncs title/notes),
+     * then `refetch <id>` (actually fetches the new URL). */
+    case "repoint-url": {
+      const db = openMigrated();
+      const id = numFlag(args._[0], "<source_id>");
+      const newUrl = args._[1];
+      if (!newUrl) throw new Error(`usage: corpus repoint-url <source_id> <new_url>`);
+      const r = repointSourceUrl(db, id, newUrl);
+      console.log(`[${r.id}] url repointed:\n  ${r.oldUrl}\n  -> ${r.newUrl}\nNow run: load-manifest, then refetch ${r.id}`);
+      break;
+    }
+
     case "ingest":
     case "refetch": {
       // Both need sources rows that only load-manifest writes, so neither may
@@ -124,6 +142,29 @@ async function main() {
       });
       const by = (o) => results.filter((r) => r.outcome === o).length;
       console.log(`done: ${by("ok")} ok, ${by("unchanged")} unchanged, ${by("failed") + by("extraction-failed")} failed`);
+      break;
+    }
+
+    /* For JS-rendered pages where fetcher.mjs only ever gets a content-free
+     * shell (see ingest.mjs's ingestCapturedText docblock): ingest a text file
+     * captured by rendering the page in a real browser and reading its
+     * visible text — never a hand-authored stand-in. See
+     * tools/corpus/README.md#rendered-html-route for the full procedure. */
+    case "ingest-captured": {
+      const db = openMigrated();
+      const id = numFlag(args.source ?? args._[0], "--source");
+      const filePath = args.file ?? args._[1];
+      if (!filePath) {
+        throw new Error(`usage: corpus ingest-captured --source ID --file <path> [--tool "..."]`);
+      }
+      const row = db.prepare("SELECT * FROM sources WHERE id = ?").get(id);
+      if (!row) throw new Error(`no source with id ${id} — run load-manifest first?`);
+      const text = fs.readFileSync(filePath, "utf8");
+      const result = ingestCapturedText(db, row, text, args.tool ? { tool: args.tool } : {});
+      console.log(
+        `[${String(row.id).padStart(3)}] ${result.outcome.padEnd(17)} ${row.title.slice(0, 60)}` +
+        (result.chunks ? ` — ${result.chunks} chunks` : "")
+      );
       break;
     }
 
@@ -250,7 +291,10 @@ async function main() {
         `usage: corpus <init|load-manifest|ingest|search|rechunk|eval|stats|refetch|report|export-index>\n` +
         `  init                                create/migrate the db\n` +
         `  load-manifest [--dossier p]         parse the dossier into sources\n` +
+        `  repoint-url ID new-url               move a source's url in place (id-stable)\n` +
         `  ingest --all|--area N|--source ID   fetch + extract + chunk\n` +
+        `  ingest-captured --source ID --file p  ingest a browser-rendered text capture\n` +
+        `        [--tool "..."]                capture tool name, recorded in fetch_notes\n` +
         `  search "query" [--limit N]          FTS5 keyword search\n` +
         `        [--raw]                       pass literal FTS5 syntax through\n` +
         `        [--explain]                   print the MATCH expression built\n` +

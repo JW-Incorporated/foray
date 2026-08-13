@@ -179,6 +179,92 @@ Two gold-set findings worth keeping regardless:
 - Queries 2 and 12 are partly **orphaned** by the two ingest failures (AES
   TD1004 404, ScienceDirect 403). The numeric LUFS target may exist nowhere
   in the corpus. These are the best tests for a retriever that confabulates
-  coverage.
+  coverage. (Resolved 2026-08-13 below — both sources are now ingested, so
+  this orphaning no longer applies; re-running `eval` is expected to change
+  these two queries' scores.)
 - 3 chunks in the IAB PDFs extract as letter-spaced text
   (`A b o u t T h i s`), a pdfjs item-joining artifact. Not fixed here.
+
+## Retro (2026-08-13 — recovering the eight weakest sources)
+
+Both dead links and four of the six "thin" sources were recovered; two
+sources stay honestly thin because there is nothing more to recover.
+`corpus stats`: 52/54 → **54/54 ingested**, 480→558 chunks (after the
+2026-08-12 rechunk fix), ~272k→~345k estimated tokens. `dead-links.md` now
+reads "None."
+
+**Dead links, both fixed:**
+- **Source 12, AES TD1004.1.15-10**: AES restructured its technical-document
+  tree in 2024; the PDF moved to
+  `aes.org/wp-content/uploads/2024/01/AESTD1004_1_15_10.pdf`, linked from a
+  landing page that itself notes TD1004 was superseded by TD1008 (2021) — so
+  this is deliberately the historical 2015 document the dossier asked for,
+  not a silent upgrade to the newer one. Repointed via the dossier + the new
+  `corpus repoint-url` command (see below), then refetched: 0 → 12 chunks.
+- **Source 52, "A Survey on LLM-as-a-Judge"**: ScienceDirect 403s bot
+  traffic. Same paper (Gu, Jiang, Shi et al.), same abstract, is on arXiv
+  (2411.15594, v6) under a **CC0 1.0** dedication the authors chose for this
+  specific article — not arXiv's site-wide metadata license, a real
+  per-article public-domain grant. Repointed the dossier to the arXiv
+  preprint: 0 → 95 chunks, and the source's own redistribution verdict
+  flipped **deny → allow** (corpus totals: 16→17 allow, 38→37 deny). This is
+  the rare case where recovering a dead link also changes what could
+  legally be committed, not just what the corpus can search.
+
+**A real bug found and fixed along the way:** the manifest loader
+(`loadManifest`) upserts `sources` keyed on `url`. That's correct for
+re-running the same dossier, but wrong for a URL edit: reloading a dossier
+where a source's URL changed found no existing row to match, so it inserted
+a *new* source with a new id instead of updating the old one — silently
+forking a duplicate while the stale, dead-URL row sat untouched. Fixed with
+a new `manifest.mjs` export, `repointSourceUrl(db, id, newUrl)`, and a
+`corpus repoint-url <id> <new-url>` CLI command that updates `sources.url`
+in place *before* `load-manifest` runs, so the url-keyed upsert then matches
+correctly. Both AES and arXiv repoints above went through this path. Tested
+in `manifest.test.mjs`, including a test that reproduces the fork bug
+directly (reload without `repoint-url` first) so the regression stays
+caught.
+
+**Thin sources: four recovered, one stays thin, one turned out not to be
+broken.** Six sources were flagged as "1–2 chunks, JS-rendered." Confirming
+each one's actual fetch history (not just its current chunk count) before
+touching anything showed a real split:
+- **Sources 2 (Podcast Index API docs) and 37 (TTS Arena V2)** were
+  genuinely broken: 16–20 estimated tokens, fetch notes reading "thin
+  extraction … page may be JS-rendered." Source 2 is a RapiDoc-rendered
+  OpenAPI browser (shadow DOM); recovered its narrative front matter (auth
+  scheme, client libraries, Postman collection) via a real-browser capture —
+  1 → 587 tokens, still 1 chunk (correctly: a documentation front page is
+  legitimately short). Source 37's actual app runs inside a **cross-origin
+  sandboxed iframe** on a separate `*.hf.space` origin that a parent-page
+  render genuinely cannot see into, and even a successful render would need
+  an interactive "Synthesize" click before any leaderboard data appears —
+  this is the textbook case for "leave it thin, record why, and move on"
+  (`tools/corpus/README.md#rendered-html-route`). Left thin; the digest now
+  documents exactly what was checked and why it stays that way.
+- **Sources 14 (NotebookLM blog), 33 and 34 (Apple Developer Forum
+  threads), and 39 (OpenAI community thread) were not actually broken.**
+  Their prior fetches used normal Readability extraction (fetch note
+  "readability", not "thin extraction") and already held 425–820 estimated
+  tokens — a complete short document, correctly landing in one chunk because
+  the source itself is short (a two-post forum thread does not need three
+  chunks). The "1 chunk" signal that flagged them as weak was a proxy that
+  doesn't distinguish "one chunk because we captured nothing" from "one
+  chunk because there was one chunk's worth of real content." Re-captured
+  them anyway via the same browser-render route for consistency and, for 33
+  and 34, a genuine improvement: full reply-by-reply attribution the
+  original single-pass extraction had run together. Lesson for next time:
+  check `fetch_notes` for the literal "thin extraction" / "may be
+  JS-rendered" marker before spending a browser-capture pass on a source —
+  chunk count alone overstates how many of these are actually broken.
+
+**New pipeline route, not a one-off workaround:** `ingestCapturedText`
+(`tools/corpus/ingest.mjs`) plus `corpus ingest-captured --source ID --file
+<path>` ingests a browser-rendered text capture through the same chunker,
+archive layout and `documents`/`chunks` schema as a normal fetch — the
+capture step (render the page, read its rendered text, save verbatim to a
+file) is the only thing that isn't the existing fetcher. Documented in
+`tools/corpus/README.md#rendered-html-route`, covered by
+`tools/corpus/ingest.test.mjs` (new suite). Reproducible by any future
+session or agent with browser automation available; requires no human in
+the loop beyond running the capture once per source.

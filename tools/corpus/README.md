@@ -47,8 +47,12 @@ unflagged on ≥23.4, which local dev and the DB layer assume).
 ```
 node tools/corpus/corpus.mjs init                    # create/migrate the db
 node tools/corpus/corpus.mjs load-manifest           # parse dossier → sources
+node tools/corpus/corpus.mjs repoint-url 12 https://new/url
+                                                      # move a source's url, id-stable
 node tools/corpus/corpus.mjs ingest --all            # fetch+extract+chunk
 node tools/corpus/corpus.mjs ingest --area 4         # one dossier area
+node tools/corpus/corpus.mjs ingest-captured --source 2 --file capture.txt
+                                                      # ingest a rendered-page text capture
 node tools/corpus/corpus.mjs search "server test"    # FTS5 keyword search
 node tools/corpus/corpus.mjs search "x" --explain    # show the MATCH built
 node tools/corpus/corpus.mjs search "x" --raw        # literal FTS5 syntax
@@ -59,6 +63,69 @@ node tools/corpus/corpus.mjs refetch 12              # force re-ingest one sourc
 node tools/corpus/corpus.mjs report --write          # coverage.md + dead-links.md
 node tools/corpus/corpus.mjs export-index --write    # corpus-index.json (committed)
 ```
+
+## A source moved
+
+A source moved means the dossier now points at a dead link and you found the
+new canonical URL. The dossier is the manifest, so a moved source is fixed
+there, never in the
+DB directly. But `load-manifest`'s upsert keys off `url` — it is idempotent
+for *re-running the same dossier*, not for *changing a URL*. If you only edit
+the dossier and reload, the old row (still pointing at the dead URL) is left
+untouched and a brand-new row forks off with a new id, because nothing in the
+new entry matches the old row's `url` to trigger the update. Since
+`documents`/`chunks` hang off source id and `dead-links.md`/`digests.md`/
+`corpus-index.json` all cite sources by id, that fork is a real bug, not a
+cosmetic one.
+
+The fix is `repoint-url`, which updates just the `url` column for a known id
+— still a committed, auditable CLI path, not a hand-edit:
+
+```
+# 1. edit the dossier entry's URL (keep the exact `**Title** — URL — note` shape)
+node tools/corpus/corpus.mjs repoint-url 12 https://new.example.com/doc.pdf
+node tools/corpus/corpus.mjs load-manifest   # now matches by the (now-shared) url, refreshes title/notes
+node tools/corpus/corpus.mjs refetch 12      # actually fetches the new URL
+```
+
+## Rendered-HTML route
+
+For JS-rendered pages: `fetcher.mjs` fetches server-sent bytes. A handful of sources are single-page
+apps or forum threads whose server-sent bytes are a near-empty shell — the
+content only exists after client-side JS runs. `extract.mjs` already names
+this honestly: `htmlToMarkdown` flags anything under 200 chars as
+`"thin extraction … page may be JS-rendered"` rather than pretending it got
+real content.
+
+The fix is a real browser, not a workaround in the fetcher. Procedure:
+
+1. Render the source URL in an actual browser (e.g. Claude in Chrome's
+   `navigate` + `get_page_text`, or any headless-browser tool that returns
+   the page's rendered visible text).
+2. Save that text verbatim to a file — no editing, no summarizing. The text
+   must be what the page actually says; a paraphrase in its place would
+   misrepresent the source as fetched-and-extracted when it was hand-written.
+3. `node tools/corpus/corpus.mjs ingest-captured --source <id> --file <path>
+   [--tool "chrome-devtools-mcp"]`
+
+This calls `ingestCapturedText` (`ingest.mjs`), which runs the captured text
+through the same chunker (`chunk.mjs`), the same archive layout
+(`raw/<id>-<slug>.txt` + `markdown/<id>-<slug>.md`), and the same
+`documents`/`chunks` schema as a normal fetch — `refetch`, `rechunk`,
+`export-index`, `report` all treat a captured document exactly like a fetched
+one. Only the fetch+HTML-extraction stage is replaced; `fetch_notes` records
+`"rendered capture via <tool>"` so the DB always shows which sources were
+captured rather than fetched. Re-running `ingest-captured` with unchanged
+text is a no-op (`outcome: "unchanged"`), same as a normal refetch.
+
+**When not to use this.** A paywall, login wall, or CAPTCHA is not a
+rendering problem — a browser sees the same denial a fetcher does. Genuinely
+dynamic content (a live leaderboard, a chat thread that only loads on
+scroll-triggered pagination beyond what a single render captures) may still
+come back thin after a real render. Recording that honestly (leave it thin,
+note why in `dead-links.md` / `PLAN.md`'s retro) is a correct outcome — this
+route recovers content that exists but wasn't rendered, not content that
+isn't accessible at all.
 
 ## Search quality
 

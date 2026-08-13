@@ -1,20 +1,20 @@
 # Research corpus — coverage report
 
-Generated 2026-08-13T00:06:54.257Z by `corpus report` — do not hand-edit.
+Generated 2026-08-13T09:28:42.164Z by `corpus report` — do not hand-edit.
 
-**52/54 sources ingested** · 451 chunks · ~271k estimated tokens.
+**54/54 sources ingested** · 558 chunks · ~345k estimated tokens.
 
 | Area | Sources | Ingested | Failed | Unfetched | Chunks | ~Tokens |
 |------|---------|----------|--------|-----------|--------|---------|
-| 1. Podcast Infrastructure | 7 | 7 | 0 | 0 | 47 | 23.2k |
+| 1. Podcast Infrastructure | 7 | 7 | 0 | 0 | 47 | 23.8k |
 | 2. Speech Processing | 6 | 6 | 0 | 0 | 47 | 27.6k |
 | 3. Topic Segmentation | 8 | 8 | 0 | 0 | 90 | 56.7k |
 | 4. Retrieval & Recommendation | 5 | 5 | 0 | 0 | 56 | 33.9k |
-| 5. Audio Assembly & Playback | 6 | 5 | 1 | 0 | 24 | 13.7k |
-| 6. TTS & AI Narration | 5 | 5 | 0 | 0 | 15 | 6.1k |
+| 5. Audio Assembly & Playback | 6 | 6 | 0 | 0 | 36 | 22.4k |
+| 6. TTS & AI Narration | 5 | 5 | 0 | 0 | 15 | 5.9k |
 | 7. Prior Art & Postmortems | 5 | 5 | 0 | 0 | 22 | 8.6k |
 | 8. Legal / Policy Landscape | 8 | 8 | 0 | 0 | 104 | 69.3k |
-| 9. LLM Pipeline Engineering | 4 | 3 | 1 | 0 | 46 | 32.4k |
+| 9. LLM Pipeline Engineering | 4 | 4 | 0 | 0 | 141 | 96.6k |
 
 ## Per-source status
 
@@ -58,7 +58,7 @@ Generated 2026-08-13T00:06:54.257Z by `corpus report` — do not hand-edit.
 
 ### 5. Audio Assembly & Playback
 
-- [FAILED (404)] ★ AES TD1004.1.15-10 — Loudness for streaming/network playback — https://www.aes.org/technical/documents/AESTD1004_1_15_10.pdf
+- [ok (12 chunks)] ★ AES TD1004.1.15-10 — Loudness for streaming/network playback — https://aes.org/wp-content/uploads/2024/01/AESTD1004_1_15_10.pdf
 - [ok (14 chunks)] ★ Apple AVFoundation Editing Guide — https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/AVFoundationPG/Articles/03_Editing.html
 - [ok (1 chunks)] Apple Developer Forum — AVQueuePlayer gapless playback — https://developer.apple.com/forums/thread/111413
 - [ok (1 chunks)] Apple Developer Forum — Multiple AVPlayer instances + AirPlay 2 — https://developer.apple.com/forums/thread/105877
@@ -95,7 +95,7 @@ Generated 2026-08-13T00:06:54.257Z by `corpus report` — do not hand-edit.
 ### 9. LLM Pipeline Engineering
 
 - [ok (18 chunks)] LLM-as-a-Judge complete guide (Evidently AI) — https://www.evidentlyai.com/llm-guide/llm-as-a-judge
-- [FAILED (403)] A Survey on LLM-as-a-Judge (ScienceDirect) — https://www.sciencedirect.com/science/article/pii/S2666675825004564
+- [ok (95 chunks)] A Survey on LLM-as-a-Judge (arXiv 2411.15594) — https://arxiv.org/abs/2411.15594
 - [ok (12 chunks)] LLM-as-a-Judge best practices (DeepEval) — https://deepeval.com/blog/llm-as-a-judge
 - [ok (16 chunks)] Evaluating Scoring Bias in LLM-as-a-Judge (arXiv 2506.22316) — https://arxiv.org/pdf/2506.22316
 

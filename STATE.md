@@ -11,6 +11,25 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Completed workstreams
 
+### corpus/refetch-weak-sources — recover the 8 weakest corpus sources (2026-08-13, COMPLETE)
+
+PR: `corpus/refetch-weak-sources`. Recovered both dead links (source 12 AES
+TD1004, source 52 LLM-as-a-Judge survey — repointed to a CC0 arXiv preprint,
+redistribution verdict flips deny→allow) and 4 of 6 "thin" sources (2, 14, 33,
+34, 39) via a new browser-rendered-capture ingestion route
+(`corpus ingest-captured`, `tools/corpus/README.md#rendered-html-route`).
+Source 37 (TTS Arena V2) stays honestly thin — cross-origin sandboxed iframe,
+recorded not hidden. Also fixed a real bug: the manifest loader forked a
+duplicate source on a URL edit instead of updating in place; fixed with
+`corpus repoint-url`. Corpus: 52/54 → 54/54 ingested, 558 chunks. Full detail:
+`docs/research/corpus/PLAN.md`'s 2026-08-13 retro.
+- **Owned directories this touched:** `tools/corpus/`, `docs/research/corpus/`.
+- **Shared files touched, each its own commit:** `docs/research/foray-research-dossier.md`
+  (the two URL repoints), `test/suite-integrity.test.js` (isolated floor-bump
+  commit), `CLAUDE.md` (corpus section refreshed to match).
+- **Out of scope, untouched:** `data/*.json`, `tools/segments|transcribe|refresh`,
+  `backend/`, `app.js`, `.github/`.
+
 ### corpus — research corpus ingestion (Joey's Claude, 2026-08-12, COMPLETE)
 
 Done same day: 52/54 dossier sources ingested (480 chunks as first ingested,

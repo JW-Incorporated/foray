@@ -155,3 +155,35 @@ export function loadManifest(db, entries) {
   }
   return entries.length;
 }
+
+/**
+ * Repoint an existing source's URL in place, id-stable — for a source whose
+ * upstream location moved (a dead link recovered at a new canonical URL).
+ *
+ * loadManifest's upsert keys off `url`, which is exactly right for the
+ * common case (re-run the same dossier, refresh mutable fields) but wrong
+ * for this one: if the dossier's URL for source N changes, the upsert finds
+ * no row with the NEW url, so `ON CONFLICT` never fires — it INSERTS a
+ * fresh row with a new id instead of updating N, forking a duplicate while
+ * N sits unchanged (still pointing at the dead URL). documents/chunks hang
+ * off source id, and dead-links.md / digests.md / corpus-index.json all cite
+ * sources by id, so a silent fork is a real correctness bug, not a cosmetic
+ * one.
+ *
+ * This is the explicit, auditable fix: update `sources.url` for a known id
+ * BEFORE reloading the manifest, so the subsequent loadManifest call's
+ * url-keyed upsert now matches that row and refreshes its other fields
+ * (title, why_it_matters, ...) normally. Full procedure (README.md, PLAN.md):
+ *   1. edit the dossier entry's URL
+ *   2. corpus repoint-url <id> <new-url>
+ *   3. corpus load-manifest   (syncs title/notes/etc. into the same row)
+ *   4. corpus refetch <id>    (actually fetches the new URL)
+ */
+export function repointSourceUrl(db, sourceId, newUrl) {
+  const existing = db.prepare("SELECT id, url FROM sources WHERE id = ?").get(sourceId);
+  if (!existing) throw new Error(`no source with id ${sourceId} — run load-manifest first?`);
+  const clash = db.prepare("SELECT id FROM sources WHERE url = ? AND id != ?").get(newUrl, sourceId);
+  if (clash) throw new Error(`url ${newUrl} already belongs to source ${clash.id}, not ${sourceId}`);
+  db.prepare("UPDATE sources SET url = ? WHERE id = ?").run(newUrl, sourceId);
+  return { id: sourceId, oldUrl: existing.url, newUrl };
+}
