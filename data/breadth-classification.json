@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-13T00:33:21.528Z",
+  "built_at": "2026-08-13T08:33:03.740Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-13-24f4b81b",
+    "last_batch_id": "fresh-2026-08-13-9eb750c0",
     "last_batch_tier": 1
   },
   "entries": {
@@ -180745,7 +180745,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pakistan cricket-focused sports podcast with expert analysis of test matches and player interviews.",
+      "display_title": "ProSportsStudio",
+      "blurb": "Pakistan cricket analysis and insights from sports specialists covering test cricket and national teams.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1812943160": {
       "topics": [
@@ -180836,10 +180851,33 @@
     },
     "1813190935": {
       "topics": [
+        "health/fitness",
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Medical professionals and health experts discussing wellness, biohacking, and women's health topics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1813210890": {
       "topics": [
@@ -180934,10 +180972,30 @@
     },
     "1813490365": {
       "topics": [
+        "relationships",
         "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Young female hosts discussing dating, relationships, and life with humor and candid conversations.",
+      "display_title": "Girl Talk",
+      "blurb": "Dating and relationship advice from two young women sharing personal stories and candid talks.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1813662437": {
       "topics": [
@@ -180970,10 +181028,30 @@
     },
     "1813734337": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ancestral health and primal living approach connecting paleolithic lifestyle to modern fitness.",
+      "display_title": "Beyond the Cave Podcast",
+      "blurb": "Ancestral wisdom meets modern fitness: strength, nutrition, and resilience from our evolutionary past.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1813795206": {
       "topics": [
@@ -181016,7 +181094,22 @@
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship and dating advice with wit and honesty exploring love and modern masculinity.",
+      "display_title": "Boy Problems",
+      "blurb": "Love and masculinity explored with wit: dating advice and relationship insights for modern life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1813978115": {
       "topics": [
@@ -181108,10 +181201,30 @@
     },
     "1814209333": {
       "topics": [
-        "aviation"
+        "adventure/exploration",
+        "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mission aviation and faith-centered storytelling about serving remote communities with innovation.",
+      "display_title": "JAARS Uncharted Podcast",
+      "blurb": "Stories of missionary pilots and remote communities: faith, innovation, and global service.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1814231526": {
       "topics": [
@@ -181228,7 +181341,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual tennis commentary podcast discussing ATP tour rankings and player analysis.",
+      "display_title": "TENNPOD",
+      "blurb": "Tennis talk: ATP rankings, French Open predictions, and casual discussion from the TennCom boys.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1814782496": {
       "topics": [
@@ -181246,17 +181374,52 @@
     },
     "1815015121": {
       "topics": [
-        "relationships"
+        "history",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Persian-language archaeology and human history exploring migration, domestication, and civilization.",
+      "display_title": "خداحافظ آفریقا",
+      "blurb": "Ancient human history and archaeology: migration patterns, domestication, and civilizational origins.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1815047719": {
       "topics": [
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Emo and pop-punk music interviews featuring band members and scene influencers from the community.",
+      "display_title": "SADurdays hosted by Hunter deBlanc",
+      "blurb": "Emo and pop-punk interviews: band members, Warped Tour history, and the music scene.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1815051288": {
       "topics": [
@@ -181391,10 +181554,30 @@
     },
     "1815565969": {
       "topics": [
-        "craft"
+        "craft/diy-home",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cozy podcast about knitting, fiber crafts, farm life, and creative projects with literary readings.",
+      "display_title": "firefly's Hatful of Yarns",
+      "blurb": "Cozy fiber arts and farm life: knitting stories, creative projects, and literary readings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1815585836": {
       "topics": [
@@ -181566,7 +181749,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby podcast with interviews with professional players about career development and skill.",
+      "display_title": "Rugby Legends with Arthur Dickins",
+      "blurb": "Young rugby enthusiast interviews pro players on skill, mindset, and reaching elite level.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1816059116": {
       "topics": [
@@ -181799,17 +181997,52 @@
     },
     "1816888777": {
       "topics": [
+        "education",
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ASMR podcast combining soft-spoken storytelling with educational content on history and science.",
+      "display_title": "Sleep and ASMR by The French Whisperer",
+      "blurb": "ASMR bedtime stories: soft-spoken history, science, and mythology for sleep and relaxation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1816939399": {
       "topics": [
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "U.S. Soccer podcast featuring national team players and leadership discussing the sport.",
+      "display_title": "U.S. Soccer Podcast",
+      "blurb": "U.S. Soccer stories: interviews with national team players and leadership shaping the sport.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1816974901": {
       "topics": [
@@ -181817,7 +182050,26 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real estate and property investment podcast with expert advice on market trends and strategy.",
+      "display_title": "Real Estate This Week",
+      "blurb": "Real estate expertise: market trends, investment strategies, and home buying guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1816989347": {
       "topics": [
@@ -181840,7 +182092,26 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hunting podcast focused on family, fatherhood, and outdoor skills balancing hunting and parenting.",
+      "display_title": "The Hunting Dad Podcast",
+      "blurb": "Hunting and family: conversations about balancing outdoor pursuits with raising the next generation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1817066428": {
       "topics": [
@@ -181854,14 +182125,47 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily fantasy football podcast analyzing individual defensive player rankings and strategy.",
+      "display_title": "IDP Fantasy Football Podcast",
+      "blurb": "Fantasy football analysis: defensive player strategy, rankings, and dynasty league insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1817074963": {
       "topics": [
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily fantasy football strategy podcast focusing on slate analysis and roster construction.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1817095407": {
       "topics": [
@@ -181909,7 +182213,22 @@
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Branding and small business podcast on design, strategy, and authentic brand building.",
+      "display_title": "Brand Currency",
+      "blurb": "Branding fundamentals: design, messaging, and strategy for building authentic small business brands.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1817172963": {
       "topics": [
@@ -181938,7 +182257,22 @@
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Executive leadership on C-suite alignment and boardroom dynamics; title exceeds 8-word limit.",
+      "display_title": "Boardroom Breakthroughs",
+      "blurb": "Executive leadership: C-suite alignment, boardroom friction resolution, and strategic decision-making.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1817225413": {
       "topics": [
@@ -182028,10 +182362,30 @@
     },
     "1817383627": {
       "topics": [
+        "news/tech",
         "relationships"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Narrative fiction and true story blend exploring AI companions and technological ethics; genre unclear.",
+      "display_title": "Flesh and Code",
+      "blurb": "From Wondery: true story exploring AI companions, love, and the ethical implications of technology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:33:03.740Z"
     },
     "1817448240": {
       "topics": [
@@ -182131,7 +182485,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Junior hockey podcast discussing player development, coaching, and competitive hockey pathways.",
+      "display_title": "Swan Hockey",
+      "blurb": "Junior hockey insights: player development, recruiting, and pathways to professional hockey.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1817950623": {
       "topics": [
@@ -182263,7 +182632,22 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book club featuring Dua Lipa interviewing authors about their latest literary works.",
+      "display_title": "Service95 Book Club With Dua Lipa",
+      "blurb": "Book club with Dua Lipa: monthly author interviews exploring compelling and thought-provoking reads.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1818344114": {
       "topics": [
@@ -182298,10 +182682,29 @@
     "1818358405": {
       "topics": [
         "economics/markets",
-        "business"
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Economics and investing podcast breaking down housing markets, wealth gaps, and economic trends.",
+      "display_title": "The Zach Foust Show",
+      "blurb": "Economics and markets: housing trends, wealth gaps, and economic analysis explained simply.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1818375426": {
       "topics": [
@@ -182321,17 +182724,52 @@
     },
     "1818380107": {
       "topics": [
-        "news/daily"
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political news podcast analyzing Trump administration, international affairs, and policy impacts.",
+      "display_title": "The Trump Report",
+      "blurb": "Political analysis: Trump administration news, international affairs, and U.S. policy with expert commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1818386731": {
       "topics": [
+        "engineering",
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.9
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Engineering and building design podcast covering MEP, BIM, and architectural coordination topics.",
+      "display_title": "The Coordination Conversation",
+      "blurb": "Engineering and architecture: MEP coordination, BIM, design standards, and sustainable building.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1818389132": {
       "topics": [
@@ -182346,7 +182784,22 @@
         "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home renovation and architecture podcast with expert architects guiding homeowners through projects.",
+      "display_title": "Home: The Second Story",
+      "blurb": "Home design and renovation: architect interviews and lessons from custom building projects.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1818418128": {
       "topics": [
@@ -182429,7 +182882,22 @@
         "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy interview podcast with unfiltered conversations and humor about unconventional life stories.",
+      "display_title": "2 Goons",
+      "blurb": "Comedy interviews: two hosts chat with guests about unconventional life stories and humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1818646689": {
       "topics": [
@@ -182477,10 +182945,30 @@
     },
     "1818890725": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.95
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design and tech podcast featuring interviews with pioneering designers and product innovators.",
+      "display_title": "First of Kind",
+      "blurb": "Design and tech pioneers: interviews with foundational designers shaping digital and physical products.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:33:03.740Z"
     },
     "1818905753": {
       "topics": [
@@ -182561,7 +183049,25 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Hebrew-language chemistry podcast featuring university researchers on chemical innovation and applications.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1819370494": {
       "topics": [
@@ -182749,7 +183255,26 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial news and commentary podcast covering markets, tech, politics, and investment trends.",
+      "display_title": "From the Desk of Anthony Pompliano",
+      "blurb": "Financial news and markets: business, tech, and political analysis before mainstream media.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1819782629": {
       "topics": [
@@ -182818,11 +183343,30 @@
     },
     "1820085883": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "science",
+        "nature/earth-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weather science and forecasting podcast exploring academic papers and human relationship with weather.",
+      "display_title": "weathering",
+      "blurb": "Weather science: AI weather models, forecasting innovation, and the human relationship with weather.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1820091726": {
       "topics": [
@@ -182882,7 +183426,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation industry podcast featuring pilots, engineers, and leaders in aerospace and flight.",
+      "display_title": "WAI On Air Podcast",
+      "blurb": "Aviation stories: pilots, engineers, and leaders shaping the aerospace and aviation industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-13-9eb750c0",
+      "classified_at": "2026-08-13T08:32:43.215Z"
     },
     "1820442520": {
       "topics": [
