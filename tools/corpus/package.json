@@ -6,8 +6,8 @@
   "engines": {
     "node": ">=22.5"
   },
+  "//test": "This package owns its own runner flags — node:sqlite is flagged on Node 22.x (CI's version; accepted and redundant on >=23.4), so `npm test` here is the ONLY command that is correct on every machine. tools/ci/run-suites.mjs invokes it as `npm test -- <files>`, which is why no file pattern is baked in: with arguments it runs exactly the suites CI discovered, and with none it falls back to node --test's own recursive discovery from this directory. The script MUST keep forwarding its arguments (end in `node --test`): one that ignored them would be planned, floored and reported as executed while the named suite never ran.",
   "scripts": {
-    "//test": "This package owns its own runner flags — node:sqlite is flagged on Node 22.x (CI's version; accepted and redundant on >=23.4), so `npm test` here is the ONLY command that is correct on every machine. tools/ci/run-suites.mjs invokes it as `npm test -- <files>`, which is why no file pattern is baked in: with arguments it runs exactly the suites CI discovered, and with none it falls back to node --test's own recursive discovery from this directory.",
     "test": "node --experimental-sqlite --test"
   },
   "dependencies": {
