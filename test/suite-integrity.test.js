@@ -67,7 +67,7 @@ const FLOORS = {
   "tools/transcribe/fetch-audio.test.mjs": 64,
   "tools/corpus/fetcher.test.mjs": 23,
   "tools/corpus/extract.test.mjs": 21,
-  "tools/corpus/db.test.mjs": 17,
+  "tools/corpus/db.test.mjs": 20,
   "tools/corpus/manifest.test.mjs": 19,
   "tools/corpus/export-index.test.mjs": 24,
   "tools/corpus/chunk.test.mjs": 16,
