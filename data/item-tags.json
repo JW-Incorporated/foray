@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-12T11:43:31.381Z",
+  "built_at": "2026-08-13T11:44:39.354Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -12454,6 +12454,228 @@
       "rock",
       "album",
       "songwriting"
+    ],
+    "lex-fridman-podcast--500-khabib-nurmagomedov-dagestan-mma-ufc": [
+      "mma",
+      "ufc",
+      "combat",
+      "wrestling",
+      "russia",
+      "islam",
+      "interview",
+      "athletes"
+    ],
+    "stuff-you-should-know--short-stuff-nero-and-his-fiddle": [
+      "ancient-rome",
+      "rome",
+      "myth-busting",
+      "roman-history",
+      "fire",
+      "history"
+    ],
+    "the-rest-is-history--696-elizabeth-i-vs-the-catholics": [
+      "elizabeth-i",
+      "tudor-england",
+      "espionage",
+      "conspiracy",
+      "trial",
+      "royalty",
+      "england"
+    ],
+    "conan-obrien-needs-a-friend--summer-s-pouses-episode-3-tak": [
+      "conan-obrien",
+      "comedy",
+      "interview",
+      "immigration",
+      "marriage",
+      "family",
+      "personal-story"
+    ],
+    "the-ancients--romulus-remus": [
+      "ancient-rome",
+      "rome",
+      "roman-history",
+      "mythology",
+      "legend",
+      "ancient-history",
+      "history"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-2630": [
+      "quantum",
+      "physics",
+      "philosophy",
+      "science",
+      "bite-sized",
+      "explainer"
+    ],
+    "this-week-in-startups--these-robots-could-cut-delivery-costs": [
+      "robotics",
+      "startups",
+      "logistics",
+      "entrepreneurship",
+      "supply-chain",
+      "ceo",
+      "founders"
+    ],
+    "twenty-minute-vc--20vc-canva-slashes-growth-how-much": [
+      "venture-capital",
+      "startups",
+      "ai",
+      "google",
+      "tsmc",
+      "tech-industry"
+    ],
+    "around-the-house-eric-g--johnny-survived-an-earthquake-but-can": [
+      "home-repair",
+      "diy",
+      "home-improvement",
+      "household-tips",
+      "home"
+    ],
+    "fly-on-the-wall--snl-bloopers-and-therapy-with-tony": [
+      "snl",
+      "comedy",
+      "interview",
+      "celebrities",
+      "film"
+    ],
+    "the-bbq-central-show--pitmasters-contestants-connie-desousa-and-john": [
+      "bbq",
+      "pitmasters",
+      "cigars",
+      "grilling",
+      "competition",
+      "food"
+    ],
+    "flight-safety-detectives--the-real-story-behind-the-marine": [
+      "aviation",
+      "aviation-safety",
+      "air-traffic-control",
+      "near-disaster",
+      "safety"
+    ],
+    "two-scientists-walk-into-a-bar--s7e05-ai-in-oncology": [
+      "oncology",
+      "ai",
+      "cancer",
+      "science",
+      "medicine",
+      "drug-discovery",
+      "research"
+    ],
+    "ologies-with-alie-ward--noctohabitology-sleep-procrastination-with-vanessa-nessy": [
+      "sleep",
+      "science",
+      "circadian",
+      "insomnia",
+      "health",
+      "biology"
+    ],
+    "planetary-radio--total-solar-eclipse-2026-astrophotography-and": [
+      "astronomy",
+      "space",
+      "photography",
+      "artemis",
+      "nasa",
+      "eclipse"
+    ],
+    "tuned-in-hpa--168-how-do-you-make-3000": [
+      "cars",
+      "horsepower",
+      "drag-racing",
+      "automotive",
+      "engineering"
+    ],
+    "how-i-built-this--advice-line-with-bobbi-brown-of": [
+      "entrepreneurship",
+      "business",
+      "founders",
+      "advice",
+      "cosmetics"
+    ],
+    "we-have-ways-of-making-you-talk--before-the-storm-the-nazi-myth": [
+      "world-war-2",
+      "nazi-germany",
+      "mussolini",
+      "britain",
+      "military-history"
+    ],
+    "talking-headways--episode-589-the-bikeable-forest": [
+      "urbanism",
+      "cycling",
+      "urban-planning",
+      "texas",
+      "nasa"
+    ],
+    "strict-scrutiny--know-your-rights-copwatching-101": [
+      "law",
+      "civil-rights",
+      "society-law",
+      "activism",
+      "courts"
+    ],
+    "that-triathlon-show--we-are-nowhere-near-peak-aero": [
+      "triathlon",
+      "cycling",
+      "aerodynamics",
+      "sports-science",
+      "endurance"
+    ],
+    "twiml-ai--why-image-generation-needs-more-than": [
+      "ai",
+      "image-generation",
+      "machine-learning",
+      "computing",
+      "research"
+    ],
+    "mel-robbins-podcast--the-exact-episode-you-need-to": [
+      "self-help",
+      "mental-health",
+      "therapy",
+      "coping",
+      "self-improvement"
+    ],
+    "call-her-daddy--paris-jackson-love-loss-listening-to": [
+      "celebrity",
+      "interview",
+      "music",
+      "personal-story",
+      "relationships"
+    ],
+    "las-culturistas--vibey-good-actor-w-ramy-youssef": [
+      "comedy",
+      "interview",
+      "celebrities",
+      "pop-culture",
+      "acting"
+    ],
+    "comedy-bang-bang--bonus-bang-2026-tour-columbus-paul": [
+      "comedy-bang-bang",
+      "comedy",
+      "improv",
+      "live-comedy",
+      "paul-f-tompkins"
+    ],
+    "dateline--talking-dateline-suspicion-in-silver-city": [
+      "dateline",
+      "true-crime",
+      "murder-investigation",
+      "investigation",
+      "society-law"
+    ],
+    "ear-hustle--ciw-the-magazine-issue-one": [
+      "prison",
+      "incarceration",
+      "storytelling",
+      "personal-journals",
+      "society"
+    ],
+    "modern-love--am-i-too-anxious-for-love": [
+      "relationships",
+      "anxiety",
+      "mental-health",
+      "personal-journals",
+      "personal-story"
     ]
   }
 }
