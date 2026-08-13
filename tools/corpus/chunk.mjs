@@ -1,9 +1,18 @@
 /* Markdown → chunks at semantic boundaries.
  *
  * Targets ~500–1000 estimated tokens per chunk (PLAN.md Workstream B).
- * "Token" here is the chars/4 heuristic — documented, cheap, and consistent
- * across the corpus; exact tokenization waits for the embedding backfill
- * pass, which can re-chunk if its model disagrees.
+ * "Token" here is the chars/4 heuristic by default — documented, cheap, and
+ * consistent across the corpus.
+ *
+ * THE HEURISTIC IS NOW INJECTABLE, and that matters. Measured against
+ * `Xenova/bge-small-en-v1.5`'s own tokenizer, chars/4 UNDERCOUNTS this corpus
+ * by 7%, and the 1000-token ceiling it enforces lands around 1070 real
+ * tokens — past a 512-token model's limit, which truncates SILENTLY. 62% of
+ * the corpus was over the line. So the embedding pass passes its model's real
+ * tokenizer in as `countTokens` and a much lower ceiling, while every other
+ * caller (ingest, FTS5, `stats`) keeps the cheap heuristic, which is entirely
+ * adequate for an index with no length limit. `token_count` on each chunk is
+ * reported in whatever unit `countTokens` measures.
  *
  * Boundary rules, in priority order:
  * 1. ATX headings always start a new chunk when the current one is at least
@@ -37,19 +46,28 @@ const realWordCount = (s) => (s.match(/[\p{L}\p{N}][\p{L}\p{N}'’.-]*/gu) || []
  * survive, so this tests for the ABSENCE of alphanumerics, not for shortness. */
 export const isSeparatorBlock = (s) => /^[\s\-*_=~•·—–+|]+$/.test(s);
 
-function splitOversized(block, maxTokens) {
+/* Characters per token, measured on the string at hand rather than assumed.
+ * Under the default chars/4 heuristic this is always 4, so the hard-split
+ * below cuts exactly where it always did; under a real tokenizer it adapts
+ * (English BPE runs ~4.3 chars/token, and code or tables run far lower).
+ * FLOOR, not round: underestimating chars-per-token makes the cut shorter
+ * than the ceiling, which is the safe direction — the loop simply iterates
+ * again, whereas overestimating would push a piece past the limit. */
+const charsPerToken = (s, countTokens) => Math.max(1, Math.floor(s.length / Math.max(1, countTokens(s))));
+
+function splitOversized(block, maxTokens, countTokens) {
   const sentences = block.split(/(?<=[.!?])\s+(?=[A-Z0-9"'([])/);
   const parts = [];
   let cur = "";
   for (let s of sentences) {
-    while (estTokens(s) > maxTokens) {
+    while (countTokens(s) > maxTokens) {
       // Pathological sentence (minified text, giant table row): hard split.
-      const cut = maxTokens * 4;
+      const cut = charsPerToken(s, countTokens) * maxTokens;
       if (cur) { parts.push(cur); cur = ""; }
       parts.push(s.slice(0, cut));
       s = s.slice(cut);
     }
-    if (cur && estTokens(cur) + estTokens(s) > maxTokens) {
+    if (cur && countTokens(cur) + countTokens(s) > maxTokens) {
       parts.push(cur);
       cur = s;
     } else {
@@ -62,9 +80,17 @@ function splitOversized(block, maxTokens) {
 
 /**
  * @param {string} markdown
+ * @param {object} [opts]
+ * @param {number}   [opts.minTokens=250]
+ * @param {number}   [opts.maxTokens=1000]
+ * @param {(s:string)=>number} [opts.countTokens=estTokens]  the length unit;
+ *   inject a real tokenizer to chunk for a model with a hard input limit.
  * @returns {Array<{ordinal, heading_path, text, token_count}>}
  */
-export function chunkMarkdown(markdown, { minTokens = MIN_TOKENS, maxTokens = TARGET_MAX } = {}) {
+export function chunkMarkdown(
+  markdown,
+  { minTokens = MIN_TOKENS, maxTokens = TARGET_MAX, countTokens = estTokens } = {}
+) {
   const lines = markdown.split("\n");
 
   /* Pass 1: group lines into blocks (paragraphs, fenced code, headings),
@@ -123,31 +149,31 @@ export function chunkMarkdown(markdown, { minTokens = MIN_TOKENS, maxTokens = TA
         ordinal: chunks.length,
         heading_path: cur.headingPath,
         text: cur.text.trim(),
-        token_count: estTokens(cur.text.trim()),
+        token_count: countTokens(cur.text.trim()),
       });
     }
     cur = null;
   };
 
   for (const block of blocks) {
-    const blockTokens = estTokens(block.text);
+    const blockTokens = countTokens(block.text);
 
-    if (block.isHeading && cur && estTokens(cur.text) >= minTokens) flushChunk();
+    if (block.isHeading && cur && countTokens(cur.text) >= minTokens) flushChunk();
 
     if (blockTokens > maxTokens) {
       flushChunk();
-      for (const part of splitOversized(block.text, maxTokens)) {
+      for (const part of splitOversized(block.text, maxTokens, countTokens)) {
         chunks.push({
           ordinal: chunks.length,
           heading_path: block.headingPath,
           text: part.trim(),
-          token_count: estTokens(part.trim()),
+          token_count: countTokens(part.trim()),
         });
       }
       continue;
     }
 
-    if (cur && estTokens(cur.text) + blockTokens > maxTokens) flushChunk();
+    if (cur && countTokens(cur.text) + blockTokens > maxTokens) flushChunk();
 
     if (!cur) {
       cur = { text: block.text, headingPath: block.headingPath };
@@ -160,13 +186,16 @@ export function chunkMarkdown(markdown, { minTokens = MIN_TOKENS, maxTokens = TA
   }
   flushChunk();
 
-  /* A trailing sliver reads better merged into its predecessor. */
+  /* A trailing sliver reads better merged into its predecessor. Expressed as
+   * a fraction of the ceiling rather than a hard 60 so it scales with the
+   * length unit — at the default 1000 it is exactly the 60 it always was. */
+  const sliver = maxTokens * 0.06;
   if (chunks.length >= 2) {
     const last = chunks[chunks.length - 1];
     const prev = chunks[chunks.length - 2];
-    if (last.token_count < 60 && prev.token_count + last.token_count <= maxTokens + 60) {
+    if (last.token_count < sliver && prev.token_count + last.token_count <= maxTokens + sliver) {
       prev.text += `\n\n${last.text}`;
-      prev.token_count = estTokens(prev.text);
+      prev.token_count = countTokens(prev.text);
       chunks.pop();
     }
   }
