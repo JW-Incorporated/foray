@@ -39,10 +39,13 @@ export function tokenHistogram(counts, { maxTokens, threshold = RECHUNK_THRESHOL
   const truncated = counts.filter((n) => n > maxTokens).length;
   const danger = counts.filter((n) => n > dangerAt).length;
 
+  /* First bucket is inclusive of 0 so the buckets always sum to `chunks` —
+   * an exclusive `> 0` silently dropped any zero-token chunk, which is
+   * precisely the pathological input a histogram exists to surface. */
   const buckets = [];
   let lo = 0;
   for (const hi of BUCKET_EDGES) {
-    buckets.push({ lo, hi, n: counts.filter((n) => n > lo && n <= hi).length });
+    buckets.push({ lo, hi, n: counts.filter((n) => (lo === 0 ? n >= lo : n > lo) && n <= hi).length });
     lo = hi;
   }
 

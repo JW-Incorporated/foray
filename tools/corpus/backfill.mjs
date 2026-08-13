@@ -7,6 +7,7 @@
 
 import { registerModel, chunksMissingEmbedding, currentChunks, embeddingInput, writeEmbeddings, embeddingCoverage } from "./embeddings.mjs";
 
+
 export const DEFAULT_BATCH = 16;
 
 /**
@@ -32,10 +33,13 @@ export async function backfill(db, embedder, { force = false, batch = DEFAULT_BA
    * corpus be quietly 60% invisible (which is exactly what the pre-rechunk
    * measurement found). */
   const limit = embedder.model.maxTokens ?? null;
-  let truncated = 0;
+  const canMeasure = Boolean(limit && embedder.countTokens);
+  /* null, not 0, when we could not measure: "no chunk is truncated" and
+   * "nobody checked" must not print as the same reassuring zero. */
+  let truncated = canMeasure ? 0 : null;
 
   const inputs = todo.map((c) => embeddingInput(c, model.passage_prefix));
-  if (limit && embedder.countTokens) {
+  if (canMeasure) {
     for (const t of inputs) if (embedder.countTokens(t) > limit) truncated++;
   }
 
@@ -58,5 +62,8 @@ export async function backfill(db, embedder, { force = false, batch = DEFAULT_BA
     onProgress?.({ done, total: todo.length });
   }
 
-  return { model, embedded: done, skipped: force ? 0 : currentChunks(db).length - todo.length, truncated, coverage: embeddingCoverage(db, model.id) };
+  /* Derived from the coverage counts rather than by re-loading every chunk's
+   * full text just to take its length. */
+  const coverage = embeddingCoverage(db, model.id);
+  return { model, embedded: done, skipped: coverage.chunks - todo.length, truncated, coverage };
 }

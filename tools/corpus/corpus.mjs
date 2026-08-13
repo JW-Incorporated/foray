@@ -242,8 +242,12 @@ async function main() {
       if (!chunks.length) { console.log("no chunks — run ingest first"); break; }
       const inputs = chunks.map((c) => embeddingInput(c, embedder.model.passage_prefix));
       const real = inputs.map((t) => embedder.countTokens(t));
+      /* Both sides must measure THE SAME STRING. Comparing real tokens of the
+       * encoder input (title + heading path + text) against chars/4 of the
+       * text alone charged the heuristic for the header it never saw, and
+       * overstated its error by roughly 75% (1.07x vs the true 1.04x). */
       const h = tokenHistogram(real, { maxTokens: embedder.model.maxTokens });
-      console.log(formatHistogram(h, heuristicDrift(real, chunks.map((c) => estTokens(c.text)))));
+      console.log(formatHistogram(h, heuristicDrift(real, inputs.map(estTokens))));
       break;
     }
 

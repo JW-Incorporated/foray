@@ -1,8 +1,8 @@
 /* THE ONLY FILE IN THIS REPO THAT IMPORTS AN EMBEDDING RUNTIME.
  *
- * `@huggingface/transformers` pulls in `onnxruntime-node`: ~250MB of native
- * binaries, in a directory (`tools/corpus/`) that has advertised zero native
- * dependencies since it was built. Quarantining it here — behind its own
+ * `@huggingface/transformers` pulls in `onnxruntime-node`: 373MB installed
+ * (measured), in a directory (`tools/corpus/`) that has advertised zero
+ * native dependencies since it was built. Quarantining it here — behind its own
  * package.json, imported only via a dynamic import in `../embedder.mjs` —
  * is what lets three things stay true:
  *

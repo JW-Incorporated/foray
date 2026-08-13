@@ -13,6 +13,39 @@ import { openMigrated } from "./db.mjs";
 import { ingestCapturedText } from "./ingest.mjs";
 const tmpDb = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), "corpus-ingest-")), "t.db");
 
+/* --- the structural guard on the archive-deletion bug -------------------- */
+
+test("no test in this directory ingests without naming its own archive root", () => {
+  /* `corpusRoot` still defaults to the real CORPUS_ROOT, because the CLI needs
+   * that — so nothing stops the NEXT test from omitting it and silently
+   * reintroducing the bug that deleted source 1's archive on every `npm test`.
+   * A hand-check at review time does not survive contact with a future PR;
+   * this does. Same spirit as test/suite-integrity.js: make the wrong thing
+   * fail loudly rather than trusting everyone to remember. */
+  const dir = import.meta.dirname;
+  const WRITERS = /\b(ingestSource|ingestCapturedText|ingestMany|rechunkAll)\s*\(/g;
+  const offenders = [];
+  for (const file of fs.readdirSync(dir).filter((f) => f.endsWith(".test.mjs"))) {
+    const src = fs.readFileSync(path.join(dir, file), "utf8");
+    for (const m of src.matchAll(WRITERS)) {
+      // Take the call's argument list, balanced to its closing paren.
+      let depth = 0, end = m.index + m[0].length - 1;
+      for (; end < src.length; end++) {
+        if (src[end] === "(") depth++;
+        else if (src[end] === ")" && --depth === 0) break;
+      }
+      const call = src.slice(m.index, end + 1);
+      // `import {…}` lines and the guard's own regex are not calls.
+      if (call.includes("corpusRoot") || call.includes("capture(") || call.includes("ingestOpts")) continue;
+      offenders.push(`${file}: ${call.replace(/\s+/g, " ").slice(0, 90)}`);
+    }
+  }
+  assert.deepEqual(
+    offenders, [],
+    "these calls would write to the REAL data-local/corpus/ archive — pass an explicit corpusRoot:\n" + offenders.join("\n")
+  );
+});
+
 /* This suite's own archive root.
  *
  * The previous defence was a high, "unlikely-to-collide" source id, on the

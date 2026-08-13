@@ -118,8 +118,20 @@ export async function createEmbedder({
   } catch (err) {
     /* A module-resolution failure here means a half-installed runtime — same
      * user-visible situation as no runtime, so it gets the same typed error
-     * rather than a stack trace about a package nobody asked for. */
-    if (err?.code === "ERR_MODULE_NOT_FOUND") throw new EmbeddingRuntimeUnavailable(err.message);
+     * rather than a stack trace about a package nobody asked for.
+     *
+     * All FOUR codes matter, and only the first is obvious. `runtimeInstalled()`
+     * checks that the package DIRECTORY exists, which a half-finished
+     * `npm install` or a node_modules copied from another platform both
+     * satisfy — and then the failure surfaces from CommonJS as
+     * `MODULE_NOT_FOUND` (no `ERR_` prefix; a different code entirely) when a
+     * native binding is missing, or as `ERR_DLOPEN_FAILED` when the .node file
+     * is present but unloadable. Matching only `ERR_MODULE_NOT_FOUND` let
+     * those escape, so `search --mode hybrid` hard-failed with
+     * "Cannot find module '…onnxruntime_binding.node'" on exactly the machines
+     * least able to interpret it. */
+    const RUNTIME_LOAD_FAILURES = ["ERR_MODULE_NOT_FOUND", "MODULE_NOT_FOUND", "ERR_DLOPEN_FAILED", "ERR_INVALID_MODULE_SPECIFIER"];
+    if (RUNTIME_LOAD_FAILURES.includes(err?.code)) throw new EmbeddingRuntimeUnavailable(err.message.split("\n")[0]);
     throw err;
   }
 

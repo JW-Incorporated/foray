@@ -47,13 +47,16 @@ const realWordCount = (s) => (s.match(/[\p{L}\p{N}][\p{L}\p{N}'’.-]*/gu) || []
 export const isSeparatorBlock = (s) => /^[\s\-*_=~•·—–+|]+$/.test(s);
 
 /* Characters per token, measured on the string at hand rather than assumed.
- * Under the default chars/4 heuristic this is always 4, so the hard-split
- * below cuts exactly where it always did; under a real tokenizer it adapts
- * (English BPE runs ~4.3 chars/token, and code or tables run far lower).
- * FLOOR, not round: underestimating chars-per-token makes the cut shorter
- * than the ceiling, which is the safe direction — the loop simply iterates
- * again, whereas overestimating would push a piece past the limit. */
-const charsPerToken = (s, countTokens) => Math.max(1, Math.floor(s.length / Math.max(1, countTokens(s))));
+ *
+ * ROUND, not floor. Under the default chars/4 heuristic the true ratio is 4,
+ * but `estTokens` rounds UP — so `floor(len / ceil(len/4))` returns 3 for
+ * every length that is not an exact multiple of 4 (9999/2500 = 3.9996 → 3),
+ * which silently moved the default hard-split from 4000 chars to 3000 for
+ * three lengths out of four. `Math.round` returns exactly 4 for every string
+ * long enough to reach this branch (a block must already exceed maxTokens),
+ * so the default is preserved, and it still adapts for a real tokenizer —
+ * English BPE runs ~4.3 chars/token, code and tables far lower. */
+const charsPerToken = (s, countTokens) => Math.max(1, Math.round(s.length / Math.max(1, countTokens(s))));
 
 function splitOversized(block, maxTokens, countTokens) {
   const sentences = block.split(/(?<=[.!?])\s+(?=[A-Z0-9"'([])/);
@@ -62,7 +65,16 @@ function splitOversized(block, maxTokens, countTokens) {
   for (let s of sentences) {
     while (countTokens(s) > maxTokens) {
       // Pathological sentence (minified text, giant table row): hard split.
-      const cut = charsPerToken(s, countTokens) * maxTokens;
+      let cut = charsPerToken(s, countTokens) * maxTokens;
+      /* chars-per-token is an ESTIMATE over the whole string, and the first
+       * `cut` characters may be denser than average — so verify the piece we
+       * are about to emit actually fits, and shrink until it does. Without
+       * this the emitted piece is never re-measured (only the remainder is),
+       * which under a real tokenizer left a handful of chunks over the model's
+       * limit and silently truncated. Bounded: each step removes 10%, and the
+       * default heuristic exits immediately because 4*maxTokens chars is
+       * exactly maxTokens estimated tokens. */
+      while (cut > 1 && countTokens(s.slice(0, cut)) > maxTokens) cut = Math.floor(cut * 0.9);
       if (cur) { parts.push(cur); cur = ""; }
       parts.push(s.slice(0, cut));
       s = s.slice(cut);

@@ -262,6 +262,19 @@ test("vectorSearch returns an excerpt, not a fabricated keyword highlight", asyn
   db.close();
 });
 
+test("a query vector of the wrong dimension is rejected, not silently mis-ranked", () => {
+  /* This fails SILENTLY AND WRONGLY if unchecked: a short query makes every
+   * dot product NaN, `sort` leaves NaN comparisons in insertion order, and the
+   * lowest chunk ids come back dressed as nearest neighbours. Reachable
+   * because resolveModel picks whichever model has vectors while the caller
+   * encodes with whatever model it was built with. */
+  const { db, model } = seededCorpus();
+  const index = loadMatrix(db, model.id);
+  assert.throws(() => vectorSearch(db, Float32Array.from([1, 0]), { limit: 3, index }), /2 dimensions but the index holds 4/);
+  assert.throws(() => vectorSearch(db, Float32Array.from([1, 0, 0, 0, 0, 0]), { limit: 3, index }), /6 dimensions but the index holds 4/);
+  db.close();
+});
+
 test("vectorSearch on an empty index returns nothing rather than throwing", () => {
   const { db } = seededCorpus();
   const r = vectorSearch(db, Float32Array.from(AXES.dai), { limit: 5, index: { count: 0, chunkIds: new Int32Array(0), matrix: new Float32Array(0), dim: 4 } });

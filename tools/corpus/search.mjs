@@ -72,12 +72,22 @@ const CHUNK_META_SQL = (n) => `
 /**
  * Nearest chunks to an already-encoded query vector.
  *
- * `index` is the flat matrix from `loadMatrix`. It is passed in rather than
- * loaded here because `eval` runs 15 queries against the same matrix and
- * reloading 558 vectors per query would make the eval measure I/O.
+ * `index` is the flat matrix from `loadMatrix`, passed in so that a caller
+ * running many queries loads it once — `runEval` does exactly that. `search`
+ * still falls back to loading it per call for one-shot CLI use.
  */
 export function vectorSearch(db, queryVector, { limit = 8, index }) {
   if (!index || !index.count) return { rows: [], match: null };
+  /* A dimension mismatch does not error anywhere downstream — it produces
+   * WRONG ANSWERS THAT LOOK RIGHT. A short query makes every dot product NaN,
+   * `sort` leaves NaN comparisons in insertion order, and the lowest chunk ids
+   * come back presented as nearest neighbours; a long one silently ignores its
+   * tail. Reachable in practice because `resolveModel` picks whichever model
+   * has vectors while the caller encodes with whatever model it was built
+   * with. The write path validates dims (backfill.mjs); so must this. */
+  if (queryVector.length !== index.dim) {
+    throw new Error(`query vector has ${queryVector.length} dimensions but the index holds ${index.dim} — different model?`);
+  }
   const ranked = topK(queryVector, index.matrix, index.dim, limit);
   const ids = ranked.map((r) => index.chunkIds[r.index]);
   if (!ids.length) return { rows: [], match: null };
@@ -209,7 +219,11 @@ export async function search(db, query, {
   });
 
   const model = resolveModel(db, modelSpec);
-  if (!model) return downgrade(`no embeddings in this corpus — run \`corpus embed\` first; using keyword search`);
+  if (!model) {
+    return downgrade(modelSpec
+      ? `model ${modelSpec.name}@${modelSpec.revision ?? "main"} is not registered in this corpus — using keyword search`
+      : `no embeddings in this corpus — run \`corpus embed\` first; using keyword search`);
+  }
   if (!embedQuery) return downgrade(`the embedding runtime is not available — using keyword search (install: cd tools/corpus/embed && npm install)`);
 
   let vec;

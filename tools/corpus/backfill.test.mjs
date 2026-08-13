@@ -221,11 +221,29 @@ test("the formatted report states the verdict in words, not just numbers", () =>
 
 /* --- the injectable chunker --------------------------------------------- */
 
-test("the chunker's default length unit is unchanged by the injection point", () => {
+test("the default hard-split still cuts at exactly maxTokens*4 chars, for every length class", () => {
+  /* Pins the DEFAULT chunker against the constant it used before `countTokens`
+   * became injectable. Comparing `chunkMarkdown(md)` to
+   * `chunkMarkdown(md, {countTokens: estTokens})` cannot catch a regression
+   * here — both go down the same new path — and the obvious fixture length
+   * (a multiple of 4) is the one class where a broken ratio coincidentally
+   * agrees. So: assert the emitted split sizes directly, at each length mod 4.
+   *
+   * This caught a real bug: deriving chars-per-token with `Math.floor` yields
+   * 3 rather than 4 whenever length % 4 !== 0, which silently moved the split
+   * from 4000 chars to 3000 for three lengths out of four. */
+  for (const extra of [0, 1, 2, 3]) {
+    const oneLongSentence = "x".repeat(10000 + extra); // no sentence boundaries
+    const chunks = chunkMarkdown(oneLongSentence);
+    assert.equal(chunks[0].text.length, 4000, `length %4 == ${extra}: first cut moved`);
+    assert.equal(chunks[1].text.length, 4000, `length %4 == ${extra}: second cut moved`);
+    assert.equal(chunks.length, 3, `length %4 == ${extra}: chunk count moved`);
+  }
+});
+
+test("passing the default countTokens explicitly changes nothing", () => {
   const md = `# H\n\n${"word ".repeat(2000)}`;
-  const withDefault = chunkMarkdown(md);
-  const withExplicit = chunkMarkdown(md, { countTokens: estTokens });
-  assert.deepEqual(withDefault, withExplicit, "passing the default explicitly must change nothing");
+  assert.deepEqual(chunkMarkdown(md), chunkMarkdown(md, { countTokens: estTokens }));
 });
 
 test("injecting a real tokenizer and a lower ceiling produces smaller chunks", () => {
@@ -235,6 +253,20 @@ test("injecting a real tokenizer and a lower ceiling produces smaller chunks", (
   const small = chunkMarkdown(md, { countTokens: (s) => s.length, maxTokens: 400, minTokens: 100 });
   assert.ok(small.length > big.length, `${small.length} should exceed ${big.length}`);
   for (const c of small) assert.ok(c.token_count <= 400, `chunk of ${c.token_count} exceeds the injected ceiling`);
+});
+
+test("no emitted piece exceeds the ceiling, even when the tokenizer is denser than average", () => {
+  /* The hard-split sizes its cut from a whole-string chars-per-token estimate
+   * but only ever re-measures the REMAINDER, so an emitted piece could sail
+   * past the ceiling unchecked. Under the real bge tokenizer that left five
+   * chunks over the model's 512-token limit — silently truncated — while the
+   * histogram reported the corpus as clean. */
+  const dense = "aaaa "; // 1 token per 5 chars at the front…
+  const sparse = "x".repeat(4000); // …and much denser after
+  const countTokens = (s) => Math.ceil(s.replace(/\s/g, "").length / 2);
+  for (const c of chunkMarkdown(dense.repeat(200) + sparse, { countTokens, maxTokens: 100, minTokens: 25 })) {
+    assert.ok(c.token_count <= 100, `emitted a chunk of ${c.token_count} tokens against a ceiling of 100`);
+  }
 });
 
 test("token_count is reported in whatever unit countTokens measures", () => {
