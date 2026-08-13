@@ -151,3 +151,58 @@ test("every suite on disk is covered by a floor", () => {
       unfloored.join("\n")
   );
 });
+
+/* CLOSING THE LOOP (issue #140)
+ *
+ * Everything above proves a suite exists and is big enough. None of it proves
+ * the suite RUNS. Until #140, CI named each suite directory in its own step,
+ * so the two mechanisms could drift in the one direction that matters: a suite
+ * floored here (protected from deletion) but executed nowhere. That reads as
+ * coverage and is not — strictly worse than no floor at all.
+ *
+ * CI now runs `node tools/ci/run-suites.mjs`, which discovers suites the same
+ * way this file does. The test below asserts the two agree, in both
+ * directions, so they cannot silently diverge:
+ *
+ *   - everything the runner would execute is floored here (previous test),
+ *   - everything floored here is in the runner's plan,
+ *   - and the runner's plan is exactly this file's own independent scan.
+ *
+ * The last one is what catches a NARROWING of discovery — dropping `.cjs`,
+ * dropping a scanned tree, an exclusion added to the runner. Both scans have
+ * to be edited in the same way, in the same PR, for coverage to shrink
+ * quietly, and by then it is a deliberate act in a visible diff. Duplicated
+ * discovery logic is the point here, not an oversight: two independent
+ * implementations that must agree is the check.
+ *
+ * `plan.errors` is the runner refusing to guess — a suite under a
+ * dependency-carrying package.json with no `test` script. Failing here means
+ * CI would not have run it. */
+test("every suite on disk is executed by the CI runner", async () => {
+  const { planSuiteRuns } = await import("../tools/ci/run-suites.mjs");
+  const plan = planSuiteRuns(ROOT);
+
+  assert.deepStrictEqual(
+    plan.errors, [],
+    "tools/ci/run-suites.mjs cannot build a complete plan:\n" + plan.errors.join("\n")
+  );
+
+  const planned = plan.groups.flatMap((g) => g.suites).sort();
+  const found = SCANNED_DIRS.flatMap(findSuites).sort();
+  assert.deepStrictEqual(
+    planned, found,
+    "the CI runner's plan and this file's scan disagree about what the suites " +
+      "are. Whichever one is narrower is the bug: a suite in one and not the " +
+      "other is either floored-but-unrun or run-but-unprotected."
+  );
+
+  const flooredButUnrun = Object.keys(FLOORS)
+    .filter((f) => !planned.includes(f))
+    .sort();
+  assert.deepStrictEqual(
+    flooredButUnrun, [],
+    "these suites have a committed floor but would not be executed by " +
+      "tools/ci/run-suites.mjs — a floor on a suite nobody runs protects " +
+      "nothing:\n" + flooredButUnrun.join("\n")
+  );
+});
