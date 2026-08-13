@@ -63,7 +63,10 @@ pattern as `backend/` and `player/`; root stays dependency-free):
   fetch_notes), `chunks` (document_id FK, ordinal, heading_path, text,
   token_count, embedding BLOB NULL — backfilled in a later pass, no embedding
   API calls in this run). `chunks_fts` = FTS5 external-content table + sync
-  triggers.
+  triggers. **Superseded 2026-08-13 by migration 0003**: the single
+  `chunks.embedding` column was dropped in favour of an `embedding_models`
+  registry plus a `chunk_embeddings` join table — one column cannot hold two
+  models. See `docs/DECISIONS.md` (2026-08-13) and the retro below.
 - Chunker: split at heading boundaries, pack paragraphs to ~500–1000 est.
   tokens (chars/4 heuristic, documented), oversize paragraphs split at sentence
   boundaries; heading_path = "H1 > H2 > H3".
@@ -268,3 +271,176 @@ file) is the only thing that isn't the existing fetcher. Documented in
 `tools/corpus/ingest.test.mjs` (new suite). Reproducible by any future
 session or agent with browser automation available; requires no human in
 the loop beyond running the capture once per source.
+
+## Retro (2026-08-13 — the embedding backfill: a measured NO)
+
+**Outcome: the experiment ran end to end, and the answer is that embeddings
+do not earn their place in this corpus. The default search mode stays
+`keyword`, and the corpus is left on its original chunking with no vectors
+stored.** The capability is committed, tested and reproducible in about a
+minute; it is opt-in, and the numbers below say why it should stay that way.
+
+Joey approved running this knowing the recommendation was against it. This is
+the real answer, not a flattering one.
+
+### Step zero: the tokenizer measurement, which changed everything downstream
+
+`corpus token-histogram` runs the model's own tokenizer over the exact string
+each chunk would be encoded as. On the corpus as it stood (558 chunks, packed
+by the chars/4 heuristic to 500–1000 "tokens"):
+
+| | real tokens |
+|---|---|
+| p50 / p90 / p99 / max | 652 / 1094 / 1569 / 2253 |
+| over bge's 512-token limit | **348 of 558 — 62.4%** |
+| chars/4 drift | real = **1.07x** estimated |
+
+So the crude heuristic was not merely crude, it was crude in the *dangerous*
+direction: it undercounts, and its 1000-token ceiling lands around 1070 real
+tokens — double the model's limit. Embedding the corpus as it stood would have
+silently truncated **62% of it**, with `search` still displaying the whole
+chunk. That is the failure mode worth the whole measurement step: nothing
+errors, nothing looks wrong, and two-thirds of the corpus is invisible to the
+retriever that claims to cover it.
+
+Re-chunked with the real tokenizer at 100–400 real tokens (`corpus rechunk
+--tokenizer`), 558 → **1268 chunks**: p50 350, p90 412, max 488, **0%
+truncated**, 0.2% within 32 tokens of the limit. Backfill: 1268/1268 vectors
+in **61 seconds** on CPU, no API key, $0.
+
+### The three modes, side by side
+
+15 gold queries, depth top-8 (the CLI's own default), measured on distinct
+source ids. All three modes ran against the same re-chunked corpus.
+
+| | found | Recall@5 | MRR@8 | nDCG@8 |
+|---|---|---|---|---|
+| keyword | 15/15 | 1.000 | 0.828 | 0.754 |
+| vector | 13/15 | 0.867 | 0.683 | 0.576 |
+| hybrid (RRF, k=60) | 15/15 | 1.000 | **0.856** | 0.670 |
+
+Per-query first-hit rank (`MISS` = the source was not in the top 8):
+
+| q | keyword | vector | hybrid | query |
+|---|---|---|---|---|
+| 1 | 1 | 1 | 1 | how does DAI break timestamps |
+| 2 | 1 | 2 | 1 | what loudness target for stitched segments |
+| 3 | 1 | 1 | 1 | does the server test cover embedded images |
+| 4 | 1 | 1 | 1 | how do I fuse BM25 and vector results |
+| 5 | 3 | 2 | 2 | diarization: who is speaking when |
+| 6 | 1 | 1 | 1 | aligning word-level timestamps in long audio |
+| 7 | 2 | **MISS** | 2 | where do I split a podcast into topics |
+| 8 | 1 | 1 | 1 | cold start recommendations for new users |
+| 9 | 1 | 4 | 1 | audio fingerprinting to detect a repeated ad |
+| 10 | 1 | 1 | 1 | gapless playback of queued items on iOS |
+| 11 | 1 | 1 | 1 | what does TTS cost per character |
+| 12 | 3 | **MISS** | 3 | how do I stop an LLM judge from favouring long answers |
+| 13 | 1 | 2 | 1 | can I republish someone's podcast audio |
+| 14 | 1 | 1 | 1 | how are podcast downloads counted as a listen |
+| 15 | 4 | 2 | 2 | why did the clip-sharing apps die |
+
+**Gate 1 (no query may regress from found to not-found):** hybrid passes,
+vector fails outright — it loses q7 and q12 entirely.
+
+**Gate 2 (beat fixed-keyword on BOTH Recall@5 and MRR):** hybrid **fails**.
+Recall is tied at 1.000, and tied is not better — keyword already answered
+every question in the set, so recall had nowhere to go and an unchanged 1.000
+is not a win. MRR does improve (+0.028), but on one metric of two.
+
+**Vector-only is reported because it is the diagnostic number**, and it says
+the model is the weak link rather than the fusion: RRF recovers both of the
+queries dense retrieval loses, which is exactly what fusion is for. A better
+model would raise the whole table; better fusion would not.
+
+### The finding that actually decides it: re-chunking costs the default mode
+
+The comparison above holds chunking constant, which flatters the experiment.
+Embeddings require the re-chunk, so the honest baseline is the corpus as it
+was before any of this:
+
+| corpus chunking | mode | found | Recall@5 | MRR@8 | nDCG@8 |
+|---|---|---|---|---|---|
+| **chars/4, 500–1000 est (558 chunks) — as shipped** | **keyword** | 15/15 | 1.000 | **0.902** | **0.789** |
+| bge tokenizer, 100–400 real (1268 chunks) | keyword | 15/15 | 1.000 | 0.828 | 0.754 |
+| bge tokenizer, 100–400 real | vector | 13/15 | 0.867 | 0.683 | 0.576 |
+| bge tokenizer, 100–400 real | hybrid | 15/15 | 1.000 | 0.856 | 0.670 |
+
+**The best number in the whole table is the configuration we already had.**
+Re-chunking for the embedding model costs keyword search 0.074 MRR and 0.035
+nDCG, and hybrid on the re-chunked corpus (0.856) does not climb back to
+plain keyword on the original (0.902). Embeddings are not neutral here; on
+this measured set they are a net loss, and the loss is paid by the mode that
+answers every query.
+
+The mechanism is worth keeping: scores are computed on **distinct sources**
+within a **chunk-level top-8**. Halving chunk size roughly halves how many
+distinct sources fit in the eight rows a user actually sees, so a retrieval
+depth tuned to the product punishes small chunks. Anyone re-running this
+should change the depth and the chunk size together, or not at all.
+
+The only way to have both would be two chunkings — a coarse one for FTS5 and
+a fine one for vectors — which means a second chunk table, a second FTS
+index, and two things to keep in sync with `documents`. That is a real
+architecture, not a flag, and nothing measured here justifies it.
+
+### What embeddings did do, which no number above captures
+
+On paraphrase queries that share no vocabulary with the corpus — the case the
+gold set structurally cannot measure, because its 15 questions were written
+by someone looking at the corpus — dense retrieval wins outright:
+
+| query (top-5 source ids) | keyword | vector | hybrid |
+|---|---|---|---|
+| "why do the numbers stop lining up after the adverts change" | 5, 7, 40, 20, 31 — **all wrong** | **19**, 40, 31, 5, **9** | 31, **9**, 40, 43 |
+| "picking where one subject ends and the next begins" | 40, 19, 32, 52 — **all wrong** | 6, **25**, **26**, 52 | **26**, **25**, 28, 6 |
+
+Sources 9/19 are the DAI-timestamp answer; 25/26 are topic segmentation.
+Keyword returns nothing relevant for either, because the user used none of
+the corpus's words. This is a real capability and it is why the code is
+committed rather than reverted — but two hand-picked queries are an anecdote,
+not a measurement, and they do not overturn a gate. If paraphrase robustness
+ever becomes the goal, the honest next step is a gold set written *without*
+looking at the corpus, not a default flipped on the strength of two examples.
+
+### Decisions taken
+
+1. **Default mode stays `keyword`** (`DEFAULT_SEARCH_MODE` in `search.mjs`).
+   The gates are encoded in `eval.mjs`'s `compareToBaseline`, so the next
+   person gets the same verdict from the same rule rather than from prose.
+2. **The corpus is left on the default chunking, with no vectors stored.**
+   Shipping the re-chunked corpus would have degraded the mode everyone
+   actually uses. `corpus rechunk --tokenizer && corpus embed` reproduces the
+   embedded state in ~65 seconds whenever someone wants to re-run this.
+3. **The runtime stays quarantined and uninstalled by default.** Measured
+   installed size: **373 MB** for `tools/corpus/embed/node_modules` — larger
+   than the ~250MB the plan estimated. `onnxruntime-node` is 208 MB of it and
+   ships binaries for six platforms, of which this machine loads 33 MB;
+   `onnxruntime-web` (90 MB) and `sharp`/`@img` (19 MB) are pure dead weight
+   for text embedding in Node. Model weights are a further 33 MB in
+   `data-local/models/`. CI installs only `tools/corpus/package.json`, so it
+   proves the runtime-absent path on every PR without being told to.
+
+### A real bug this pass found, unrelated to embeddings
+
+`rechunk` reported source 1's archived markdown as missing. It was: **the
+corpus test suite had been writing its fixtures into the real
+`data-local/corpus/` archive**, because `ingestSource` took the archive root
+from a module constant while taking the database as a parameter. A temp DB
+implied nothing about where files landed. Harmless clutter until
+`removeStaleArchives` shipped in #161 — after which any suite seeding source
+id 1 *deleted* the real source 1's archive, on the machine that built the
+corpus, every time someone ran `npm test`. Fixed by making the archive root a
+parameter alongside the DB, so the two can no longer diverge; the three
+affected suites now use temp archives. Source 1 was restored by refetch (its
+`content_sha256` in `corpus-index.json` moved — the extraction is byte-identical
+in size, the upstream page's raw HTML shifted).
+
+### If someone picks this up again
+
+The lever with the most headroom is the **model**, not the fusion. bge-small
+is 384-dim and 33 MB; the corpus is dense technical prose, court opinions and
+standards documents, which is not what a small general-purpose encoder is
+best at. Before trying a bigger model, though, note that the whole
+experiment's cost centre is the re-chunk, and that cost is measured above —
+any future attempt should re-measure the keyword baseline on its own chunking
+before claiming an improvement.

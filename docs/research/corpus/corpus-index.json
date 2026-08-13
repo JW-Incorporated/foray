@@ -1,6 +1,6 @@
 {
   "schema": "foray.research-corpus-index/1",
-  "generated_at": "2026-08-13T09:28:09.382Z",
+  "generated_at": "2026-08-13T10:28:25.799Z",
   "generator": "node tools/corpus/corpus.mjs export-index --write",
   "policy": "Index + our own digests only. No third-party source text is committed to this public repo: the corpus's raw bytes and markdown extractions stay in data-local/corpus/ (gitignored). license.redistribution records, per source, whether republishing that source's text would be permitted.",
   "regeneration": {
@@ -33,9 +33,9 @@
       "why_it_matters": "Spec for `<podcast:transcript>`, supporting multiple formats including time-coded captions (SRT/VTT/JSON). *Why it matters:* when publishers ship transcripts you can skip ASR and use forced alignment instead — cheaper and more accurate.",
       "fetch": {
         "status": "ingested",
-        "fetched_at": "2026-08-12T16:46:57.335Z",
+        "fetched_at": "2026-08-13T10:21:20.736Z",
         "http_status": 200,
-        "content_sha256": "e8989ccf1c4c5d763f8ce5565fc5d1a5c27bb22089d2132ff1469444656d751a",
+        "content_sha256": "45543ef7b999d8a9312b23101ae9f8c24a531a56376f13756274aedbd1ec381c",
         "estimated_tokens": 460,
         "chunks": 2,
         "notes": "readability"

@@ -7,27 +7,37 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
-### corpus/embeddings — the embedding backfill pass (2026-08-13)
-
-Running the experiment PLAN.md left open: local, keyless, $0 semantic search
-over the corpus (`Xenova/bge-small-en-v1.5`, 384-dim q8 ONNX on CPU), measured
-against the committed gold set in all three modes side by side. Landing as two
-PRs: `corpus/embeddings-schema` (migration 0003 + vector storage) then
-`corpus/embeddings-backfill` (the runtime, `search --mode`, three-mode eval).
-**The default mode flips only if the numbers earn it** — keyword already
-answers 15/15, so a negative result is a valid outcome and gets written down
-either way.
-- **Owned directories:** `tools/corpus/`, `docs/research/corpus/`.
-- **Heads-up for reviewers:** this adds ~250MB of `onnxruntime-node`, isolated
-  behind its own `tools/corpus/embed/package.json`. Base corpus tooling, the
-  whole test suite and `search --mode keyword` work with it absent, and CI
-  never installs it.
-- **Shared files touched, each its own commit:** `test/suite-integrity.test.js`
-  (floors), `docs/DECISIONS.md` (schema + model choice).
-- **Out of scope, untouched:** `data/*.json`, `tools/segments|transcribe|refresh`,
-  `backend/`, `app.js`, `.github/`.
+(none — see completed below)
 
 ## Completed workstreams
+
+### corpus/embeddings — the embedding backfill: a measured NO (2026-08-13, COMPLETE)
+
+PRs: `corpus/embeddings-schema` (migration 0003: `embedding_models` +
+`chunk_embeddings`, replacing the single `chunks.embedding` column) and
+`corpus/embeddings-backfill` (the quarantined runtime, `search --mode`,
+three-mode eval). Ran end to end: 1268 vectors in 61s, local, keyless, $0.
+**The answer is no — the default search mode stays `keyword`, and the corpus
+is left on its original chunking with no vectors stored.** Hybrid beat keyword
+on MRR (+0.028) but tied on Recall@5 at the 1.000 ceiling, so it failed the
+committed gate; and embeddings require a re-chunk that costs keyword 0.074 MRR
+— more than hybrid gives back. Vector-only lost two queries outright. Full
+numbers, per query: `docs/research/corpus/PLAN.md`'s 2026-08-13 retro.
+Embeddings do genuinely answer paraphrase queries keyword cannot, which is why
+the capability is committed rather than reverted — opt-in, ~65s to reproduce.
+- **Owned directories:** `tools/corpus/`, `docs/research/corpus/`.
+- **Dependency note:** `tools/corpus/embed/` carries `@huggingface/transformers`
+  (**373MB installed**, measured). It is a separate package.json; CI's
+  `npm ci` in `tools/corpus` never installs it, the whole test suite runs on a
+  stub embedder, and `search --mode keyword` works with it absent.
+- **A real bug fixed on the way:** the corpus test suite was writing fixtures
+  into the real `data-local/corpus/` archive, and since #161's
+  `removeStaleArchives` was *deleting* real archived markdown on every
+  `npm test`. Archive root is now a parameter alongside the DB.
+- **Shared files touched, each its own commit:** `test/suite-integrity.test.js`
+  (floors, tools/corpus 175 → 263), `docs/DECISIONS.md`, `CLAUDE.md`.
+- **Out of scope, untouched:** `data/*.json`, `tools/segments|transcribe|refresh`,
+  `backend/`, `app.js`, `.github/`.
 
 ### corpus/refetch-weak-sources — recover the 8 weakest corpus sources (2026-08-13, COMPLETE)
 
