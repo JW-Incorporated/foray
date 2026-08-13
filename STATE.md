@@ -7,7 +7,25 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
-(none — see completed below)
+### corpus/embeddings — the embedding backfill pass (2026-08-13)
+
+Running the experiment PLAN.md left open: local, keyless, $0 semantic search
+over the corpus (`Xenova/bge-small-en-v1.5`, 384-dim q8 ONNX on CPU), measured
+against the committed gold set in all three modes side by side. Landing as two
+PRs: `corpus/embeddings-schema` (migration 0003 + vector storage) then
+`corpus/embeddings-backfill` (the runtime, `search --mode`, three-mode eval).
+**The default mode flips only if the numbers earn it** — keyword already
+answers 15/15, so a negative result is a valid outcome and gets written down
+either way.
+- **Owned directories:** `tools/corpus/`, `docs/research/corpus/`.
+- **Heads-up for reviewers:** this adds ~250MB of `onnxruntime-node`, isolated
+  behind its own `tools/corpus/embed/package.json`. Base corpus tooling, the
+  whole test suite and `search --mode keyword` work with it absent, and CI
+  never installs it.
+- **Shared files touched, each its own commit:** `test/suite-integrity.test.js`
+  (floors), `docs/DECISIONS.md` (schema + model choice).
+- **Out of scope, untouched:** `data/*.json`, `tools/segments|transcribe|refresh`,
+  `backend/`, `app.js`, `.github/`.
 
 ## Completed workstreams
 
