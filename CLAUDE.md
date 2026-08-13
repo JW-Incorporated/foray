@@ -127,10 +127,11 @@ instead.
   (that package's `test` script carries `--experimental-sqlite` itself, so it is
   correct on Node 22.x where `node:sqlite` is flagged, and on >=23.4 where it is
   not).
-- **Everything CI runs, in one command: `node tools/ci/run-suites.mjs`**
-  (`--list` to see the plan without running it, `--skip-install` to reuse
-  already-installed package deps). CI runs exactly this, so a green run here is
-  a green `data-and-site`. It discovers suites rather than listing them: a new
+- **Everything CI runs, in one command: `node tools/ci/run-suites.mjs`** — also
+  wired to root `npm test`. `--list` prints the plan without running it,
+  `--skip-install` reuses already-installed package deps; anything else is
+  refused rather than ignored. CI runs exactly this, so a green run here is a
+  green `data-and-site`. It discovers suites rather than listing them: a new
   `tools/<dir>/` is picked up the day it lands, and a directory with its own
   `package.json` + `test` script is installed and run in place.
 - Site JS: `node --check app.js`
@@ -148,6 +149,18 @@ must be in `tools/ci/run-suites.mjs`'s execution plan. A suite that is floored
 but never executed is the worse failure of the two — it reads as coverage and
 protects nothing — so the two mechanisms are now pinned to each other and
 cannot drift.
+
+**Two conventions that machinery hold up, so keep them:**
+- **Name suites `*.test.js` / `*.test.mjs` / `*.test.cjs`.** Node's own
+  discovery also matches `foo-test.mjs`, `foo_test.mjs` and `test-foo.mjs`;
+  ours does not, so a suite spelled that way is invisible to the floor check
+  AND to CI — they agree, and the file is dark. suite-integrity rejects the
+  spellings it can flag without false positives, but `test-foo.mjs` it cannot
+  (`tools/test-search.mjs` is a script, not a suite).
+- **A package `test` script must forward its arguments** (end in
+  `node --test`). The runner calls `npm test -- <files>` and trusts the script
+  to run them; one that ignores positionals would report suites as executed
+  that never ran.
 
 ## Product principles (supersede everything, including marketing findings)
 
