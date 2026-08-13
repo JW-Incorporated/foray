@@ -16,11 +16,16 @@ import {
   REPO_ROOT,
   SCANNED_DIRS,
   SUITE_RE,
+  ANCHOR_SUITES,
   findSuites,
   discoverSuites,
   planSuiteRuns,
   commandsFor,
   formatPlan,
+  missingAnchors,
+  exitStatusOf,
+  runPlan,
+  runCli,
 } from "./run-suites.mjs";
 
 /* --- fixture helpers ------------------------------------------------- */
@@ -212,15 +217,46 @@ test("a package with deps but no test script is a loud error, not a skip", () =>
   assert.match(plan.errors[0], /"test" script/);
 });
 
-test("a dependency-carrying package inherits an outer test script rather than erroring", () => {
+test("it stays an error when an OUTER package has a test script", () => {
+  // The literal shape of tools/corpus/embed/ inside tools/corpus. Inheriting
+  // the outer plan would run the suite under the outer package's `npm ci`,
+  // which never installs the inner package's dependencies — a confusing red
+  // that blames the suite instead of the plan.
+  const root = fixture({
+    "tools/outer/package.json": pkg({ dependencies: { y: "1" }, scripts: { test: "node --test" } }),
+    "tools/outer/sub/package.json": pkg({ dependencies: { x: "1" } }),
+    "tools/outer/sub/sub.test.mjs": EMPTY_SUITE,
+  });
+  const plan = planSuiteRuns(root);
+  assert.strictEqual(plan.errors.length, 1);
+  assert.match(plan.errors[0], /tools\/outer\/sub\/package\.json/);
+  assert.match(plan.errors[0], /dependencies uninstalled/);
+  assert.strictEqual(plan.groups.length, 0, "the suite is not planned under the outer package");
+});
+
+test("a nested package with NO dependencies still inherits the outer test script", () => {
+  // Nothing to install, so nothing to get wrong: a marker package.json deep in
+  // a tree must not become an error.
   const root = fixture({
     "tools/outer/package.json": pkg({ scripts: { test: "node --test" } }),
-    "tools/outer/sub/package.json": pkg({ dependencies: { x: "1" } }),
+    "tools/outer/sub/package.json": pkg({ type: "module" }),
     "tools/outer/sub/sub.test.mjs": EMPTY_SUITE,
   });
   const plan = planSuiteRuns(root);
   assert.deepStrictEqual(plan.errors, []);
   assert.deepStrictEqual(plan.groups.map((g) => g.dir), ["tools/outer"]);
+});
+
+test("optional and peer dependencies also require an install", () => {
+  // A package declaring only these still needs node_modules before its suites
+  // can import anything; install:null would run them against nothing.
+  for (const field of ["optionalDependencies", "peerDependencies"]) {
+    const root = fixture({
+      "tools/a/package.json": pkg({ [field]: { x: "1" }, scripts: { test: "node --test" } }),
+      "tools/a/a.test.mjs": EMPTY_SUITE,
+    });
+    assert.strictEqual(planSuiteRuns(root).groups[0].install, "install", field);
+  }
 });
 
 test("every discovered suite lands in exactly one group", () => {
@@ -289,6 +325,156 @@ test("formatPlan names every group and command", () => {
   assert.match(text, /2 suite\(s\) in 2 group\(s\)/);
   assert.match(text, /tools\/corpusish \(package, 1 suite\(s\)\)/);
   assert.match(text, /npm ci/);
+});
+
+/* --- the anchor guard: discovery cannot narrow itself out of its checks --- */
+
+test("an empty plan is a failure, not a green run of nothing", () => {
+  // Without this, `0 suite(s) ... All 0 suite(s) passed. EXIT 0` — CI green
+  // having executed nothing. The realistic trigger is a wrong REPO_ROOT after
+  // this file moves, not malice.
+  const root = fixture({ "README.md": "" });
+  const err = [];
+  const code = runCli([], { root, log: () => {}, err: (m) => err.push(m), spawn: () => 0 });
+  assert.strictEqual(code, 1);
+  assert.match(err.join("\n"), /Discovery is broken/);
+});
+
+test("a plan that drops the suites verifying discovery is refused", () => {
+  // SCANNED_DIRS narrowed to ["player"] against the real repo: 4 suites run,
+  // 21 vanish, and neither the floor check nor this file is in the plan to
+  // notice. The anchors are what make that loud.
+  const plan = { suites: ["player/queue-state.test.js"], groups: [], errors: [] };
+  assert.deepStrictEqual(missingAnchors(plan), ANCHOR_SUITES);
+  const err = [];
+  const code = runCli([], {
+    root: fixture({ "player/queue-state.test.js": EMPTY_SUITE }),
+    log: () => {},
+    err: (m) => err.push(m),
+    spawn: () => 0,
+  });
+  assert.strictEqual(code, 1);
+  assert.match(err.join("\n"), /test\/suite-integrity\.test\.js/);
+});
+
+test("the real repo's plan contains both anchors", () => {
+  assert.deepStrictEqual(missingAnchors(planSuiteRuns(REPO_ROOT)), []);
+});
+
+/* --- exit status: the only logic whose bug is "green when it failed" ---- */
+
+test("exitStatusOf treats a signal kill and a launch failure as failures", () => {
+  assert.strictEqual(exitStatusOf({ status: 0 }), 0);
+  assert.strictEqual(exitStatusOf({ status: 1 }), 1);
+  assert.strictEqual(exitStatusOf({ status: null }), 1, "SIGKILL must not read as pass");
+  assert.strictEqual(exitStatusOf({ error: new Error("ENOENT") }), 1);
+});
+
+/** A plan with a root group and a package group, for the runPlan tests. */
+function twoGroupPlan() {
+  const root = fixture({
+    "test/a.test.js": EMPTY_SUITE,
+    "tools/corpusish/package.json": pkg({ dependencies: { x: "1" }, scripts: { test: "node --test" } }),
+    "tools/corpusish/package-lock.json": "{}",
+    "tools/corpusish/b.test.mjs": EMPTY_SUITE,
+  });
+  return planSuiteRuns(root);
+}
+
+test("runPlan reports nothing when every step passes", () => {
+  const seen = [];
+  const failed = runPlan(twoGroupPlan(), {
+    log: () => {},
+    spawn: ({ step }) => (seen.push(`${step.cmd} ${step.args[0]}`), 0),
+  });
+  assert.deepStrictEqual(failed, []);
+  assert.deepStrictEqual(seen, ["node --test", "npm ci", "npm test"]);
+});
+
+test("a failing group does not hide the state of the next one", () => {
+  const failed = runPlan(twoGroupPlan(), { log: () => {}, spawn: () => 1 });
+  assert.deepStrictEqual(failed, [".: node --test", "tools/corpusish: npm ci"]);
+});
+
+test("a failed install abandons that group's tests but not the whole run", () => {
+  const seen = [];
+  const failed = runPlan(twoGroupPlan(), {
+    log: () => {},
+    spawn: ({ step }) => {
+      seen.push(`${step.cmd} ${step.args[0]}`);
+      return step.args[0] === "ci" ? 1 : 0;
+    },
+  });
+  assert.deepStrictEqual(seen, ["node --test", "npm ci"], "npm test is not run after a failed ci");
+  assert.deepStrictEqual(failed, ["tools/corpusish: npm ci"]);
+});
+
+test("--skip-install skips installs and never the test step", () => {
+  const seen = [];
+  const failed = runPlan(twoGroupPlan(), {
+    log: () => {},
+    skipInstall: true,
+    spawn: ({ step }) => (seen.push(`${step.cmd} ${step.args[0]}`), 0),
+  });
+  assert.deepStrictEqual(seen, ["node --test", "npm test"]);
+  assert.deepStrictEqual(failed, []);
+});
+
+/* --- CLI ---------------------------------------------------------------- */
+
+test("a failing run exits non-zero", () => {
+  const code = runCli([], {
+    root: REPO_ROOT,
+    log: () => {},
+    err: () => {},
+    spawn: () => 1,
+  });
+  assert.strictEqual(code, 1);
+});
+
+test("--list runs nothing", () => {
+  let spawned = 0;
+  const code = runCli(["--list"], {
+    root: REPO_ROOT,
+    log: () => {},
+    err: () => {},
+    spawn: () => (spawned++, 0),
+  });
+  assert.strictEqual(code, 0);
+  assert.strictEqual(spawned, 0);
+});
+
+test("an unrecognised flag is refused, not ignored", () => {
+  // `--lst` must not quietly run everything for real.
+  let spawned = 0;
+  const err = [];
+  const code = runCli(["--lst"], {
+    root: REPO_ROOT,
+    log: () => {},
+    err: (m) => err.push(m),
+    spawn: () => (spawned++, 0),
+  });
+  assert.strictEqual(code, 2);
+  assert.strictEqual(spawned, 0);
+  assert.match(err.join("\n"), /unknown option\(s\): --lst/);
+});
+
+test("a plan with errors refuses to run anything", () => {
+  let spawned = 0;
+  const root = fixture({
+    "tools/quarantine/package.json": pkg({ dependencies: { huge: "1" } }),
+    "tools/quarantine/heavy.test.mjs": EMPTY_SUITE,
+    "test/suite-integrity.test.js": EMPTY_SUITE,
+    "tools/ci/run-suites.test.mjs": EMPTY_SUITE,
+  });
+  const code = runCli([], {
+    root,
+    log: () => {},
+    err: () => {},
+    spawn: () => (spawned++, 0),
+  });
+  assert.strictEqual(code, 1);
+  assert.strictEqual(spawned, 0, "a suite the runner cannot place stops the whole run");
 });
 
 /* --- against the real repo -------------------------------------------- */
