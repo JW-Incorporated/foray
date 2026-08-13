@@ -11,9 +11,9 @@ step, so any of it runs from a bare checkout in a keyless GitHub Action.
 | `merge-segments.mjs` | Agent-authored candidate segments → validated `data/segments.json` (#106) |
 
 Primary sources: `docs/research/corpus/digests.md` entries 1
-(`<podcast:transcript>` spec — the types and `rel="captions"` semantics
-`transcript-normalize.mjs` handles), 9 (Podcast Namespace #254 — DAI shifts
-every timestamp) and 48 (Pocket Casts ~100s chapter drift) are the evidence
+(`<podcast:transcript>` spec — the tag behind every transcript format this
+directory normalizes), 9 (Podcast Namespace #254 — DAI shifts every
+timestamp) and 48 (Pocket Casts ~100s chapter drift) are the evidence
 behind the anchor rules `merge-segments.mjs` enforces.
 
 ## `transcript-normalize.mjs`

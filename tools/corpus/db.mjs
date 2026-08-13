@@ -24,8 +24,8 @@ const MIGRATIONS_DIR = path.join(
  * without data-local/corpus/ (the DB is machine-local, gitignored) that turned
  * `search`/`stats` into "zero results" instead of "no corpus here". An empty
  * answer from a missing database is how someone concludes the corpus is empty
- * rather than absent, and quietly stops trusting it. Only the build commands
- * (init, load-manifest, ingest) pass create: true. */
+ * rather than absent, and quietly stops trusting it. Only the bootstrap
+ * commands (init, load-manifest) pass create: true. */
 export function openDb(dbPath = DB_PATH, { create = false } = {}) {
   if (!create && !fs.existsSync(dbPath)) {
     throw new Error(
