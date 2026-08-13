@@ -11,6 +11,7 @@ import { openMigrated } from "./db.mjs";
 import { runEval } from "./eval.mjs";
 import { rechunkAll, writeChunks } from "./ingest.mjs";
 import { keywordSearch, sourcesInOrder } from "./search.mjs";
+import { registerModel, writeEmbeddings, embeddingCoverage } from "./embeddings.mjs";
 
 /* Every test gets its own throwaway corpus root — nothing here touches the
  * real data-local/corpus/ archive. */
@@ -179,14 +180,40 @@ test("rechunk reports a missing archive instead of wiping the source", () => {
   db.close();
 });
 
-test("rechunk refuses to run when embeddings would be destroyed", () => {
-  // chunks is the FK parent of any future vector; rewriting them discards it.
+test("rechunk refuses to run when vectors would be cascade-deleted", () => {
+  // chunks is the FK parent of chunk_embeddings (ON DELETE CASCADE), so a
+  // re-chunk silently destroys every backfilled vector — no error, because the
+  // cascade is doing exactly what it was asked to.
   const { db, dir } = tmpDb();
   const a = withArchive(dir, "rechunk-test-embed.md", `# H\n\n${"word ".repeat(400)}`);
   seed(db, { sourceId: 1, mdRelPath: a, chunks: ["has a vector"] });
-  db.exec("UPDATE chunks SET embedding = x'00000000'");
-  assert.throws(() => rechunkAll(db, { corpusRoot: dir }), /embeddings/);
-  assert.equal(db.prepare("SELECT COUNT(*) n FROM chunks WHERE embedding IS NOT NULL").get().n, 1);
+  const model = registerModel(db, {
+    name: "test/model", revision: "v1", dim: 4, pooling: "cls", quantization: "q8",
+  });
+  const chunkId = db.prepare("SELECT id FROM chunks LIMIT 1").get().id;
+  writeEmbeddings(db, model.id, [{ chunkId, vector: [1, 0, 0, 0] }]);
+
+  assert.throws(() => rechunkAll(db, { corpusRoot: dir }), /cascade-deleted/);
+  assert.equal(embeddingCoverage(db, model.id).embedded, 1, "the refusal must not have deleted anything");
+  db.close();
+});
+
+test("rechunk --drop-embeddings is the deliberate opt-in, and leaves coverage at zero", () => {
+  // The escape hatch has to be explicit AND honest: after it runs, the
+  // backfill's own coverage number must report the corpus as unembedded,
+  // because that is what it is.
+  const { db, dir } = tmpDb();
+  const a = withArchive(dir, "rechunk-test-drop.md", `# H\n\n${"word ".repeat(400)}`);
+  seed(db, { sourceId: 1, mdRelPath: a, chunks: ["has a vector"] });
+  const model = registerModel(db, {
+    name: "test/model", revision: "v1", dim: 4, pooling: "cls", quantization: "q8",
+  });
+  const chunkId = db.prepare("SELECT id FROM chunks LIMIT 1").get().id;
+  writeEmbeddings(db, model.id, [{ chunkId, vector: [1, 0, 0, 0] }]);
+
+  const r = rechunkAll(db, { corpusRoot: dir, dropEmbeddings: true });
+  assert.ok(r.after > 0, "the re-chunk itself still ran");
+  assert.equal(embeddingCoverage(db, model.id).embedded, 0);
   db.close();
 });
 

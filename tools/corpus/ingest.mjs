@@ -235,7 +235,7 @@ export function writeChunks(db, docId, chunks) {
  * being reproducible from a fresh ingest. */
 const ARCHIVE_HEADER = /^<!--\s*corpus source [\s\S]*?-->\s*/;
 
-export function rechunkAll(db, { onDoc, corpusRoot = CORPUS_ROOT } = {}) {
+export function rechunkAll(db, { onDoc, corpusRoot = CORPUS_ROOT, dropEmbeddings = false } = {}) {
   const docs = db.prepare(`
     SELECT d.id, d.source_id, d.markdown_path, s.title
     FROM documents d
@@ -249,14 +249,16 @@ export function rechunkAll(db, { onDoc, corpusRoot = CORPUS_ROOT } = {}) {
   `).all();
 
   /* Refuse to run over embeddings rather than silently discarding them:
-   * chunks are the FK parent, so rewriting them destroys any backfilled
-   * vector. PLAN.md's later pass re-chunks BEFORE embedding for exactly this
-   * reason, and a re-chunk after would be an expensive, silent loss. */
-  const embedded = db.prepare("SELECT COUNT(*) n FROM chunks WHERE embedding IS NOT NULL").get().n;
-  if (embedded > 0) {
+   * chunks are the FK parent of chunk_embeddings (ON DELETE CASCADE), so
+   * rewriting them destroys every backfilled vector — quietly, and with no
+   * error, because the cascade is doing exactly what it was asked to.
+   * PLAN.md's backfill pass re-chunks BEFORE embedding for this reason.
+   * `dropEmbeddings` is the deliberate opt-in for the other order. */
+  const embedded = db.prepare("SELECT COUNT(*) n FROM chunk_embeddings").get().n;
+  if (embedded > 0 && !dropEmbeddings) {
     throw new Error(
-      `${embedded} chunk(s) carry embeddings; re-chunking would discard them. ` +
-      `Re-chunk before backfilling, or clear the embeddings deliberately first.`
+      `${embedded} vector(s) in chunk_embeddings would be cascade-deleted by a re-chunk. ` +
+      `Re-chunk before backfilling, or pass --drop-embeddings and re-run the backfill afterwards.`
     );
   }
 

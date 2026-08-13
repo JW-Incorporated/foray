@@ -182,10 +182,47 @@ rule changes, the corpus rebuilds offline in seconds.
 Schema (migrations/): `sources` (the parsed dossier — the dossier markdown IS
 the manifest), `documents` (append-only fetch history; the newest 2xx row is
 the current document), `chunks` (current document only, ~500–1000 est. tokens,
-heading-path tagged, `embedding` NULL until the backfill pass), `chunks_fts`
-(FTS5, trigger-synced). Parallel area ingestion is safe: WAL + busy_timeout
-on the DB, and a cross-process host gate (`hostgate.mjs`) keeps sibling
-processes from co-hammering a shared host.
+heading-path tagged), `chunks_fts` (FTS5, trigger-synced), and — since 0003 —
+`embedding_models` + `chunk_embeddings` (see below). Parallel area ingestion is
+safe: WAL + busy_timeout on the DB, and a cross-process host gate
+(`hostgate.mjs`) keeps sibling processes from co-hammering a shared host.
+
+## Vector storage
+
+`chunks.embedding`, the single BLOB column 0001 reserved for "the" model, is
+**gone** as of migration 0003. It could not survive a second model: under the
+Postgres+pgvector lift this schema is written for, a vector column's dimension
+lives in the column type, so one column physically cannot hold a 384-dim and a
+768-dim model at once. Two tables replace it:
+
+- **`embedding_models`** — the registry: name, revision, dim, pooling,
+  normalized, quantization, and **both prefixes**. BGE-family models want an
+  instruction prefix on QUERIES and none on PASSAGES; E5 prefixes both sides,
+  GTE neither. Getting that backwards degrades every result and raises no
+  error, so the convention is stored as DATA on the model row and read by the
+  retriever, never hard-coded in whichever caller runs next.
+- **`chunk_embeddings`** — `(chunk_id, model_id)` composite PK, `vector BLOB`,
+  `ON DELETE CASCADE` from `chunks`. The cascade is the point: `rechunk`
+  rewrites `chunks` wholesale, and vectors keyed to chunk ids that no longer
+  exist are the classic stale-index bug. Cascading makes it structurally
+  impossible rather than merely remembered — and `rechunk` refuses to run at
+  all while vectors exist unless you pass `--drop-embeddings`.
+
+A `BEFORE INSERT`/`BEFORE UPDATE` trigger asserts `length(vector) = 4 * dim`.
+Nothing else stands between a truncated write and a corpus of silently-wrong
+similarities.
+
+The blob is **bare little-endian float32, L2-normalized at write**, with no
+header — the element count is `byteLength / 4`. That is sqlite-vec's own
+convention, so if a brute-force scan ever stops being instant, `vec0` becomes
+a virtual table over these same bytes rather than a re-encoding migration.
+Normalizing at write is what makes similarity a plain dot product.
+`vectors.mjs` carries the one non-obvious hazard: `node:sqlite` returns a BLOB
+as a `Uint8Array` that may be a view at an arbitrary `byteOffset`, and
+`new Float32Array(u8.buffer, u8.byteOffset, n)` throws on any offset that is
+not a multiple of 4 — which depends on the row, not the code, so it fails in
+production on some rows and never in a small test. Every read goes through
+`readVectorInto`, which checks alignment and falls back to a `DataView` copy.
 
 ## What leaves this machine
 

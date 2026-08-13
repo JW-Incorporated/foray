@@ -7,7 +7,7 @@
  *   node tools/corpus/corpus.mjs ingest (--all | --area N | --source ID) [--force]
  *   node tools/corpus/corpus.mjs ingest-captured --source ID --file <path> [--tool "..."]
  *   node tools/corpus/corpus.mjs search "query" [--limit N] [--raw] [--explain]
- *   node tools/corpus/corpus.mjs rechunk
+ *   node tools/corpus/corpus.mjs rechunk [--drop-embeddings]
  *   node tools/corpus/corpus.mjs eval [--gold <path>] [--json]
  *   node tools/corpus/corpus.mjs stats
  *   node tools/corpus/corpus.mjs refetch <source_id>
@@ -190,7 +190,7 @@ async function main() {
 
     case "rechunk": {
       const db = openMigrated();
-      const r = rechunkAll(db);
+      const r = rechunkAll(db, { dropEmbeddings: Boolean(args["drop-embeddings"]) });
       console.log(`rechunked ${r.documents} documents from archived markdown: ${r.before} → ${r.after} chunks`);
       if (r.missing.length) console.log(`  ${r.missing.length} markdown file(s) missing: ${r.missing.join(", ")}`);
       if (r.emptied.length) {
@@ -298,7 +298,7 @@ async function main() {
         `  search "query" [--limit N]          FTS5 keyword search\n` +
         `        [--raw]                       pass literal FTS5 syntax through\n` +
         `        [--explain]                   print the MATCH expression built\n` +
-        `  rechunk                             re-chunk from archived markdown (offline)\n` +
+        `  rechunk [--drop-embeddings]         re-chunk from archived markdown (offline)\n` +
         `  eval [--gold f] [--json]            score the gold set (retrieval quality)\n` +
         `  stats                               per-area coverage\n` +
         `  refetch <source_id>                 force re-ingest one source\n` +

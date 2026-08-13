@@ -17,6 +17,14 @@ import { createHostGate } from "./hostgate.mjs";
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "corpus-test-"));
 const tmpDb = () => path.join(tmp(), "test.db");
 
+/* Read from disk rather than hard-coded, so adding a migration does not turn
+ * two unrelated tests red. What is being asserted is the INVARIANT — every
+ * migration on disk applies exactly once and `user_version` lands on the
+ * highest one — not a particular schema version number. */
+const MIGRATIONS_DIR = path.join(import.meta.dirname, "migrations");
+const MIGRATION_FILES = fs.readdirSync(MIGRATIONS_DIR).filter((f) => /^\d{4}_.+\.sql$/.test(f)).sort();
+const LATEST_VERSION = Number(MIGRATION_FILES.at(-1).slice(0, 4));
+
 function seedSource(db, over = {}) {
   const e = {
     area: 1, area_name: "Podcast Infrastructure", title: "Test Source",
@@ -71,7 +79,7 @@ test("openDb: create:true builds db and parent dirs; later plain opens succeed",
   db.close();
   // Once built, read-oriented opens (search/stats/report…) work without create.
   const again = openMigrated(dbPath);
-  assert.equal(again.prepare("PRAGMA user_version").get().user_version, 2);
+  assert.equal(again.prepare("PRAGMA user_version").get().user_version, LATEST_VERSION);
 });
 
 /* ----------------------------------------------------------- migrations */
@@ -79,11 +87,11 @@ test("openDb: create:true builds db and parent dirs; later plain opens succeed",
 test("migrate: applies all migrations once, then is a no-op", () => {
   const db = openDb(tmpDb(), { create: true });
   const first = migrate(db);
-  assert.equal(first.applied, 2);
+  assert.equal(first.applied, MIGRATION_FILES.length);
   const second = migrate(db);
   assert.equal(second.applied, 0);
   const v = db.prepare("PRAGMA user_version").get().user_version;
-  assert.equal(v, 2);
+  assert.equal(v, LATEST_VERSION);
 });
 
 test("migrate: failing migration rolls back and does not advance version", () => {
