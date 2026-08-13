@@ -240,6 +240,93 @@ export function rechunkAll(db, { onDoc, corpusRoot = CORPUS_ROOT } = {}) {
   return { documents: docs.length, before, after, missing, emptied };
 }
 
+/**
+ * Ingest a source from a browser-rendered text capture instead of a network
+ * fetch. `fetcher.mjs` gets the server-sent bytes of a page; for a handful of
+ * sources (forum threads, single-page apps) those bytes are a JS shell with
+ * no content, and `htmlToMarkdown` correctly flags that as "thin extraction"
+ * rather than inventing text that was never there. The honest fix is a real
+ * browser: render the page, read its VISIBLE TEXT AS RENDERED, save that to a
+ * file, and hand it to this function. Everything downstream — the chunker,
+ * the archive layout, the documents/chunks schema, refetch/rechunk — is
+ * identical to a normal fetch; only the fetch+HTML-extraction stage is
+ * replaced by a capture step a human or agent drives once per source.
+ *
+ * `capturedText` must be the page's own rendered text, verbatim — this
+ * function has no code path that accepts a paraphrase or summary in its
+ * place. Chunking a hand-written stand-in into the corpus would misrepresent
+ * the source as something we fetched when we did not; a thin-but-honest
+ * extraction is a better failure than that.
+ *
+ * @param {object} source - a `sources` row (id, title, url)
+ * @param {string} capturedText - rendered page text, verbatim
+ * @param {{capturedAt?: string, tool?: string}} [meta]
+ * @returns {{sourceId:number, outcome:"ok"|"unchanged", chunks?:number, tokens?:number}}
+ */
+export function ingestCapturedText(db, source, capturedText, { capturedAt = new Date().toISOString(), tool = "browser capture" } = {}) {
+  const text = String(capturedText ?? "").trim();
+  if (text.length < 50) {
+    throw new Error(`captured text too short (${text.length} chars) — refusing to ingest a near-empty capture`);
+  }
+
+  const hash = sha256(Buffer.from(text, "utf8"));
+  const prev = db.prepare(`
+    SELECT content_hash FROM documents
+    WHERE source_id = ? AND http_status BETWEEN 200 AND 299 AND markdown_path IS NOT NULL
+    ORDER BY fetched_at DESC, id DESC LIMIT 1
+  `).get(source.id);
+  if (prev && prev.content_hash === hash) {
+    return { sourceId: source.id, outcome: "unchanged" };
+  }
+
+  const chunks = chunkMarkdown(text);
+  if (!chunks.length) {
+    throw new Error("captured text produced zero chunks — nothing worth indexing");
+  }
+
+  fs.mkdirSync(RAW_DIR, { recursive: true });
+  fs.mkdirSync(MARKDOWN_DIR, { recursive: true });
+  const rawFull = archivePath(RAW_DIR, source.id, source.title, "txt");
+  const mdFull = archivePath(MARKDOWN_DIR, source.id, source.title, "md");
+  fs.writeFileSync(rawFull, text, "utf8");
+
+  const header = [
+    `<!-- corpus source ${source.id}: ${source.title}`,
+    `     url: ${source.url}`,
+    `     captured: ${capturedAt} via ${tool} (rendered browser capture, not a network fetch) -->`,
+    "",
+  ].join("\n");
+  fs.writeFileSync(mdFull, header + text, "utf8");
+
+  const tokenCount = estTokens(text);
+  const notes = [`rendered capture via ${tool} (see tools/corpus/README.md#rendered-html-route)`];
+
+  db.exec("BEGIN");
+  try {
+    const docId = db.prepare(`
+      INSERT INTO documents (source_id, http_status, content_hash, raw_path, markdown_path, token_count, fetch_notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      source.id, 200, hash,
+      relToCorpusRoot(rawFull), relToCorpusRoot(mdFull),
+      tokenCount, notes.join("; ")
+    ).lastInsertRowid;
+
+    db.prepare(`
+      DELETE FROM chunks WHERE document_id IN
+        (SELECT id FROM documents WHERE source_id = ? AND id != ?)
+    `).run(source.id, docId);
+
+    writeChunks(db, docId, chunks);
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+
+  return { sourceId: source.id, outcome: "ok", chunks: chunks.length, tokens: tokenCount, notes };
+}
+
 /** Ingest a set of sources sequentially (the fetcher paces hosts). */
 export async function ingestMany(db, fetcher, sources, opts = {}) {
   const results = [];

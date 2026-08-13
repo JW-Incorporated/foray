@@ -7,7 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseDossier, parseDossierFile, inferSourceType, loadManifest } from "./manifest.mjs";
+import { parseDossier, parseDossierFile, inferSourceType, loadManifest, repointSourceUrl } from "./manifest.mjs";
 import { chunkMarkdown, estTokens } from "./chunk.mjs";
 import { openMigrated } from "./db.mjs";
 import fs from "node:fs";
@@ -105,6 +105,67 @@ test("loadManifest: idempotent, preserves ids, refreshes fields", () => {
   assert.equal(row.why_it_matters, "v2");
   assert.equal(row.read_first, 1);
   assert.equal(db.prepare("SELECT COUNT(*) n FROM sources").get().n, 1);
+});
+
+/* ------------------------------------------------------- repointSourceUrl */
+
+test("repointSourceUrl: updates url in place, id stable", () => {
+  const db = openMigrated(tmpDb(), { create: true });
+  const e = { area: 5, area_name: "Audio Assembly & Playback", title: "AES Doc", url: "https://old.example.com/a.pdf", source_type: "standard", why_it_matters: "v1", read_first: 0 };
+  loadManifest(db, [e]);
+  const id = db.prepare("SELECT id FROM sources WHERE url = ?").get(e.url).id;
+
+  const r = repointSourceUrl(db, id, "https://new.example.com/a.pdf");
+  assert.equal(r.id, id);
+  assert.equal(r.oldUrl, e.url);
+  assert.equal(r.newUrl, "https://new.example.com/a.pdf");
+
+  const row = db.prepare("SELECT * FROM sources WHERE id = ?").get(id);
+  assert.equal(row.url, "https://new.example.com/a.pdf");
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM sources").get().n, 1, "must not fork a new row");
+});
+
+test("repointSourceUrl: a subsequent load-manifest matches the repointed row, not a fork", () => {
+  const db = openMigrated(tmpDb(), { create: true });
+  const e = { area: 5, area_name: "Audio Assembly & Playback", title: "AES Doc", url: "https://old.example.com/a.pdf", source_type: "standard", why_it_matters: "v1", read_first: 0 };
+  loadManifest(db, [e]);
+  const id = db.prepare("SELECT id FROM sources WHERE url = ?").get(e.url).id;
+
+  repointSourceUrl(db, id, "https://new.example.com/a.pdf");
+  loadManifest(db, [{ ...e, url: "https://new.example.com/a.pdf", title: "AES Doc (moved)", why_it_matters: "v2" }]);
+
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM sources").get().n, 1, "load-manifest must refresh the repointed row, not insert a duplicate");
+  const row = db.prepare("SELECT * FROM sources WHERE id = ?").get(id);
+  assert.equal(row.title, "AES Doc (moved)");
+  assert.equal(row.why_it_matters, "v2");
+});
+
+test("repointSourceUrl: editing the dossier's url and reloading WITHOUT repoint-url forks a duplicate (documents the bug this exists to avoid)", () => {
+  const db = openMigrated(tmpDb(), { create: true });
+  const e = { area: 5, area_name: "Audio Assembly & Playback", title: "AES Doc", url: "https://old.example.com/a.pdf", source_type: "standard", why_it_matters: "v1", read_first: 0 };
+  loadManifest(db, [e]);
+
+  loadManifest(db, [{ ...e, url: "https://new.example.com/a.pdf" }]);
+
+  assert.equal(
+    db.prepare("SELECT COUNT(*) n FROM sources").get().n, 2,
+    "load-manifest alone cannot see a url change as the same source — this is exactly why repoint-url exists"
+  );
+});
+
+test("repointSourceUrl: throws on an unknown id", () => {
+  const db = openMigrated(tmpDb(), { create: true });
+  assert.throws(() => repointSourceUrl(db, 999, "https://x.com/y"), /no source with id 999/);
+});
+
+test("repointSourceUrl: refuses to steal a url already owned by another source", () => {
+  const db = openMigrated(tmpDb(), { create: true });
+  loadManifest(db, [
+    { area: 1, area_name: "A", title: "One", url: "https://x.com/1", source_type: "docs", why_it_matters: "w", read_first: 0 },
+    { area: 1, area_name: "A", title: "Two", url: "https://x.com/2", source_type: "docs", why_it_matters: "w", read_first: 0 },
+  ]);
+  const id1 = db.prepare("SELECT id FROM sources WHERE url = ?").get("https://x.com/1").id;
+  assert.throws(() => repointSourceUrl(db, id1, "https://x.com/2"), /already belongs to source/);
 });
 
 /* -------------------------------------------------------------- chunker */
