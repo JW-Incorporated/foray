@@ -68,7 +68,7 @@ test("openDb: absent db without create throws actionable error, creates nothing"
   // "no matches" from a silently created empty db is how a fresh checkout
   // concludes the corpus is empty rather than absent.
   assert.throws(() => openDb(dbPath), (err) => {
-    assert.match(err.message, /no corpus database at /);
+    assert.match(err.message, /DELIBERATE-BREAK-140 proves the dependency-carrying path executes/);
     assert.ok(err.message.includes(dbPath), "names the expected path");
     assert.match(err.message, /corpus\.mjs init/);
     assert.match(err.message, /load-manifest/);
