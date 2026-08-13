@@ -124,8 +124,16 @@ instead.
 - The pipeline suite your change touches: `node --test "tools/refresh/*.test.mjs"`
   (likewise `tools/segments/`, `tools/transcribe/`, `player/**/*.test.js`).
   `tools/corpus/` has its own deps: `cd tools/corpus && npm install && npm test`
-  (`node:sqlite` is flagged on Node 22.x — there, run
-  `node --experimental-sqlite --test *.test.mjs`; unflagged on >=23.4).
+  (that package's `test` script carries `--experimental-sqlite` itself, so it is
+  correct on Node 22.x where `node:sqlite` is flagged, and on >=23.4 where it is
+  not).
+- **Everything CI runs, in one command: `node tools/ci/run-suites.mjs`** — also
+  wired to root `npm test`. `--list` prints the plan without running it,
+  `--skip-install` reuses already-installed package deps; anything else is
+  refused rather than ignored. CI runs exactly this, so a green run here is a
+  green `data-and-site`. It discovers suites rather than listing them: a new
+  `tools/<dir>/` is picked up the day it lands, and a directory with its own
+  `package.json` + `test` script is installed and run in place.
 - Site JS: `node --check app.js`
 - Data integrity: CI (`.github/workflows/ci.yml`) validates all JSON + session
   episode refs on push.
@@ -135,6 +143,24 @@ instead.
 `test/suite-integrity.test.js` fails CI ("every suite on disk is covered by a
 floor"). That is deliberate, not friction: an unfloored suite can be quietly
 deleted later by a PR that auto-merges, and a deleted suite passes CI.
+
+That file also asserts the opposite direction (issue #140): every floored suite
+must be in `tools/ci/run-suites.mjs`'s execution plan. A suite that is floored
+but never executed is the worse failure of the two — it reads as coverage and
+protects nothing — so the two mechanisms are now pinned to each other and
+cannot drift.
+
+**Two conventions that machinery hold up, so keep them:**
+- **Name suites `*.test.js` / `*.test.mjs` / `*.test.cjs`.** Node's own
+  discovery also matches `foo-test.mjs`, `foo_test.mjs` and `test-foo.mjs`;
+  ours does not, so a suite spelled that way is invisible to the floor check
+  AND to CI — they agree, and the file is dark. suite-integrity rejects the
+  spellings it can flag without false positives, but `test-foo.mjs` it cannot
+  (`tools/test-search.mjs` is a script, not a suite).
+- **A package `test` script must forward its arguments** (end in
+  `node --test`). The runner calls `npm test -- <files>` and trusts the script
+  to run them; one that ignores positionals would report suites as executed
+  that never ran.
 
 ## Product principles (supersede everything, including marketing findings)
 
