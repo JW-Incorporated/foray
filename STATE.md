@@ -22,8 +22,11 @@ Follow-up (`corpus/corpus-visibility`): the corpus itself stays machine-local,
 but `docs/research/corpus/digests.md` + `corpus-index.json` carry the research
 into every checkout — per-source digests we wrote, plus a redistribution
 verdict for each source. Rationale: `docs/DECISIONS.md`, 2026-08-12 part 2.
-One open item for Wyatt: PR #149 (ci.yml step to execute the corpus suites —
-CI/CD is his call). The embedding backfill is a future, separate pass.
+PR #149 (ci.yml step to execute the corpus suites) landed 2026-08-12 —
+CI/CD is Wyatt's call; he approved verbally by phone, relayed by Joey in
+session (provenance recorded in the PR body and merge commit). The 156
+corpus tests now run in `data-and-site` on every PR. The embedding
+backfill is a future, separate pass.
 
 - **What:** scrape + archive every source in `docs/research/foray-research-dossier.md`
   (~57 sources, 9 areas) into a migration-managed SQLite corpus with FTS5
