@@ -7,6 +7,14 @@
 bug to fix later; it invalidates every segment the extraction produces,
 which is why it was decided before any of it ran.
 
+**Primary sources.** The DAI-drift evidence behind this decision is digested in
+`docs/research/corpus/digests.md`: entries 9 (Podcast Namespace issue #254 —
+DAI shifts every downstream timestamp), 48 (Pocket Casts #2093 — ~100s chapter
+drift, different per download), 19 (Castos DAI mechanics, 22s worked example)
+and 15 (Chromaprint, the fingerprint route to offset recovery). Full text is
+searchable via `node tools/corpus/corpus.mjs search` on the machine that built
+the corpus DB (see CLAUDE.md § Research corpus).
+
 ## Context
 
 Epic #63 needs a segment: a bounded `start` → `end` region of a real
