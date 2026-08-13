@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { openMigrated } from "./db.mjs";
 import {
   l2Normalize, toBlob, fromBlob, readVectorInto, vectorLength, topK, dotAt, HOST_IS_LE,
@@ -337,6 +338,113 @@ test("dropping chunks.embedding left the FTS index working", () => {
   const n = db.prepare("SELECT COUNT(*) n FROM chunks_fts WHERE chunks_fts MATCH 'fusion'").get().n;
   assert.equal(n, 1);
   db.close();
+});
+
+test("migrating a DB that ALREADY HAS chunks and the old column keeps its FTS index intact", () => {
+  /* The tests above migrate a fresh DB, which proves the new schema works but
+   * NOT that the drop survives existing rows — and the drop runs against a
+   * real 558-chunk database with an FTS5 external-content table and three
+   * sync triggers over `chunks`. This walks the actual upgrade path: build at
+   * 0001+0002, fill it, then migrate to head. */
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "corpus-upgrade-"));
+  const dbPath = path.join(dir, "old.db");
+  const migrations = path.join(import.meta.dirname, "migrations");
+  const old = new DatabaseSync(dbPath);
+  old.exec("PRAGMA foreign_keys = ON");
+  old.exec(fs.readFileSync(path.join(migrations, "0001_corpus_init.sql"), "utf8"));
+  old.exec(fs.readFileSync(path.join(migrations, "0002_chunks_fts.sql"), "utf8"));
+  old.exec("PRAGMA user_version = 2");
+  old.exec(`INSERT INTO sources (id,area,area_name,title,url,source_type) VALUES (1,4,'R','T','https://e.test/1','blog')`);
+  old.exec(`INSERT INTO documents (id,source_id,http_status) VALUES (1,1,200)`);
+  const ins = old.prepare("INSERT INTO chunks (document_id, ordinal, heading_path, text, token_count, embedding) VALUES (1,?,'',?,5,?)");
+  for (let i = 0; i < 40; i++) ins.run(i, `loudness normalization row ${i}`, i % 3 ? null : new Uint8Array(8));
+  old.close();
+
+  const db = openMigrated(dbPath);
+  assert.equal(db.prepare("PRAGMA user_version").get().user_version, 3);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM chunks").get().n, 40, "no chunk may be lost to the column drop");
+  assert.ok(!db.prepare("PRAGMA table_info(chunks)").all().some((c) => c.name === "embedding"));
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM chunks_fts WHERE chunks_fts MATCH 'loudness'").get().n, 40);
+  db.exec("INSERT INTO chunks_fts(chunks_fts) VALUES('integrity-check')");
+  assert.equal(db.prepare("PRAGMA integrity_check").get().integrity_check, "ok");
+  assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);
+  // …and the triggers still fire after the rewrite.
+  db.prepare("INSERT INTO chunks (document_id, ordinal, heading_path, text, token_count) VALUES (1,99,'','loudness again',3)").run();
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM chunks_fts WHERE chunks_fts MATCH 'loudness'").get().n, 41);
+  db.close();
+});
+
+test("a TEXT value of the right byte length is rejected — the column is BLOB-only", () => {
+  const { db } = tmpDb();
+  const m = registerModel(db, MODEL);
+  seedChunks(db, ["alpha text"]);
+  const chunkId = db.prepare("SELECT id FROM chunks LIMIT 1").get().id;
+  assert.throws(
+    () => db.prepare("INSERT INTO chunk_embeddings (chunk_id, model_id, vector) VALUES (?,?,?)")
+            .run(chunkId, m.id, "0123456789abcdef"),
+    /CHECK constraint|typeof/
+  );
+  db.close();
+});
+
+test("writeEmbeddings nests inside a caller's transaction instead of throwing", () => {
+  // A bare BEGIN would throw "cannot start a transaction within a
+  // transaction" the moment the backfill wraps several batches in one.
+  const { db } = tmpDb();
+  const m = registerModel(db, MODEL);
+  seedChunks(db, ["alpha", "beta"]);
+  const ids = db.prepare("SELECT id FROM chunks ORDER BY id").all().map((r) => r.id);
+  db.exec("BEGIN");
+  writeEmbeddings(db, m.id, [{ chunkId: ids[0], vector: [1, 0, 0, 0] }]);
+  writeEmbeddings(db, m.id, [{ chunkId: ids[1], vector: [0, 1, 0, 0] }]);
+  db.exec("COMMIT");
+  assert.equal(embeddingCoverage(db, m.id).embedded, 2);
+  db.close();
+});
+
+test("a bad vector rolls back only its own batch, leaving the caller's transaction usable", () => {
+  const { db } = tmpDb();
+  const m = registerModel(db, MODEL);
+  seedChunks(db, ["alpha", "beta"]);
+  const ids = db.prepare("SELECT id FROM chunks ORDER BY id").all().map((r) => r.id);
+  db.exec("BEGIN");
+  assert.throws(() => writeEmbeddings(db, m.id, [
+    { chunkId: ids[0], vector: [1, 0, 0, 0] },
+    { chunkId: ids[1], vector: [0, 0, 0, 0] }, // zero vector: refused
+  ]), /zero vector/);
+  writeEmbeddings(db, m.id, [{ chunkId: ids[1], vector: [0, 1, 0, 0] }]);
+  db.exec("COMMIT");
+  assert.equal(embeddingCoverage(db, m.id).embedded, 1, "the failed batch must not have partially landed");
+  db.close();
+});
+
+test("loadMatrix refuses a registry dim the stored vectors disagree with", () => {
+  // The trigger cannot catch this: editing embedding_models.dim after the
+  // fact leaves every vector the wrong length with nothing to fire on.
+  const { db } = tmpDb();
+  const m = registerModel(db, MODEL);
+  seedChunks(db, ["alpha"]);
+  const chunkId = db.prepare("SELECT id FROM chunks LIMIT 1").get().id;
+  writeEmbeddings(db, m.id, [{ chunkId, vector: [1, 0, 0, 0] }]);
+  db.prepare("UPDATE embedding_models SET dim = 8 WHERE id = ?").run(m.id);
+  assert.throws(() => loadMatrix(db, m.id), /4-dim vector but model .* declares 8/);
+  db.close();
+});
+
+test("a model spec with an unusable pooling is rejected with a readable message", () => {
+  const { db } = tmpDb();
+  assert.throws(() => registerModel(db, { ...MODEL, pooling: undefined }), /pooling must be one of/);
+  assert.throws(() => registerModel(db, { ...MODEL, dim: 0 }), /positive integer/);
+  db.close();
+});
+
+test("topK handles k=0, k beyond the row count, and an empty matrix", () => {
+  const dim = 4;
+  const matrix = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0]);
+  const q = Float32Array.from([1, 0, 0, 0]);
+  assert.deepEqual(topK(q, matrix, dim, 0), []);
+  assert.equal(topK(q, matrix, dim, 99).length, 2);
+  assert.deepEqual(topK(q, new Float32Array(0), dim, 5), []);
 });
 
 test("getModel finds by identity and getModelById round-trips", () => {

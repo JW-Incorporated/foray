@@ -44,13 +44,23 @@ CREATE TABLE embedding_models (
   UNIQUE (name, revision, quantization)
 );
 
--- Composite PK (chunk_id, model_id): one vector per chunk per model, and the
--- PK is the lookup index for "all vectors for model M" scans in that order.
+-- Composite PK (chunk_id, model_id) enforces one vector per chunk per model
+-- and backs the cascade from `chunks`. It is chunk-major, so it canNOT serve
+-- "every vector for model M" — that is what the separate index below is for,
+-- and it is the access pattern the whole retrieval path uses.
+--
+-- `written_at`, not `created_at`: a re-backfill upserts the row in place, so
+-- this is the time the CURRENT bytes were written, not the time the pairing
+-- first existed. Naming it `created_at` would have made a re-embed look like
+-- a fresh insert.
 CREATE TABLE chunk_embeddings (
   chunk_id   INTEGER NOT NULL REFERENCES chunks(id)           ON DELETE CASCADE,
   model_id   INTEGER NOT NULL REFERENCES embedding_models(id) ON DELETE CASCADE,
-  vector     BLOB    NOT NULL,   -- bare little-endian float32, L2-normalized
-  created_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  -- typeof() as well as length(): a TEXT value of exactly 4*dim characters
+  -- would otherwise satisfy the length trigger and then fail confusingly at
+  -- read time. Only reachable from hand-written SQL, and free to close.
+  vector     BLOB    NOT NULL CHECK (typeof(vector) = 'blob'),
+  written_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   PRIMARY KEY (chunk_id, model_id)
 );
 

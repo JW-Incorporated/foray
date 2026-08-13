@@ -6,9 +6,11 @@
  *   node tools/corpus/corpus.mjs repoint-url <source_id> <new_url>
  *   node tools/corpus/corpus.mjs ingest (--all | --area N | --source ID) [--force]
  *   node tools/corpus/corpus.mjs ingest-captured --source ID --file <path> [--tool "..."]
- *   node tools/corpus/corpus.mjs search "query" [--limit N] [--raw] [--explain]
- *   node tools/corpus/corpus.mjs rechunk [--drop-embeddings]
- *   node tools/corpus/corpus.mjs eval [--gold <path>] [--json]
+ *   node tools/corpus/corpus.mjs search "query" [--mode keyword|vector|hybrid] [--limit N] [--raw] [--explain]
+ *   node tools/corpus/corpus.mjs rechunk [--tokenizer] [--drop-embeddings]
+ *   node tools/corpus/corpus.mjs token-histogram
+ *   node tools/corpus/corpus.mjs embed [--force] [--batch N] [--offline]
+ *   node tools/corpus/corpus.mjs eval [--mode M | --all-modes] [--gold <path>] [--json]
  *   node tools/corpus/corpus.mjs stats
  *   node tools/corpus/corpus.mjs refetch <source_id>
  *   node tools/corpus/corpus.mjs report [--write]
@@ -28,8 +30,13 @@ import { ingestMany, rechunkAll, ingestCapturedText } from "./ingest.mjs";
 import { coverageMarkdown, deadLinksMarkdown, coverageData } from "./report.mjs";
 import { parseDigests, buildIndex, serializeIndex, diffIndexAgainstDigests, checkVerbatimOverlap } from "./export-index.mjs";
 import { CORPUS_ROOT } from "./paths.mjs";
-import { keywordSearch } from "./search.mjs";
-import { runEval, formatEval } from "./eval.mjs";
+import { search, MODES, DEFAULT_SEARCH_MODE } from "./search.mjs";
+import { runEval, runModes, formatEval, formatComparison } from "./eval.mjs";
+import { createEmbedder, EmbeddingRuntimeUnavailable, EMBED_CHUNK_MAX, EMBED_CHUNK_MIN } from "./embedder.mjs";
+import { backfill, DEFAULT_BATCH } from "./backfill.mjs";
+import { currentChunks, embeddingInput } from "./embeddings.mjs";
+import { tokenHistogram, heuristicDrift, formatHistogram } from "./tokenstats.mjs";
+import { estTokens } from "./chunk.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -62,6 +69,30 @@ function numFlag(value, name, { min = 1, max = Infinity } = {}) {
   const n = Number(value);
   if (n < min || n > max) throw new Error(`${name} must be ${min}–${max === Infinity ? "…" : max}, got ${n}`);
   return n;
+}
+
+/* Build an embedder, or return null when the runtime simply is not installed.
+ * NULL IS A NORMAL ANSWER HERE. `tools/corpus/embed/` is a deliberate ~250MB
+ * opt-in, so "no runtime" is the expected state on most checkouts and must
+ * never become a stack trace in front of someone who only wanted keyword
+ * search. Anything OTHER than a missing runtime — a corrupt model file, a
+ * disk error — still throws, because those are real failures. */
+async function maybeEmbedder({ offline = false } = {}) {
+  try {
+    return await createEmbedder(offline ? { allowRemote: false } : {});
+  } catch (err) {
+    if (err instanceof EmbeddingRuntimeUnavailable) return null;
+    throw err;
+  }
+}
+
+/* The same builder, but for commands whose entire job IS embedding — there,
+ * a missing runtime is a hard error with install instructions, not a
+ * downgrade to something that silently does nothing. */
+async function requireEmbedder(opts) {
+  const e = await maybeEmbedder(opts);
+  if (!e) throw new EmbeddingRuntimeUnavailable();
+  return e;
 }
 
 function selectSources(db, args) {
@@ -171,27 +202,98 @@ async function main() {
     case "search": {
       const db = openMigrated();
       const query = args._[0];
-      if (!query) throw new Error(`usage: corpus search "query" [--limit N] [--raw] [--explain]`);
+      if (!query) throw new Error(`usage: corpus search "query" [--mode ${MODES.join("|")}] [--limit N] [--raw] [--explain]`);
       const limit = args.limit === undefined ? 8 : numFlag(args.limit, "--limit", { min: 1, max: 100 });
-      const { rows, match } = keywordSearch(db, query, {
-        limit,
+      const mode = args.mode === undefined ? DEFAULT_SEARCH_MODE : String(args.mode);
+      if (!MODES.includes(mode)) throw new Error(`--mode must be one of ${MODES.join(", ")} (got ${JSON.stringify(mode)})`);
+
+      /* The runtime is only loaded when a mode actually needs it, so plain
+       * keyword search stays instant and works with embed/ absent. */
+      const embedder = mode === "keyword" ? null : await maybeEmbedder();
+      const res = await search(db, query, {
+        mode, limit,
         raw: Boolean(args.raw),
         bigrams: args.bigrams !== "off",
+        /* search() has already applied the registry's query prefix, so this
+         * encodes the string verbatim. Adding a prefix here too would double
+         * it — silently, and only for queries. */
+        embedQuery: embedder ? async (prefixed) => (await embedder.encode([prefixed]))[0] : null,
       });
-      if (args.explain) console.log(`match: ${match ?? "(nothing indexable in that query)"}`);
-      if (match === null) { console.log("nothing to search for — the query has no indexable words"); break; }
-      if (!rows.length) { console.log("no matches"); break; }
-      for (const r of rows) {
+      if (res.notice) console.log(`note: ${res.notice}`);
+      if (args.explain) console.log(`mode: ${res.mode}   match: ${res.match ?? "(vector-only — no FTS expression)"}`);
+      if (res.mode === "keyword" && res.match === null) { console.log("nothing to search for — the query has no indexable words"); break; }
+      if (!res.rows.length) { console.log("no matches"); break; }
+      for (const r of res.rows) {
         console.log(`\n[${r.source_id}] ${r.title} (area ${r.area})${r.heading_path ? ` — ${r.heading_path}` : ""}`);
         console.log(`  ${r.snip.replace(/\s+/g, " ")}`);
       }
       break;
     }
 
+    /* Measure before deciding. bge truncates at 512 real tokens SILENTLY —
+     * the tail of an over-long chunk is simply absent from its vector while
+     * search keeps displaying the whole thing — so the chars/4 packing
+     * heuristic has to be checked against the model's own tokenizer before
+     * anything is embedded, not assumed to be close enough. */
+    case "token-histogram": {
+      const db = openMigrated();
+      const embedder = await requireEmbedder({ offline: Boolean(args.offline) });
+      const chunks = currentChunks(db);
+      if (!chunks.length) { console.log("no chunks — run ingest first"); break; }
+      const inputs = chunks.map((c) => embeddingInput(c, embedder.model.passage_prefix));
+      const real = inputs.map((t) => embedder.countTokens(t));
+      const h = tokenHistogram(real, { maxTokens: embedder.model.maxTokens });
+      console.log(formatHistogram(h, heuristicDrift(real, chunks.map((c) => estTokens(c.text)))));
+      break;
+    }
+
+    case "embed": {
+      const db = openMigrated();
+      const embedder = await requireEmbedder({ offline: Boolean(args.offline) });
+      const batch = args.batch === undefined ? DEFAULT_BATCH : numFlag(args.batch, "--batch", { min: 1, max: 256 });
+      let last = 0;
+      const r = await backfill(db, embedder, {
+        force: Boolean(args.force),
+        batch,
+        onProgress: ({ done, total }) => {
+          if (done - last < 50 && done !== total) return;
+          last = done;
+          console.log(`  ${done}/${total} chunks embedded`);
+        },
+      });
+      console.log(
+        `model ${r.model.name}@${r.model.revision} (${r.model.quantization}, ${r.model.dim}d, id ${r.model.id})\n` +
+        `embedded ${r.embedded}, already had vectors ${r.skipped}\n` +
+        `coverage: ${r.coverage.embedded}/${r.coverage.chunks} chunks`
+      );
+      if (r.truncated) {
+        console.log(
+          `WARNING: ${r.truncated} chunk(s) exceed the model's ${embedder.model.maxTokens}-token limit and were TRUNCATED —\n` +
+          `         their tails are not in their vectors. Run \`corpus token-histogram\`, then\n` +
+          `         \`corpus rechunk --tokenizer --drop-embeddings\` and embed again.`
+        );
+      }
+      break;
+    }
+
     case "rechunk": {
       const db = openMigrated();
-      const r = rechunkAll(db, { dropEmbeddings: Boolean(args["drop-embeddings"]) });
+      /* --tokenizer re-chunks for an EMBEDDING model rather than for FTS5:
+       * the model's real tokenizer as the length unit, and a ceiling well
+       * under its truncation limit once the title/heading header is added. */
+      let chunkOptions;
+      if (args.tokenizer) {
+        const embedder = await requireEmbedder({ offline: Boolean(args.offline) });
+        chunkOptions = {
+          countTokens: (s) => embedder.countTokens(s),
+          maxTokens: args["max-tokens"] === undefined ? EMBED_CHUNK_MAX : numFlag(args["max-tokens"], "--max-tokens", { min: 32, max: 4096 }),
+          minTokens: args["min-tokens"] === undefined ? EMBED_CHUNK_MIN : numFlag(args["min-tokens"], "--min-tokens", { min: 8, max: 2048 }),
+        };
+        console.log(`re-chunking with ${embedder.model.name}'s tokenizer: ${chunkOptions.minTokens}–${chunkOptions.maxTokens} real tokens per chunk`);
+      }
+      const r = rechunkAll(db, { dropEmbeddings: Boolean(args["drop-embeddings"]), chunkOptions });
       console.log(`rechunked ${r.documents} documents from archived markdown: ${r.before} → ${r.after} chunks`);
+      if (r.droppedEmbeddings) console.log(`  ${r.droppedEmbeddings} vector(s) cascade-deleted — re-run \`corpus embed\``);
       if (r.missing.length) console.log(`  ${r.missing.length} markdown file(s) missing: ${r.missing.join(", ")}`);
       if (r.emptied.length) {
         console.log(`  ${r.emptied.length} document(s) SKIPPED — archive yielded no chunks, existing rows kept:`);
@@ -205,14 +307,23 @@ async function main() {
       const db = openMigrated();
       const goldPath = args.gold ?? DEFAULT_GOLD;
       const gold = JSON.parse(fs.readFileSync(goldPath, "utf8"));
-      const result = runEval(db, gold, {
-        mode: args.mode ?? "keyword",
+      const modes = args["all-modes"] ? MODES : [args.mode ? String(args.mode) : DEFAULT_SEARCH_MODE];
+      for (const m of modes) {
+        if (!MODES.includes(m)) throw new Error(`--mode must be one of ${MODES.join(", ")} (got ${JSON.stringify(m)})`);
+      }
+      const embedder = modes.every((m) => m === "keyword") ? null : await maybeEmbedder();
+      const opts = {
         limit: args.limit === undefined ? 8 : numFlag(args.limit, "--limit", { min: 1, max: 100 }),
         bigrams: args.bigrams !== "off",
         raw: Boolean(args.raw),
-      });
-      console.log(formatEval(result));
-      if (args.json) console.log("\n" + JSON.stringify(result, null, 2));
+        embedQuery: embedder ? async (prefixed) => (await embedder.encode([prefixed]))[0] : null,
+      };
+      const results = await runModes(db, gold, { ...opts, modes });
+      /* One mode: the detailed per-query report. Several: the side-by-side
+       * comparison plus the gates, because the only reason to run more than
+       * one mode is to decide between them. */
+      console.log(results.length === 1 ? formatEval(results[0]) : formatComparison(results));
+      if (args.json) console.log("\n" + JSON.stringify(results.length === 1 ? results[0] : results, null, 2));
       break;
     }
 
@@ -288,18 +399,23 @@ async function main() {
 
     default:
       console.error(
-        `usage: corpus <init|load-manifest|ingest|search|rechunk|eval|stats|refetch|report|export-index>\n` +
+        `usage: corpus <init|load-manifest|ingest|search|rechunk|embed|eval|stats|refetch|report|export-index>\n` +
         `  init                                create/migrate the db\n` +
         `  load-manifest [--dossier p]         parse the dossier into sources\n` +
         `  repoint-url ID new-url               move a source's url in place (id-stable)\n` +
         `  ingest --all|--area N|--source ID   fetch + extract + chunk\n` +
         `  ingest-captured --source ID --file p  ingest a browser-rendered text capture\n` +
         `        [--tool "..."]                capture tool name, recorded in fetch_notes\n` +
-        `  search "query" [--limit N]          FTS5 keyword search\n` +
+        `  search "query" [--limit N]          search the corpus\n` +
+        `        [--mode ${MODES.join("|")}]  keyword (default), vectors, or RRF fusion\n` +
         `        [--raw]                       pass literal FTS5 syntax through\n` +
-        `        [--explain]                   print the MATCH expression built\n` +
-        `  rechunk [--drop-embeddings]         re-chunk from archived markdown (offline)\n` +
-        `  eval [--gold f] [--json]            score the gold set (retrieval quality)\n` +
+        `        [--explain]                   print the mode + MATCH expression used\n` +
+        `  rechunk [--tokenizer]               re-chunk from archived markdown (offline)\n` +
+        `        [--drop-embeddings]           allow the cascade to delete existing vectors\n` +
+        `  token-histogram                     real token lengths under the model's tokenizer\n` +
+        `  embed [--force] [--batch N]         backfill chunk vectors (needs embed/ installed)\n` +
+        `  eval [--mode M | --all-modes]       score the gold set (retrieval quality)\n` +
+        `       [--gold f] [--json]            --all-modes prints the side-by-side + gates\n` +
         `  stats                               per-area coverage\n` +
         `  refetch <source_id>                 force re-ingest one source\n` +
         `  report [--write]                    coverage + dead-links markdown\n` +

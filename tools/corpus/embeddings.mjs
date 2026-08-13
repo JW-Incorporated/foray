@@ -33,6 +33,12 @@ function normalizeSpec(spec) {
     passage_prefix: String(spec.passage_prefix ?? ""),
   };
   if (!Number.isInteger(out.dim) || out.dim <= 0) throw new Error(`model dim must be a positive integer, got ${spec.dim}`);
+  /* Checked here rather than left to the CHECK constraint, which would
+   * surface a missing field as the string "undefined" failing a constraint —
+   * true, but not a sentence anyone can act on. */
+  if (!["cls", "mean", "max"].includes(out.pooling)) {
+    throw new Error(`model pooling must be one of cls, mean, max — got ${JSON.stringify(spec.pooling)}`);
+  }
   return out;
 }
 
@@ -144,14 +150,21 @@ export function embeddingCoverage(db, modelId) {
 export function writeEmbeddings(db, modelId, entries) {
   const ins = db.prepare(
     `INSERT INTO chunk_embeddings (chunk_id, model_id, vector) VALUES (?, ?, ?)
-     ON CONFLICT (chunk_id, model_id) DO UPDATE SET vector = excluded.vector, created_at = excluded.created_at`
+     ON CONFLICT (chunk_id, model_id) DO UPDATE SET vector = excluded.vector, written_at = excluded.written_at`
   );
-  db.exec("BEGIN");
+  /* SAVEPOINT, not BEGIN. A bare BEGIN throws "cannot start a transaction
+   * within a transaction" the moment a caller wraps several batches in one —
+   * and it throws AFTER the caller's transaction is already open, so the
+   * failure is an opaque error about SQL the caller never wrote. A savepoint
+   * nests: standalone it behaves exactly like a transaction, and inside one
+   * it rolls back only this batch. */
+  db.exec("SAVEPOINT write_embeddings");
   try {
     for (const e of entries) ins.run(e.chunkId, modelId, toBlob(e.vector));
-    db.exec("COMMIT");
+    db.exec("RELEASE write_embeddings");
   } catch (err) {
-    db.exec("ROLLBACK");
+    db.exec("ROLLBACK TO write_embeddings");
+    db.exec("RELEASE write_embeddings");
     throw err;
   }
   return entries.length;
@@ -165,10 +178,11 @@ export function clearEmbeddings(db, modelId) {
 /**
  * Load every vector for `modelId` into ONE pre-allocated flat Float32Array.
  *
- * One allocation, not N: the scan in `topK` is then a straight walk over
- * contiguous memory, and — the part that actually bites — decoding row by row
- * into a shared buffer is the only way to sidestep the byteOffset alignment
- * trap described in vectors.mjs without a per-row copy.
+ * One allocation, not N. The bytes are copied either way; what this avoids is
+ * hundreds of separate `Float32Array` objects, and it leaves `topK` walking
+ * one contiguous block instead of chasing pointers. Decoding goes through
+ * `readVectorInto` so the byteOffset hazard described in vectors.mjs is
+ * handled in exactly one place.
  *
  * @returns {{chunkIds:Int32Array, matrix:Float32Array, dim:number, count:number}}
  */

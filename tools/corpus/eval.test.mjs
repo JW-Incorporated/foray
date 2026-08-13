@@ -40,51 +40,51 @@ function seed(db, { sourceId = 1, mdRelPath = null, chunks = [] } = {}) {
 
 const goldOf = (queries) => ({ queries });
 
-test("a perfect ranking scores 1.0 across the board", () => {
+test("a perfect ranking scores 1.0 across the board", async () => {
   const { db } = tmpDb();
   seed(db, { sourceId: 1, chunks: ["reciprocal rank fusion combines ranked lists"] });
-  const r = runEval(db, goldOf([{ id: 1, q: "reciprocal rank fusion", primary: [1] }]));
+  const r = await runEval(db, goldOf([{ id: 1, q: "reciprocal rank fusion", primary: [1] }]));
   assert.equal(r.aggregate.recall5, 1);
   assert.equal(r.aggregate.mrr10, 1);
   assert.equal(r.aggregate.ndcg10, 1);
   db.close();
 });
 
-test("a miss scores zero and is reported as not-found, not as an error", () => {
+test("a miss scores zero and is reported as not-found, not as an error", async () => {
   const { db } = tmpDb();
   seed(db, { sourceId: 1, chunks: ["completely unrelated wording about kittens"] });
-  const r = runEval(db, goldOf([{ id: 1, q: "reciprocal rank fusion", primary: [1] }]));
+  const r = await runEval(db, goldOf([{ id: 1, q: "reciprocal rank fusion", primary: [1] }]));
   assert.equal(r.perQuery[0].found, false);
   assert.equal(r.perQuery[0].error, null);
   assert.equal(r.aggregate.mrr10, 0);
   db.close();
 });
 
-test("reciprocal rank reflects the position of the first primary hit", () => {
+test("reciprocal rank reflects the position of the first primary hit", async () => {
   const { db } = tmpDb();
   // Source 1 matches one term; source 2 matches many and outranks it.
   seed(db, { sourceId: 1, chunks: ["fusion"] });
   seed(db, { sourceId: 2, chunks: ["reciprocal rank fusion reciprocal rank fusion ranked"] });
-  const r = runEval(db, goldOf([{ id: 1, q: "reciprocal rank fusion", primary: [1] }]));
+  const r = await runEval(db, goldOf([{ id: 1, q: "reciprocal rank fusion", primary: [1] }]));
   assert.equal(r.perQuery[0].firstHitRank, 2);
   assert.equal(r.perQuery[0].rr, 0.5);
   db.close();
 });
 
-test("secondary hits earn partial nDCG credit, never full", () => {
+test("secondary hits earn partial nDCG credit, never full", async () => {
   const { db } = tmpDb();
   seed(db, { sourceId: 2, chunks: ["reciprocal rank fusion combines ranked lists"] });
-  const r = runEval(db, goldOf([{ id: 1, q: "reciprocal rank fusion", primary: [1], secondary: [2] }]));
+  const r = await runEval(db, goldOf([{ id: 1, q: "reciprocal rank fusion", primary: [1], secondary: [2] }]));
   assert.ok(r.aggregate.ndcg10 > 0, "secondary should score something");
   assert.ok(r.aggregate.ndcg10 < 1, "secondary must not score a perfect run");
   assert.equal(r.aggregate.recall5, 0, "recall counts primaries only");
   db.close();
 });
 
-test("a query that errors is recorded, not thrown, and does not abort the run", () => {
+test("a query that errors is recorded, not thrown, and does not abort the run", async () => {
   const { db } = tmpDb();
   seed(db, { sourceId: 1, chunks: ["anything at all here"] });
-  const r = runEval(db, goldOf([
+  const r = await runEval(db, goldOf([
     { id: 1, q: "what is DAI?", primary: [1] },
     { id: 2, q: "anything", primary: [1] },
   ]), { raw: true });
@@ -93,28 +93,28 @@ test("a query that errors is recorded, not thrown, and does not abort the run", 
   db.close();
 });
 
-test("negatives appearing in the top 5 are counted", () => {
+test("negatives appearing in the top 5 are counted", async () => {
   const { db } = tmpDb();
   seed(db, { sourceId: 9, chunks: ["chromaprint fingerprint alignment offset"] });
-  const r = runEval(db, goldOf([{ id: 1, q: "alignment", primary: [1], negative: [9] }]));
+  const r = await runEval(db, goldOf([{ id: 1, q: "alignment", primary: [1], negative: [9] }]));
   assert.deepEqual(r.perQuery[0].negativesInTop5, [9]);
   assert.equal(r.aggregate.negativeHits, 1);
   db.close();
 });
 
-test("eval runs the same retriever the CLI does", () => {
+test("eval runs the same retriever the CLI does", async () => {
   const { db } = tmpDb();
   seed(db, { sourceId: 1, chunks: ["reciprocal rank fusion combines ranked lists"] });
-  const r = runEval(db, goldOf([{ id: 1, q: "reciprocal rank fusion", primary: [1] }]));
+  const r = await runEval(db, goldOf([{ id: 1, q: "reciprocal rank fusion", primary: [1] }]));
   const direct = sourcesInOrder(keywordSearch(db, "reciprocal rank fusion", { limit: 8 }).rows);
   assert.deepEqual(r.perQuery[0].top5, direct.slice(0, 5));
   db.close();
 });
 
-test("evaluation depth defaults to the CLI's own limit", () => {
+test("evaluation depth defaults to the CLI's own limit", async () => {
   const { db } = tmpDb();
   seed(db, { sourceId: 1, chunks: ["alpha"] });
-  assert.equal(runEval(db, goldOf([{ id: 1, q: "alpha", primary: [1] }])).limit, 8);
+  assert.equal((await runEval(db, goldOf([{ id: 1, q: "alpha", primary: [1] }]))).limit, 8);
   db.close();
 });
 

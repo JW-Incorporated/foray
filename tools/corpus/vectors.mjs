@@ -10,15 +10,18 @@
  * `embedding_models.dim`, enforced by a trigger — at the cost of that
  * compatibility.
  *
- * THE ALIGNMENT TRAP, which is the whole reason this file exists rather than
- * two inline expressions. `node:sqlite` hands back a BLOB as a `Uint8Array`
- * that may be a VIEW into a larger buffer at an arbitrary byteOffset. The
- * obvious `new Float32Array(u8.buffer, u8.byteOffset, n)` throws
+ * THE ALIGNMENT HAZARD, which is the whole reason this file exists rather
+ * than two inline expressions. A `Uint8Array` may be a VIEW into a larger
+ * buffer at an arbitrary byteOffset, and the obvious
+ * `new Float32Array(u8.buffer, u8.byteOffset, n)` throws
  * "start offset of Float32Array should be a multiple of 4" whenever that
- * offset happens to be unaligned — which depends on the row, not on the code,
- * so it fails in production on some rows and never in a small test. Every
- * read here goes through a path that either verifies the alignment or copies
- * byte-by-byte.
+ * offset is not a multiple of 4. Measured on Node 24, `node:sqlite` happens
+ * to return each BLOB as its own array at byteOffset 0, so the bad case is
+ * not reachable today — but that is an observed implementation detail, not a
+ * documented guarantee, and it would fail per-ROW rather than per-code-path
+ * if it ever changed, which is the kind of bug that never shows up in a small
+ * test. So `readVectorInto` checks the alignment and falls back to a DataView
+ * copy, and callers do not get to hand-roll the fast path.
  */
 
 /* Endianness is a property of the machine, not of the format. Everything we
@@ -68,13 +71,16 @@ export function toFloat32(values) {
 }
 
 /**
- * Float32Array -> BLOB bytes. `normalize` defaults to true because every
- * vector this corpus stores is normalized; the flag exists for tests that
- * need to prove an un-normalized vector is rejected downstream.
+ * Float32Array -> BLOB bytes, ALWAYS normalized.
+ *
+ * There is deliberately no opt-out. Nothing downstream re-checks a vector's
+ * magnitude — the DB trigger asserts byte length, not unit length — so an
+ * un-normalized vector would be stored, scored against with a plain dot
+ * product, and quietly rank wrong forever. Normalizing here is also the only
+ * place the non-finite check runs, so an escape hatch would be a hole in it.
  */
-export function toBlob(values, { normalize = true } = {}) {
-  const f32 = toFloat32(values);
-  if (normalize) l2Normalize(f32);
+export function toBlob(values) {
+  const f32 = l2Normalize(toFloat32(values));
   if (HOST_IS_LE) return new Uint8Array(f32.buffer, f32.byteOffset, f32.byteLength).slice();
   const out = new Uint8Array(f32.length * BYTES_PER_FLOAT);
   const view = new DataView(out.buffer);
