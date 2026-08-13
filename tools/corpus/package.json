@@ -7,7 +7,8 @@
     "node": ">=22.5"
   },
   "scripts": {
-    "test": "node --test *.test.mjs"
+    "//test": "This package owns its own runner flags — node:sqlite is flagged on Node 22.x (CI's version; accepted and redundant on >=23.4), so `npm test` here is the ONLY command that is correct on every machine. tools/ci/run-suites.mjs invokes it as `npm test -- <files>`, which is why no file pattern is baked in: with arguments it runs exactly the suites CI discovered, and with none it falls back to node --test's own recursive discovery from this directory.",
+    "test": "node --experimental-sqlite --test"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
