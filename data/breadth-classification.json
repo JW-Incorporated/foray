@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-14T00:35:40.542Z",
+  "built_at": "2026-08-14T08:17:15.254Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-14-0c95402c",
+    "last_batch_id": "fresh-2026-08-14-e182b60b",
     "last_batch_tier": 1
   },
   "entries": {
@@ -197743,7 +197743,22 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly breakdown show analyzing WWE wrestling matches and segments.",
+      "display_title": "WWE breakdowns",
+      "blurb": "Weekly analysis of WWE Raw and SmackDown matches, segments, and storylines.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1868054377": {
       "topics": [
@@ -198618,7 +198633,22 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice covering relationships, mental health, and family dynamics.",
+      "display_title": "Hope & Humor Podcast",
+      "blurb": "Honest conversations on parenting, mental health, and navigating family challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1871562035": {
       "topics": [
@@ -198641,7 +198671,22 @@
         "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical science podcast discussing vaccines, allergies, and health myths.",
+      "display_title": "From Bench to Bedside",
+      "blurb": "Science-forward medical podcast cutting through health misinformation with evidence-based analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1871930209": {
       "topics": [
@@ -198703,7 +198748,22 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French podcast exploring artisans, gastronomy, and craft professions.",
+      "display_title": "À même le fût",
+      "blurb": "Conversations with French craftspeople and entrepreneurs in gastronomy and artisanal trades.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1872286695": {
       "topics": [
@@ -198784,7 +198844,22 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation series examining overlooked details in missing persons cases.",
+      "display_title": "The Final Hours with Sarah Turney and Kourtney",
+      "blurb": "Detailed investigation of missing persons cases, scrutinizing overlooked investigative details.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1872827762": {
       "topics": [
@@ -198861,10 +198936,29 @@
     "1873309164": {
       "topics": [
         "sports",
-        "news"
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about parenting experiences in competitive youth travel sports.",
+      "display_title": "Travel Dads Podcast",
+      "blurb": "Conversations with dads, coaches, and youth sports insiders on travel sports experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1873323796": {
       "topics": [
@@ -199044,14 +199138,44 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welsh rugby legends share stories from local clubs and grassroots communities.",
+      "display_title": "Beyond the Breakdown",
+      "blurb": "Welsh rugby legends discuss life in the game and grassroots club challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1873990110": {
       "topics": [
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pilot interview series featuring military and commercial aviation stories.",
+      "display_title": "The Flyboy Podcast",
+      "blurb": "Engaging flying stories from military and civilian pilots across multiple aircraft types.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1874035221": {
       "topics": [
@@ -199167,10 +199291,30 @@
     },
     "1874557548": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog training podcast for aspiring trainers covering philosophy and business aspects.",
+      "display_title": "Doggie Stoic",
+      "blurb": "Resource for dog trainers covering training methods, philosophy, and business development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1874573233": {
       "topics": [
@@ -199421,7 +199565,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama blending horror and romance in a mysterious romantic narrative.",
+      "display_title": "Something's Amiss at Juniper's House",
+      "blurb": "Audio drama about young love with sinister undertones and supernatural mystery.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1875096195": {
       "topics": [
@@ -199624,11 +199783,25 @@
     },
     "1876036518": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Energy policy and clean energy entrepreneurship in the emerging power transition.",
+      "display_title": "Energy Empire",
+      "blurb": "Podcast about people and ideas driving the global clean energy transformation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1876049295": {
       "topics": [
@@ -199696,7 +199869,22 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting strategies for children with PDA (Pathological Demand Avoidance).",
+      "display_title": "THE PDA PARENT PODCAST",
+      "blurb": "Practical parenting guidance for children with PDA, focusing on building confidence without force.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1876357199": {
       "topics": [
@@ -199972,19 +200160,60 @@
     },
     "1877372826": {
       "topics": [
-        "medicine/biology",
         "science",
+        "medicine/biology",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Agricultural expertise podcast on soil health, crop management, and farmer practices.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1877541168": {
       "topics": [
         "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversational art podcast exploring painting, art world dynamics, and creative practice.",
+      "display_title": "UNSTRETCHED",
+      "blurb": "Painting and contemporary art discussion with industry insights and creative journeys.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1877577124": {
       "topics": [
@@ -200104,7 +200333,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily learning podcast of biblical texts with brief interpretive insights.",
+      "display_title": "Nach Yomi",
+      "blurb": "Daily learning of biblical chapters with brief commentary on Jewish texts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1877948649": {
       "topics": [
@@ -200164,7 +200408,22 @@
         "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly design digest covering architecture, interiors, and cultural design trends.",
+      "display_title": "Period Correct",
+      "blurb": "Design industry roundtable discussing contemporary architecture and interior design.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1878194150": {
       "topics": [
@@ -200190,10 +200449,30 @@
     },
     "1878236574": {
       "topics": [
-        "math"
+        "science",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "STEM education podcast featuring scientists and engineers discussing innovation.",
+      "display_title": "The STEM Blueprint PODCAST",
+      "blurb": "STEM education conversations with researchers and leaders in science and technology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1878271894": {
       "topics": [
@@ -200208,7 +200487,26 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI executive perspectives on AI development, policy, and technological progress.",
+      "display_title": "Dario Amodei Writings",
+      "blurb": "Essays on AI, technology exponentials, and policy from Anthropic leadership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1878285233": {
       "topics": [
@@ -200281,7 +200579,22 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Oral histories of retired chemistry faculty discussing academic careers and research.",
+      "display_title": "All the Best — UNL Chemistry Faculty Tell",
+      "blurb": "Interview series with chemistry faculty on academic careers and research journeys.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1878634437": {
       "topics": [
@@ -200318,7 +200631,26 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News roundtable covering politics, business, and cultural topics.",
+      "display_title": "Bloomberg This Weekend",
+      "blurb": "Weekly conversations on news, politics, and business spanning culture and policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1878759572": {
       "topics": [
@@ -200531,7 +200863,22 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home maintenance and cleaning guide for busy households.",
+      "display_title": "Housekeeping 101: The Clean Home Guide",
+      "blurb": "Home cleaning and maintenance tips for modern living and property care.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1879902572": {
       "topics": [
@@ -200554,7 +200901,26 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.95
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Satirical AI news show tracking technical breakthroughs and market shifts with humor.",
+      "display_title": "The RoB-bot Report",
+      "blurb": "High-octane satirical AI news with dry commentary on tech breakthroughs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1879979296": {
       "topics": [
@@ -200568,7 +200934,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis insider conversations with players and coaches on professional circuit.",
+      "display_title": "The Beyond Tennis Podcast",
+      "blurb": "Behind-the-scenes tennis stories with players, coaches, and circuit insiders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1880072578": {
       "topics": [
@@ -200590,7 +200971,22 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home maintenance and cleaning guide for busy households.",
+      "display_title": "Modern Homemaking I Mindset and Methods for Happier,",
+      "blurb": "Home cleaning and maintenance tips for modern living and property care.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1880124167": {
       "topics": [
@@ -200649,7 +201045,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jazz music history and artist spotlight episodes from bebop to fusion.",
+      "display_title": "830 - A Jazz Podcast",
+      "blurb": "Jazz music exploration covering bebop, fusion, and legendary jazz artists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1880320670": {
       "topics": [
@@ -200736,7 +201147,22 @@
         "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guide to Stoic philosophy and practical wisdom.",
+      "display_title": "Guide to Stoicism",
+      "blurb": "Introduction to Stoic philosophy and its practical applications.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1880735244": {
       "topics": [
@@ -201037,10 +201463,30 @@
     },
     "1882214148": {
       "topics": [
-        "math"
+        "science",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "STEM education podcast featuring scientists and engineers discussing innovation.",
+      "display_title": "Audio Math",
+      "blurb": "STEM education conversations with researchers and leaders in science and technology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1882270502": {
       "topics": [
@@ -201054,7 +201500,22 @@
         "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversational art podcast exploring painting, art world dynamics, and creative practice.",
+      "display_title": "708090经典老歌|华语百位歌流行金曲大全",
+      "blurb": "Painting and contemporary art discussion with industry insights and creative journeys.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1882271762": {
       "topics": [
@@ -201210,7 +201671,22 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation series examining overlooked details in missing persons cases.",
+      "display_title": "America's Most Infamous Crimes with Katie Ring",
+      "blurb": "Detailed investigation of missing persons cases, scrutinizing overlooked investigative details.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1882919781": {
       "topics": [
@@ -201312,11 +201788,25 @@
     },
     "1883720832": {
       "topics": [
-        "space",
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language astronomy podcast covering universe phenomena.",
+      "display_title": "Astronomía del Universo",
+      "blurb": "Spanish astronomy podcast exploring space, celestial phenomena, and cosmic science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:15.254Z"
     },
     "1883727328": {
       "topics": [
@@ -201328,11 +201818,30 @@
     },
     "1883779632": {
       "topics": [
-        "fiction/comedy",
+        "fiction/sci-fi",
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedic sci-fi audio drama set in Warhammer universe.",
+      "display_title": "WarHams: A Chaos Odyssey",
+      "blurb": "Humorous Warhammer fiction audio drama blending comedy with sci-fi adventure.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:15.254Z"
     },
     "1883877618": {
       "topics": [
@@ -201340,7 +201849,26 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.95
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Satirical AI news show tracking technical breakthroughs and market shifts with humor.",
+      "display_title": "Winning with AI",
+      "blurb": "High-octane satirical AI news with dry commentary on tech breakthroughs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-e182b60b",
+      "classified_at": "2026-08-14T08:17:03.721Z"
     },
     "1884061566": {
       "topics": [
