@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-14T08:45:42.614Z",
+  "built_at": "2026-08-14T17:06:02.894Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-14-9c49f5f1",
+    "last_batch_id": "fresh-2026-08-14-8fbeb13a",
     "last_batch_tier": 1
   },
   "entries": {
@@ -196655,7 +196655,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "After-show companion to Heated Rivalry HBO series.",
+      "display_title": "Heated Rivalry Aftershow",
+      "blurb": "This is the aftershow for all things Heated Rivalry on HBO Max! Watch That show and come here to hear the reaction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1865503703": {
       "topics": [
@@ -196689,11 +196704,30 @@
     },
     "1865663457": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "health/fitness",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Evidence-based training & recovery advice for endurance athletes.",
+      "display_title": "The Endurance Lab",
+      "blurb": "The Endurance Lab Podcast is a long-form conversation series exploring training, nutrition, performance, recovery, and endurance sport through the len.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1865761256": {
       "topics": [
@@ -196759,7 +196793,22 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rotating improvisational comedy games & guest performers.",
+      "display_title": "Improv To Go",
+      "blurb": "Improv comedy anywhere, anytime! Rotating guest improvisors and games, make each episode unique. It's always fun, but never the same show twice!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1866267318": {
       "topics": [
@@ -197050,10 +197099,33 @@
     },
     "1867016085": {
       "topics": [
+        "business",
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Leadership & organizational strategy for modern workplaces.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1867022920": {
       "topics": [
@@ -197074,7 +197146,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pilot stories, aircraft emergencies & aviation safety.",
+      "display_title": "Stories about Flying",
+      "blurb": "Adventures both in-the-air and surrounding the topic of flying airplanes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1867054864": {
       "topics": [
@@ -197126,7 +197213,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional tennis analysis hosted by 4× Grand Slam champion.",
+      "display_title": "Love All with Kim Clijsters",
+      "blurb": "Love All is a podcast hosted by 4-time Grand Slam champion Kim Clijsters, exploring the intersection of professional tennis and the female athlete exp.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1867282706": {
       "topics": [
@@ -197148,7 +197250,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Boston Bruins team coverage & NHL analysis.",
+      "display_title": "The Puckups Podcast with Brian DeFelice",
+      "blurb": "Brian DeFelice discusses all things Boston Bruins, NHL, and the world of hockey..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1867315096": {
       "topics": [
@@ -197175,10 +197292,33 @@
     },
     "1867354095": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep analysis of Heated Rivalry HBO series & character dynamics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1867470680": {
       "topics": [
@@ -197583,10 +197723,33 @@
     },
     "1869007269": {
       "topics": [
-        "music"
+        "music",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Country music artists & their spouses share personal stories.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1869024405": {
       "topics": [
@@ -197747,7 +197910,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's tennis tour coverage & match analysis.",
+      "display_title": "Chalkdust Tennis: The WTA Podcast",
+      "blurb": "Chalkdust is a podcast dedicated to the WTA Tour and women’s tennis, created for tennis lovers who want to follow the tour as it unfolds around the wo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1869700162": {
       "topics": [
@@ -197795,10 +197973,25 @@
     },
     "1869948705": {
       "topics": [
-        "relationships"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genre not clearly mapped to taxonomy.",
+      "display_title": "Cared For",
+      "blurb": "Kelli Dunham is an ex-nun, nurse, and comedian. For more than two decades, they've traveled the world sharing their reflections on care and caregiving.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1869965513": {
       "topics": [
@@ -197913,10 +198106,30 @@
     },
     "1870661337": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Skincare science & aging from a founder.",
+      "display_title": "I'd Like To Thank Myself",
+      "blurb": "We thank everyone else for our success... friends, team, mentors. But when’s the last time you thanked the only person w.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:06:02.894Z"
     },
     "1870678434": {
       "topics": [
@@ -198133,10 +198346,30 @@
     },
     "1872140949": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jazz history, legendary performers & musical appreciation.",
+      "display_title": "The Upside of Jazz",
+      "blurb": "Atlanta-based jazz pianist Joe Alterman expresses his deep appreciation of jazz and swing in his performances and compositions. Now he shares that lov.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1872168845": {
       "topics": [
@@ -198378,7 +198611,26 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekday market previews, updates & daily financial recaps.",
+      "display_title": "Wall Street Now",
+      "blurb": "Available three times every weekday and once a day on weekends, Wall Street Now previews the market open, checks in on trading at noon, and recaps the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1873423536": {
       "topics": [
@@ -198434,10 +198686,25 @@
     },
     "1873832019": {
       "topics": [
-        "religion/hinduism"
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sacred Hindu mythology & philosophical teachings for sleep.",
+      "display_title": "Sacred Hindu Stories for Sleep",
+      "blurb": "🌙 Welcome to Sacred Hindu Stories for Sleep Fall asleep to the epic, profound, and beautifully human stories of Hindu sacred texts — told slowly, tho.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1873833172": {
       "topics": [
@@ -198456,17 +198723,52 @@
     },
     "1873855383": {
       "topics": [
-        "kids-family/education"
+        "kids-family"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Calm, guided drawing lessons for young artists.",
+      "display_title": "Imagination Draw Along: a low",
+      "blurb": "Imagination Draw Along is an intentionally calm and low stimulation show for kids who want to draw. I'll guide young artists through drawing prompts,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1873856889": {
       "topics": [
-        "comedy/interviews"
+        "comedy",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Star Trek actors interview Hollywood figures & celebrities.",
+      "display_title": "Dropping Names ...and other things",
+      "blurb": "Dropping Names ...and other things with Brent & Jonny is a conversation podcast show from Star Trek: The Next Generation stars Brent Spiner and Jonath.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1873930772": {
       "topics": [
@@ -198515,7 +198817,22 @@
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cat behavior, health, adoption & veterinary expert interviews.",
+      "display_title": "The Hissing Feline",
+      "blurb": "Each week on The Hissing Feline podcast, Clark Greer interviews cat experts across the United States who share their knowledge and perspectives about.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1874051383": {
       "topics": [
@@ -198534,10 +198851,25 @@
     },
     "1874102937": {
       "topics": [
-        "sports/volleyball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Strength conditioning, training science & technique for volleyball players.",
+      "display_title": "The VBSC Podcast",
+      "blurb": "The only podcast dedicated specifically to strength and conditioning training for volleyball players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1874110517": {
       "topics": [
@@ -198688,7 +199020,22 @@
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual principles, personal growth & intentional living.",
+      "display_title": "SPIRITUAL AWAKENING 101",
+      "blurb": "Spiritual Awakening 101 is a reflective, grounding podcast for listeners seeking deeper meaning, clarity, and inner alignment in a noisy world. Each e.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1874798647": {
       "topics": [
@@ -198800,7 +199147,22 @@
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog breed characteristics, history & owner education.",
+      "display_title": "The Breed Files",
+      "blurb": "Two friends. Too many dog opinions. Breed facts, hot takes & good dogs only 🐶 Educational podcast for dog lovers. 🎙️Episodes on Wednesday at 5 pm ES.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1875369365": {
       "topics": [
@@ -198832,11 +199194,25 @@
     },
     "1875509049": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Italian language learning through calm, immersive audio.",
+      "display_title": "Learn Italian 🇮🇹 While You",
+      "blurb": "Drift into sleep while expanding your mind. Learn Italian 🇮🇹 While You Sleep 😴 1000 Phrases for Beginners | with 1000-words.com. 1000 Words blends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1875546844": {
       "topics": [
@@ -198855,11 +199231,33 @@
     },
     "1875766041": {
       "topics": [
-        "adventure/exploration",
+        "adventure",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Whitetail deer behavior, hunting research & fieldwork.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /delve/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1875798814": {
       "topics": [
@@ -198881,7 +199279,22 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rotating improvisational comedy games & guest performers.",
+      "display_title": "Miguel & Holly Uncensored",
+      "blurb": "Unscripted. Unshackled. Uncouth. What you are about to hear is for mature ears only. Featuring Miguel Fuller, Holly O&#39;Connor and Producer Sami Jo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1875966986": {
       "topics": [
@@ -198916,10 +199329,25 @@
     },
     "1876034889": {
       "topics": [
-        "news/politics"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genre not clearly mapped to taxonomy.",
+      "display_title": "Breaking News from Pod Save America",
+      "blurb": "Stay up-to-date with the latest political news and analysis from the voices you trust at Crooked Media—exclusively in video on Spotify and YouTube. Wh.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1876036518": {
       "topics": [
@@ -199058,10 +199486,25 @@
     },
     "1876589415": {
       "topics": [
-        "tv-film/interviews"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genre not clearly mapped to taxonomy.",
+      "display_title": "Love Story: John F. Kennedy",
+      "blurb": "A limited series exploring the undeniable chemistry, whirlwind courtship and high-profile marriage of John F. Kennedy Jr. and Carolyn Bessette, whose.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1876623874": {
       "topics": [
@@ -199089,10 +199532,25 @@
     },
     "1876658091": {
       "topics": [
-        "automotive"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genre not clearly mapped to taxonomy.",
+      "display_title": "Shifted Opinions",
+      "blurb": "Shifted Opinions is the car podcast for enthusiasts who live deep in the details — not just the headlines. Hosted by Paul Kramer, Dave Van Epps, and C.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1876691879": {
       "topics": [
@@ -199329,24 +199787,72 @@
     },
     "1877846685": {
       "topics": [
-        "health/fitness"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genre not clearly mapped to taxonomy.",
+      "display_title": "The Jake Dearden Podcast",
+      "blurb": "Welcome to The Jake Dearden Podcast - where high performance meets real conversation. Join Jake Dearden as he sits down with some of the biggest names.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1877867775": {
       "topics": [
-        "business/careers"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genre not clearly mapped to taxonomy.",
+      "display_title": "A Chief of Staff",
+      "blurb": "A Chief of Staff Podcast is hosted by David Nebinski, who also organizes the New York Chief of Staff community and monthly in-person mixers and events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1877870463": {
       "topics": [
-        "true-crime"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genre not clearly mapped to taxonomy.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1877885363": {
       "topics": [
@@ -199645,10 +200151,25 @@
     },
     "1879223109": {
       "topics": [
-        "nature"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genre not clearly mapped to taxonomy.",
+      "display_title": "Beastly History",
+      "blurb": "Thrilling tales of people and the wild. Join journalist and natural history super-fan Michelle Douglass, as we uncover the juiciest, strangest and mos.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1879323085": {
       "topics": [
@@ -199717,11 +200238,25 @@
     },
     "1879573761": {
       "topics": [
-        "sports",
-        "news"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genre not clearly mapped to taxonomy.",
+      "display_title": "Badger Connect Podcast",
+      "blurb": "The Badger Connect Podcast brings you exclusive, in-depth conversations with the people who shape Wisconsin Athletics. Hosted by Mike Heller, this pre.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1879598061": {
       "topics": [
@@ -199769,10 +200304,33 @@
     },
     "1879658991": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Skincare science & aging from a founder.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:06:02.894Z"
     },
     "1879676275": {
       "topics": [
@@ -199813,10 +200371,25 @@
     },
     "1879880979": {
       "topics": [
-        "culture/books"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genre not clearly mapped to taxonomy.",
+      "display_title": "The Plotpoint",
+      "blurb": "Hosted by award-winning filmmaker and author Leslie Zemeckis and bestselling writer Sara DiVello, Plotpoint is a podcast for readers, writers, and any.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1879890618": {
       "topics": [
@@ -199973,17 +200546,47 @@
     },
     "1880399073": {
       "topics": [
-        "true-crime"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genre not clearly mapped to taxonomy.",
+      "display_title": "Who Blew Up The Guidestones?",
+      "blurb": "For decades, the Georgia Guidestones were nothing more than kitschy roadside Americana…a curiosity people visited for fun, intrigue…and the occasional.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1880404713": {
       "topics": [
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "After-show companion to Heated Rivalry HBO series.",
+      "display_title": "Peaky Blinders: The Immortal Man Podcast",
+      "blurb": "Creators, special guests and stars including Cillian Murphy unpack the Peaky Blinders saga, in the official companion podcast for the new film. Hosted.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1880460158": {
       "topics": [
@@ -200002,10 +200605,25 @@
     },
     "1880474943": {
       "topics": [
-        "health/alternative"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genre not clearly mapped to taxonomy.",
+      "display_title": "You're Not Crazy! It's Perimenopause with Jenny Smith",
+      "blurb": "You’re Not Crazy, It’s Perimenopause is a real-talk podcast for women navigating the emotional and physical rollercoaster of midlife hormones. Hosted.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-8fbeb13a",
+      "classified_at": "2026-08-14T17:05:22.161Z"
     },
     "1880505637": {
       "topics": [
