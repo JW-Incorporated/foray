@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-13T17:08:57.059Z",
+  "built_at": "2026-08-14T01:01:52.944Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-13-d7a64438",
+    "last_batch_id": "fresh-2026-08-14-36abfa57",
     "last_batch_tier": 1
   },
   "entries": {
@@ -195267,17 +195267,56 @@
     "1870631507": {
       "topics": [
         "health/nutrition",
-        "food"
+        "science",
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "German biohacking podcast for entrepreneurs optimizing sleep, hormones, energy.",
+      "display_title": "Biohacking. Klar. Stark. Effektiv.",
+      "blurb": "Science-based performance optimization through sleep, stress, and hormone strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1870637279": {
       "topics": [
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly expert analysis of the French Top 14 rugby championship.",
+      "display_title": "The Top 14 Digest",
+      "blurb": "Weekly coverage of French rugby's elite Top 14 league.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1870647348": {
       "topics": [
@@ -195303,10 +195342,30 @@
     },
     "1870719869": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Zen Buddhism lectures interpreting the Diamond Sutra from Chan perspective.",
+      "display_title": "禪解金剛經",
+      "blurb": "Zen Buddhist teachings on the Diamond Sutra by Monk Miao Can.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1870822992": {
       "topics": [
@@ -195318,10 +195377,35 @@
     },
     "1870837259": {
       "topics": [
-        "nature"
+        "nature",
+        "craft/diy-home",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.7
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations about food forests, permaculture, and regenerative landscape design.",
+      "display_title": "Food Forest Podcast",
+      "blurb": "Expert interviews on food forests, permaculture, and regenerative agriculture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1870843991": {
       "topics": [
@@ -195477,7 +195561,22 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dominican Catholic sisters discuss faith, spirituality, and religious community.",
+      "display_title": "Dominican Sisters Open Mic",
+      "blurb": "Dominican sisters discuss faith, spirituality, and contemplative life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1871579486": {
       "topics": [
@@ -195647,7 +195746,22 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Monthly book club with four hosts discussing current fiction selections.",
+      "display_title": "The Same Page Book Club",
+      "blurb": "Four friends discuss monthly book selections and literary recommendations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1872821250": {
       "topics": [
@@ -195696,7 +195810,22 @@
         "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Heather Cox Richardson answers listener questions about U.S. politics.",
+      "display_title": "Politics Chat",
+      "blurb": "Q&A about U.S. politics and current events with expert analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1873058942": {
       "topics": [
@@ -195710,7 +195839,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rabbi Braun provides weekly halachic rulings on real-life Jewish law questions.",
+      "display_title": "Lemaan Yishmeu - Rabbi Braun",
+      "blurb": "Weekly Jewish law rulings from Crown Heights rabbi on practical questions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1873083993": {
       "topics": [
@@ -195723,10 +195867,29 @@
     "1873095977": {
       "topics": [
         "economics/markets",
-        "business"
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Legendary investors share career-defining moments and financial decision lessons.",
+      "display_title": "Hard Lessons",
+      "blurb": "Legendary investors discuss setbacks and successes shaping their careers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1873309164": {
       "topics": [
@@ -195910,7 +196073,22 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity guests share their four favorite books with host Charlotte Owen.",
+      "display_title": "One Nightstand",
+      "blurb": "Celebrities discuss their favorite books with literary host Charlotte Owen.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1873977600": {
       "topics": [
@@ -196031,7 +196209,22 @@
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Couple discusses marriage, aging, money, and relationships in their later years.",
+      "display_title": "Twenty Good Summers",
+      "blurb": "Intimate conversations about marriage, relationships, and life's later chapters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1874167939": {
       "topics": [
@@ -196229,10 +196422,30 @@
     },
     "1874737247": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian homemaker discusses stress relief and biblical parenting strategies.",
+      "display_title": "Transformed Homemakers Society",
+      "blurb": "Christian parenting strategies to reduce stress and build family confidence.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1874753410": {
       "topics": [
@@ -196380,7 +196593,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Former Brewers closer and beat reporter discuss Milwaukee Brewers season.",
+      "display_title": "Brewer Territory",
+      "blurb": "Milwaukee Brewers insider analysis and expert commentary from former player.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1875382970": {
       "topics": [
@@ -196401,7 +196629,22 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soothing nature documentaries narrated for sleep and relaxation purposes.",
+      "display_title": "Nature Documentary For Sleep",
+      "blurb": "Calm nature storytelling narrated for sleep and peaceful relaxation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1875509049": {
       "topics": [
@@ -196604,7 +196847,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Experts explain competency-based training and assessment (CBTA) in pilot training.",
+      "display_title": "The Training Standard",
+      "blurb": "Competency-based training standards and assessment for pilot aviation explained.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1876307350": {
       "topics": [
@@ -196616,10 +196874,30 @@
     },
     "1876326569": {
       "topics": [
-        "nature"
+        "nature",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nature Conservancy mini-series on wild animal migrations and conservation.",
+      "display_title": "On the Move",
+      "blurb": "Nature Conservancy mini-series on animal migrations and conservation efforts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1876327716": {
       "topics": [
@@ -196630,10 +196908,30 @@
     },
     "1876357199": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychology and science of beauty with celebrity and expert guests.",
+      "display_title": "Mirror Mirror with Amy Chang",
+      "blurb": "Beauty science and psychology explored through celebrity conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1876375339": {
       "topics": [
@@ -196731,7 +197029,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Australian women's cricket team players discuss professional sports life.",
+      "display_title": "The Diary Room",
+      "blurb": "Australian women cricketers share behind-the-scenes insights and experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1876725667": {
       "topics": [
@@ -196810,10 +197123,30 @@
     },
     "1876928255": {
       "topics": [
-        "science/physics"
+        "science",
+        "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.35
+        },
+        {
+          "node": "computing",
+          "confidence": 0.25
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Industrial philosophy framework with unclear coherence or substantive signal.",
+      "display_title": "Allen Curtis Capital",
+      "blurb": "Podcast exploring Industry 5.0 frameworks and operational philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1876952767": {
       "topics": [
@@ -196895,7 +197228,22 @@
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual experiences and consciousness exploration with guest practitioners.",
+      "display_title": "Realization Lab",
+      "blurb": "Spiritual experiences and consciousness exploration with guest practitioners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1877372826": {
       "topics": [
@@ -196997,10 +197345,30 @@
     },
     "1877885363": {
       "topics": [
-        "news/daily"
+        "news/daily",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ana Navarro interviews leaders on pressing current issues and news.",
+      "display_title": "Bleep! with Ana Navarro",
+      "blurb": "News and politics commentary with leaders and cultural figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1877888956": {
       "topics": [
@@ -197139,10 +197507,30 @@
     },
     "1878285233": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hosting tips and conversations for backyard duck keeping and homesteading.",
+      "display_title": "The Duck Ladies Pondcast",
+      "blurb": "Backyard waterfowl keeping tips and conversations for homesteaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1878341569": {
       "topics": [
@@ -197161,10 +197549,35 @@
     },
     "1878410447": {
       "topics": [
-        "math"
+        "science",
+        "computing",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI hosts explore emergence calculus across physics, biology, mathematics.",
+      "display_title": "Emergence Calculus",
+      "blurb": "AI-hosted exploration of mathematical frameworks across physics and biology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1878484920": {
       "topics": [
@@ -197252,7 +197665,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy critics discuss and analyze stand-up special performances.",
+      "display_title": "Laughs Per Minute",
+      "blurb": "Comedy critics analyze stand-up special performances and comedy craft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1879036034": {
       "topics": [
@@ -197272,10 +197700,35 @@
     },
     "1879155149": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "science",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three gardeners share horticulture tips grounded in plant science.",
+      "display_title": "The Dirt on Gardening",
+      "blurb": "Expert gardeners share practical horticulture tips based on plant science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1879223109": {
       "topics": [
@@ -197303,8 +197756,23 @@
       "topics": [
         "fiction/sci-fi"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Spanish-language UFO conspiracy and extraterrestrial contact narratives.",
+      "display_title": "Expediente No Humano",
+      "blurb": "Spanish-language exploration of UFO phenomena and alien contact claims.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1879333663": {
       "topics": [
@@ -197325,7 +197793,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Twin Peaks series rewatch with episode-by-episode analysis and themes.",
+      "display_title": "Welcome to Twin Peaks",
+      "blurb": "Twin Peaks rewatch covering filmmaking, themes, and series mysteries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1879512100": {
       "topics": [
@@ -197337,17 +197820,57 @@
     },
     "1879555679": {
       "topics": [
-        "health/alternative"
+        "health/alternative",
+        "medicine"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Medical perspectives including vaccine debate and alternative health approaches.",
+      "display_title": "Informed with Aaron Siri",
+      "blurb": "Medical discussions from diverse professional and practitioner perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1879572461": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science fiction book club discussing current and classic sci-fi novels.",
+      "display_title": "Pagenerd",
+      "blurb": "Science fiction book club discussing literature, worldbuilding, and themes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1879573761": {
       "topics": [
@@ -197441,10 +197964,30 @@
     },
     "1879906055": {
       "topics": [
-        "medicine"
+        "medicine",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "OB-GYN and online creators discuss medical misinformation with evidence.",
+      "display_title": "I Did My Own Research",
+      "blurb": "Medical educators debunk viral health myths with evidence-based science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1879936332": {
       "topics": [
@@ -197524,24 +198067,79 @@
     },
     "1880137655": {
       "topics": [
-        "music"
+        "music",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Grammy-nominated songwriter interviews celebrities and collaborators on creative work.",
+      "display_title": "Unfamous with Justin Tranter",
+      "blurb": "Songwriter interviews celebrities and collaborators on music industry success.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1880138711": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physician discusses stress, sleep, and preventive health design approaches.",
+      "display_title": "Intentional Medicine with Dr. Priti Singh",
+      "blurb": "Functional medicine approach to long-term vitality and health design.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1880163995": {
       "topics": [
         "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Progressive political commentary and analysis on current events.",
+      "display_title": "The Kyle Kulinski Show",
+      "blurb": "Progressive political analysis and commentary on current news events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1880168207": {
       "topics": [
@@ -197585,7 +198183,22 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with college volleyball coaches and athletes about the sport.",
+      "display_title": "KP HERE",
+      "blurb": "College men's volleyball coaching insights and athlete interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1880194533": {
       "topics": [
@@ -197718,7 +198331,22 @@
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Morgan Stanley executives interview global leaders on strategy and management.",
+      "display_title": "Exceptional Leaders",
+      "blurb": "Business leaders discuss strategy and organizational management with executives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1880823770": {
       "topics": [
@@ -197753,11 +198381,35 @@
     },
     "1880965181": {
       "topics": [
+        "computing",
         "news/tech",
-        "computing"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily AI briefing for executives on business impacts and developments.",
+      "display_title": "YPO Technology Network AI Brief",
+      "blurb": "Daily AI briefing covering business impacts and technology developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1881103747": {
       "topics": [
@@ -197768,10 +198420,30 @@
     },
     "1881180803": {
       "topics": [
-        "aviation"
+        "aviation",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aircraft buying, selling, and financing analysis with market intelligence.",
+      "display_title": "Plane Talk Live",
+      "blurb": "Aircraft market analysis and transaction strategies for aviation buyers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1881265304": {
       "topics": [
@@ -197793,14 +198465,48 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Meteorologists analyze severe weather events and storm damage analysis.",
+      "display_title": "The DebrisBallers's Podcast",
+      "blurb": "Meteorologist team analyzes severe weather and tornado damage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1881490301": {
       "topics": [
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily rugby league analysis and insider commentary from expert hosts.",
+      "display_title": "Rugby League Insider with James Hooper",
+      "blurb": "Daily rugby league analysis with expert commentary and insider insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1881693625": {
       "topics": [
@@ -197958,10 +198664,30 @@
     },
     "1882341851": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "National Association of Realtors interviews industry leaders on innovation.",
+      "display_title": "NAR REALTOR® News Change Agents",
+      "blurb": "Real estate leaders discuss innovation, strategy, and career development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-36abfa57",
+      "classified_at": "2026-08-14T01:01:52.944Z"
     },
     "1882344505": {
       "topics": [
