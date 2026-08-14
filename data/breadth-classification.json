@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-14T00:33:10.758Z",
+  "built_at": "2026-08-14T08:42:35.448Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-14-ace26e48",
+    "last_batch_id": "fresh-2026-08-14-b50074b6",
     "last_batch_tier": 1
   },
   "entries": {
@@ -189801,10 +189801,30 @@
     },
     "1843429519": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News-focused comedy podcast exploring current events through humor and casual discussion.",
+      "display_title": "Crashing Out",
+      "blurb": "Philip DeFranco and Alex Pearlman tackle current events through comedy and candid conversation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1843434160": {
       "topics": [
@@ -189967,7 +189987,26 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investment and financial independence education for non-US investors, index fund strategy focus.",
+      "display_title": "CLEC投資理財頻道",
+      "blurb": "Investment education and financial independence strategies from retired wealth manager James.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1844146314": {
       "topics": [
@@ -190175,17 +190214,52 @@
     },
     "1844709049": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "medicine/neuroscience"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical expertise on chronic back pain recovery, exercise prescription, core stability.",
+      "display_title": "The Back Pain Podcast",
+      "blurb": "Expert strategies to reverse chronic back pain through movement and core balance training.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1844728243": {
       "topics": [
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Junior golf parenting and player development, psychology and mental game focus.",
+      "display_title": "Tiger Dads",
+      "blurb": "Junior golf parents and coaches sharing insights on player development and mental game.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1844750908": {
       "topics": [
@@ -190330,7 +190404,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Exoplanet research and discovery told through interviews with early-career astronomers.",
+      "display_title": "Growing Worlds",
+      "blurb": "Early-career astronomers share stories from the frontlines of exoplanet discovery and research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1845429860": {
       "topics": [
@@ -190474,10 +190567,30 @@
     },
     "1846130101": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "HR professionals and organizational leadership discussing workplace trends and best practices.",
+      "display_title": "People Person",
+      "blurb": "HR leaders and workplace experts discussing organizational culture and talent strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1846152861": {
       "topics": [
@@ -190559,7 +190672,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist monk teachings on dharma, meditation, mindfulness in the Thai Forest tradition.",
+      "display_title": "Dhamma Talks by Ajahn Punnadhammo",
+      "blurb": "Buddhist monk teachings on mindfulness, insight, and the path to liberation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1846612394": {
       "topics": [
@@ -190578,10 +190706,33 @@
     },
     "1846635355": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/interviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Film criticism and personal stories from actors, directors, and filmmakers.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1846701533": {
       "topics": [
@@ -190651,10 +190802,35 @@
     },
     "1847244325": {
       "topics": [
-        "science/physics"
+        "psychology",
+        "science",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Consciousness research spans neuroscience, quantum mechanics, philosophy—genuine ambiguity.",
+      "display_title": "The Consciousness Project",
+      "blurb": "Documentary exploration of consciousness through neuroscience, quantum theory, and meditation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1847367406": {
       "topics": [
@@ -190724,10 +190900,30 @@
     },
     "1847520625": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Storytelling for kids about animals with focus on wildlife behavior and conservation.",
+      "display_title": "Wild and Kind Kids Podcast",
+      "blurb": "Animal stories for kids exploring wildlife behavior and conservation through narrative.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1847541900": {
       "topics": [
@@ -190795,10 +190991,30 @@
     },
     "1847691889": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Advertising history and consumer psychology revealing origins of famous marketing campaigns.",
+      "display_title": "Lies We Bought",
+      "blurb": "History of iconic advertising campaigns and the marketing tactics behind consumer behavior.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1847709608": {
       "topics": [
@@ -190911,7 +191127,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode-by-episode recaps of television shows with behind-the-scenes guest appearances.",
+      "display_title": "Black Girls Talkin' TV",
+      "blurb": "TV show recaps and analysis from a Black women's perspective with cast and crew guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1848114185": {
       "topics": [
@@ -191121,14 +191352,49 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Australian cricket analysis and player interviews from former champion coach and journalist.",
+      "display_title": "Still Not Out",
+      "blurb": "Australian cricket insight from veteran journalist and championship-winning coach.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1848880567": {
       "topics": [
-        "business/management"
+        "business/management",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership psychology through interviews with CEOs, athletes, cultural leaders on decision-making.",
+      "display_title": "Grey Matter with Declan Kelly",
+      "blurb": "Rare conversations with global leaders exploring how exceptional minds work and decide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1848884874": {
       "topics": [
@@ -191140,18 +191406,57 @@
     },
     "1848929263": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cold case investigation into 1975 murder with media figures and new investigative turns.",
+      "display_title": "Dead Certain",
+      "blurb": "Investigation into the unsolved 1975 Martha Moxley murder and its decades-long legal odyssey.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1848934243": {
       "topics": [
-        "economics/markets",
-        "business"
+        "true-crime",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime narrative about adoption fraud scheme operated by Tara Lee.",
+      "display_title": "Baby Broker",
+      "blurb": "True crime story of an adoption fraud scheme and families who banded together to expose it.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1848974503": {
       "topics": [
@@ -191164,11 +191469,29 @@
     "1849003297": {
       "topics": [
         "medicine/biology",
-        "science",
-        "nature"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Clinical deep-dives in cardiac electrophysiology for medical professionals and practitioners.",
+      "display_title": "EP Edge™ The Signal",
+      "blurb": "Expert-level cardiac electrophysiology analysis for physicians and clinical practitioners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1849034867": {
       "topics": [
@@ -191244,10 +191567,30 @@
     },
     "1849245229": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/after-shows",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode-by-episode recap of 90s sitcom with cast members sharing behind-the-scenes memories.",
+      "display_title": "Welcome to the Family",
+      "blurb": "Stars of Family Matters recount episodes with behind-the-scenes stories and cast guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1849245894": {
       "topics": [
@@ -191259,18 +191602,52 @@
     },
     "1849269877": {
       "topics": [
-        "news/tech",
-        "computing"
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI technology risks, bias, compliance, copyright—critical analysis of AI implementation.",
+      "display_title": "AI AffAIrs",
+      "blurb": "Critical analysis of AI opportunities and risks including bias, compliance, and ethics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1849280239": {
       "topics": [
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "High-performance hockey player development from youth to elite levels with real-world insight.",
+      "display_title": "Built From Steel Podcast",
+      "blurb": "Hockey development insights from youth to elite levels with focus on player growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1849299998": {
       "topics": [
@@ -191321,7 +191698,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Rugby analysis and strategy only 1 episode available; limited signal for confident classification.",
+      "display_title": "Rugby Unfiltered Podcast",
+      "blurb": "Rugby analysis with focus on strategy, culture, and the heart of the game.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1849460193": {
       "topics": [
@@ -191403,7 +191795,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic Quranic recitation and teaching in Arabic.",
+      "display_title": "Badr Al-Turki",
+      "blurb": "Quranic recitation and Islamic teachings from scholar Badr Al-Turki.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1849827749": {
       "topics": [
@@ -191453,7 +191860,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic Quranic recitation and teaching in Arabic.",
+      "display_title": "Ahmed bin Talib Hamid",
+      "blurb": "Quranic recitation and Islamic teachings from scholar Ahmed bin Talib Hamid.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1849988853": {
       "topics": [
@@ -191485,10 +191907,30 @@
     },
     "1850297689": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis lifestyle podcast for recreational players covering fashion, friendships, and culture.",
+      "display_title": "Bagel Bagel",
+      "blurb": "Tennis lifestyle podcast for recreational players exploring fashion, community, and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1850310557": {
       "topics": [
@@ -191515,10 +191957,30 @@
     },
     "1850387935": {
       "topics": [
-        "food"
+        "food",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Food storytelling across cultures and traditions, culinary history and regional cuisines.",
+      "display_title": "The Flavor Journal",
+      "blurb": "Food stories exploring culinary traditions, regional cuisines, and cultural connections.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1850405926": {
       "topics": [
@@ -191537,10 +191999,30 @@
     },
     "1850488963": {
       "topics": [
-        "nature"
+        "nature",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Documentary-style profiles of wildlife professionals and conservation advocates globally.",
+      "display_title": "Wild Lives",
+      "blurb": "Profiles of wildlife professionals and conservationists from BBC Wildlife Magazine.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1850503639": {
       "topics": [
@@ -191716,10 +192198,30 @@
     },
     "1850901241": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bedtime adventure stories for kids set in Minecraft world with consistent characters.",
+      "display_title": "Karlik's Minecraft Stories",
+      "blurb": "Family-friendly adventure bedtime stories for kids inspired by Minecraft gameplay.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1850910299": {
       "topics": [
@@ -191789,10 +192291,30 @@
     },
     "1851118525": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Houseplant community podcast covering collecting, breeding, sustainability, and culture.",
+      "display_title": "Prop Culture",
+      "blurb": "Houseplant community podcast discussing collecting, culture, and plant conservation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1851148118": {
       "topics": [
@@ -191951,10 +192473,30 @@
     },
     "1851889765": {
       "topics": [
-        "travel"
+        "travel",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Disney vacation planning and tips from experienced Disney-loving parents and travel experts.",
+      "display_title": "Moms Behind the Magic",
+      "blurb": "Disney vacation planning tips and tricks from experienced Disney-loving parents.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1851902818": {
       "topics": [
@@ -192153,7 +192695,22 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gardening and horticulture with practical advice on flower growing and garden design.",
+      "display_title": "In the Garden with Flower Hill Farm",
+      "blurb": "Gardening advice and conversations with experts about growing flowers and plants.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1852356650": {
       "topics": [
@@ -192196,7 +192753,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA basketball analysis and insider discussion from former NBA champion player.",
+      "display_title": "Shump Street Podcast",
+      "blurb": "NBA basketball insight and analysis from NBA champion Iman Shumpert.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-b50074b6",
+      "classified_at": "2026-08-14T08:42:35.448Z"
     },
     "1852589062": {
       "topics": [
