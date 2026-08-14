@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-14T08:17:15.254Z",
+  "built_at": "2026-08-14T16:17:06.790Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-14-e182b60b",
+    "last_batch_id": "fresh-2026-08-14-72a02253",
     "last_batch_tier": 1
   },
   "entries": {
@@ -201965,7 +201965,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and live updates about New York Yankees roster decisions, season performance.",
+      "display_title": "The Morning Yankees Show",
+      "blurb": "Daily live show covering Yankees news, roster moves, and game analysis with host Dan Rourke.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1884203624": {
       "topics": [
@@ -201980,7 +201995,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Smart analysis and cultural commentary covering both men's and women's basketball leagues.",
+      "display_title": "Chiney Today",
+      "blurb": "Twice-weekly analysis by ESPN basketball analyst Chiney Ogwumike covering NBA and WNBA.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1884261908": {
       "topics": [
@@ -202182,10 +202212,30 @@
     },
     "1885196472": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Inside stories from game developers, publishers, and industry figures about gaming business.",
+      "display_title": "re:Play with Greg Off",
+      "blurb": "Conversations with gaming industry veterans covering development, publishing, and career insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1885261942": {
       "topics": [
@@ -202237,10 +202287,29 @@
     "1885396722": {
       "topics": [
         "music",
-        "history"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep analysis of Michael Jackson and Jackson 5 albums, production, and cultural impact.",
+      "display_title": "Music Chronicles : Michael Jackson & The Jacksons",
+      "blurb": "Album-by-album dissection of Michael Jackson's catalog covering songwriting, production, impact.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1885398884": {
       "topics": [
@@ -202707,10 +202776,30 @@
     },
     "1886706990": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophy and psychology applied to everyday life issues like work, love, anxiety.",
+      "display_title": "The School of Life",
+      "blurb": "Calm essays applying philosophy and psychology to relationships, careers, and emotional intelligence.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1886707116": {
       "topics": [
@@ -202718,7 +202807,26 @@
         "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tony Robbins shares personal development strategies, business mastery, and life transformation.",
+      "display_title": "Tony Robbins Podcast Daily",
+      "blurb": "Daily episodes from best-selling author and strategist Tony Robbins on business and success.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1886731415": {
       "topics": [
@@ -202729,10 +202837,30 @@
     },
     "1886801652": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sharp legal and political analysis from former prosecutor cutting through media spin.",
+      "display_title": "Sidebar with Katie Phang",
+      "blurb": "Unfiltered legal and political analysis from veteran journalist and former prosecutor Katie Phang.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1886806114": {
       "topics": [
@@ -202791,7 +202919,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Local village cricket in Warwickshire including club updates, interviews, professional context.",
+      "display_title": "The Corley CC Podcast",
+      "blurb": "Weekly podcast exploring local league cricket around Coventry with club updates and interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1886946971": {
       "topics": [
@@ -202881,7 +203024,22 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Saturday morning gardening show covering horticulture, plant care, landscaping topics.",
+      "display_title": "Let's Garden with Scott Beuerlein",
+      "blurb": "Gardening guidance covering plant selection, landscape design, and horticultural problems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1887324910": {
       "topics": [
@@ -203007,10 +203165,30 @@
     },
     "1887896184": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intimate conversations with artists about creative process, turning points in their work.",
+      "display_title": "The Set List with Carter Gregory",
+      "blurb": "Conversations with musicians and performers exploring creative moments and behind-the-scenes stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1887898014": {
       "topics": [
@@ -203072,10 +203250,25 @@
     },
     "1888166406": {
       "topics": [
-        "culture/art"
+        "craft/photography"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Photography philosophy and practice through conversations with photographers and visual artists.",
+      "display_title": "How I See - The Leica Podcast",
+      "blurb": "Leica podcast featuring photographers discussing their vision, creative journey, and techniques.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1888178311": {
       "topics": [
@@ -203161,10 +203354,30 @@
     },
     "1888256604": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historic true crime examining murders and the largest National Guard massacre in US history.",
+      "display_title": "Truth Deferred: The National Guard Massacre",
+      "blurb": "Historic true crime series about the 1884 Cincinnati Courthouse riot and unarmed civilian massacre.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1888272436": {
       "topics": [
@@ -203178,7 +203391,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep dives into American Idol performances with exclusive interviews and behind-the-scenes insight.",
+      "display_title": "American Idol Official Podcast",
+      "blurb": "Official breakdown of American Idol performances, contestant interviews, and judging analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1888280834": {
       "topics": [
@@ -203306,7 +203534,26 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial planning for everyday decisions covering student loans, savings, investment moves.",
+      "display_title": "Coin Flip",
+      "blurb": "Personal finance guidance for people who hate financial decisions, breaking down money moves simply.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1888789241": {
       "topics": [
@@ -203437,10 +203684,30 @@
     },
     "1889550138": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unfiltered political and cultural commentary with sharp perspective on governance and society.",
+      "display_title": "The Loren Piretra Show",
+      "blurb": "Sharp political and cultural commentary breaking down complex issues with humor and insight.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1889554850": {
       "topics": [
@@ -203537,7 +203804,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NASA's Artemis II lunar mission through the emotional and technical journey of four astronauts.",
+      "display_title": "Artemis II",
+      "blurb": "Historic coverage of Artemis II's crewed lunar flyby, first deep-space mission in 50 years.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1889865001": {
       "topics": [
@@ -203590,7 +203876,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Thoughtful golf analysis from GOLF Magazine examining players, tournaments, and the sport.",
+      "display_title": "The Drop Zone",
+      "blurb": "Weekly golf analysis from GOLF Magazine exploring key questions about players and tournaments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1890040064": {
       "topics": [
@@ -203863,10 +204164,25 @@
     },
     "1891569810": {
       "topics": [
-        "culture/art"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Local Southwest Australian football podcast covering club news and regional league updates.",
+      "display_title": "Foreground Landscape Photography Podcast",
+      "blurb": "Weekly Australian sports podcast covering Southwest football with local club coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1891673031": {
       "topics": [
@@ -203940,7 +204256,25 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classic audio drama anthology featuring mystery, suspense, and thriller stories from CBS Radio.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1892100817": {
       "topics": [
@@ -203951,11 +204285,30 @@
     },
     "1892146740": {
       "topics": [
-        "sports",
+        "sports/soccer",
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily World Cup stories covering qualifiers, transfers, coaching decisions, fan reactions.",
+      "display_title": "World Cup Daily: 5 Minutes, All You Need",
+      "blurb": "Daily brief covering World Cup news including qualifiers, transfers, and fan debates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1892197141": {
       "topics": [
@@ -203967,10 +204320,30 @@
     },
     "1892278428": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly update on major criminal cases and trials from the 48 Hours investigative team.",
+      "display_title": "48 Hours: Case by Case",
+      "blurb": "Weekly criminal case coverage from 48 Hours team explaining major trials and developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1892382529": {
       "topics": [
@@ -204087,10 +204460,30 @@
     },
     "1892715024": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast for kids exploring America's national parks, wildlife, and geology.",
+      "display_title": "National Park Scouts",
+      "blurb": "Kids' podcast exploring national parks through animal behavior, geology, and nature mysteries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1892916678": {
       "topics": [
@@ -204149,7 +204542,22 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual weekly talk show exploring current topics and culture from three Tokyo-based hosts.",
+      "display_title": "だいたい土偶が聞いているforゲイ",
+      "blurb": "Relaxed weekly Japanese podcast with hosts discussing culture and current topics casually.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1892956187": {
       "topics": [
@@ -204218,7 +204626,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-driven climate discussions with researchers, technologists, advocates on climate solutions.",
+      "display_title": "Climate Chat",
+      "blurb": "Climate discussions with scientists and experts on warming, impacts, and solutions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1893230054": {
       "topics": [
@@ -204230,18 +204657,57 @@
     },
     "1893319848": {
       "topics": [
-        "news",
-        "business"
+        "economics/markets",
+        "business",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Geopolitical economic strategy covering trade, tech sovereignty, national security, investment.",
+      "display_title": "Economic Security Watch",
+      "blurb": "Monthly podcast on economic security, geopolitics, trade policy, and critical infrastructure.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1893329934": {
       "topics": [
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Informed New York Rangers analysis from NHL beat reporters covering team, trades, draft.",
+      "display_title": "Rangers Recon",
+      "blurb": "NHL analysis from credentialed reporters covering New York Rangers strategy and roster.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1893330331": {
       "topics": [
@@ -204400,7 +204866,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality TV breakdown from Bravo, Netflix covering storylines, drama, production insights.",
+      "display_title": "After the Edit with Daryn Carp",
+      "blurb": "Reality TV analysis covering Bravo, Netflix, and other shows with insider perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1893991375": {
       "topics": [
@@ -204415,7 +204896,26 @@
         "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.95
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real conversation about mental illness and caregiving burden without clinical jargon.",
+      "display_title": "Holding It Together (Kinda)",
+      "blurb": "Honest discussions about mental illness and caregiving for parents, partners, and siblings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1894056269": {
       "topics": [
@@ -204617,10 +205117,30 @@
     },
     "1895028306": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical advice and myths from endocrinologist using fresh research for health conversations.",
+      "display_title": "The Savvy Patient",
+      "blurb": "Medical insights and myth-busting from an endocrinologist for smarter health conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1895038168": {
       "topics": [
@@ -204671,10 +205191,37 @@
     "1895121438": {
       "topics": [
         "space",
-        "science"
+        "science",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Astronaut and cardiologist interviewing remarkable figures on perseverance, ambition, achievement.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1895147141": {
       "topics": [
@@ -204923,10 +205470,30 @@
     },
     "1895495862": {
       "topics": [
-        "nature"
+        "nature/animal-cognition",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Animal behavior in African ecosystems studied through field observations and conservation.",
+      "display_title": "Our Wild World",
+      "blurb": "Educational podcast exploring African wildlife, animal behavior, ecology through field research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-72a02253",
+      "classified_at": "2026-08-14T16:17:06.790Z"
     },
     "1895505193": {
       "topics": [
