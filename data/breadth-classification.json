@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-14T08:42:35.448Z",
+  "built_at": "2026-08-14T16:37:55.766Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-14-b50074b6",
+    "last_batch_id": "fresh-2026-08-14-d0b39236",
     "last_batch_tier": 1
   },
   "entries": {
@@ -67698,10 +67698,30 @@
     },
     "1480201597": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction",
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic supernatural stories read weekly with literary commentary.",
+      "display_title": "The Classic Ghost Stories Podcast",
+      "blurb": "Weekly readings of classic ghost and horror tales with expert literary analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1480230514": {
       "topics": [
@@ -192852,10 +192872,30 @@
     },
     "1852972717": {
       "topics": [
-        "business/management"
+        "business/management",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Strategic storytelling for business leadership and organizational alignment.",
+      "display_title": "Chief Story Officer",
+      "blurb": "Business leaders discuss strategic storytelling to align teams and transform strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1853007888": {
       "topics": [
@@ -192875,10 +192915,30 @@
     },
     "1853026087": {
       "topics": [
-        "health/alternative"
+        "health/alternative",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hypnobirthing and meditation for pregnancy, labor, and postpartum support.",
+      "display_title": "Hypnobirthing Sessions by MamaZen",
+      "blurb": "Guided hypnobirthing and meditation for pregnancy, labor, and postpartum recovery.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1853077613": {
       "topics": [
@@ -192928,10 +192988,30 @@
     },
     "1853600101": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home organization, decluttering, and intentional living strategies for everyday routines.",
+      "display_title": "Organized Chaos",
+      "blurb": "Home organization and time management tips for intentional living.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1853604575": {
       "topics": [
@@ -192943,10 +193023,30 @@
     },
     "1853626039": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Regenerative agriculture and food forests with permaculture design and DIY building.",
+      "display_title": "Planting Change Podcast",
+      "blurb": "Regenerative agriculture, food forests, and bioconstruction from Uruguay.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1853677916": {
       "topics": [
@@ -192961,7 +193061,22 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality TV recaps with humor, analysis, and sisterly banter.",
+      "display_title": "Season Sisters Pod",
+      "blurb": "Sisters recap reality TV with humor, honesty, and weekly episode analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1853682658": {
       "topics": [
@@ -193011,10 +193126,29 @@
     "1853881645": {
       "topics": [
         "health/nutrition",
-        "food"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Molecular science of food and plants with peer-reviewed health research.",
+      "display_title": "Molecules Matter With Dr. Dan",
+      "blurb": "Molecular science of food and plants grounded in peer-reviewed research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1853905504": {
       "topics": [
@@ -193034,10 +193168,30 @@
     },
     "1853911531": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy adventure narrative for children with ongoing serialized story.",
+      "display_title": "MORE Magic Woods!",
+      "blurb": "Ongoing fantasy adventure series for children with imaginative storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1853958555": {
       "topics": [
@@ -193136,10 +193290,30 @@
     },
     "1854562735": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Persian epic Shahnameh readings for beginners in Farsi language.",
+      "display_title": "Reading Ferdowsi",
+      "blurb": "Podcast guide to Persia's epic Shahnameh for Farsi-speaking beginners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1854578355": {
       "topics": [
@@ -193207,7 +193381,26 @@
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedic fictional murder mystery narrative in a small town setting.",
+      "display_title": "The Murderer Killings",
+      "blurb": "Comedic fiction series: a murder mystery in a fictional small town.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1854932136": {
       "topics": [
@@ -193317,10 +193510,33 @@
     },
     "1855660801": {
       "topics": [
-        "automotive"
+        "automotive",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Legendary automotive vehicles and culture with expert industry interviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1855962108": {
       "topics": [
@@ -193571,17 +193787,62 @@
     },
     "1858158703": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "science",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Essays on philosophy, society, science, and human experience from thinkers.",
+      "display_title": "Aeon Magazine",
+      "blurb": "Audio essays on philosophy, society, science, and human experience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1858311649": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting support and stories for raising neurodivergent children.",
+      "display_title": "Everyone Gets a Juice Box",
+      "blurb": "Candid parenting advice and stories for parents of neurodivergent kids.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1858321416": {
       "topics": [
@@ -193699,17 +193960,52 @@
     },
     "1858828159": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vedantic philosophy lectures on spirituality, meditation, and Hindu teachings.",
+      "display_title": "Vedanta Society of Western Washington",
+      "blurb": "Hindu spiritual lectures on Vedanta philosophy, meditation, and wisdom.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1858948633": {
       "topics": [
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Bible chapter readings with spiritual analysis and theological insight.",
+      "display_title": "Chapter by Chapter",
+      "blurb": "Daily Bible chapter readings with spiritual insight and theological analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1858999390": {
       "topics": [
@@ -193766,10 +194062,30 @@
     },
     "1860026821": {
       "topics": [
-        "health/alternative"
+        "health/alternative",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Subliminal affirmations and guided sessions for subconscious reprogramming.",
+      "display_title": "Subliminal Affirmations with Nicky Sutton",
+      "blurb": "Guided subliminal affirmations for personal transformation and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1860071094": {
       "topics": [
@@ -193819,18 +194135,57 @@
     },
     "1860462739": {
       "topics": [
-        "nature"
+        "nature",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Outdoor stories, fishing, hunting, and wildlife discussion from Eastern Shore.",
+      "display_title": "Upper Bay Podcast",
+      "blurb": "Outdoor stories, tips, and interviews for hunting and fishing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1860533605": {
       "topics": [
-        "nature/earth-science",
+        "nature/ocean-science",
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ocean science research, marine innovation, and environmental news.",
+      "display_title": "Ultramarine",
+      "blurb": "Research and news on ocean science and marine environments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1860634232": {
       "topics": [
@@ -193857,10 +194212,30 @@
     },
     "1860696025": {
       "topics": [
-        "sports/soccer"
+        "sports/soccer",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kansas City World Cup soccer coverage with local culture and behind-the-scenes.",
+      "display_title": "Heart & Goal",
+      "blurb": "Kansas City's World Cup soccer coverage with local culture and stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1860791091": {
       "topics": [
@@ -193929,7 +194304,26 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Clinical simulation technology, medical training, and healthcare innovation.",
+      "display_title": "The Sim Tech Podcast",
+      "blurb": "Clinical simulation technology and healthcare training innovation discussed.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1861635232": {
       "topics": [
@@ -193985,10 +194379,30 @@
     },
     "1862177791": {
       "topics": [
-        "nature"
+        "nature",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wildlife management research, genetics, and habitat optimization strategies.",
+      "display_title": "Wildlife Investments",
+      "blurb": "Wildlife management research for optimizing habitat and land potential.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1862178806": {
       "topics": [
@@ -194058,10 +194472,30 @@
     },
     "1862905477": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fully improvised mock radio show with guest interviews and no scripts.",
+      "display_title": "87.9 KWHO",
+      "blurb": "Fully improvised mock radio show with guest interviews and off-the-cuff humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1863077309": {
       "topics": [
@@ -194104,10 +194538,29 @@
     "1863241831": {
       "topics": [
         "sports",
-        "news"
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional bass fishing insider commentary and tournament analysis.",
+      "display_title": "Best on Tour Breakdown",
+      "blurb": "Behind-the-scenes commentary on professional bass fishing industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1863383874": {
       "topics": [
@@ -194126,10 +194579,30 @@
     },
     "1863516781": {
       "topics": [
-        "food"
+        "food",
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sourdough baking science, fermentation, and slow bread techniques explained.",
+      "display_title": "Sourdough Sorcery",
+      "blurb": "Sourdough science, fermentation techniques, and slow baking explained.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1863524661": {
       "topics": [
@@ -194217,10 +194690,30 @@
     },
     "1864609153": {
       "topics": [
-        "math"
+        "math",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Logarithmic notation and intuitive scale understanding through discussion.",
+      "display_title": "Mag World",
+      "blurb": "Developing intuitive scale understanding through logarithmic notation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1864634447": {
       "topics": [
@@ -194349,10 +194842,30 @@
     },
     "1865529181": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Acting, improv, performance, and creative writing discussion by professional comedian.",
+      "display_title": "The Acting Class: The Podcast",
+      "blurb": "Acting, improv, and performance insights from comedian Connor Ratliff.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1865533062": {
       "topics": [
@@ -194485,10 +194998,30 @@
     },
     "1866406723": {
       "topics": [
-        "sports/wrestling"
+        "sports/wrestling",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling history, athlete interviews, and lessons from elite programs.",
+      "display_title": "The Dynasty Effect",
+      "blurb": "Wrestling history and athlete interviews from elite athletic programs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1866434136": {
       "topics": [
@@ -194499,10 +195032,30 @@
     },
     "1866610741": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical dog fostering guidance and animal behavior support for caregivers.",
+      "display_title": "Dog Fostering 101",
+      "blurb": "Practical dog fostering guidance and animal behavior education.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1866612890": {
       "topics": [
@@ -194620,17 +195173,51 @@
     "1866947239": {
       "topics": [
         "health/nutrition",
-        "food"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science debunks viral health trends and bizarre wellness claims from social media.",
+      "display_title": "Strange Health",
+      "blurb": "Science debunks bizarre viral health trends from social media.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1866948703": {
       "topics": [
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "HBO medical drama episode recap with analysis and listener feedback discussion.",
+      "display_title": "Into The Pitt",
+      "blurb": "Recap and analysis of HBO's medical drama The Pitt.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d0b39236",
+      "classified_at": "2026-08-14T16:37:55.766Z"
     },
     "1866955009": {
       "topics": [
