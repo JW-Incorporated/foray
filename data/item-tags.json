@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-13T11:44:39.354Z",
+  "built_at": "2026-08-14T11:59:04.599Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -12676,6 +12676,229 @@
       "mental-health",
       "personal-journals",
       "personal-story"
+    ],
+    "catalyst-shayle-kann--is-now-the-time-for-ders": [
+      "distributed-energy",
+      "grid",
+      "batteries",
+      "energy-storage",
+      "utilities",
+      "energy-infrastructure"
+    ],
+    "lab-to-market-leadership--why-great-scientists-don-39-t": [
+      "startups",
+      "founders",
+      "deep-tech",
+      "entrepreneurship",
+      "research",
+      "leadership"
+    ],
+    "cbc-ideas--bringing-a-farm-and-its-philosophy": [
+      "agriculture",
+      "indigenous",
+      "food",
+      "canada",
+      "community",
+      "sustainability"
+    ],
+    "stuff-you-should-know--who-was-robert-maxwell-l": [
+      "stuff-you-should-know",
+      "biography",
+      "espionage",
+      "true-crime",
+      "scandal",
+      "publishing"
+    ],
+    "business-of-machining--464-mentors": [
+      "machining",
+      "machine-shop",
+      "shop-talk",
+      "mentorship",
+      "tooling",
+      "manufacturing"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1615": [
+      "history-of-technology",
+      "engineering-history",
+      "history",
+      "energy",
+      "industrial-revolution"
+    ],
+    "just-fly-performance-podcast--528-dan-back-on-the-natural": [
+      "athletic-development",
+      "sprinting",
+      "speed",
+      "coaching",
+      "athletics",
+      "biomechanics"
+    ],
+    "99-percent-invisible--100-objects-13-the-sand-letters": [
+      "objects",
+      "letters",
+      "history",
+      "politics",
+      "american-history",
+      "scandal"
+    ],
+    "the-worlds-best-construction-podcast--why-new-york-just-built-a": [
+      "skyscrapers",
+      "construction",
+      "architecture",
+      "urban-design",
+      "new-york",
+      "megaprojects"
+    ],
+    "off-nominal--252-paying-now-and-later-with": [
+      "spaceflight",
+      "spacex",
+      "nasa",
+      "space-industry",
+      "astronauts",
+      "space"
+    ],
+    "software-engineering-daily--rebuilding-the-cloud-for-ai-agent": [
+      "ai-agents",
+      "ai-infrastructure",
+      "software-development",
+      "automation",
+      "coding",
+      "llms"
+    ],
+    "the-race-f1-podcast--are-these-f1-conspiracy-theories-actually": [
+      "formula-1",
+      "conspiracy-theories",
+      "motorsport",
+      "f1-history",
+      "racing"
+    ],
+    "camera-shake-photography-podcast--ai-changed-photography-are-photographers-still": [
+      "photography",
+      "ai",
+      "image-generation",
+      "creative-tools",
+      "computational-photography"
+    ],
+    "science-vs--we-solve-the-49ers-viral-conspiracy": [
+      "conspiracy-theories",
+      "american-football",
+      "nfl",
+      "electricity",
+      "debunking",
+      "science"
+    ],
+    "masters-of-scale--know-which-rules-to-break-with": [
+      "founders",
+      "leadership",
+      "media",
+      "entrepreneurship",
+      "culture",
+      "television"
+    ],
+    "craft-beer-and-brewing-magazine-podcast--498-andrew-sabatine-of-around-the": [
+      "beer",
+      "craft-beer",
+      "lagers",
+      "brewing",
+      "hops",
+      "fermentation"
+    ],
+    "fast-talk--436-moving-beyond-ftp-to-multi": [
+      "cycling",
+      "endurance-sports",
+      "training",
+      "sports-science",
+      "athletic-performance"
+    ],
+    "shipwrecks-and-sea-dogs--bonus-a-reading-of-the-open": [
+      "shipwrecks",
+      "literature",
+      "maritime",
+      "maritime-history",
+      "survival"
+    ],
+    "robot-talk--bonus-episode-robotics-for-sustainability-erf": [
+      "robotics",
+      "robots",
+      "sustainability",
+      "conservation",
+      "engineering"
+    ],
+    "robot-talk--bonus-episode-drones-in-challenging-environments": [
+      "drone",
+      "robotics",
+      "engineering",
+      "maintenance",
+      "robots"
+    ],
+    "ten-percent-happier--the-science-of-journaling-how-15": [
+      "writing",
+      "anxiety",
+      "psychology",
+      "mental-health",
+      "self-improvement"
+    ],
+    "zoe-science-nutrition--how-to-shrink-the-dangerous-fat": [
+      "nutrition",
+      "nutrition-science",
+      "health",
+      "metabolism",
+      "cardiology"
+    ],
+    "armchair-expert--armchair-anonymous-extreme-weather": [
+      "extreme-weather",
+      "listener-stories",
+      "comedy",
+      "weather",
+      "true-stories"
+    ],
+    "this-past-weekend-theo-von--675-professor-jiang": [
+      "geopolitics",
+      "prediction",
+      "conspiracy",
+      "interview",
+      "politics"
+    ],
+    "how-did-this-get-made--xxx-live-w-rob-huebel": [
+      "movie-riffing",
+      "comedy",
+      "film",
+      "live-comedy",
+      "movies"
+    ],
+    "dateline--a-mother-s-mind-before-killings": [
+      "true-crime",
+      "murder-trial",
+      "courtroom",
+      "society-law",
+      "dateline"
+    ],
+    "snap-judgment--super-pizza-man": [
+      "snap-judgment",
+      "true-stories",
+      "personal-journals",
+      "heroes",
+      "storytelling"
+    ],
+    "the-moth--schooled-the-moth-podcast": [
+      "the-moth",
+      "storytelling",
+      "personal-stories",
+      "school",
+      "live-storytelling"
+    ],
+    "the-magnus-archives--the-magnus-protocol-53-previous-administration": [
+      "fiction",
+      "horror",
+      "audio-drama",
+      "serialized",
+      "psychological-horror"
+    ],
+    "old-gods-of-appalachia--episode-105-the-builder": [
+      "fiction",
+      "horror",
+      "appalachia",
+      "audio-drama",
+      "slavery"
     ]
   }
 }
