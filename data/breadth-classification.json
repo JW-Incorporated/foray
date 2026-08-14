@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-13T16:44:25.286Z",
+  "built_at": "2026-08-14T00:33:10.758Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-13-67b31700",
+    "last_batch_id": "fresh-2026-08-14-ace26e48",
     "last_batch_tier": 1
   },
   "entries": {
@@ -184916,10 +184916,30 @@
     },
     "1826011915": {
       "topics": [
-        "sports/golf"
+        "sports",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf instruction paired with Australian comedians' banter and celebrity guests.",
+      "display_title": "Make Me Good At Golf",
+      "blurb": "Aussie comedians and a cricket legend share tips for improving your golf game through hilarious conversations with pros and surprise guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1826094584": {
       "topics": [
@@ -185167,7 +185187,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama set in mystery-shrouded Australian town with sci-fi horror elements and Australian humor.",
+      "display_title": "Bloodrock Springs",
+      "blurb": "Audio drama mystery: residents of an outback town face strange forces after a mysterious dust cloud surrounds them.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:10.758Z"
     },
     "1826948882": {
       "topics": [
@@ -186569,10 +186604,25 @@
     },
     "1832634097": {
       "topics": [
-        "religion/spirituality"
+        "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bishop teaches Christian theology and biblical interpretation focused on Jesus's teachings and faith.",
+      "display_title": "Bishop mar mari Emmanuel",
+      "blurb": "Christian teachings and biblical Q&A exploring faith questions, God's character, and spiritual topics from a bishop.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1832640248": {
       "topics": [
@@ -186681,10 +186731,30 @@
     },
     "1833086317": {
       "topics": [
-        "nature/pets"
+        "nature/animal-cognition",
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Veterinarian discusses hunting dog science, training, health, and wellness with expert guests.",
+      "display_title": "Hunt.Vet Podcast",
+      "blurb": "Veterinarian exploring sporting dog science with guests discussing training, health, and performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1833088926": {
       "topics": [
@@ -186731,11 +186801,30 @@
     },
     "1833281257": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "craft/diy-home",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Agroforestry and tree-planting podcast covering business, ecology, and sustainable farming practices.",
+      "display_title": "Plant The Trees",
+      "blurb": "Agroforestry experts discuss planting, growing, and monetizing trees for sustainable farming and ecological benefit.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1833287773": {
       "topics": [
@@ -186770,10 +186859,25 @@
     },
     "1833333553": {
       "topics": [
-        "sports/soccer"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Manchester United and City fans debate Premier League, Europe, and international football weekly.",
+      "display_title": "THIS IS THE WORLD CUP SEASON",
+      "blurb": "Manchester rivals debate Premier League and international football with honest opinions, transfer news, and predictions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1833396540": {
       "topics": [
@@ -186841,7 +186945,22 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Texas gardening coach shares organic vegetable and kitchen garden advice for beginners and busy families.",
+      "display_title": "Grow with Vibrant Rainbow Gardens",
+      "blurb": "Texas gardening coach provides organic garden tips, seasonal planting, and low-stress strategies for home gardeners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1833759046": {
       "topics": [
@@ -186861,10 +186980,25 @@
     },
     "1833825511": {
       "topics": [
-        "culture/fashion"
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Watch collectors and enthusiasts discuss collecting, preservation, and appreciation of timepieces.",
+      "display_title": "Unpolished Watches",
+      "blurb": "Watch collectors share stories and insights about collecting, restoration, and appreciation of timepieces.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1833978909": {
       "topics": [
@@ -186894,7 +187028,26 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Cleveland Guardians baseball updates covering games, players, and MLB developments.",
+      "display_title": "Cleveland Guardians News Today",
+      "blurb": "Fast daily updates on Cleveland Guardians games, player performances, and MLB news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1834050652": {
       "topics": [
@@ -187004,10 +187157,25 @@
     },
     "1834367191": {
       "topics": [
-        "comedy/stand-up"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedian Jessie Johnson hosts casual, hilarious conversations with other comedians and guests.",
+      "display_title": "Jet Fuel Podcast",
+      "blurb": "Comedian Jessie Johnson's casual, unfiltered conversations with comedians about life, relationships, and humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1834390919": {
       "topics": [
@@ -187326,10 +187494,25 @@
     },
     "1835450563": {
       "topics": [
-        "news/politics"
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NPR correspondents analyze national security and geopolitical issues affecting U.S. foreign policy.",
+      "display_title": "Sources & Methods",
+      "blurb": "NPR correspondents discuss national security, geopolitics, and U.S. foreign policy with military and intelligence experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1835461600": {
       "topics": [
@@ -187357,10 +187540,25 @@
     },
     "1835520469": {
       "topics": [
-        "sports/volleyball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball coach shares training, performance, and recruiting insights for players and aspiring coaches.",
+      "display_title": "The Volleyball Coach",
+      "blurb": "Volleyball coach discusses training strategies, recruiting, mindset, and performance with expert guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1835521862": {
       "topics": [
@@ -187385,10 +187583,28 @@
     },
     "1835608513": {
       "topics": [
-        "sports/football"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Radio hosts discuss NFL divisions, draft, games, and football analysis with humor.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1835622026": {
       "topics": [
@@ -187429,10 +187645,25 @@
     },
     "1835973979": {
       "topics": [
-        "business/marketing"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TikTok Shop agency founder discusses e-commerce strategy, creator partnerships, and platform optimization.",
+      "display_title": "The Unofficial TikTok Shop Podcast with Jordan West",
+      "blurb": "E-commerce strategist shares TikTok Shop tactics, creator partnerships, and scaling strategies for brands.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1835991562": {
       "topics": [
@@ -187488,7 +187719,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "German aviation journalists discuss industry news, airlines, and aviation business stories.",
+      "display_title": "Gedankenflüge – der Luftfahrt-Podcast",
+      "blurb": "Aviation journalists discuss industry news, airline trends, and aviation challenges from European perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1836129705": {
       "topics": [
@@ -187541,7 +187787,22 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep conversations with automotive leaders, designers, and engineers about car design and innovation.",
+      "display_title": "MotoManTV Podcast",
+      "blurb": "In-depth interviews with automotive designers, engineers, and leaders about car design and industry innovation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1836318077": {
       "topics": [
@@ -187606,10 +187867,25 @@
     },
     "1836460849": {
       "topics": [
-        "business/management"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brief interviews with industry leaders and rising stars sharing career journeys and insights.",
+      "display_title": "15 Minutes With",
+      "blurb": "Quick interviews with industry leaders and rising stars exploring their journeys and insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1836492441": {
       "topics": [
@@ -187657,10 +187933,30 @@
     },
     "1836513283": {
       "topics": [
-        "comedy/interviews"
+        "comedy",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Comedy-focused show with current events coverage; primarily entertainment with occasional news commentary.",
+      "display_title": "Bubba the Love Sponge® Show",
+      "blurb": "Unfiltered comedy and celebrity interviews with bold opinions on entertainment, sports, and current topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1836539969": {
       "topics": [
@@ -187835,10 +188131,25 @@
     },
     "1837150363": {
       "topics": [
-        "sports/rugby"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby journalists provide tactical analysis, game previews, and expert commentary on professional rugby.",
+      "display_title": "The Rugby Bunker",
+      "blurb": "Expert rugby journalists analyze tactics, game previews, and international rugby competition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1837193185": {
       "topics": [
@@ -187906,10 +188217,25 @@
     },
     "1837410733": {
       "topics": [
-        "science/chemistry"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with academic researchers explaining their methods, materials, and scientific findings.",
+      "display_title": "Ask a Scientist",
+      "blurb": "Interviews with researchers exploring their methods and explaining cutting-edge science in various fields.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1837415115": {
       "topics": [
@@ -187985,7 +188311,22 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lawyers analyze famous crimes, trials, and legal cases with deep analysis and evidence.",
+      "display_title": "Legally Brunette",
+      "blurb": "Lawyers examine true crime cases, analyzing charges, evidence, trials, and legal outcomes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1837656768": {
       "topics": [
@@ -188478,10 +188819,25 @@
     },
     "1839542719": {
       "topics": [
-        "sports/wrestling"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestlers interview show featuring shoot conversations and wrestling industry discussion.",
+      "display_title": "WrestleMagicPod",
+      "blurb": "Wrestling legends share stories and insights through interviews exploring careers and the sport.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1839550659": {
       "topics": [
@@ -188580,7 +188936,22 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book summary podcast discussing Steven Bartlett's business and self-improvement book.",
+      "display_title": "The Diary of a CEO: The 33 Laws",
+      "blurb": "Book summary exploring business and life principles from Steven Bartlett's bestselling work.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1839995280": {
       "topics": [
@@ -188662,7 +189033,25 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Rabbi and journalist discuss Jewish tradition, values, and contemporary issues through faith lens.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1840450079": {
       "topics": [
@@ -188708,7 +189097,26 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep dives into underappreciated albums and music history covering classics and forgotten gems.",
+      "display_title": "Albums Under The Radar",
+      "blurb": "Exploring underappreciated and influential albums with historical context and musical analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1840705895": {
       "topics": [
@@ -188722,7 +189130,22 @@
         "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Central Texas landscape consultant provides seasonal gardening advice and arborist expertise.",
+      "display_title": "ATXGardens Podcast",
+      "blurb": "Texas gardening expert provides seasonal advice for trees, plants, and sustainable landscaping.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1840762721": {
       "topics": [
@@ -188808,10 +189231,28 @@
     },
     "1841258623": {
       "topics": [
-        "business/marketing"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Marketing strategies for wedding professionals covering lead generation and business tactics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1841261674": {
       "topics": [
@@ -188852,10 +189293,28 @@
     },
     "1841489755": {
       "topics": [
-        "sports/soccer"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "International football journalists discuss World Cup, global soccer, and football culture.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1841493344": {
       "topics": [
@@ -188920,7 +189379,22 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mother and son discuss Christian faith, biblical questions, and spiritual guidance.",
+      "display_title": "Full Fledged Podcast",
+      "blurb": "Mother-son conversations exploring Christian faith, biblical questions, and spiritual growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1841650497": {
       "topics": [
@@ -189063,7 +189537,22 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "World of Warcraft podcast for casual players covering updates, lore, and community.",
+      "display_title": "Azeroth Morning Radio: A World of Warcraft Podcast",
+      "blurb": "Casual World of Warcraft podcast covering game updates, lore, and player community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1842558111": {
       "topics": [
@@ -189204,10 +189693,28 @@
     },
     "1843222315": {
       "topics": [
-        "science/physics"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Terahertz research podcast exploring physics, history, and technical development.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-ace26e48",
+      "classified_at": "2026-08-14T00:33:00.751Z"
     },
     "1843250191": {
       "topics": [
