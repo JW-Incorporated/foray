@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-14T01:01:52.944Z",
+  "built_at": "2026-08-14T09:05:31.866Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-14-36abfa57",
+    "last_batch_id": "fresh-2026-08-14-2bf39f42",
     "last_batch_tier": 1
   },
   "entries": {
@@ -198709,7 +198709,22 @@
         "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political interview series featuring U.S. elected officials discussing election cycles and policy.",
+      "display_title": "On the Road with Jonathan Martin",
+      "blurb": "POLITICO correspondent Jonathan Martin interviews major political figures at local venues across America about current events and upcoming elections.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1882453166": {
       "topics": [
@@ -198848,10 +198863,30 @@
     },
     "1883147237": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Primarily tennis podcast mixing occasional F1 racing content; episodes cover tournaments and players.",
+      "display_title": "Give Me A Break Pointcast [Tennis Podcast]",
+      "blurb": "Tennis fans discuss tournaments, Grand Slam results, and top players, with occasional Formula 1 racing segments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1883148266": {
       "topics": [
@@ -198862,10 +198897,33 @@
     },
     "1883164211": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.92
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Clinical psychologist provides evidence-based parenting guidance for parents raising tweens and teens.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1883176744": {
       "topics": [
@@ -198912,7 +198970,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hungarian comedy podcast with casual banter and humor about everyday topics.",
+      "display_title": "MÁRKÓ ÉS BARNA",
+      "blurb": "Hungarian comedy duo perform weekly casual conversations and stand-up segments exploring humor and lifestyle.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1883649765": {
       "topics": [
@@ -198978,11 +199051,25 @@
     },
     "1884138371": {
       "topics": [
-        "music",
-        "history"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Explores emotional impact and history of popular songs and timeless music classics.",
+      "display_title": "World of Music Emotion & Timeless Songs",
+      "blurb": "Podcast examining the stories and emotional significance behind classic and contemporary popular songs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1884145882": {
       "topics": [
@@ -199002,10 +199089,30 @@
     },
     "1884149117": {
       "topics": [
-        "medicine"
+        "medicine/neuroscience",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sleep specialist explores diagnosis and treatment of underdiagnosed sleep disorders beyond common sleep tips.",
+      "display_title": "The Hidden Sleep Disorders Show",
+      "blurb": "Sleep specialist Dr. Vishal Saini examines the medical conditions behind chronic fatigue and poor sleep.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1884184288": {
       "topics": [
@@ -199057,7 +199164,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth cricket analysis and discussion from Indian journalists covering IPL, Test cricket, and major players.",
+      "display_title": "Cricket Unfiltered",
+      "blurb": "Journalists analyze Indian cricket, IPL drama, international matches, and the sport's politics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1884364376": {
       "topics": [
@@ -199116,22 +199238,74 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Progressive electronic music show featuring DJ mixes and unreleased tracks from house/techno producer.",
+      "display_title": "ERIC PRYDZ – EPIC RADIO",
+      "blurb": "Legendary electronic music DJ Eric Prydz returns with hourly progressive house and techno mixes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1884463367": {
       "topics": [
         "health/nutrition",
-        "food"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two scientists explore personalized nutrition, microbiome science, and AI in medicine and health.",
+      "display_title": "Two PhDs on a Pod",
+      "blurb": "Systems biologist and AI expert discuss cutting-edge science behind personalized nutrition and health optimization.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1884473309": {
       "topics": [
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Major League Rugby podcast covering players, fan experiences, international rugby, and community stories.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1884704629": {
       "topics": [
@@ -199147,7 +199321,22 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "New York Times writer M. Gessen investigates their cousin's murder plot in this personal true-crime narrative.",
+      "display_title": "The Idiot",
+      "blurb": "Acclaimed writer examines a disturbing personal case: their cousin's arrest for allegedly plotting murder.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1884765759": {
       "topics": [
@@ -199185,14 +199374,48 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.92
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running science and training guidance from sports scientist covering endurance, injury prevention, and nutrition.",
+      "display_title": "The Long Game with Nicklas Rossner",
+      "blurb": "Sports scientist breaks down the research on running performance, training, and injury prevention.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1884910061": {
       "topics": [
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly horror film reviews examining cinematography, storytelling, and cultural impact of horror movies.",
+      "display_title": "Horror Sandbox",
+      "blurb": "Hosts dissect horror films across eras, exploring themes, filmmaking choices, and cultural significance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1884941084": {
       "topics": [
@@ -199250,11 +199473,35 @@
     },
     "1885104089": {
       "topics": [
-        "space",
-        "science"
+        "space/rockets",
+        "history/technology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Spaceflight history from Mercury through modern missions, exploring engineers, technology, and astronauts.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8",
+        "blurb: banned /deep[\\s-]dive/i",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1885137658": {
       "topics": [
@@ -199289,10 +199536,29 @@
     "1885326677": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business motivation and entrepreneurship podcast covering startup ideas, success habits, and practical strategies.",
+      "display_title": "Business Mission Podcast With Avana Khan",
+      "blurb": "Podcast on entrepreneurship, business success, productivity habits, and practical startup strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1885331425": {
       "topics": [
@@ -199528,7 +199794,22 @@
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cosmetic chemist and dermatologist discuss skincare science, beauty products, and culture with expertise.",
+      "display_title": "Divine Skintervention",
+      "blurb": "Chemist and dermatologist analyze skincare science, beauty trends, and the cultural meaning of aesthetics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1886017466": {
       "topics": [
@@ -199548,10 +199829,30 @@
     },
     "1886060045": {
       "topics": [
-        "comedy/interviews"
+        "comedy/interviews",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese storyteller shares emotional listener stories without moral judgment, suitable for bedtime listening.",
+      "display_title": "李诞-蛋总故事会",
+      "blurb": "Chinese comedian shares personal and emotional listener stories without judgment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1886219604": {
       "topics": [
@@ -199567,7 +199868,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ultrarunning coach provides science-backed training advice for trail ultramarathons and 100-mile races.",
+      "display_title": "CTS Ultrarunning Podcast",
+      "blurb": "Elite ultrarunning coach shares science-based training strategies for ultramarathon distance races.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1886235004": {
       "topics": [
@@ -199582,7 +199902,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.88
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Explores Earth's geology, oceans, climate systems, and natural phenomena through engaging storytelling.",
+      "display_title": "Planet Earth",
+      "blurb": "Podcast diving deep into Earth's geological forces, oceans, climate, and planetary mysteries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1886260563": {
       "topics": [
@@ -199784,10 +200123,30 @@
     },
     "1886731415": {
       "topics": [
-        "culture/performing-arts"
+        "tv-film/reviews",
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep storytelling analysis across books, TV, and film with special focus on screen adaptations.",
+      "display_title": "K Let's Talk",
+      "blurb": "Thoughtful breakdown of stories across books, TV, and film with focus on character arcs and adaptations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1886801652": {
       "topics": [
@@ -199808,7 +200167,22 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "RuneScape gaming community podcast featuring player interviews and discussions of the online game.",
+      "display_title": "The Behemeth Podcast",
+      "blurb": "RuneScape gaming community podcast with interviews from notable players and game industry figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1886826532": {
       "topics": [
@@ -199882,10 +200256,29 @@
     "1886946971": {
       "topics": [
         "music",
-        "history"
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fan podcast about musician John Mellencamp covering his songs, tours, and career milestones.",
+      "display_title": "Talkin' Mellencamp!",
+      "blurb": "Fans discuss John Mellencamp's music, tours, songs, and legacy ahead of his latest concert tour.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1886959093": {
       "topics": [
@@ -199924,7 +200317,25 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Explores molecules in everyday life: historical pigments, natural dyes, flavors, and chemical phenomena.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1887248606": {
       "topics": [
@@ -199998,7 +200409,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investigative docufiction miniseries about a death at a tech billionaire's compound in Minnesota.",
+      "display_title": "Lakecastle",
+      "blurb": "A daughter investigates her father's suspicious death at a tech billionaire's mysterious compound.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1887731917": {
       "topics": [
@@ -200235,7 +200661,22 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling podcast featuring interviews with elite wrestlers discussing their careers and philosophy.",
+      "display_title": "Stories From The Resilite",
+      "blurb": "Award-winning wrestling broadcaster interviews elite wrestlers about their journeys and the sport.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1888807891": {
       "topics": [
@@ -200357,10 +200798,30 @@
     },
     "1889289461": {
       "topics": [
-        "relationships"
+        "relationships",
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychologist explores family dynamics, estrangement, conflict, and relationship healing with experts.",
+      "display_title": "Family Troubles with Dr. Joshua Coleman",
+      "blurb": "Psychologist examines modern family conflicts, estrangement, and paths to healing relationships.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1889291759": {
       "topics": [
@@ -200702,7 +201163,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Student-led astrophysics podcast featuring conversations with professional astronomers and researchers.",
+      "display_title": "Astrophysics for All",
+      "blurb": "Student-hosted podcast with interviews from professional astronomers exploring the cosmos.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1890796257": {
       "topics": [
@@ -200853,7 +201333,22 @@
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert-driven beauty and skincare podcast covering practical insights from dermatologists and chemists.",
+      "display_title": "Face It",
+      "blurb": "Beauty and skincare experts break down what works, debunking myths and offering practical advice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1891466225": {
       "topics": [
@@ -200895,7 +201390,26 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tech industry podcast featuring conversations with experts on AI, digital transformation, and innovation.",
+      "display_title": "The Improving Edge",
+      "blurb": "Tech experts discuss AI, digital transformation, enterprise strategies, and business implementation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1891539796": {
       "topics": [
@@ -201083,7 +201597,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Burmese-language Buddhist teachings from popular monk explaining dharma concepts simply.",
+      "display_title": "ပါချုပ်ဆရာတော် တရားများ",
+      "blurb": "Buddhist teachings in Burmese from popular monk explaining dharma through simple concepts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1893044179": {
       "topics": [
@@ -201268,11 +201797,30 @@
     },
     "1893979229": {
       "topics": [
-        "space",
-        "science"
+        "paranormal",
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Explores unexplained phenomena including UFOs, UAPs, and spiritual/paranormal experiences.",
+      "display_title": "We Are Not Alone",
+      "blurb": "Investigations into UAPs, UFO sightings, and unexplained phenomena in the skies and beyond.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1893986382": {
       "topics": [
@@ -201298,10 +201846,30 @@
     },
     "1894056269": {
       "topics": [
-        "relationships"
+        "sports/endurance",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Racers share stories of chasing dreams through couch surfing and personal growth experiences.",
+      "display_title": "The Couches That Made Us",
+      "blurb": "Racing community stories of drivers who couch surfed on their journey to professional success.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1894128244": {
       "topics": [
@@ -201354,7 +201922,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychological sci-fi thriller about two remaining astronauts searching for survivors after global annihilation.",
+      "display_title": "The Dolos Project",
+      "blurb": "Psychological sci-fi thriller following astronauts searching for survivors after nuclear apocalypse.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1894334347": {
       "topics": [
@@ -201514,7 +202097,22 @@
         "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News commentary and cultural debate podcast covering trending topics and current events.",
+      "display_title": "JIM WEBB PODCAST",
+      "blurb": "Sharp commentary on trending topics, current events, and cultural debates with expert guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1895055236": {
       "topics": [
@@ -201749,10 +202347,30 @@
     },
     "1895405705": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "APOE4 carrier investigates Alzheimer's prevention through science, personal experiments, and lifestyle.",
+      "display_title": "Race Against Mind: An Alzheimer's Prevention Investigation",
+      "blurb": "Deep investigation into Alzheimer's prevention through research, science, and personal experimentation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-2bf39f42",
+      "classified_at": "2026-08-14T09:05:31.866Z"
     },
     "1895417485": {
       "topics": [
