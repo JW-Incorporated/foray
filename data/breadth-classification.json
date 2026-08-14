@@ -67795,13 +67795,1070 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-13-828fd9fa",
       "classified_at": "2026-08-13T17:09:34.598Z"
+    },
+    "1776435464": {
+      "topics": [
+        "food",
+        "food/cooking-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.95
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "BBQ and grilling techniques, competitive smoking, food culture and storytelling.",
+      "display_title": "Under Seasoned BBQ Show",
+      "blurb": "Irreverent hosts dissect barbecue culture, smoking techniques, and meat science with humor and world-ranging BBQ hunts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1776886526": {
+      "topics": [
+        "math",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Mathematics, quantum physics, psychology and philosophy through interviews with Edward Frenkel.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1776936776": {
+      "topics": [
+        "fiction/drama",
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Darkly comedic serialized drama with true crime investigation framing and fictional characters.",
+      "display_title": "Who The F**K Killed My Sister?",
+      "blurb": "Serialized darkly comedic mystery featuring Quinn Reynolds investigating her sister's murder amid media chaos.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1776969830": {
+      "topics": [
+        "nature/pets",
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical equestrian education covering horse health, riding technique, and equine performance science.",
+      "display_title": "Ask An Expert: Horse Care and Riding Advice",
+      "blurb": "Expert equestrian coaches and veterinarians offer science-based guidance on horse health, training, and riding.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1777113518": {
+      "topics": [
+        "news/commentary",
+        "news/tech"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news coverage with skeptical stance on current events, particularly investigative long-form stories.",
+      "display_title": "The Flo Show, no filter",
+      "blurb": "Unspun news analysis and investigation of stories others avoid, from local mysteries to tech incidents.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1777171478": {
+      "topics": [
+        "music",
+        "history",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep dives into Michael Jackson's legacy through interviews with dancers, collaborators, and cultural analysis.",
+      "display_title": "club 30's with mjfangirl",
+      "blurb": "Michael Jackson fandom meets music history through exclusive interviews with dancers and collaborators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1777276736": {
+      "topics": [
+        "news/commentary",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Partisan political and cultural commentary focused on America-first politics and conservative values analysis.",
+      "display_title": "The Alex Marlow Show",
+      "blurb": "Daily conservative political analysis and cultural commentary from Breitbart editor Alex Marlow.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1777313084": {
+      "topics": [
+        "tv-film/reviews",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Humorous analysis of failed TV shows, examining why certain series didn't survive.",
+      "display_title": "TV Casualty",
+      "blurb": "Retrospective look at TV shows that didn't last, exploring what went wrong behind the scenes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1777364618": {
+      "topics": [
+        "tv-film/history",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nostalgic reviews of 80s/90s low-budget theatrical releases screened on Saturday afternoon television.",
+      "display_title": "The Saturday Afternoon Movie Club",
+      "blurb": "Hosts revisit forgotten B-movies and cult classics from 1980s and 90s Saturday TV.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1777612676": {
+      "topics": [
+        "gaming",
+        "gaming/design",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tabletop gaming news, interviews with designers, and RPG rulebook deep dives.",
+      "display_title": "Rascal News",
+      "blurb": "Worker-owned analysis of tabletop gaming industry news, with interviews and rulebook breakdowns.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1777714874": {
+      "topics": [
+        "aviation",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Corporate interviews about airline operations and sustainability; professional rather than enthusiast-focused.",
+      "display_title": "Ambizione",
+      "blurb": "Air Corsica showcases behind-the-scenes interviews with employees about sustainable regional aviation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1777930544": {
+      "topics": [
+        "sports",
+        "sports/rugby",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/rugby",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "New Zealand rugby coverage, All Blacks analysis, expert commentary and match reactions.",
+      "display_title": "DSPN - Devlin Sports Podcast Network",
+      "blurb": "New Zealand rugby podcast covering All Blacks, Super Rugby, and provincial competition analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1778320598": {
+      "topics": [
+        "relationships",
+        "health/sexuality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adult conversations on sexuality, non-monogamy, polyamory, and intimate relationships with personal guest stories.",
+      "display_title": "The Dirty Secrets Podcast with Kate Shelor",
+      "blurb": "Hypnotherapist Kate Shelor hosts candid conversations about sexuality and relationships with personal confessions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1778860724": {
+      "topics": [
+        "health/nutrition",
+        "health",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical nutrition, hormone health, gut science, and energy management for busy mothers.",
+      "display_title": "Improve Energy for Busy Moms",
+      "blurb": "Science-based nutrition and wellness coaching addressing fatigue, hormones, and digestive health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1779163850": {
+      "topics": [
+        "comedy/interviews",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Letterkenny cast reunion discussing film, TV, pop culture with casual chemistry and humor.",
+      "display_title": "Spare Parts",
+      "blurb": "Evan Stern and Michelle Mylett banter about entertainment, relationships, and TV industry gossip.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1779295100": {
+      "topics": [
+        "sports/hockey",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pittsburgh Penguins roster analysis, trade evaluation, and rebuild strategy from hockey reporter.",
+      "display_title": "No Pucks Given",
+      "blurb": "Pittsburgh Penguins beat coverage with insider analysis of team strategy and player development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1779346028": {
+      "topics": [
+        "philosophy/ideas",
+        "comedy/casual-hangs",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Conversational philosophy about middle age, modern life, and relationships; loosely structured.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1779373064": {
+      "topics": [
+        "sports/wrestling",
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chronological review of WWE's New Generation and Attitude Era Pay-Per-View shows.",
+      "display_title": "Benno & Hamflett, In Your House!",
+      "blurb": "Hosts review WWE's classic New Generation and Attitude Era PPV events in chronological order.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1779376136": {
+      "topics": [
+        "food",
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Joy of Cooking legacy through family conversation with cookbook authors and food professionals.",
+      "display_title": "The Joy of Cooking Podcast",
+      "blurb": "Rombauer family descendants discuss recipes, food history, and cooking philosophy with guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1779405320": {
+      "topics": [
+        "nature/earth-science",
+        "science",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lake George watershed conservation, environmental stewardship, invasive species, and water quality.",
+      "display_title": "Lake Protectors",
+      "blurb": "Community voices discuss Lake George conservation, water quality, and environmental restoration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1779614078": {
+      "topics": [
+        "sports/golf",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Junior golf development coaching covering mental game, swing mechanics, and parent guidance.",
+      "display_title": "The Golf Parent",
+      "blurb": "Expert coaches and pro golfers guide parents on developing junior golfers' skills and mindset.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1779813806": {
+      "topics": [
+        "true-crime",
+        "health/mental",
+        "society/law"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Investigation of a young man's locked-in syndrome diagnosis; potential Munchausen by proxy angle.",
+      "display_title": "Blink | Jake Haendel's Story",
+      "blurb": "True crime investigation of Jake Haendel's mysterious illness and possible medical abuse.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1779853226": {
+      "topics": [
+        "math",
+        "science/physics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with mathematics experts on optimization, numerical methods, and applied mathematics research.",
+      "display_title": "Numerical Optimization",
+      "blurb": "Experts discuss the math behind real-world optimization problems and numerical algorithms.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1779981260": {
+      "topics": [
+        "kids-family/education",
+        "nature/animal-cognition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Animal facts and biology education for children, emphasis on wonder and discovery.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1780271108": {
+      "topics": [
+        "business/non-profit",
+        "education",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with nonprofit and social sector leaders on their journeys, leadership philosophy, and impact.",
+      "display_title": "Exceptionally Good",
+      "blurb": "In-depth interviews with nonprofit leaders on building organizations and driving social change.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1780384916": {
+      "topics": [
+        "espionage",
+        "history",
+        "history/military-modern"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "espionage",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Real-world espionage stories and intelligence history from Cold War through modern day.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1780427576": {
+      "topics": [
+        "kids-family/education",
+        "nature/paleontology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/paleontology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Dinosaur facts and paleontology education for children in Spanish, hosted by young expert.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1780788374": {
+      "topics": [
+        "kids-family/education",
+        "education/self-improvement",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and finance concepts for children through story drama, in Mandarin Chinese.",
+      "display_title": "小思大維",
+      "blurb": "Kids MBA education teaching business strategy, financial literacy, and decision-making through narrative drama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1780873400": {
+      "topics": [
+        "health",
+        "education/self-improvement",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Alternative health, biohacking, and fitness content with interviews about lifestyle optimization.",
+      "display_title": "The Dylan Gemelli Podcast",
+      "blurb": "Health and biohacking interviews exploring unconventional approaches to fitness and wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1780958186": {
+      "topics": [
+        "education/courses",
+        "education/how-to",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Critical care nursing education and professional development from AACN organization.",
+      "display_title": "AACN Voices in Nursing Podcast",
+      "blurb": "Critical care nurses discuss professional development, patient care innovation, and healthcare leadership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1782280922": {
+      "topics": [
+        "science",
+        "psychology",
+        "medicine/biology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dr. Robert Sapolsky and family answer questions on neuroscience, evolution, behavior, and society.",
+      "display_title": "Robert Sapolsky Father-Offspring Interviews",
+      "blurb": "Neuroscientist Sapolsky and his son discuss science, behavior, and current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1782589640": {
+      "topics": [
+        "science",
+        "nature/earth-science",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Environmental science, climate solutions, and sustainability research from university scientists.",
+      "display_title": "C4E Presents",
+      "blurb": "Environmental scientists discuss climate change, de-extinction, renewable energy, and conservation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1782770096": {
+      "topics": [
+        "religion/hinduism",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu Vedanta philosophy and Bhakti Yoga teachings from Suhotra Swami lectures.",
+      "display_title": "Rational Devotion",
+      "blurb": "Lectures on Gaudiya Vedanta and Hindu philosophy exploring rational thought and spiritual practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1782792284": {
+      "topics": [
+        "comedy/casual-hangs",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adult siblings banter, playful arguing, improvised humor with occasional singing and guest comedians.",
+      "display_title": "Mom Said!",
+      "blurb": "Comedian siblings argue and riff about nothing in particular with guest comedians.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1782808544": {
+      "topics": [
+        "automotive",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Car culture, automotive trends, market analysis, and news from enthusiast perspective.",
+      "display_title": "Clutch Culture Podcast",
+      "blurb": "Car enthusiasts discuss automotive trends, market predictions, and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1782822278": {
+      "topics": [
+        "religion/christianity",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Catholic and Carmelite contemplative spirituality through teachings of Spanish mystics.",
+      "display_title": "Contemplation and Castanets",
+      "blurb": "Catholic and Carmelite spirituality featuring contemplative prayer and desert saint teachings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-d641c5c6",
+      "classified_at": "2026-08-14T00:52:50.415Z"
     }
   },
-  "built_at": "2026-08-13T17:09:34.598Z",
+  "built_at": "2026-08-14T00:52:50.415Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-13-828fd9fa",
+    "last_batch_id": "fresh-2026-08-14-d641c5c6",
     "last_batch_tier": 1
   }
 }
