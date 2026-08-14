@@ -69655,13 +69655,770 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-14-27de5dbe",
       "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1789567646": {
+      "topics": [
+        "psychology",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real wedding horror stories, listener advice, family dynamics exploration.",
+      "display_title": "Here Comes the Drama",
+      "blurb": "Hilarious wedding mishaps and family drama from real listeners, hosted by Christa Innis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1789775474": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Crochet patterns, amigurumi tutorials, yarn product strategies for makers.",
+      "display_title": "Simply Hooked",
+      "blurb": "Crochet instruction and craft business strategies for creative makers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1790113532": {
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quran-inspired reflections, Islamic teachings, spiritual guidance for faith.",
+      "display_title": "Salam-Intent",
+      "blurb": "Islamic spiritual reflections and life guidance grounded in Quranic wisdom.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1790335826": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast growth strategy, audience monetization, female entrepreneur marketing.",
+      "display_title": "Podcast Growth Tools",
+      "blurb": "Podcast marketing strategies to convert listeners into paying customers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1790472992": {
+      "topics": [
+        "psychology",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Special needs parenting journey, marriage dynamics, healthcare challenges.",
+      "display_title": "Specialness Pod",
+      "blurb": "Real stories from parents raising children with profound special needs.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1790594294": {
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu spirituality, Vedic texts, interfaith wisdom, yoga and meditation.",
+      "display_title": "Divine Discoveries",
+      "blurb": "Hindu and interfaith spirituality grounded in Vedic scriptures.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1790968394": {
+      "topics": [
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film industry career paths, filmmaking craft, women and nonbinary creators.",
+      "display_title": "Daddy Dailies",
+      "blurb": "Stories from filmmakers about their creative journey and industry success.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1791370640": {
+      "topics": [
+        "music",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Countdown of Billboard's greatest 3000 songs, music history analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1791561704": {
+      "topics": [
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Human identity, emotion structures, culture and meaning-making psychology.",
+      "display_title": "The Psychology of Us",
+      "blurb": "Psychological architecture exploring how humans think, feel, and make meaning.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1791818888": {
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "15th-century Advaita Vedanta text study, non-duality philosophy.",
+      "display_title": "Vedantasara of Sadananda",
+      "blurb": "Swami Sarvapriyananda teaches the essence of Vedanta philosophy.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1793196422": {
+      "topics": [
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stock analysis, market trends, investment strategies and opportunities.",
+      "display_title": "MarketBeat",
+      "blurb": "Expert stock analysis and investment insights for informed trading decisions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1793225942": {
+      "topics": [
+        "education/courses"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "CNA certification exam prep, patient care skills, healthcare training.",
+      "display_title": "CNA Study Guide",
+      "blurb": "Exam preparation and practical skills for Certified Nursing Assistants.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1793379248": {
+      "topics": [
+        "nature",
+        "nature/animal-cognition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Zoo operations, animal care teams, conservation work, behind-the-scenes.",
+      "display_title": "Our Herd",
+      "blurb": "Inside stories from the Toledo Zoo about animal care and conservation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1793441132": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spicy romance and erotica books, genre trends, author interviews.",
+      "display_title": "Reading Smut",
+      "blurb": "Romance and erotica book discussions with hosts and genre authors.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1793498810": {
+      "topics": [
+        "linguistics/language"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics/language",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Italian language lessons, beginner-friendly instruction with transcripts.",
+      "display_title": "Beginner Italian Podcast",
+      "blurb": "Beginner Italian language instruction with transcripts from teachers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1793919794": {
+      "topics": [
+        "nature/earth-science",
+        "engineering"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biochar production, soil health, carbon markets, sustainability innovation.",
+      "display_title": "The Biochar Show",
+      "blurb": "Biochar science, soil health, and sustainable carbon solutions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1794027434": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nashville live music showcase, emerging artist feedback, industry events.",
+      "display_title": "Playlisted Podcast",
+      "blurb": "Live music showcase in Nashville featuring emerging artists and feedback.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1794164180": {
+      "topics": [
+        "engineering/energy-grid"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Energy transition, clean energy markets, infrastructure transformation.",
+      "display_title": "Open Circuit",
+      "blurb": "Clean energy business models and technology breakthroughs decoded.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1794260894": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two best friends discussing life, relationships, sisterhood, real talk.",
+      "display_title": "We're Your Girls",
+      "blurb": "Casual comedy and conversations between best friends about life and sisterhood.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1794385232": {
+      "topics": [
+        "sports",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf instruction with Christian faith parallels and spiritual growth.",
+      "display_title": "The God & Golf Podcast",
+      "blurb": "Golf tips paired with Christian teachings for personal and spiritual growth.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1794421874": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation of Kansas farmhouse murders, evidence analysis.",
+      "display_title": "Murder in the Moonlight",
+      "blurb": "Keith Morrison investigates a Kansas farmhouse murder and its surprising evidence.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1794511460": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional women's golf, LPGA tour coverage, athlete interviews.",
+      "display_title": "Quiet Please!",
+      "blurb": "Women's professional golf tour updates and insider conversations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1794578462": {
+      "topics": [
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Addiction medicine, substance use treatment, evidence-based healthcare practices.",
+      "display_title": "ASAM Practice Pearls",
+      "blurb": "Addiction medicine expertise and treatment strategies for healthcare professionals.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1794774422": {
+      "topics": [
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Global news coverage, geopolitics, international affairs with impartial reporting.",
+      "display_title": "Al Jazeera",
+      "blurb": "Global news and current affairs with impartial, fact-based reporting.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1795041554": {
+      "topics": [
+        "medicine/biology",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Longevity science, AI advancement, health protocols, human potential.",
+      "display_title": "The Beyond Tomorrow Podcast",
+      "blurb": "Longevity science, AI futures, and health protocols with expert guests.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1795250798": {
+      "topics": [
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Training philosophy, fitness practice, body agency, strength development.",
+      "display_title": "We Are OLLIN",
+      "blurb": "Training and fitness as lifelong practice beyond conventional optimization.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1795868216": {
+      "topics": [
+        "aviation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel rewards programs, airline miles strategies, premium travel hacks.",
+      "display_title": "Miles & Points Daily",
+      "blurb": "Daily briefings on travel rewards, credit card offers, and airline deals.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1796177870": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Egyptian business, tourism, crafts, and manufacturing sector interviews.",
+      "display_title": "Qalam And Mic",
+      "blurb": "Egyptian business and cultural leaders discuss industry and innovation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1796190212": {
+      "topics": [
+        "nature",
+        "sports/biomechanics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Largemouth bass fishing science, prey behavior, environmental factors.",
+      "display_title": "Science of the Strike",
+      "blurb": "Scientific analysis of largemouth bass behavior and fishing techniques.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1796341484": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Water Margin classic Chinese novel, literary text reading in Mandarin.",
+      "display_title": "水浒传-原文朗读",
+      "blurb": "Audiobook reading of the classical Chinese novel Water Margin.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1796458292": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy interview podcast, guest comedians, humor and personal stories.",
+      "display_title": "Disgraceful with Grace O'Malley",
+      "blurb": "Comedy interviews where host and guests make each other laugh.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1796580956": {
+      "topics": [
+        "nature/animal-cognition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog training, canine learning styles, cognitive challenge framework.",
+      "display_title": "Your Dog Is Brighter Than You Think",
+      "blurb": "Dog training based on cognitive abilities and individual learning styles.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1796668358": {
+      "topics": [
+        "math"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unsolved math problems, mathematical paradoxes, abstract theory.",
+      "display_title": "Million Dollar Problems of Mathematics",
+      "blurb": "Unsolved mathematical problems and paradoxes that have stumped for decades.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1796738774": {
+      "topics": [
+        "culture/fashion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lash extension education, safety standards, industry science and techniques.",
+      "display_title": "Lash Science",
+      "blurb": "The science and techniques behind lash extensions and beauty industry standards.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-1a0a4190",
+      "classified_at": "2026-08-14T16:54:54.096Z"
     }
   },
-  "built_at": "2026-08-14T09:04:27.107Z",
+  "built_at": "2026-08-14T16:54:54.096Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-14-27de5dbe",
+    "last_batch_id": "fresh-2026-08-14-1a0a4190",
     "last_batch_tier": 1
   }
 }
