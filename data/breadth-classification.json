@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-13T16:25:49.567Z",
+  "built_at": "2026-08-14T00:35:40.542Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-13-238f1dee",
+    "last_batch_id": "fresh-2026-08-14-0c95402c",
     "last_batch_tier": 1
   },
   "entries": {
@@ -195448,10 +195448,30 @@
     },
     "1855962108": {
       "topics": [
-        "religion/islam"
+        "religion/islam",
+        "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comprehensive lectures by Islamic scholar on Quranic studies and Islamic history.",
+      "display_title": "Dr. Israr Ahmed - Full Lectures",
+      "blurb": "Comprehensive Islamic lectures covering Quranic studies, Islamic history, and religious teachings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1856030805": {
       "topics": [
@@ -195503,10 +195523,30 @@
     },
     "1856334408": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians find humor in absurd reviews of everyday topics in casual conversation.",
+      "display_title": "Son of a Boy Dad",
+      "blurb": "Weekly reviews of anything and everything with comedians finding humor in the absurd.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1856376282": {
       "topics": [
@@ -195539,10 +195579,30 @@
     },
     "1856472378": {
       "topics": [
-        "music"
+        "music",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Songwriters discuss their creative process and the stories behind their influential compositions.",
+      "display_title": "SONG DIVING",
+      "blurb": "Songwriters discuss creative process and the stories behind their most influential songs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1856783935": {
       "topics": [
@@ -195614,10 +195674,30 @@
     },
     "1858007736": {
       "topics": [
+        "food/fermentation",
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/fermentation",
+          "confidence": 0.8
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations with winemakers, distillers, and beverage producers about craft production.",
+      "display_title": "Skurnik Unfiltered",
+      "blurb": "Industry conversations with winemakers, distillers, and sommeliers about fine wines and spirits.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1858047227": {
       "topics": [
@@ -195685,11 +195765,35 @@
     },
     "1858321416": {
       "topics": [
-        "news/tech",
-        "computing"
+        "news/commentary",
+        "news",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert analysis of journalism's crisis and technology's impact on democratic institutions.",
+      "display_title": "Journalism 2050",
+      "blurb": "Expert conversations on the crisis in journalism, tech's role, and the future of democratic media.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1858412981": {
       "topics": [
@@ -195700,10 +195804,30 @@
     },
     "1858430616": {
       "topics": [
-        "medicine"
+        "medicine",
+        "medicine/neuroscience"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interventional pain specialist explains modern solutions for chronic pain management.",
+      "display_title": "The Kentucky Pain Reversal Show",
+      "blurb": "Medical expert discusses innovative interventional treatments for chronic pain management.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1858455290": {
       "topics": [
@@ -195758,10 +195882,35 @@
     },
     "1858677504": {
       "topics": [
-        "culture/fashion"
+        "business/careers",
+        "culture/fashion",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.65
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cosmetology professional shares business acumen, financial literacy, and industry success strategies.",
+      "display_title": "Uncut & Unfiltered: Success in Cosmetology",
+      "blurb": "Professional guide to building a profitable cosmetology career with business and scientific expertise.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1858680853": {
       "topics": [
@@ -195802,10 +195951,30 @@
     },
     "1859041530": {
       "topics": [
-        "business/management"
+        "business/management",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership and career growth conversations with accomplished professionals and executives.",
+      "display_title": "The Lift",
+      "blurb": "Leadership conversations with accomplished professionals on growth, self-advocacy, and workplace success.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1859065031": {
       "topics": [
@@ -195904,11 +196073,30 @@
     },
     "1860126930": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "paranormal",
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Conversational podcast covering conspiracy theories and paranormal topics despite genre mismatch.",
+      "display_title": "The Phone Booth Podcast",
+      "blurb": "Exploratory conversations covering conspiracy theories, paranormal phenomena, and alternative worldviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1860184572": {
       "topics": [
@@ -195978,10 +196166,30 @@
     },
     "1860688944": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Museum-curated exploration of fashion history, design, and cultural evolution through interviews.",
+      "display_title": "The Museum at FIT Fashion Culture",
+      "blurb": "Fashion history and evolution told through curated interviews and cultural analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1860696025": {
       "topics": [
@@ -196025,24 +196233,83 @@
     "1860975420": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "business/founders",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Small business founders share scaling strategies, hiring lessons, and entrepreneurial wisdom.",
+      "display_title": "Do Small Business Like a Big Boss",
+      "blurb": "Business founder and attorney share scaling strategies for small companies with growth expertise.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1861085166": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Imaginative adventure stories with original music for young children ages 3-10.",
+      "display_title": "Nighttime Nathan: Stories For Kids",
+      "blurb": "Imaginative adventure stories with original songs for children ages 3-10.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1861283154": {
       "topics": [
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis expert analysis of Grand Slams, professional tours, and industry integrity issues.",
+      "display_title": "Off Court With Greg Rusedski",
+      "blurb": "Unfiltered tennis analysis of Grand Slams and professional tour from former British No. 1.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1861385357": {
       "topics": [
@@ -196153,10 +196420,30 @@
     },
     "1862343618": {
       "topics": [
-        "automotive"
+        "automotive",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "GM technician provides practical maintenance, diagnostics, and mechanical advice for Duramax engines.",
+      "display_title": "The 3.0 Duramax Podcast",
+      "blurb": "Technical guidance on maintaining and diagnosing GM 3.0 Duramax diesel engines.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1862432252": {
       "topics": [
@@ -196198,10 +196485,35 @@
     },
     "1862894868": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/interviews",
+        "tv-film/after-shows",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment industry interviews with actors and filmmakers about careers and life experiences.",
+      "display_title": "The Brandon Davis Show",
+      "blurb": "Interviews with film and TV actors and creators about their careers and lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1862905477": {
       "topics": [
@@ -196228,10 +196540,30 @@
     },
     "1863177870": {
       "topics": [
-        "tv-film/interviews"
+        "paranormal",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.9
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Paranormal witness accounts of cryptid and supernatural encounters despite drama genre label.",
+      "display_title": "Myths, Monsters, and Mullets",
+      "blurb": "First-person accounts of paranormal encounters including Bigfoot, cryptids, and supernatural phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1863224475": {
       "topics": [
@@ -196414,12 +196746,35 @@
     },
     "1864786416": {
       "topics": [
-        "medicine/biology",
         "science",
+        "nature/earth-science",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Agricultural science and farming practices using field reports, expert guidance, and pest management.",
+      "display_title": "Serious Grower",
+      "blurb": "Agricultural science and expert farming techniques using field reports and pest management strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1864792790": {
       "topics": [
@@ -196452,10 +196807,30 @@
     },
     "1864960554": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental health professionals guide parents through child anxiety, OCD, transitions, and wellness.",
+      "display_title": "You Only Know What You Know",
+      "blurb": "Mental health guidance for parents navigating anxiety, OCD, and wellbeing in children and teens.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1864969176": {
       "topics": [
@@ -196605,10 +196980,30 @@
     },
     "1865900190": {
       "topics": [
-        "sports/golf"
+        "sports/golf",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf improvement for busy amateurs using data-driven analytics and motor learning science.",
+      "display_title": "Play Ready Golf",
+      "blurb": "Golf improvement using strokes gained analytics and motor learning for busy golfers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1865975225": {
       "topics": [
@@ -196619,11 +197014,35 @@
     },
     "1866046902": {
       "topics": [
+        "science",
         "nature/earth-science",
-        "science"
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Agricultural soil science covering regenerative farming, microbiology, nutrient management, and conservation.",
+      "display_title": "Soil Talks™ Podcast",
+      "blurb": "Agricultural soil science covering nutrient management, microbes, and regenerative farming practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1866070835": {
       "topics": [
@@ -196635,10 +197054,34 @@
     "1866103104": {
       "topics": [
         "music",
-        "history"
+        "history",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pop music trivia exploring genre crossovers, cultural context, and MTV-era song history.",
+      "display_title": "Road Trip Trivia Interactive",
+      "blurb": "Music trivia exploring pop history, genre-crossing hits, and cultural context behind iconic songs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1866202503": {
       "topics": [
@@ -196709,10 +197152,30 @@
     },
     "1866434136": {
       "topics": [
+        "education/self-improvement",
         "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese lifestyle and career optimization through extreme personal experimentation and habit engineering.",
+      "display_title": "限界突破ライフハック",
+      "blurb": "Japanese lifestyle and career optimization through extreme personal experimentation and habit engineering.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1866610741": {
       "topics": [
@@ -196921,10 +197384,35 @@
     },
     "1867080456": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/interviews",
+        "culture/pop-culture",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Australian television and film industry veterans share career stories and behind-the-scenes memories.",
+      "display_title": "From Set To Sofa with Lulu",
+      "blurb": "Intimate interviews with veteran Australian television and film actors reflecting on careers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1867087055": {
       "topics": [
@@ -196936,10 +197424,30 @@
     },
     "1867108446": {
       "topics": [
-        "aviation"
+        "aviation",
+        "aviation/accidents"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        },
+        {
+          "node": "aviation/accidents",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pilots share real cockpit experiences, emergency situations, and lessons learned in aviation.",
+      "display_title": "The Reider Report",
+      "blurb": "Real pilot stories about cockpit experiences, emergencies, and lessons learned in aviation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1867119101": {
       "topics": [
@@ -197031,10 +197539,30 @@
     },
     "1867509642": {
       "topics": [
-        "music"
+        "music",
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Electronic and ambient music curation and programming featuring global artists and soundscapes.",
+      "display_title": "Spacemusic",
+      "blurb": "Electronic and ambient music exploration featuring global artists and immersive soundscapes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1867510015": {
       "topics": [
@@ -197046,10 +197574,30 @@
     },
     "1867560342": {
       "topics": [
-        "fiction/drama"
+        "paranormal",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.9
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Paranormal cryptid witness accounts presented as true encounters despite fiction genre label.",
+      "display_title": "Dogman & Werewolf Encounters",
+      "blurb": "First-person witness accounts of cryptid encounters including dogman and werewolf-like creatures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1867564773": {
       "topics": [
@@ -197222,10 +197770,30 @@
     },
     "1868103210": {
       "topics": [
-        "food"
+        "food",
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Food industry conversations covering entrepreneurship, culture, business, and culinary perspectives.",
+      "display_title": "The Off The Menu Podcast",
+      "blurb": "Conversations with food industry figures and entrepreneurs on culture, business, and culinary craft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1868110727": {
       "topics": [
@@ -197237,10 +197805,30 @@
     },
     "1868129124": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Shot-by-shot analysis of AppleTV series Plur1bus with behind-the-scenes and director commentary.",
+      "display_title": "Hello, Carol",
+      "blurb": "Detailed shot-by-shot breakdown and analysis of the AppleTV series Plur1bus.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1868225420": {
       "topics": [
@@ -197275,10 +197863,30 @@
     },
     "1868412936": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        },
+        {
+          "node": "health",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Holistic dog health educator provides wellness guidance covering nutrition, alternatives, and care.",
+      "display_title": "Love Your Dogs",
+      "blurb": "Holistic dog health guidance covering nutrition, wellness, veterinary alternatives, and pet care.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1868436905": {
       "topics": [
@@ -197319,17 +197927,62 @@
     },
     "1868546178": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investigation into the unsolved death of Faithe Ely questioning the official hit-and-run narrative.",
+      "display_title": "Blunt Force Trauma",
+      "blurb": "Investigation into the unsolved death of Faithe Ely questioning the official narrative.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1868571210": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "computing",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Carnegie Mellon faculty analyze how artificial intelligence is reshaping design practices and tools.",
+      "display_title": "AI and Design",
+      "blurb": "Academic exploration of how artificial intelligence is transforming design practices and tools.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1868588641": {
       "topics": [
@@ -197558,7 +198211,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis coaches provide analysis and coaching tips for major tournaments and professional play.",
+      "display_title": "Gay, Set, Match",
+      "blurb": "Tennis analysis and coaching tips from LA-based tennis instructors covering major tournaments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1869948705": {
       "topics": [
@@ -197642,10 +198310,30 @@
     },
     "1870472874": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MLB general managers discuss roster building, trades, analytics, and front office decision-making.",
+      "display_title": "GM Territory",
+      "blurb": "Insider look at MLB trade strategies, roster building, and front office decision-making.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1870629354": {
       "topics": [
@@ -197725,10 +198413,35 @@
     },
     "1870678434": {
       "topics": [
-        "nature"
+        "nature",
+        "nature/earth-science",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Custer Gallatin National Forest stories covering wildlife, conservation, and forest management.",
+      "display_title": "Forest in Focus",
+      "blurb": "Stories from Custer Gallatin National Forest covering wildlife, conservation, and forest management.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-0c95402c",
+      "classified_at": "2026-08-14T00:35:40.542Z"
     },
     "1870719869": {
       "topics": [
