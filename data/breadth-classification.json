@@ -68852,13 +68852,816 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-14-d641c5c6",
       "classified_at": "2026-08-14T00:52:50.415Z"
+    },
+    "1783030448": {
+      "topics": [
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episodes on kundalini, akashic records, and past-life regression affirm spiritual growth focus.",
+      "display_title": "Dare Me to Prosper",
+      "blurb": "Spiritual growth and self-mastery through transformation and inner alignment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1783076120": {
+      "topics": [
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official JotForm podcast on AI agents for productivity, automation, healthcare applications.",
+      "display_title": "AI Agents Podcast",
+      "blurb": "Industry leaders discuss AI agents, automation, and business applications.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1783199996": {
+      "topics": [
+        "health/fitness",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based longevity and biohacking; episodes on oxygen therapy, anti-inflammatory lifestyle.",
+      "display_title": "The Peak Vitality Podcast",
+      "blurb": "Science-backed longevity and biohacking strategies for healthy aging.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1783412720": {
+      "topics": [
+        "business/marketing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women in print industry discuss business scaling, print technology, and leadership.",
+      "display_title": "Girls Who Print Podcast",
+      "blurb": "Women leaders share expertise in print industry business and growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1783432568": {
+      "topics": [
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly celebrity comedy interviews with sharp point of view throughout.",
+      "display_title": "The Kelly Mantle Show",
+      "blurb": "Sharp comedic interviews with celebrities and entertainers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1783812098": {
+      "topics": [
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness and health vitality for midlife; episodes on HRT, sleep, longevity.",
+      "display_title": "Midlife Unleashed",
+      "blurb": "Health and fitness strategies for vitality during midlife.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1783842650": {
+      "topics": [
+        "news/daily",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mix of political commentary and sports; episodes equally cover both dimensions.",
+      "display_title": "Kevin Kietzman Uncanceled",
+      "blurb": "Local and national news with sports and political perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1784285414": {
+      "topics": [
+        "news/daily"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official Not the Bee podcast; satirical commentary on bizarre news and culture.",
+      "display_title": "Beyond Parody: A Not the Bee Podcast",
+      "blurb": "Satirical commentary on bizarre news stories and cultural events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1784540132": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Behind-the-scenes TV, scandals, and celebrity deep dives; Elisabeth Moss, OITNB themes.",
+      "display_title": "Coffee & Cults",
+      "blurb": "Behind-the-scenes TV and celebrity stories, scandals, and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1784636846": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis-focused interviews with players, coaches, and legends; authentic conversations.",
+      "display_title": "The Sit-Down",
+      "blurb": "In-depth tennis interviews with players, coaches, and industry figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1784747300": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official Guns & Ammo content; editors discuss firearms, optics, gunsmithing.",
+      "display_title": "Guns & Ammo Buzz Podcast",
+      "blurb": "Firearms and ammunition experts discuss gear and gunsmithing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1784834834": {
+      "topics": [
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Houston Astros insider analysis by Athletic journalist and player hosts.",
+      "display_title": "Crush City Territory",
+      "blurb": "Houston Astros analysis and insider baseball perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1785059048": {
+      "topics": [
+        "health/sexuality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Erotic audio stories; bachelorette foursomes, taboo fantasies, paranormal romance.",
+      "display_title": "Orgasmic Erotic Stories",
+      "blurb": "Erotic audio stories about romance, fantasy, and desire.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1785335840": {
+      "topics": [
+        "health/sexuality",
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Erotic psychology focus; Emma covers kink, intimacy, and erotic identity.",
+      "display_title": "The Erotic Realm",
+      "blurb": "Expert sexuality perspectives on kink, intimacy, and psychology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1785446558": {
+      "topics": [
+        "health/nutrition",
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dr. Hartman offers science-backed solutions for long COVID, brain injury, infections.",
+      "display_title": "Made for Health",
+      "blurb": "Science-backed health solutions for recovery and chronic conditions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1786210916": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized audio drama; three families navigate social collapse and moral upheaval.",
+      "display_title": "Worlds Apart",
+      "blurb": "Serialized audio drama about families navigating social upheaval.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1786330034": {
+      "topics": [
+        "kids-family/stories"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bedtime podcast for kids with breathwork and calm storytelling.",
+      "display_title": "Sleepytime Pups",
+      "blurb": "Calm bedtime stories and breathwork for children.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1786395086": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "iHeartRadio exclusive artist interviews and album previews from major musicians.",
+      "display_title": "iHeartRadio LIVE",
+      "blurb": "Exclusive artist interviews and album previews from major musicians.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1786602710": {
+      "topics": [
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book of Mormon study across 197 episodes; Kyle explains theology casually.",
+      "display_title": "The Book of Mormon for Beginners",
+      "blurb": "Casual Book of Mormon study covering theology and teachings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1786606514": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chilling paranormal and psychological horror narratives with hauntings and urban legends.",
+      "display_title": "True Horror Stories",
+      "blurb": "Paranormal and psychological horror stories set in unsettling locations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1786675550": {
+      "topics": [
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sean O'Brien interviews realest personalities weekly on news and labor topics.",
+      "display_title": "Better Bad Ideas with Sean O'Brien",
+      "blurb": "News and political commentary on labor and policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1786847468": {
+      "topics": [
+        "food/cooking-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Israeli restaurant podcast; chefs and restaurateurs share culinary stories.",
+      "display_title": "לשבת לקחת",
+      "blurb": "Israeli chefs and restaurateurs share culinary stories and insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1787472224": {
+      "topics": [
+        "economics/markets",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.95
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial interviews and economic concepts: money management, investing, bitcoin, inflation coverage.",
+      "display_title": "The Wealth Effect",
+      "blurb": "Millionaires and everyday people share financial stories and insights on wealth building.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1787488448": {
+      "topics": [
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.98
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese pink film and Roman Porno cinema history, directors, specific film genres and reviews.",
+      "display_title": "Two in the Pinku",
+      "blurb": "Exploration of Japanese pink film and Roman Porno cinema with director and genre analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1787534138": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Persian comedy interviews with haiku, poetry, and prose segments from Siavash Safariyanpour.",
+      "display_title": "رختکن بازنده‌ها",
+      "blurb": "Persian comedy interviews hosted by Siavash Safariyanpour. Includes haiku and poetry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1787720684": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.98
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Arizona Wildcats basketball and athletics with exclusive guests, athletes, and daily live streams.",
+      "display_title": "AZ 12 Podcast",
+      "blurb": "Mike Luke and Jason Scheer cover Arizona Wildcats basketball with exclusive guest interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1787800910": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.98
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NHL expert analysis from Shannon and Millard on teams, coaching, players, offseason moves.",
+      "display_title": "100% Hockey",
+      "blurb": "NHL podcast by John Shannon and Daren Millard with expert analysis and interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1787869184": {
+      "topics": [
+        "automotive/racing",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive/racing",
+          "confidence": 0.98
+        },
+        {
+          "node": "sports",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motorsport pioneer Katherine Legge discusses racing, drivers, F1, IndyCar, NASCAR, and safety.",
+      "display_title": "Throttle Therapy with Katherine Legge",
+      "blurb": "Katherine Legge discusses motorsport careers, racing legends, and drivers across racing series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1788043076": {
+      "topics": [
+        "nature/pets",
+        "health/nutrition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.96
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog wellness from French Bulldog owners: allergies, nutrition, chronic disease, holistic health.",
+      "display_title": "Next Level Pet Parent",
+      "blurb": "Dog wellness podcast covering allergies, nutrition, chronic disease, and holistic practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1788293348": {
+      "topics": [
+        "religion/hinduism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.96
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu scripture Garuda Puranam teachings in Telugu language for spiritual education.",
+      "display_title": "Garuda Puranam by Samavedham Shanmukha Sharma",
+      "blurb": "Garuda Puranam Hindu scripture teachings presented in Telugu.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1788474884": {
+      "topics": [
+        "health/fitness",
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Elite running athletes, coaches, training science, habits, performance with expert science breakdowns.",
+      "display_title": "UNTAPPED with Spencer Matthews",
+      "blurb": "Running podcast featuring elite athletes and coaches on training science and performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1788550490": {
+      "topics": [
+        "news/commentary",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Joe Rogan cultural influence analysis through guest interviews, political figures, fact-checking.",
+      "display_title": "The Know Rogan Experience",
+      "blurb": "Analysis of Joe Rogan's cultural influence through guest interviews and claim examination.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1788724796": {
+      "topics": [
+        "business/management",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.92
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership, entrepreneurship, mental wellness, and success coaching from Dr. Zee.",
+      "display_title": "The Bryant Bright Consulting Show",
+      "blurb": "Business leadership podcast featuring expert guests on entrepreneurship and success.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
+    },
+    "1788933182": {
+      "topics": [
+        "society/government",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.82
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Maryland clean energy policy, grid modernization, solar infrastructure, renewable energy investment.",
+      "display_title": "Maryland Energy Talk",
+      "blurb": "Maryland clean energy policy, grid modernization, solar infrastructure, and renewable investment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-14-27de5dbe",
+      "classified_at": "2026-08-14T09:04:27.107Z"
     }
   },
-  "built_at": "2026-08-14T00:52:50.415Z",
+  "built_at": "2026-08-14T09:04:27.107Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-14-d641c5c6",
+    "last_batch_id": "fresh-2026-08-14-27de5dbe",
     "last_batch_tier": 1
   }
 }
