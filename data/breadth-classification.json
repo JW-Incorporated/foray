@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-15T08:29:32.213Z",
+  "built_at": "2026-08-15T16:30:45.740Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-15-1cf20c10",
+    "last_batch_id": "fresh-2026-08-15-b3ecd6ec",
     "last_batch_tier": 1
   },
   "entries": {
@@ -200404,7 +200404,22 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Read-aloud story time podcast featuring classic children's books for preschoolers and early elementary.",
+      "display_title": "Page Turners Club",
+      "blurb": "A storyteller reads popular children's books like Daniel Tiger and Paw Patrol stories. Perfect for kids' screen-free time.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1885956532": {
       "topics": [
@@ -200419,7 +200434,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MLB veterans interview professional baseball players about their careers and journeys to the majors.",
+      "display_title": "To the Majors",
+      "blurb": "MLB veterans interview former and current players about their path to professional baseball, featuring clubhouse stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1885981800": {
       "topics": [
@@ -200588,7 +200618,22 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily professional wrestling news and analysis covering WWE, AEW, TNA, and other promotions.",
+      "display_title": "Notsam Wrestling Catch Up",
+      "blurb": "Wrestling analyst Sam Roberts breaks down WWE Raw, SmackDown, and major wrestling events with daily coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1886565310": {
       "topics": [
@@ -200641,10 +200686,34 @@
     },
     "1886704927": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Family physician discusses metabolic health, low-carb and carnivore diets, and practical nutrition-based wellness.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:45.740Z"
     },
     "1886705492": {
       "topics": [
@@ -200763,7 +200832,26 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily French language lessons using real news at beginner A1 level with full transcripts and translations.",
+      "display_title": "Learn French A1 with News",
+      "blurb": "Learn French through daily news stories at beginner level with transcripts, translations, and vocabulary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1886959384": {
       "topics": [
@@ -200846,7 +200934,22 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reporter investigates a 44-year-old missing person case solved when remains were found during home construction.",
+      "display_title": "Long Buried",
+      "blurb": "A journalist investigates how Karen Ramsey vanished for 44 years and was forgotten until construction uncovered her remains.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1887643194": {
       "topics": [
@@ -200872,10 +200975,30 @@
     },
     "1887731917": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nashville songwriter and mom shares parenting tips, sleep training advice, and faith-based motherhood conversations.",
+      "display_title": "It's All Good",
+      "blurb": "A mom shares practical parenting advice on sleep training, newborn care, and faith-based motherhood.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:45.740Z"
     },
     "1887884860": {
       "topics": [
@@ -200933,7 +201056,26 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports news covering football, basketball, rugby, and other major sports with transfer updates and analysis.",
+      "display_title": "World Cup 2026: The 2026 Fan Zone",
+      "blurb": "Sports news covering football transfers, major league updates, and international sporting events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1888186476": {
       "topics": [
@@ -201006,7 +201148,22 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vedic guru teaches authentic Hinduism, meditation, yoga, and Vedanta philosophy with practical spiritual guidance.",
+      "display_title": "Dharma Nation Podcast",
+      "blurb": "A Vedic guru shares traditional Hindu teachings, meditation practice, and Bhakti yoga for spiritual development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1888343624": {
       "topics": [
@@ -201107,7 +201264,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket experts analyze every match from IPL with tactical breakdowns, player performance, and strategic insights.",
+      "display_title": "TimeOut: The IPL match review show",
+      "blurb": "Cricket experts break down Indian Premier League matches with tactical analysis and strategic commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1888923038": {
       "topics": [
@@ -201149,10 +201321,30 @@
     },
     "1889134729": {
       "topics": [
-        "comedy/interviews"
+        "comedy",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "British actor interviews celebrity guests about TV careers, behind-the-scenes stories, and entertainment nostalgia.",
+      "display_title": "A Night In With Sally Lindsay",
+      "blurb": "British actress Sally Lindsay interviews celebrity guests about their TV careers and behind-the-scenes moments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1889219971": {
       "topics": [
@@ -201266,7 +201458,22 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improv comedy group creates fictional podcast parodies featuring celebrities and satirical characters.",
+      "display_title": "Everybody Has a Podcast",
+      "blurb": "Sketch comedians improvise fake celebrity podcasts and satirical character conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1889648496": {
       "topics": [
@@ -201398,10 +201605,30 @@
     },
     "1889968849": {
       "topics": [
-        "fiction/sci-fi"
+        "true-crime",
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Eclectic mix of true crime, conspiracy theories, paranormal stories, and historical facts—tonally inconsistent.",
+      "display_title": "Matt From Nomad's",
+      "blurb": "Covers true crime, conspiracies, paranormal investigations, and historical stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1889983712": {
       "topics": [
@@ -201428,11 +201655,30 @@
     },
     "1890155581": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "psychology",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Irish performance coach guides daily mindset reset with philosophy, psychology, and practical life advice.",
+      "display_title": "A New Day with Gerry Hussey",
+      "blurb": "An Irish life coach offers daily episodes on mindset, relationships, work, and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:45.740Z"
     },
     "1890277832": {
       "topics": [
@@ -201454,7 +201700,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Six-time Gold Glove winner discusses clubhouse culture, player development, and modern baseball trends.",
+      "display_title": "The EC3 Pod",
+      "blurb": "A Gold Glove winner and colleagues discuss baseball, the MLB trade deadline, and big-league insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1890389738": {
       "topics": [
@@ -201519,11 +201780,25 @@
     },
     "1890594247": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "fiction/comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Adult-oriented fiction stories with crossdressing and forced feminization themes—narrow niche audience.",
+      "display_title": "SissyTania's Crossdressing Sissy Femininzation Stories",
+      "blurb": "Serialized fiction stories exploring crossdressing and feminine transformation themes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1890700630": {
       "topics": [
@@ -201568,7 +201843,26 @@
         "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneur coach guides business leaders and founders on clarity, decision-making, and operational strategy.",
+      "display_title": "Mid Hour Chat with Juanita Walker",
+      "blurb": "An entrepreneur coach discusses leadership, business strategy, and personal growth for founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1891080003": {
       "topics": [
@@ -201741,10 +202035,30 @@
     },
     "1892100817": {
       "topics": [
-        "business/management"
+        "business/management",
+        "nature/earth-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Working ranchers discuss grass management, cattle markets, drought strategy, and ranch business.",
+      "display_title": "Running on Grass",
+      "blurb": "Two ranchers discuss grass management, cattle markets, and sustainable ranch operations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1892146740": {
       "topics": [
@@ -201890,7 +202204,22 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball coaches and players discuss technique, club selection, recruiting, and competitive play.",
+      "display_title": "Block & Talk",
+      "blurb": "Volleyball coaches and athletes discuss technique, training, recruiting, and competitive play.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1892951298": {
       "topics": [
@@ -201911,7 +202240,22 @@
         "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tech sales professionals share stories of reaching top 1% performance through mindset and skill development.",
+      "display_title": "Untap Your Sales Potential",
+      "blurb": "Tech sales professionals share strategies and stories of reaching elite performance levels.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1893048984": {
       "topics": [
@@ -201961,10 +202305,33 @@
     },
     "1893330331": {
       "topics": [
-        "music"
+        "music",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep dives into Ramones albums with band history, behind-the-scenes anecdotes, and music storytelling.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1893341074": {
       "topics": [
@@ -202113,7 +202480,25 @@
         "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Interior designer discusses sustainable design, eco-friendly materials, wellness interiors, and business strategy.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1894015512": {
       "topics": [
@@ -202394,7 +202779,25 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Episode-by-episode breakdown of Witch Hat Atelier anime adaptation with hosts and voice actor guests.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1894945779": {
       "topics": [
@@ -202432,7 +202835,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College golfer and mental coach explore golf's mental game dynamics and PGA Tour performance.",
+      "display_title": "Frenchie & The Coach",
+      "blurb": "A golfer and mental coach discuss the mental game, strategy, and performance on the PGA Tour.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1895028306": {
       "topics": [
@@ -202532,10 +202950,33 @@
     },
     "1895170057": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.95
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cultural analysts examine how class barriers shape art careers, exploring working-class artists' legacies.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1895174119": {
       "topics": [
@@ -202745,18 +203186,57 @@
     },
     "1895417485": {
       "topics": [
-        "comedy/interviews"
+        "comedy",
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedian does walk-and-talk monologues about culture and politics, then interviews guests.",
+      "display_title": "That Sounds Like A Lot with Matt Buechele",
+      "blurb": "A comedian unpacks cultural and political stories with guests, mixing monologues and conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:45.740Z"
     },
     "1895478355": {
       "topics": [
         "sports",
-        "news"
+        "sports/biomechanics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional triathlete hosts race breakdowns and training insights for women's professional triathlon.",
+      "display_title": "The Women's Race",
+      "blurb": "A professional triathlete discusses women's racing, training, nutrition, and competition strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1895495862": {
       "topics": [
@@ -202801,18 +203281,57 @@
     },
     "1895571517": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horse trainer promotes empathetic horsemanship, challenging traditional coercive training methods.",
+      "display_title": "The Ethical Equestrian",
+      "blurb": "A horse trainer teaches empathetic horsemanship and partnership based on respect and psychology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1895593741": {
       "topics": [
         "health/nutrition",
-        "food"
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.95
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's hormone expert provides gender-specific nutrition and biohacking guidance for hormonal health.",
+      "display_title": "The Ovary Club with Alisa Vitti",
+      "blurb": "A hormone expert guides women through perimenopause, PCOS, and hormone-based health strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b3ecd6ec",
+      "classified_at": "2026-08-15T16:30:25.698Z"
     },
     "1895630609": {
       "topics": [
