@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-14T17:07:45.790Z",
+  "built_at": "2026-08-15T00:56:32.131Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-14-8b32cead",
+    "last_batch_id": "fresh-2026-08-15-b5a894cc",
     "last_batch_tier": 1
   },
   "entries": {
@@ -206055,7 +206055,26 @@
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.92
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scripted comedy series about friends exploring cult narratives before accidentally spawning a real movement.",
+      "display_title": "How to Start a Cult",
+      "blurb": "Scripted comedy about college friends who joke about cults then accidentally create a viral fictional movement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "1896902455": {
       "topics": [
@@ -206066,11 +206085,25 @@
     },
     "1896902471": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided meditations and relaxation focusing on mindfulness and mental unwinding.",
+      "display_title": "Unwind with Jessica Porter",
+      "blurb": "Guided meditations and mindfulness sessions using hypnotic language for mental relaxation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "1896903223": {
       "topics": [
@@ -206134,10 +206167,32 @@
     "1896907427": {
       "topics": [
         "tv-film/history",
-        "history"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.88
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep analysis of cult horror films from 1970s-80s American regional grindhouse cinema.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "1896907488": {
       "topics": [
@@ -206533,10 +206588,29 @@
     "1896935009": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical network marketing instruction focused on authentic direct sales skill-building.",
+      "display_title": "The Network Marketer Next Door",
+      "blurb": "Tactical network marketing instruction for authentic direct sales business development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "1896935092": {
       "topics": [
@@ -206650,10 +206724,30 @@
     },
     "1896938393": {
       "topics": [
-        "culture/fashion"
+        "personal-journals",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.82
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal journal-style conversations about girlhood, identity, and relationships from a young creator's perspective.",
+      "display_title": "Pretty Unstable",
+      "blurb": "Honest conversations about girlhood, relationships, identity crises, and internet culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "1896938514": {
       "topics": [
@@ -206806,10 +206900,33 @@
     },
     "1896945665": {
       "topics": [
-        "tv-film/animation"
+        "tv-film/animation",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Father-daughter casual hang exploring anime genres, fandoms, and convention experiences together.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "1896946005": {
       "topics": [
@@ -206919,10 +207036,29 @@
     "6782940461": {
       "topics": [
         "sports/endurance",
-        "health/fitness"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.93
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly running news covering marathons, elite athletes, world records, and competition developments.",
+      "display_title": "The Running Story",
+      "blurb": "Weekly running news covering marathons, records, and elite endurance racing developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6783081164": {
       "topics": [
@@ -207037,11 +207173,25 @@
     },
     "6783526229": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "adventure/exploration"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Hunting and shooting podcast covering rifles, ballistics, gear, and field hunting experiences.",
+      "display_title": "Backfire Guns Podcast",
+      "blurb": "Expert discussions on hunting rifles, ballistics, ammunition, and field gear performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6783532001": {
       "topics": [
@@ -207123,7 +207273,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily golf news, analysis, and tournament coverage from journalists and editors.",
+      "display_title": "The Breakfast Ball",
+      "blurb": "Daily golf news and analysis covering tournaments, players, and PGA Tour developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6783718143": {
       "topics": [
@@ -207146,14 +207311,53 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.88
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dutch-language podcast analyzing AI developments, frontier models, agents, and workplace automation.",
+      "display_title": "Turing Station",
+      "blurb": "Dutch AI discussions covering LLM developments, agents, automation, and societal impact.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6783837071": {
       "topics": [
-        "business/marketing"
+        "business",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.78
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Legal strategy and compliance guidance for beauty and wellness brands covering IP, franchising, and regulation.",
+      "display_title": "The Beauty Law Glow-Up",
+      "blurb": "Legal strategies and compliance guidance for beauty and wellness brand protection and growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6783862530": {
       "topics": [
@@ -207194,10 +207398,30 @@
     },
     "6783967685": {
       "topics": [
+        "culture/art",
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Creative conversations exploring music, visual art, fashion, and spirituality from authentic practitioners.",
+      "display_title": "Beyond the Seen",
+      "blurb": "Conversations with artists exploring music, visual art, fashion, and spiritual authenticity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6783977316": {
       "topics": [
@@ -207411,10 +207635,33 @@
     },
     "6785546777": {
       "topics": [
-        "news/commentary"
+        "history",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.88
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "PBS journalist explores foundational American history stories during nation's 250th anniversary.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6785549395": {
       "topics": [
@@ -207654,10 +207901,30 @@
     },
     "6786172397": {
       "topics": [
+        "music/theory-production",
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.88
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form interviews with Grammy-nominated producers and engineers discussing music production craft.",
+      "display_title": "Dangerous Liaisons",
+      "blurb": "Long-form interviews with producers and engineers discussing music production technique and craft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6786177191": {
       "topics": [
@@ -207868,17 +208135,60 @@
     },
     "6787291799": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two friends discussing origin stories before consistently going off on bizarre, chaotic tangents.",
+      "display_title": "Original Tangents",
+      "blurb": "Friends exploring origin stories before tangents about bizarre topics, topics, and chaos.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6787694963": {
       "topics": [
-        "religion/judaism"
+        "religion",
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.72
+        },
+        {
+          "node": "history",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Multi-faith clergy studying America's founding texts; tier-0 prior was too narrow to just Judaism.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6787704722": {
       "topics": [
@@ -207962,17 +208272,57 @@
     },
     "6788029589": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/stand-up",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedy mixed with personal commentary and real stories from underdog perspective.",
+      "display_title": "That 1 Podcast",
+      "blurb": "Comedy commentary blending stand-up energy with personal stories and underdog perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6788047199": {
       "topics": [
-        "business/management"
+        "business/management",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Employee ownership culture and stories from a 100% employee-owned defense technology company.",
+      "display_title": "Powered By People",
+      "blurb": "Conversations about employee ownership benefits and company culture from defense tech firm.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6788060249": {
       "topics": [
@@ -208001,7 +208351,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hockey community discussions emphasizing kindness, boldness, and engaged fandom.",
+      "display_title": "The Hockey Friends Podcast",
+      "blurb": "Hockey culture and community from fans dedicated to kindness, boldness, and engagement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6788137437": {
       "topics": [
@@ -208161,10 +208526,30 @@
     },
     "6788834339": {
       "topics": [
-        "nature"
+        "nature",
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.88
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Training guide to identify birds by sound, covering species recognition and vocalization patterns.",
+      "display_title": "Birding by Ear",
+      "blurb": "Guide to identifying birds by sound using vocalization field marks and species recognition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6788834383": {
       "topics": [
@@ -208175,10 +208560,30 @@
     },
     "6788836685": {
       "topics": [
+        "health",
         "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's health podcast covering periods, cycles, hormones, menstrual products, and wellness.",
+      "display_title": "The Saalt Show",
+      "blurb": "Evidence-informed women's health covering periods, menstrual products, and cycle wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-b5a894cc",
+      "classified_at": "2026-08-15T00:56:32.131Z"
     },
     "6788876880": {
       "topics": [
