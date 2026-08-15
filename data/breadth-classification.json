@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-14T17:06:02.894Z",
+  "built_at": "2026-08-15T00:21:31.919Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-14-8fbeb13a",
+    "last_batch_id": "fresh-2026-08-15-889cb6b2",
     "last_batch_tier": 1
   },
   "entries": {
@@ -200821,10 +200821,29 @@
     "1881834567": {
       "topics": [
         "sports",
-        "news"
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host covers women's sports, WNBA, and NFL with layered sports analysis and commentary.",
+      "display_title": "The Lachelle Show",
+      "blurb": "Sports commentary and analysis featuring discussions on the WNBA, NFL, and the intersection of fandom and athletics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1881857018": {
       "topics": [
@@ -200835,10 +200854,30 @@
     },
     "1881919731": {
       "topics": [
-        "craft/diy-home"
+        "craft",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two enthusiasts discussing hoya plant collecting, care, propagation, and market dynamics.",
+      "display_title": "The Hoya Underground",
+      "blurb": "Thoughtful discussions on hoya plant collecting, care standards, naming clarity, and the hoya community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1882007947": {
       "topics": [
@@ -200874,10 +200913,30 @@
     },
     "1882057455": {
       "topics": [
-        "sports/basketball"
+        "sports/basketball",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert analysis of women's basketball from two former players covering games, players, and WNBA headlines.",
+      "display_title": "Court Vision with Angel McCoughtry and Ros Gold-Onwude",
+      "blurb": "Women's basketball analysis and commentary from experienced players covering WNBA storylines and player insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1882070746": {
       "topics": [
@@ -200888,10 +200947,35 @@
     },
     "1882122537": {
       "topics": [
-        "news/daily"
+        "news/daily",
+        "news/politics",
+        "society/law"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily LA news and civic issues covering homelessness, politics, real estate, and local governance.",
+      "display_title": "Monks & Merrill",
+      "blurb": "Daily news briefing on Los Angeles civic issues, including homelessness, housing, politics, and local policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1882122583": {
       "topics": [
@@ -201002,10 +201086,30 @@
     },
     "1882515309": {
       "topics": [
-        "gaming"
+        "gaming",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reddit stories read while playing Minecraft survival mode, blending gaming and narrative content.",
+      "display_title": "Droven's Minecraft and Reddit Stories",
+      "blurb": "Reddit stories and tales read while exploring Minecraft, combining cozy gameplay with dark internet narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1882520467": {
       "topics": [
@@ -201031,11 +201135,25 @@
     },
     "1882573737": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language instruction for beginners covering daily life topics with clear pronunciation and neutral accent.",
+      "display_title": "Slow Spanish Podcast for Beginners (A1-B1)",
+      "blurb": "Beginner Spanish lessons covering daily topics with clear instruction and Mexican-accented pronunciation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1882578376": {
       "topics": [
@@ -201082,7 +201200,22 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bedtime stories with breathwork and calm storytelling designed to help children fall asleep.",
+      "display_title": "Sleepytime Dreams",
+      "blurb": "Calming bedtime stories and guided relaxation for children, featuring personalized narratives and breathwork.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1883005709": {
       "topics": [
@@ -201127,7 +201260,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Climate science and energy analysis debunking misinformation through expert interviews and research.",
+      "display_title": "Climate Debrief",
+      "blurb": "In-depth climate and energy science analysis addressing misconceptions with evidence-based expert perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1883190981": {
       "topics": [
@@ -201204,10 +201356,30 @@
     },
     "1883649765": {
       "topics": [
-        "craft"
+        "craft",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese podcast exploring the space between toys and crafts through guest interviews and collector discussions.",
+      "display_title": "玩具工芸社ラジオ",
+      "blurb": "Japanese conversations exploring toy and craft traditions, featuring collectors, artists, and folk art enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1883693665": {
       "topics": [
@@ -201410,10 +201582,35 @@
     },
     "1884765759": {
       "topics": [
-        "culture/design"
+        "architecture",
+        "culture/design",
+        "cities/urbanism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "architecture",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "cities/urbanism",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cohousing design and community living explored through resident and architect perspectives.",
+      "display_title": "This is Cohousing: The Cohousing Podcast",
+      "blurb": "Design-focused exploration of cohousing communities, sustainability, and intentional neighborhood building.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1884820957": {
       "topics": [
@@ -201492,20 +201689,52 @@
     },
     "1885074219": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language instruction through step-by-step lessons, verb conjugation, and daily phrase practice.",
+      "display_title": "Learn Spanish : Spanish Step by Step",
+      "blurb": "Spanish language instruction for beginners using daily vocabulary, verbs, and conversational patterns.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1885096479": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "medicine",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pharmaceutical and biotech industry news covering FDA decisions, clinical trials, and drug pipeline updates.",
+      "display_title": "The Pharma Closeout",
+      "blurb": "Daily pharma and biotech briefing covering FDA approvals, clinical trials, and industry deals in 15 minutes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1885104089": {
       "topics": [
@@ -201620,7 +201849,26 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "UNLV athletics coverage including football fall camp, player interviews, and conference analysis.",
+      "display_title": "The Scarlet Standard",
+      "blurb": "UNLV Rebels athletics coverage featuring team updates, player interviews, and fall camp analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1885416577": {
       "topics": [
@@ -201635,7 +201883,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby league history, competitions, and player interviews promoting the sport in North America.",
+      "display_title": "Rugby League Rat Pack",
+      "blurb": "Rugby league stories, history, and player interviews celebrating the sport's growth and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1885536008": {
       "topics": [
@@ -201663,10 +201926,30 @@
     },
     "1885618533": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog breed history exploring origins, characteristics, and cultural significance of individual breeds.",
+      "display_title": "Doggone History",
+      "blurb": "Historical exploration of dog breeds, their origins, and how they shape modern canine culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1885620700": {
       "topics": [
@@ -201677,10 +201960,30 @@
     },
     "1885670421": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian bedtime stories for kids featuring themes of courage, resilience, and faith.",
+      "display_title": "Lantern Hollow",
+      "blurb": "Christian-themed bedtime stories for kids teaching values of faith, courage, and perseverance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1885681327": {
       "topics": [
@@ -201844,10 +202147,30 @@
     },
     "1886260563": {
       "topics": [
-        "nature"
+        "nature",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Natural history museum podcast on insects and arthropods covering evolution, ecology, and species diversity.",
+      "display_title": "Bug Note",
+      "blurb": "Natural history exploration of insects, arthropods, adaptation, and their role in ecosystems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1886261563": {
       "topics": [
@@ -201924,10 +202247,30 @@
     },
     "1886650263": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "architecture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Architecture and design industry conversations exploring bold thinking and strategic innovation.",
+      "display_title": "Play with Matches",
+      "blurb": "Architecture and design podcast exploring bold industry thinking and innovative approaches to building.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1886650616": {
       "topics": [
@@ -202043,10 +202386,30 @@
     },
     "1886848263": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Obesity medicine, GLP-1 medications, and metabolic health covering patient experience and clinical expertise.",
+      "display_title": "Weight & Measure",
+      "blurb": "Obesity medicine and GLP-1 medications combining patient experience with clinical expertise and nutrition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1886912646": {
       "topics": [
@@ -202178,10 +202541,30 @@
     },
     "1887678339": {
       "topics": [
-        "relationships"
+        "relationships",
+        "health/sexuality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Married couple discussing cuckold relationship dynamics, power exchange, and unconventional relationship structures.",
+      "display_title": "The Cuckold Marriage",
+      "blurb": "Candid discussions between a married couple about non-traditional relationship dynamics and intimacy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1887691223": {
       "topics": [
@@ -202235,10 +202618,30 @@
     },
     "1888138263": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "sports/biomechanics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports injury rehabilitation and rehab strategies covering ACL, knee, and foot/ankle recovery.",
+      "display_title": "THE DAVID GREY REHAB PODCAST",
+      "blurb": "Sports injury rehabilitation and recovery strategies featuring expert interviews and patient experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1888166406": {
       "topics": [
@@ -202316,10 +202719,30 @@
     },
     "1888296657": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Preventive cardiology covering heart disease risk, cholesterol management, and personalized health approaches.",
+      "display_title": "CardioNow",
+      "blurb": "Preventive cardiology podcast covering heart health, risk markers, and personalized disease prevention.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1888341235": {
       "topics": [
@@ -202338,24 +202761,79 @@
     },
     "1888344477": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design-focused conversations examining everyday objects, fashion, and cultural design phenomena.",
+      "display_title": "Design Darlings",
+      "blurb": "Playful design podcast examining everyday objects, fashion, and cultural design trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1888371987": {
       "topics": [
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby league community podcast featuring player interviews and stories from Noosa Pirates club.",
+      "display_title": "People of the Pirates with LA",
+      "blurb": "Noosa Pirates rugby league community stories featuring players, coaches, and club members.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1888506081": {
       "topics": [
+        "health/mental",
         "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided meditations for stress and anxiety relief with short episodes designed for daily use.",
+      "display_title": "Calm in Minutes: Meditations for Stress & Anxiety",
+      "blurb": "Short guided meditations for stress relief, anxiety, and nervous system regulation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1888507672": {
       "topics": [
@@ -202599,7 +203077,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NASA Artemis program exploration covering rocket technology, astronauts, and lunar mission updates.",
+      "display_title": "Artemis",
+      "blurb": "NASA Artemis program exploration featuring lunar missions, astronauts, and space technology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1889914574": {
       "topics": [
@@ -202686,10 +203183,30 @@
     },
     "1890401025": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror and thriller author interviews discussing writing process, books, and dark storytelling.",
+      "display_title": "Talking Horror",
+      "blurb": "Horror and thriller author interviews exploring dark fiction, writing craft, and psychological storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1890417590": {
       "topics": [
@@ -202749,7 +203266,26 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily AI news briefing from Hacker News covering AI engineering, models, and tech developments.",
+      "display_title": "AI Daily",
+      "blurb": "Daily AI news briefing covering Hacker News stories on AI models, engineering, and industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1890594247": {
       "topics": [
@@ -202801,7 +203337,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis podcast with draw analysis, player previews, and betting commentary.",
+      "display_title": "Inside the Draw",
+      "blurb": "Tennis draw analysis and betting insights featuring tournament previews and player picks.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1890878156": {
       "topics": [
@@ -202823,7 +203374,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Minnesota Twins baseball podcast with in-game analysis, player interviews, and seasonal coverage.",
+      "display_title": "Twin Cities Territory",
+      "blurb": "Minnesota Twins baseball analysis and coverage featuring game recaps and player updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1891080652": {
       "topics": [
@@ -202956,10 +203522,30 @@
     },
     "1891485225": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Modern Jewish ritual practice and tradition exploring authentic ways to observe customs and holidays.",
+      "display_title": "Regeneration: A Podcast About Crafting DIY Jewish Ritual",
+      "blurb": "Modern Jewish ritual and tradition featuring conversations about authentic, creative practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1891531061": {
       "topics": [
@@ -203122,10 +203708,30 @@
     },
     "1892678715": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "New parenthood podcast addressing emotional reality of transition to parenthood with expert guidance.",
+      "display_title": "Rattled: When New Parenthood Shakes You",
+      "blurb": "Parenting podcast addressing new parent anxieties, postpartum mental health, and emotional transitions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1892715024": {
       "topics": [
@@ -203202,10 +203808,30 @@
     },
     "1893107709": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/after-shows",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Murdoch Mysteries rewatch podcast with episode analysis, behind-the-scenes stories, and celebrity guests.",
+      "display_title": "Murdoch Mysteries Podcast",
+      "blurb": "Murdoch Mysteries rewatch podcast featuring episode breakdowns and interviews with cast and creators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1893162516": {
       "topics": [
@@ -203254,10 +203880,30 @@
     },
     "1893346479": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/interviews",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film appreciation podcast interviewing people about their favorite movies and emotional connections.",
+      "display_title": "Movies and the People Who Love Them",
+      "blurb": "Film appreciation podcast interviewing listeners about their favorite movies and personal connections.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1893359212": {
       "topics": [
@@ -203593,7 +204239,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf instruction and improvement podcast from PGA pro covering technique, mindset, and performance.",
+      "display_title": "Golf's Perfect Imperfections",
+      "blurb": "Golf instruction and improvement from PGA professional covering technique, mindset, and practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-889cb6b2",
+      "classified_at": "2026-08-15T00:21:31.919Z"
     },
     "1894933375": {
       "topics": [
