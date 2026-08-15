@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-14T16:17:06.790Z",
+  "built_at": "2026-08-15T00:10:36.347Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-14-72a02253",
+    "last_batch_id": "fresh-2026-08-15-8e34564d",
     "last_batch_tier": 1
   },
   "entries": {
@@ -84927,7 +84927,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jodo Shinshu Buddhist temple teachings and dharma talks.",
+      "display_title": "San Mateo Buddhist Temple",
+      "blurb": "Dharma talks from a Jodo Shinshu Buddhist temple exploring Pure Land Buddhist philosophy and practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1522054150": {
       "topics": [
@@ -205543,10 +205558,33 @@
     },
     "1895649600": {
       "topics": [
-        "travel"
+        "travel",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Travel narratives exploring emotional and philosophical motivations behind journeys.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1895660075": {
       "topics": [
@@ -205701,10 +205739,30 @@
     },
     "1895953788": {
       "topics": [
-        "food"
+        "food/cooking-science",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Outdoor BBQ cooking with pitmasters, celebrities and personalities sharing techniques and stories.",
+      "display_title": "Meat Church Podcast",
+      "blurb": "Guest-driven show featuring BBQ masters, athletes, and musicians discussing live fire cooking, technique, and food culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1895961561": {
       "topics": [
@@ -205749,7 +205807,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily coverage, analysis and debate of World Cup football with heavyweight guests.",
+      "display_title": "The S Word",
+      "blurb": "Daily soccer analysis and debate on World Cup coverage, featuring big-name guests and hard-hitting takes on the game.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896047177": {
       "topics": [
@@ -205779,7 +205852,22 @@
         "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal stories about relationships, patterns and what love actually means in practice.",
+      "display_title": "the prestonrack show",
+      "blurb": "Stories from real people about relationships, patterns, and discovering what love means beyond social expectations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896086365": {
       "topics": [
@@ -205828,10 +205916,30 @@
     },
     "1896156984": {
       "topics": [
+        "paranormal",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Terrifying Bigfoot encounter stories and eyewitness reports from North America.",
+      "display_title": "THE BIGFOOT PROJECT",
+      "blurb": "True Bigfoot encounter stories from witnesses across North America, told firsthand by those who experienced them.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896205466": {
       "topics": [
@@ -205867,7 +205975,25 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Jewish systems and infrastructure that enabled survival and continuity of Jewish civilization.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896260781": {
       "topics": [
@@ -205878,10 +206004,30 @@
     },
     "1896263244": {
       "topics": [
-        "sports/volleyball"
+        "sports/volleyball",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Youth beach volleyball coaching and development philosophy for athletes and parents.",
+      "display_title": "LOVE Beach Volleyball Club",
+      "blurb": "Coaching philosophy for youth beach volleyball, addressing athlete growth, parental support, and long-term development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896267437": {
       "topics": [
@@ -205895,14 +206041,44 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly New York Islanders coverage, analysis and fan perspective on roster and performance.",
+      "display_title": "Isles Den Podcast",
+      "blurb": "New York Islanders fan coverage featuring weekly analysis, roster moves, and playoff/rebuild discussions from an honest perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896274410": {
       "topics": [
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live readings and close readings of Toni Morrison's prose with writers and scholars.",
+      "display_title": "PASSAGES: On Morrison",
+      "blurb": "Traveling salon featuring writers reading and analyzing Toni Morrison's prose, celebrating her literary achievement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896278521": {
       "topics": [
@@ -205930,10 +206106,30 @@
     },
     "1896283644": {
       "topics": [
-        "aviation"
+        "aviation",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Flight instructors share wisdom on takeoffs, landings, emergencies and flying with passengers.",
+      "display_title": "Airmanship 2.0 by PilotWorkshops",
+      "blurb": "Four renowned flight instructors share practical wisdom on proficiency, emergencies, weather planning, and passenger flying.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896294999": {
       "topics": [
@@ -206200,12 +206396,35 @@
     },
     "1896494832": {
       "topics": [
-        "medicine/biology",
         "science",
-        "nature"
+        "medicine/biology",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form discussions with scientists and technologists on biotechnology breakthroughs.",
+      "display_title": "The New Biology",
+      "blurb": "Long-form interviews with biotechnology researchers on topics from magnet-controlled medicines to virtual cells and AI.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896495556": {
       "topics": [
@@ -206270,10 +206489,30 @@
     },
     "1896560592": {
       "topics": [
-        "sports/basketball"
+        "sports/basketball",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Retrospective on LeBron James' most significant moments through media analysis and guest interviews.",
+      "display_title": "Le Batard & Friends: The Step Back",
+      "blurb": "Retrospective on LeBron James examining defining moments—from draft projections to political activism—through media lenses.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896562835": {
       "topics": [
@@ -206319,10 +206558,30 @@
     },
     "1896574548": {
       "topics": [
+        "sports/endurance",
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Six-day mountain bike stage race with interviews, gear talk and ultra-endurance athlete perspectives.",
+      "display_title": "THE BRECK EPIC PODCAST",
+      "blurb": "Coverage of the Breck Epic mountain bike stage race featuring pro athletes, gear review, and high-altitude race storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896578748": {
       "topics": [
@@ -206418,10 +206677,30 @@
     },
     "1896608226": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astrophysicist and writer explore science accuracy and plausibility in science fiction films.",
+      "display_title": "Unobtainium Podcast",
+      "blurb": "Astrophysicist Dr. Amy Mainzer and writer Adam Sigel examine how science actually works in sci-fi movies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896622829": {
       "topics": [
@@ -206518,14 +206797,54 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language essays on pop culture, relationships, politics and existential themes with humor.",
+      "display_title": "Jean CASI Lo Explica Todo",
+      "blurb": "Spanish-language podcast mixing pop culture, relationships, identity and modern life crises with humor and vulnerability.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896641334": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "personal-journals",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual group conversations between two women on fashion, life, relationships and business.",
+      "display_title": "Nellie Mae Group Chat",
+      "blurb": "Two hosts discuss fashion trends they hate, travel, dating, parenting, and life as entrepreneurs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896648599": {
       "topics": [
@@ -206570,14 +206889,44 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly coverage of majors, ATP and WTA with match analysis, predictions and upsets.",
+      "display_title": "The Tiebreak Pod",
+      "blurb": "Weekly professional tennis coverage including majors, ATP, and WTA with expert analysis and match predictions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896672354": {
       "topics": [
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly coverage of WNBA, women's college basketball and related women's basketball leagues.",
+      "display_title": "The Basketball Exchange",
+      "blurb": "Weekly coverage of WNBA, BIG3, Unrivaled and women's college basketball with news, updates and game recaps.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896675595": {
       "topics": [
@@ -206758,10 +207107,30 @@
     },
     "1896753252": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career guide for aspiring life coaches covering certification, business model and AI opportunities.",
+      "display_title": "The Future Coach",
+      "blurb": "Master coach Kara Loewentheil shares secrets for becoming a successful life coach including certification and business strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896753997": {
       "topics": [
@@ -206976,10 +207345,30 @@
     },
     "1896779934": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror gaming podcast covering video games, board games and indie horror game design.",
+      "display_title": "What We Play In The Shadows",
+      "blurb": "Horror gaming coverage from indie to AAA titles, board games and game design philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896781217": {
       "topics": [
@@ -207146,10 +207535,30 @@
     },
     "1896796752": {
       "topics": [
-        "aviation"
+        "aviation/accidents",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation/accidents",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly aviation history covering milestones, record-breakers and remarkable figures in flight.",
+      "display_title": "Windows of Flight",
+      "blurb": "Aviation history from the Wright brothers to the jet age, featuring first flights, milestones and remarkable pilots.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896797571": {
       "topics": [
@@ -207167,10 +207576,30 @@
     },
     "1896798672": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental training and performance psychology for competitive tennis players.",
+      "display_title": "Straka",
+      "blurb": "AI-narrated essays on mental training, attention, and performance psychology for competitive tennis players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896799022": {
       "topics": [
@@ -207225,7 +207654,26 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running podcast from a beginner and elite runner engaged couple training and racing together.",
+      "display_title": "For Better Or For Worse",
+      "blurb": "A beginner and elite runner engaged couple document training, racing marathons, and their relationship.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896802448": {
       "topics": [
@@ -207409,10 +207857,30 @@
     },
     "1896823596": {
       "topics": [
+        "health",
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Healthcare innovation discussions covering preventive care, chronic conditions and technology in medicine.",
+      "display_title": "Building Better Health",
+      "blurb": "Conversations on healthcare innovation including preventive care, chronic disease, and technology's role in medicine.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896823979": {
       "topics": [
@@ -207567,24 +208035,84 @@
     },
     "1896841104": {
       "topics": [
-        "philosophy"
+        "philosophy/ideas",
+        "society",
+        "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bold conversations on culture, faith, politics, identity, money and personal accountability.",
+      "display_title": "Hard Truth",
+      "blurb": "Thought-provoking conversations on culture, faith, politics, identity and accountability through uncomfortable dialogue.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896841986": {
       "topics": [
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pittsburgh Pirates coverage with game recaps, roster analysis and clubhouse developments.",
+      "display_title": "Pirates Insider Podcast",
+      "blurb": "Daily Pirates baseball analysis including game takeaways, roster moves and clubhouse coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896842166": {
       "topics": [
-        "music"
+        "music",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Extended interviews with country music stars discussing careers, personal lives and behind-the-scenes stories.",
+      "display_title": "Backstage Country Uncut",
+      "blurb": "Country music podcast featuring extended interviews with top artists on career, personal journey and life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896842530": {
       "topics": [
@@ -207711,7 +208239,29 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "food",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Food is medicine movement exploring medically tailored meals and nutrition interventions in healthcare.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896855904": {
       "topics": [
@@ -207777,10 +208327,29 @@
     "1896858924": {
       "topics": [
         "tv-film/history",
-        "history"
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women filmmakers and their achievements in cinema history from silent era to present.",
+      "display_title": "Directora",
+      "blurb": "Podcast celebrating women filmmakers' histories and achievements from pioneering directors to modern studio heads.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896859339": {
       "topics": [
@@ -207912,10 +208481,35 @@
     },
     "1896873090": {
       "topics": [
-        "travel"
+        "travel",
+        "history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scottish history, culture and places blending storytelling with heritage exploration.",
+      "display_title": "This Is Scotland",
+      "blurb": "Scottish history, culture and geography through stories from historian Ally Heather and baker Coinneach MacLeod.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896874918": {
       "topics": [
@@ -207986,10 +208580,30 @@
     },
     "1896876660": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories of people making meaningful impact in Israel including entrepreneurs, educators and community leaders.",
+      "display_title": "The Proctor Effect",
+      "blurb": "Stories of Israelis making meaningful impact—entrepreneurs, educators, leaders—with focus on resilience and vision.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-8e34564d",
+      "classified_at": "2026-08-15T00:10:36.347Z"
     },
     "1896876760": {
       "topics": [
