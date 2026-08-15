@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-14T11:59:04.599Z",
+  "built_at": "2026-08-15T11:42:53.581Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -12899,6 +12899,126 @@
       "appalachia",
       "audio-drama",
       "slavery"
+    ],
+    "being-an-engineer--tony-kelbert-authenticity-engineering-and-the": [
+      "manufacturing",
+      "engineering",
+      "aerospace",
+      "engineers",
+      "supply-chain",
+      "careers",
+      "business",
+      "entrepreneurship"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1616": [
+      "steam-engine",
+      "russia",
+      "history-of-technology",
+      "engineering-history",
+      "invention",
+      "18th-century",
+      "engines",
+      "history-of-science"
+    ],
+    "this-week-in-startups--what-we-ll-learn-from-anthropic": [
+      "startups",
+      "anthropic",
+      "ai",
+      "ipo",
+      "venture-capital",
+      "tech-industry",
+      "ai-labs",
+      "business"
+    ],
+    "planet-money--you-bet-your-life-insurance": [
+      "insurance",
+      "finance",
+      "economics",
+      "markets",
+      "personal-finance",
+      "investing",
+      "banking",
+      "death"
+    ],
+    "the-cinematography-podcast--michael-bauman-on-building-horror-for": [
+      "cinematography",
+      "filmmaking",
+      "lighting",
+      "horror",
+      "photography",
+      "film",
+      "craft",
+      "directing"
+    ],
+    "radiolab--nigel-and-the-real-gannet": [
+      "birds",
+      "new-zealand",
+      "conservation",
+      "ornithology",
+      "wildlife-biology",
+      "nature",
+      "science",
+      "ecology"
+    ],
+    "history-of-wwii-podcast--episode-646-guadalcanal-all-or-nothing": [
+      "guadalcanal",
+      "world-war-2",
+      "pacific-theater",
+      "pacific-war",
+      "military-history",
+      "history",
+      "world-war-ii",
+      "japan"
+    ],
+    "amicus-dahlia-lithwick--becoming-justice-gorsuch-1-man-with": [
+      "supreme-court",
+      "law",
+      "judiciary",
+      "politics",
+      "courts",
+      "history",
+      "crossover",
+      "government"
+    ],
+    "happier-gretchen-rubin--more-happier-take-better-care-of": [
+      "self-care",
+      "happiness",
+      "wellbeing",
+      "self-improvement",
+      "mental-health",
+      "personal-growth",
+      "habits",
+      "mindset"
+    ],
+    "handsome--pretty-little-episode-104": [
+      "comedy",
+      "banter",
+      "funny",
+      "celebrity",
+      "pop-culture",
+      "humor",
+      "casual",
+      "entertainment"
+    ],
+    "kill-tony--kt-behind-the-tape-msg-night": [
+      "kill-tony",
+      "stand-up",
+      "comedy",
+      "live-comedy",
+      "behind-the-scenes",
+      "stand-up-comedy",
+      "comedians",
+      "live-performance"
+    ],
+    "unexplained--unexplained-s09e30-come-hear-what-we": [
+      "paranormal",
+      "mystery",
+      "supernatural",
+      "unexplained",
+      "spirituality",
+      "ghost-stories",
+      "true-stories",
+      "witness"
     ]
   }
 }
