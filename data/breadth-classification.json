@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-15T00:10:36.347Z",
+  "built_at": "2026-08-15T08:11:09.973Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-15-8e34564d",
+    "last_batch_id": "fresh-2026-08-15-23074a0a",
     "last_batch_tier": 1
   },
   "entries": {
@@ -208789,7 +208789,21 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf-focused talk show with athlete interviews and on-course insights.",
+      "display_title": "The Common Club",
+      "blurb": "Golf conversations with athletes exploring the game beyond the course.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896886501": {
       "topics": [
@@ -208890,10 +208904,29 @@
     },
     "1896896670": {
       "topics": [
-        "travel"
+        "travel",
+        "cities/urbanism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "cities/urbanism",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Urban guides showcase local city culture through bike routes and spots.",
+      "display_title": "City Share",
+      "blurb": "Local guides share favorite urban spots and discoveries in cities.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896897095": {
       "topics": [
@@ -209081,10 +209114,29 @@
     },
     "1896902388": {
       "topics": [
-        "comedy/stand-up"
+        "comedy",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Absurdist poetry comedy deconstructing philosophy and pop culture through humor.",
+      "display_title": "Five Year Gap",
+      "blurb": "Poetry meets comedy exploring absurdist themes and spiraling into pop culture.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896902453": {
       "topics": [
@@ -209122,7 +209174,21 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional tennis betting analysis and match prediction guidance for wagering.",
+      "display_title": "Daily Aces Podcast",
+      "blurb": "Expert tennis betting tips and Wimbledon match predictions from analyst.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896906112": {
       "topics": [
@@ -209372,18 +209438,60 @@
     },
     "1896913482": {
       "topics": [
-        "aviation"
+        "education",
+        "aviation",
+        "society/government"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.7
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Civil Air Patrol culture, leadership, youth development, and military-style training.",
+      "display_title": "Civil Air Patrol Unofficial Podcast",
+      "blurb": "Behind-the-scenes Civil Air Patrol cadet life, leadership, and culture.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896913632": {
       "topics": [
         "adventure/exploration",
-        "nature"
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Western mule deer hunting strategies, biology, and fieldcraft from experts.",
+      "display_title": "Monster Muleys Podcast",
+      "blurb": "Mule deer hunting strategies and western game management from hunters.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896913647": {
       "topics": [
@@ -209398,7 +209506,21 @@
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership framework for running productive meetings with clear decisions.",
+      "display_title": "Leading Effective Meetings",
+      "blurb": "Business leadership on effective meetings with clear decisions and follow-through.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896916854": {
       "topics": [
@@ -209462,10 +209584,34 @@
     },
     "1896918330": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "news/commentary",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "American democracy examined through Tocqueville's historical and contemporary lens.",
+      "display_title": "Tocqueville Road Trip",
+      "blurb": "Tocqueville's America explored: how democracy thrives or falters today.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896918404": {
       "topics": [
@@ -209491,10 +209637,29 @@
     },
     "1896921000": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese pop culture, technology, and entertainment trends with weekly analysis.",
+      "display_title": "热点咖喱贡",
+      "blurb": "Weekly Chinese pop culture, tech, and entertainment analysis with commentary.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896921002": {
       "topics": [
@@ -209506,10 +209671,33 @@
     "1896922536": {
       "topics": [
         "space",
-        "science"
+        "science/storytelling",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.9
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Narrative astronomy history exploring comets, meteor showers, and sky observation.",
+      "display_title": "The Garden Astronomer Podcast",
+      "blurb": "Astronomy history and storytelling about comets, meteor showers, night sky.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896923859": {
       "topics": [
@@ -209573,17 +209761,50 @@
     },
     "1896928296": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science education for kids via AI hosts exploring space to body systems.",
+      "display_title": "Science's Not Boring",
+      "blurb": "Science topics for kids aged 4-12, from dinosaurs to neuroscience.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896928338": {
       "topics": [
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Colorado Rockies baseball analysis and trade discussions from former player.",
+      "display_title": "Mile High Territory",
+      "blurb": "Colorado Rockies baseball analysis and trade deadline discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896928941": {
       "topics": [
@@ -209697,10 +209918,29 @@
     },
     "1896934884": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dermatology clinical pearls and evidence-based treatment for medical professionals.",
+      "display_title": "Skin in the Game",
+      "blurb": "High-yield dermatology clinical insights and latest research for clinicians.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896934934": {
       "topics": [
@@ -209764,10 +210004,34 @@
     },
     "1896937494": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "society/law",
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.65
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Animal shelter crisis, welfare advocacy, and systemic rescue failures.",
+      "display_title": "Who Will Let the Dogs Out",
+      "blurb": "Animal shelter crises and welfare advocacy exploring systemic rescue failures.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896937583": {
       "topics": [
@@ -209825,17 +210089,54 @@
     "1896938514": {
       "topics": [
         "news/tech",
-        "computing"
+        "computing",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.95
+        },
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily AI industry news covering model releases, investments, and regulations.",
+      "display_title": "今日AI新闻",
+      "blurb": "Daily AI industry news covering models, funding, and policy development.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896938580": {
       "topics": [
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football strategy, rankings, draft prep, and weekly start-sit analysis.",
+      "display_title": "Bradley Stalder Fantasy Football",
+      "blurb": "Fantasy football strategy, draft rankings, and weekly start-sit analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896938687": {
       "topics": [
@@ -209854,24 +210155,81 @@
     },
     "1896941268": {
       "topics": [
-        "business/management"
+        "business/management",
+        "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "HR, talent management, and culture at leading tech and startup firms.",
+      "display_title": "Below the Surface",
+      "blurb": "HR and talent leadership navigating AI, culture at top companies.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896941754": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "education/self-improvement",
+        "society/government"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "U.S. civics, government structure, and citizenship explained for children.",
+      "display_title": "U.S. Citizenship 101",
+      "blurb": "American civics and government structure for kids learning democracy.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896942546": {
       "topics": [
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cast and crew discuss Nantucket TV series episodes with behind-the-scenes.",
+      "display_title": "The Five Star Weekend Official Podcast",
+      "blurb": "Nantucket TV series with cast and crew interviews episode-by-episode.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "1896943069": {
       "topics": [
@@ -209981,17 +210339,60 @@
     },
     "1896947286": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "education/self-improvement",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book recommendations and reading life advice for busy mothers.",
+      "display_title": "Busy Moms Can Read",
+      "blurb": "Book recommendations and reading advice for busy mothers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "6780952710": {
       "topics": [
-        "fiction/sci-fi"
+        "culture/pop-culture",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Game of Thrones alternate scenarios but prior classified as science fiction.",
+      "display_title": "Three Eyed Theorist",
+      "blurb": "Game of Thrones alternate scenarios exploring character storyline branches.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "6780954889": {
       "topics": [
@@ -210120,10 +210521,29 @@
     },
     "6783128472": {
       "topics": [
+        "kids-family/stories",
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wholesome farm adventures for kids teaching kindness and faith.",
+      "display_title": "On the Farm With Shepherd Sam",
+      "blurb": "Farm adventure stories for kids teaching kindness and faith.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "6783333783": {
       "topics": [
@@ -210261,7 +210681,25 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language learning tips, vocabulary, and conversation practice.",
+      "display_title": "Spanish for Beginners & Beyond",
+      "blurb": "Spanish language learning with vocabulary drills and speaking practice.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "6783602666": {
       "topics": [
@@ -210318,10 +210756,33 @@
     "6783862530": {
       "topics": [
         "music",
-        "history"
+        "history",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio documentary of Jay-Z's Reasonable Doubt album and hip-hop context.",
+      "display_title": "Brooklyn's Finest",
+      "blurb": "Jay-Z's Reasonable Doubt album documentary with artist interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "6783886642": {
       "topics": [
@@ -210361,10 +210822,34 @@
     },
     "6783977316": {
       "topics": [
-        "philosophy"
+        "business/management",
+        "business/careers",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Communication coaching for leaders navigating change and pressure.",
+      "display_title": "Speakership in the Time of Change",
+      "blurb": "Executive communication training for leaders managing change.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "6783977863": {
       "topics": [
@@ -210430,10 +210915,29 @@
     },
     "6784796328": {
       "topics": [
-        "craft"
+        "craft",
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sewing and quilting industry news, equipment trends, and advice.",
+      "display_title": "Sew in the Know",
+      "blurb": "Sewing industry trends, equipment reviews, and practical advice.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "6784802882": {
       "topics": [
@@ -210529,10 +211033,29 @@
     },
     "6785273208": {
       "topics": [
-        "relationships"
+        "relationships",
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dating and relationship advice from feminine-energy perspective.",
+      "display_title": "THE DATING DIVIDE",
+      "blurb": "Dating advice from the feminine-energy perspective for singles.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "6785314414": {
       "topics": [
@@ -210628,10 +211151,34 @@
     },
     "6785647974": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "health/nutrition",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Canine health, nutrition, and longevity through veterinary wellness.",
+      "display_title": "Short Leash Podcast",
+      "blurb": "Dog health, nutrition, and wellness strategies for longevity.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "6785649655": {
       "topics": [
@@ -210687,10 +211234,34 @@
     },
     "6785789040": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "cities/urbanism",
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "cities/urbanism",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Los Angeles-focused news and culture from L.A. Material newsroom.",
+      "display_title": "L.A. World",
+      "blurb": "Los Angeles news, culture, and local issues from newsroom.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "6785862051": {
       "topics": [
@@ -210711,7 +211282,21 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with aviators—pilots, astronauts, captains—on flying passion.",
+      "display_title": "The Aviation Bug",
+      "blurb": "Interviews with pilots, astronauts, and aviation enthusiasts.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "6785949658": {
       "topics": [
@@ -210744,11 +211329,34 @@
     },
     "6786039120": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "education/self-improvement",
+        "psychology",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal development and spiritual awakening through daily meditation.",
+      "display_title": "Waking Up With Ryan",
+      "blurb": "Daily personal development through meditation and spiritual coaching.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "6786040938": {
       "topics": [
@@ -210956,10 +211564,33 @@
     "6786425040": {
       "topics": [
         "fiction/comedy",
+        "culture/books",
         "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Humorous short fiction spanning Mark Twain classics and contemporary.",
+      "display_title": "HumorUs Stories",
+      "blurb": "Classic and original humorous short fiction from Twain to today.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-23074a0a",
+      "classified_at": "2026-08-15T08:11:09.973Z"
     },
     "6786461834": {
       "topics": [
