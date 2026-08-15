@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-15T00:56:32.131Z",
+  "built_at": "2026-08-15T08:55:16.399Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-15-b5a894cc",
+    "last_batch_id": "fresh-2026-08-15-f280b533",
     "last_batch_tier": 1
   },
   "entries": {
@@ -207872,10 +207872,29 @@
     "6786098297": {
       "topics": [
         "tv-film/history",
-        "history"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast analyzing film movements and canonical works that shaped cinema history.",
+      "display_title": "Cinema Field Guide",
+      "blurb": "Analyzes film movements through examination of key works and directors' influence on cinema.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-f280b533",
+      "classified_at": "2026-08-15T08:55:16.399Z"
     },
     "6786131990": {
       "topics": [
