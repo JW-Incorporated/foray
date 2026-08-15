@@ -72510,13 +72510,895 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-15-6f6fadba",
       "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1808684702": {
+      "topics": [
+        "culture/pop-culture",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.92
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity-driven cultural commentary with skeptical lens on media figures and entertainment news.",
+      "display_title": "The Nerve with Maureen Callahan",
+      "blurb": "Maureen Callahan dissects celebrity culture and media with wit, humor, and unflinching skepticism.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1808734718": {
+      "topics": [
+        "aviation",
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        },
+        {
+          "node": "travel",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Flight attendant hosts share inside stories, safety tips, and travel advice from aviation industry perspective.",
+      "display_title": "Two Guys on a Plane",
+      "blurb": "Flight attendant hosts reveal behind-the-scenes aviation stories, safety insights, and travel tips.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1808958290": {
+      "topics": [
+        "automotive",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.93
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual conversations about cars, family vehicles, maintenance, and automotive culture.",
+      "display_title": "The Driveway",
+      "blurb": "Casual hosts discuss cars from every angle—family sedans, camping rigs, performance vehicles, and more.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1809458930": {
+      "topics": [
+        "craft",
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dialogues about materials, natural design practices, and craftsmanship in collaboration with nature.",
+      "display_title": "Unearthing",
+      "blurb": "Conversations between designers and makers about working with natural materials and sustainable craftsmanship.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:36.405Z"
+    },
+    "1809788216": {
+      "topics": [
+        "kids-family/education",
+        "nature/paleontology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.93
+        },
+        {
+          "node": "nature/paleontology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Author Mr. Mike presents dinosaurs through poetry and song for children's bedtime education.",
+      "display_title": "Mr. Mike's Dinosaur Bedtime Stories",
+      "blurb": "Children's author brings prehistoric creatures to life through witty verse and song for bedtime learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1810151258": {
+      "topics": [
+        "espionage",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "espionage",
+          "confidence": 0.88
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Former US Navy intelligence analyst Malcolm Nance discusses geopolitics, espionage history, and security.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1810175174": {
+      "topics": [
+        "computing",
+        "news/tech"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technical deep-dives into Microsoft 365 ecosystem, cloud architecture, productivity, and modern work.",
+      "display_title": "M365.FM",
+      "blurb": "Expert insights on Microsoft 365, cloud computing, data innovation, and modern workplace technology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1810538756": {
+      "topics": [
+        "gaming",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hosts discuss mahjong strategy, accessories, and the social dynamics of game nights.",
+      "display_title": "Mahjong & Mics",
+      "blurb": "Mahjong enthusiasts share strategies, game tips, and stories about the social bonds built at the table.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1811120036": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bob Crawford interviews historians answering listener questions about American history from Revolutionary War onward.",
+      "display_title": "American History Hotline",
+      "blurb": "Historian Bob Crawford fields listener questions about American history with expert guests and anecdotes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1811162294": {
+      "topics": [
+        "sports/fantasy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.94
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football analysis, draft strategies, sleepers, and weekly breakdown for competitive league players.",
+      "display_title": "No Expert Fantasy Football",
+      "blurb": "Fantasy football strategy and rankings, from draft picks to waiver wire moves and season analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1811206832": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dramatic retellings of historical turning points that shaped the modern world.",
+      "display_title": "A Twist of History",
+      "blurb": "Epic historical narratives revealing surprising turning points that redirected the course of history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1811409554": {
+      "topics": [
+        "health/fitness",
+        "culture/fashion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Board-certified dermatologists debunk skincare myths and discuss beauty trends with medical expertise.",
+      "display_title": "Skin Deep MDs",
+      "blurb": "Dermatologists cut through skincare hype and beauty myths with science-backed advice and insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1811679572": {
+      "topics": [
+        "automotive"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Auto repair shop owners explain transmission issues, diagnostics, repair decisions, and shop operations.",
+      "display_title": "Bumper to Bumper Podcast",
+      "blurb": "Auto repair specialists share honest talk about car maintenance, common problems, and avoiding scams.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1811878340": {
+      "topics": [
+        "business/startups",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.88
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Self-made entrepreneur Emma Grede interviews successful founders and business leaders on strategy and mindset.",
+      "display_title": "Aspire with Emma Grede",
+      "blurb": "Founder Emma Grede interviews business leaders and entrepreneurs on building success and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1812147428": {
+      "topics": [
+        "business/careers",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.88
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Skills training covering productivity, mindset shifts, communication, and personal development for professionals.",
+      "display_title": "The Pursuit of Excellence",
+      "blurb": "Actionable strategies for professional growth, covering productivity, communication, leadership, and self-improvement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1812369488": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French podcast featuring elite and sub-elite runners discussing training, racing, and athletic journeys.",
+      "display_title": "Borne podcast",
+      "blurb": "Conversations with elite runners on training methods, race strategy, and the pursuit of performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1812462068": {
+      "topics": [
+        "music",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hip-hop legends Fat Joe and Jadakiss share industry stories, celebrity interviews, and pop culture commentary.",
+      "display_title": "Joe and Jada",
+      "blurb": "Hip-hop legends swap music industry stories, celebrity insights, and commentary on culture and sports.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1812469316": {
+      "topics": [
+        "business",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.88
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Bloomberg journalists discuss business news, economics, corporate culture, and financial trends.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1812733220": {
+      "topics": [
+        "tv-film/reviews",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.92
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two hosts interview internet creators on their online presence, web culture, and digital identity.",
+      "display_title": "URL",
+      "blurb": "Intimate interviews exploring how creators and personalities consume and contribute to online culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1812943160": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host interviews artists and fans about the Alabama band's catalog, particularly lesser-known deep cuts.",
+      "display_title": "Uncharted Alabama",
+      "blurb": "Exploring the Alabama band's catalog beyond radio hits, with artists and fans sharing stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1813320548": {
+      "topics": [
+        "sports/fantasy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.93
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy basketball analysis, draft strategies, mock draft breakdowns, and NBA-related DFS insights.",
+      "display_title": "Stuff It: A Fantasy Basketball Podcast",
+      "blurb": "Daily fantasy basketball analysis with mock drafts, sleepers, and per-team strategy breakdown.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1813418906": {
+      "topics": [
+        "science",
+        "medicine/neuroscience"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "ABA (Applied Behavior Analysis) practitioners discuss clinical work, business, and behavioral science.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1813440122": {
+      "topics": [
+        "tv-film/reviews",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hosts review notoriously bad films and rate them on a scale from misunderstanding to entertaining.",
+      "display_title": "Movies Minus 10",
+      "blurb": "Reviewers examine theatrical disasters, exploring whether bad movies are entertainingly bad or genuinely unwatchable.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1813708934": {
+      "topics": [
+        "sports/cricket"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cricket access platform promoting free streaming service; minimal podcast content—more promotional service ad.",
+      "display_title": "Freehit",
+      "blurb": "Cricket streaming access platform providing free live cricket content across devices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1814419814": {
+      "topics": [
+        "kids-family/parenting",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.92
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert interviews on parenting challenges, gender roles, family dynamics, and becoming better humans.",
+      "display_title": "Be a Happier Parent",
+      "blurb": "Expert conversations on parenting psychology, family dynamics, gender roles, and emotional growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1814632976": {
+      "topics": [
+        "nature/earth-science",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Data-driven permaculture podcast on regenerative farming, soil restoration, water harvesting, and food forests.",
+      "display_title": "Ancient Organics",
+      "blurb": "Practical permaculture strategies for regenerative farming, water harvesting, and building resilient food systems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1814710562": {
+      "topics": [
+        "society/government",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Former and retired Secret Service agents share personal career stories and insider perspectives on agency work.",
+      "display_title": "Outside the Secret Service Podcast",
+      "blurb": "Career retrospectives from former Secret Service agents revealing insider stories and professional experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1814782496": {
+      "topics": [
+        "kids-family/stories",
+        "education/language-learning"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.92
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bilingual English-Spanish adventure stories for kids featuring fox siblings exploring the world.",
+      "display_title": "Bash & Mila",
+      "blurb": "Bilingual adventure stories in English and Spanish following two fox siblings learning through play.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1815060134": {
+      "topics": [
+        "kids-family/education",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.93
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pre-K and kindergarten teacher tips on classroom management, routines, independence, and joyful teaching.",
+      "display_title": "Happy Teaching",
+      "blurb": "Quick teaching strategies for early childhood educators on classroom management, routines, and student engagement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1815585836": {
+      "topics": [
+        "nature/earth-science",
+        "food/cooking-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.88
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Regenerative agriculture experts discuss sustainable farming, soil restoration, and food system revitalization.",
+      "display_title": "Regenerative Renegades",
+      "blurb": "Stories of regenerative farmers restoring soil, revitalizing rural economies, and transforming food systems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1815725870": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.94
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NCAA wrestling analysis, coaching moves, competition results, and athlete interviews from the wrestling community.",
+      "display_title": "The Quad Pod",
+      "blurb": "NCAA wrestling news, analysis, coaching transitions, and interviews with athletes and coaches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1815783920": {
+      "topics": [
+        "fiction/sci-fi",
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Supernatural audio drama fiction featuring kids uncovering mysteries in a town trapped behind a barrier.",
+      "display_title": "Olympus Dale",
+      "blurb": "Supernatural audio drama where misfit kids navigate paranormal mysteries in an isolated town.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1815873524": {
+      "topics": [
+        "tv-film/reviews",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.93
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two lesbians review WLW (women-loving-women) films and discuss queer culture, celebrity crushes, and pop culture.",
+      "display_title": "But I'm a Lesbian",
+      "blurb": "Two hosts review women-centered films and discuss queer culture, pop culture, and LGBTQ media.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1816059116": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis betting and DFS analysis using statistical analysis and sport expertise for tournament previews.",
+      "display_title": "Inside Tennis Podcast",
+      "blurb": "Statistical analysis of professional tennis with previews, betting picks, and tournament predictions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-625d5589",
+      "classified_at": "2026-08-15T16:50:23.585Z"
     }
   },
-  "built_at": "2026-08-15T08:59:21.879Z",
+  "built_at": "2026-08-15T16:50:36.405Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-15-6f6fadba",
+    "last_batch_id": "fresh-2026-08-15-625d5589",
     "last_batch_tier": 1
   }
 }
