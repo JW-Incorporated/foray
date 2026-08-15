@@ -71305,6 +71305,38 @@
       "batch_id": "fresh-2026-08-15-cb7607de",
       "classified_at": "2026-08-15T00:50:39.086Z"
     },
+    "1801077842": {
+      "topics": [
+        "culture/design",
+        "business/careers",
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.88
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.45
+        },
+        {
+          "node": "craft",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interview show on the industrial design profession, hosted by four working women designers.",
+      "display_title": "Beyond Ray",
+      "blurb": "Four Seattle industrial designers talk shop: careers, sustainability, design awards, and the messy realities behind the profession.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
     "1801087946": {
       "topics": [
         "philosophy",
@@ -71422,13 +71454,1069 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-15-cb7607de",
       "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1801867202": {
+      "topics": [
+        "business/founders",
+        "business/startups",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.82
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form interviews with startup founders and venture capitalists about company building.",
+      "display_title": "Uncapped with Jack Altman",
+      "blurb": "Jack Altman interviews founders and venture investors, including DoorDash's Tony Xu and Shopify's Tobi Lutke, about building and backing companies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1801911914": {
+      "topics": [
+        "sports/golf",
+        "culture/design",
+        "architecture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.5
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf course architecture, turfgrass agronomy, and sustainable maintenance, told through expert interviews.",
+      "display_title": "The Greenprint",
+      "blurb": "Interviews with golf course architects and turf experts on course design, construction, agronomy, and sustainable maintenance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1802020562": {
+      "topics": [
+        "kids-family/parenting",
+        "personal-journals",
+        "relationships"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.7
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.6
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two mothers of autistic sons discuss parenting, relationships, and personal growth candidly.",
+      "display_title": "Talk To Me Sis",
+      "blurb": "Two moms who met through Love on the Spectrum talk motherhood, raising autistic sons, relationships, and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1802035466": {
+      "topics": [
+        "tv-film/after-shows",
+        "tv-film"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.93
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Recap show covering each episode of reality dating series Farmer Wants a Wife.",
+      "display_title": "Farmer Wants A Wife Afterparty",
+      "blurb": "Episode-by-episode recaps of Fox's reality dating show Farmer Wants a Wife, plus interviews with the farmers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1802658512": {
+      "topics": [
+        "religion/christianity",
+        "religion",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Solo Christian teaching podcast applying Bible lessons to personal struggles like addiction and forgiveness.",
+      "display_title": "Unlearned Wisdom by Johnny Chang",
+      "blurb": "Weekly gospel-centered lessons from Johnny Chang on prayer, forgiveness, addiction, and applying scripture to everyday life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1802929394": {
+      "topics": [
+        "comedy/casual-hangs",
+        "culture/pop-culture",
+        "sports"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        },
+        {
+          "node": "sports",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three Maher sisters hang out, riffing on sports, internet culture, and family.",
+      "display_title": "House of Maher",
+      "blurb": "Olympic rugby player Ilona Maher and her two sisters chat about sports, viral moments, dating, and family life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1803000536": {
+      "topics": [
+        "fiction",
+        "fiction/sci-fi",
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly audiobook show: Wheaton reads short speculative fiction and interviews the authors.",
+      "display_title": "It's Storytime with Wil Wheaton",
+      "blurb": "Wil Wheaton narrates short science fiction and fantasy stories from magazines like Uncanny and Asimov's, plus interviews with their authors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1803204320": {
+      "topics": [
+        "culture",
+        "nature"
+      ],
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.25
+        },
+        {
+          "node": "nature",
+          "confidence": 0.2
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Single intro episode only; stated topic is therian community tips, signal far too thin.",
+      "display_title": "B34n's Territorium",
+      "blurb": "A new personal podcast from a creator called Beans, described as therian tips and talks; only an introductory episode so far.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1803209456": {
+      "topics": [
+        "economics/markets",
+        "news/daily",
+        "business",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.55
+        },
+        {
+          "node": "news",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Short daily briefings on individual stocks moving in global equity markets.",
+      "display_title": "Stock Movers",
+      "blurb": "Five-minute updates on the day's biggest stock winners and losers, published throughout the trading day across New York, London, and Frankfurt.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1803458846": {
+      "topics": [
+        "sports/golf",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf equipment show answering gear questions and analyzing tour players' club setups.",
+      "display_title": "Gear Smart",
+      "blurb": "Skratch's Ryan Barath answers reader questions on golf clubs, wedge grinds, and equipment, and breaks down tour players' bags.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1804015544": {
+      "topics": [
+        "education/self-improvement",
+        "relationships",
+        "psychology"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.5
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Self-help audio guide on detachment and boundaries; only one episode published so far.",
+      "display_title": "The Let Them Theory",
+      "blurb": "A self-help podcast on emotional detachment and healthier relationships, presented as a guide inspired by the book of the same name.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1804145114": {
+      "topics": [
+        "business/marketing",
+        "business",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.55
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interview show for PR and communications practitioners on pitching, trends, and industry research.",
+      "display_title": "PR Explored",
+      "blurb": "Michelle Garrett interviews public relations and communications professionals about B2B pitching, media relations, industry research, and trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1804175942": {
+      "topics": [
+        "business/non-profit",
+        "society",
+        "news/politics"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with nonprofit and social-impact leaders about advocacy campaigns and the work behind them.",
+      "display_title": "The Negative Space Podcast",
+      "blurb": "Anthem Awards host Patricia McLoughlin interviews nonprofit and advocacy leaders working on climate, gun reform, reproductive rights, and libraries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1804651676": {
+      "topics": [
+        "health/mental",
+        "health",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interview show about quitting alcohol, told through guests' personal sobriety stories.",
+      "display_title": "Drunk-ish - A Sobriety Podcast",
+      "blurb": "Stefanie Wilder-Taylor hosts candid, often funny one-on-one conversations with people about quitting drinking and life in sobriety.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1804701122": {
+      "topics": [
+        "business/management",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interview show on continuous improvement, Lean Six Sigma, and operational systems in businesses.",
+      "display_title": "KPI Fireside: A Continuous Improvement Podcast",
+      "blurb": "Interviews with operations and process-improvement leaders on Lean Six Sigma, operational excellence, KPI management, and strategy execution.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1804708562": {
+      "topics": [
+        "sports/soccer",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.93
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Panel of football writers on Premier League storylines and football governance politics.",
+      "display_title": "Libero",
+      "blurb": "British football journalists discuss the Premier League, transfers, and the politics of FIFA and the game's governing bodies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1804967882": {
+      "topics": [
+        "comedy",
+        "comedy/stand-up",
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.6
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two comedians play vintage stand-up records with guests and react to them.",
+      "display_title": "Off The Records with B-$ and The O'Connman",
+      "blurb": "Brendon Walsh and Sean O'Connor listen to old vinyl stand-up comedy albums with comedian guests, and sometimes to modern specials.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1805203382": {
+      "topics": [
+        "health/mental",
+        "health",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interview show collecting first-person addiction and mental-health recovery stories from a range of guests.",
+      "display_title": "Recoverycast: Mental Health & Addiction Recovery Stories",
+      "blurb": "Guests share personal addiction and mental health recovery stories, covering alcohol, drugs, gambling, and the paths that led to sobriety.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1805652086": {
+      "topics": [
+        "religion/christianity",
+        "religion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Recorded Catholic Sunday homilies from two parish priests on the week's Gospel.",
+      "display_title": "Homilies with Fr. LoCoco & Fr. Danner",
+      "blurb": "Weekly Sunday homilies from the priests of St. John Vianney parish, walking through each week's Gospel reading.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1805933912": {
+      "topics": [
+        "education",
+        "kids-family/parenting",
+        "society/law",
+        "education/how-to"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.65
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.4
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Advocacy show teaching parents to navigate IEPs and special education law and rights.",
+      "display_title": "Special Education Boss® with Karen Mayer Cunningham",
+      "blurb": "Karen Mayer Cunningham coaches parents and educators on special education rights, IEP meetings, and advocating for children with disabilities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1805935328": {
+      "topics": [
+        "religion/christianity",
+        "religion",
+        "society",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.65
+        },
+        {
+          "node": "religion",
+          "confidence": 0.6
+        },
+        {
+          "node": "society",
+          "confidence": 0.35
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.25
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian hosts discuss faith, church culture, parenting, and online life in casual roundtables.",
+      "display_title": "Get Cancelled",
+      "blurb": "Bryan Smith and Kellen Cowan talk about faith, church culture, parenting, and social media in unfiltered conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1806224366": {
+      "topics": [
+        "religion/christianity",
+        "fiction/drama",
+        "religion",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.65
+        },
+        {
+          "node": "religion",
+          "confidence": 0.6
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian audio drama with soul-care teaching; ongoing story plus biblical reflection and prayer.",
+      "display_title": "Promise Hill",
+      "blurb": "A serialized Christian audio drama following Mira, paired with biblical reflection, prayer, and emotional-healing guidance in each episode.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1806689954": {
+      "topics": [
+        "business",
+        "business/management",
+        "nature/earth-science",
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.5
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.4
+        },
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Circular economy and recycling business show; taxonomy lacks a sustainability node, so tagging is approximate.",
+      "display_title": "Change Cycle",
+      "blurb": "Christine Yeager interviews sustainability operators on recycling, composting infrastructure, extended producer responsibility rules, and circular economy business models.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1806709196": {
+      "topics": [
+        "culture/pop-culture",
+        "culture",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.25
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Pop culture and streamer gossip commentary; Apple's Music History genre label is plainly wrong.",
+      "display_title": "Xevi Had a Problem",
+      "blurb": "Content creator Xevi talks celebrity gossip, streamer drama, and internet controversies with a loose, conversational style.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1806745802": {
+      "topics": [
+        "paranormal",
+        "history",
+        "space"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.35
+        },
+        {
+          "node": "space",
+          "confidence": 0.25
+        }
+      ],
+      "needs_review": true,
+      "rationale": "UFO and UAP case retellings from archives; not astronomy despite its Apple genre.",
+      "display_title": "Alien Archive",
+      "blurb": "An AI-produced weekly show retelling documented UFO cases from archival records, including the 2004 Nimitz encounter and the Shag Harbour incident.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1807110548": {
+      "topics": [
+        "fiction/drama",
+        "fiction",
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.88
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scripted slow-burn horror audio drama about a man who survived a time loop.",
+      "display_title": "End of the Loop",
+      "blurb": "A serialized psychological horror drama: Ethan escapes a time loop and returns home carrying what he did to survive.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1807209446": {
+      "topics": [
+        "history",
+        "true-crime",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.25
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Narrative history show on grim and obscure episodes, plus some true-crime cases.",
+      "display_title": "The Morbid History Podcast",
+      "blurb": "Nonfiction stories from the darker corners of history: dangerous toys, Victorian arsenic, Civil War holdouts, and serial killers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1807256528": {
+      "topics": [
+        "religion/hinduism",
+        "religion",
+        "culture/mythology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Telugu religious discourse series on the Vishnu Purana, a Hindu scriptural text.",
+      "display_title": "Vishnu Puranam by Samavedham Shanmukha Sharma Garu",
+      "blurb": "Telugu-language discourses on the Vishnu Puranam, delivered by Samavedham Shanmukha Sharma Garu.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1807316150": {
+      "topics": [
+        "business",
+        "business/startups",
+        "business/founders",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.55
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Solo entrepreneurship coaching on scaling revenue, cashflow, and money mindset.",
+      "display_title": "B.O.S.S. Moves Podcast",
+      "blurb": "Dr. Myron Golden teaches entrepreneurs his business scaling principles, covering cashflow, wealth mindset, sales communication, and common growth mistakes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1807373342": {
+      "topics": [
+        "sports/wrestling",
+        "sports",
+        "tv-film/reviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.25
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two hosts review AEW Dynamite episodes and pay-per-views week by week.",
+      "display_title": "Wrestling Brain",
+      "blurb": "Josh Custodio and Andrew Zuber review every AEW Dynamite episode and pay-per-view, streamed live and posted as a recap.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1807395374": {
+      "topics": [
+        "comedy/casual-hangs",
+        "comedy",
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.82
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Absurdist comedy trio surprising each other with invented segments, plus comedian guests.",
+      "display_title": "The Business Casual Show",
+      "blurb": "Sketch trio Business Casual prepare surprise comedy segments for each other each week, often joined by guest comedians.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1808309546": {
+      "topics": [
+        "culture/fashion",
+        "culture",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two hosts riff on runway collections, beauty trends, and fashion industry happenings.",
+      "display_title": "WTF: We Talk Fashion",
+      "blurb": "Baille and Lindsey talk fashion and beauty: couture week collections, runway trends, styling work, and industry gossip.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
+    },
+    "1808320376": {
+      "topics": [
+        "kids-family/stories",
+        "kids-family",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Original serialized spooky fiction written for kids, with mild scares and adventure.",
+      "display_title": "Spooky Radio",
+      "blurb": "Weekly campfire-style spooky stories for kids, with ghosts, hellhounds, wizards, and a zombie classroom pet.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-6f6fadba",
+      "classified_at": "2026-08-15T08:59:21.879Z"
     }
   },
-  "built_at": "2026-08-15T00:50:39.086Z",
+  "built_at": "2026-08-15T08:59:21.879Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-15-cb7607de",
+    "last_batch_id": "fresh-2026-08-15-6f6fadba",
     "last_batch_tier": 1
   }
 }
