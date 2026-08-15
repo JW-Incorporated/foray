@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-14T16:37:55.766Z",
+  "built_at": "2026-08-15T00:32:30.057Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-14-d0b39236",
+    "last_batch_id": "fresh-2026-08-15-61ab892b",
     "last_batch_tier": 1
   },
   "entries": {
@@ -195224,7 +195224,22 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wellness podcast on fitness, self-care, and life-work balance for women.",
+      "display_title": "Tone It Down",
+      "blurb": "Weekly conversations on fitness, wellness, and personal growth hosted by Tone It Up co-founder Karena Dawn.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1866959232": {
       "topics": [
@@ -195357,7 +195372,22 @@
         "sports/golf"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf podcast exploring the culture, friendships, and meaningful aspects beyond scorecard.",
+      "display_title": "Weekday Golf",
+      "blurb": "Stories about golf, friendship, and what makes the game meaningful beyond the scorecard.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1867354095": {
       "topics": [
@@ -195389,11 +195419,25 @@
     },
     "1867510015": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real estate entrepreneurship show with advice on systems, scaling, and business operations.",
+      "display_title": "Team Lead Talks",
+      "blurb": "Real estate entrepreneur Andrew Becker interviews founders and operators on scaling and business strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1867560342": {
       "topics": [
@@ -195424,14 +195468,44 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family audio drama series about Colorado kids navigating friendship and faith-based adventures.",
+      "display_title": "Welcome to Hope Springs",
+      "blurb": "Family audio drama following Colorado kids through adventures of friendship and faith.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1867645777": {
       "topics": [
         "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast interviewing creators of the 'Movies by Minutes' format that discusses films minute-by-minute.",
+      "display_title": "Oral History of Movies by Minutes",
+      "blurb": "Host interviews creators of the Movies by Minutes podcast subgenre, which breaks films into one-minute episodes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1867669952": {
       "topics": [
@@ -195520,7 +195594,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Applied sport psychology for tennis players focusing on competitive confidence and performance.",
+      "display_title": "Mali Mental Performance",
+      "blurb": "Research-backed sport psychology for tennis players to compete with confidence.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1867978002": {
       "topics": [
@@ -195667,11 +195756,30 @@
     },
     "1868453383": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep rewatch and analysis of My Little Pony: Friendship is Magic, episode by episode.",
+      "display_title": "My Little Pony Chatter",
+      "blurb": "Two fans rewatch and analyze My Little Pony: Friendship is Magic one episode at a time.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1868497361": {
       "topics": [
@@ -195685,7 +195793,22 @@
         "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design and architecture podcast exploring how spaces influence cognition, mood, and wellbeing.",
+      "display_title": "Room to Think",
+      "blurb": "How the spaces we live and work in shape our thinking, creativity, and wellbeing with designers and architects.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1868546178": {
       "topics": [
@@ -195703,11 +195826,25 @@
     },
     "1868588641": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship focused on personal wellness, relationships, and avoiding burnout while building companies.",
+      "display_title": "Optimized Entrepreneur",
+      "blurb": "Advice for business owners balancing entrepreneurship with family, health, and peace of mind.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1868768034": {
       "topics": [
@@ -195754,19 +195891,52 @@
     },
     "1868850349": {
       "topics": [
-        "medicine/biology",
-        "science",
+        "religion/christianity",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Faith-based environmental stewardship and sustainable living practices rooted in Catholic tradition.",
+      "display_title": "The Catholic Guide to Sustainable Living",
+      "blurb": "Catholics exploring sustainable practices and environmental stewardship through faith and action.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1868864533": {
       "topics": [
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sermon series from Rock City church featuring pastoral messages on faith and personal transformation.",
+      "display_title": "Rock City TV",
+      "blurb": "Church sermons and spiritual messages from Rock City, a growing congregation in Alabama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1868870960": {
       "topics": [
@@ -195868,7 +196038,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep-dive analysis and comedy podcast rewatching Gilmore Girls episodes with superfans and newcomers.",
+      "display_title": "Gilmore the Merrier",
+      "blurb": "Gilmore Girls rewatch podcast combining superfan insights with first-time viewer reactions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1869165949": {
       "topics": [
@@ -195899,11 +196084,30 @@
     },
     "1869224773": {
       "topics": [
-        "sports",
+        "sports/baseball",
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "New York sports talk show covering current events, athlete interviews, and baseball news.",
+      "display_title": "The Sal Licata Show",
+      "blurb": "New York sports talk with hosts discussing current events, athletes, and sports news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:30.057Z"
     },
     "1869355456": {
       "topics": [
@@ -196216,7 +196420,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast analyzing desire and sexuality in TV, film, and pop culture through queer lens.",
+      "display_title": "Tonsil Hockey",
+      "blurb": "Comedy podcast analyzing sexuality and desire in TV, film, books, and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1871261648": {
       "topics": [
@@ -196319,7 +196538,22 @@
         "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Local Minnesota journalism show providing deep-dive reporting on politics and current events.",
+      "display_title": "Essential Minnesota",
+      "blurb": "Minnesota Star Tribune reporters dive deep into local politics and important state stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1871931514": {
       "topics": [
@@ -196340,11 +196574,25 @@
     },
     "1872093061": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "nature/earth-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coastal flooding and climate resilience science with focus on sea-level rise and adaptation.",
+      "display_title": "Tidal Flooding Talk",
+      "blurb": "Weekly show on coastal flooding, climate resilience, and adaptation strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1872119768": {
       "topics": [
@@ -196404,7 +196652,22 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-backed parenting advice for understanding child behavior and family dynamics.",
+      "display_title": "The Behavior Blueprint with Mandy Grass",
+      "blurb": "Parenting podcast exploring behavior science and practical strategies for raising children.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1872693174": {
       "topics": [
@@ -196427,7 +196690,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and stories from tennis players sharing frustrations, experiences, and humor.",
+      "display_title": "Comedy on the Court",
+      "blurb": "Tennis players discuss their sport, frustrations, and camaraderie through comedy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1872820529": {
       "topics": [
@@ -196455,7 +196733,22 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Car culture podcast from trans women journalists discussing automotive trends and societal impact.",
+      "display_title": "Tran Girlismo",
+      "blurb": "Car culture and automotive commentary from trans women journalists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1872887092": {
       "topics": [
@@ -196535,7 +196828,22 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tampa Bay Lightning hockey analysis covering tactics, player impact, and team performance.",
+      "display_title": "Backchecking the Bolts",
+      "blurb": "Tampa Bay Lightning analysis covering tactics, player impact, and team news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1873383760": {
       "topics": [
@@ -196574,7 +196882,22 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Flight attendants sharing real stories, industry insights, and advice from life at altitude.",
+      "display_title": "Jumpseat Chronicles Podcast",
+      "blurb": "Flight attendants sharing real stories and insider insights from life in the airline industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1873494833": {
       "topics": [
@@ -196596,15 +196919,44 @@
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly sports trivia for families and kids to learn and compete together.",
+      "display_title": "Family Sports Trivia Podcast",
+      "blurb": "Sports trivia for families and kids to learn and challenge each other.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1873764817": {
       "topics": [
-        "space",
-        "science"
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astrophotography and space science podcast inspiring listeners to observe the night sky.",
+      "display_title": "Flaming Stars",
+      "blurb": "Astrophotography and space science from Chicago and Philadelphia enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1873774482": {
       "topics": [
@@ -196703,7 +197055,22 @@
         "nature/pets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sporting dog training, breeding, and handler culture for hunters and trainers.",
+      "display_title": "Dog Driven Podcast",
+      "blurb": "Conversations on working dog training, breeding, health, and the handler mindset.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1874073659": {
       "topics": [
@@ -196821,10 +197188,30 @@
     },
     "1874573233": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guide to ancient healing, spirituality, and alternative wellness practices and mystical philosophy.",
+      "display_title": "Into The Woo",
+      "blurb": "Conversations on healing modalities, ancestral wisdom, spirituality, and alternative wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1874618050": {
       "topics": [
@@ -196914,7 +197301,22 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Documentary series on Australia's State of Origin rugby league rivalry and its cultural significance.",
+      "display_title": "Origin",
+      "blurb": "Documentary series investigating Australia's legendary State of Origin rugby league rivalry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1874805194": {
       "topics": [
@@ -196936,15 +197338,44 @@
         "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily biblical teaching from trusted pastor on faith, spirituality, and daily Christian living.",
+      "display_title": "The David Jeremiah Podcast",
+      "blurb": "Daily biblical teaching from pastor Dr. David Jeremiah on faith and Christian living.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1874893801": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Swimming and triathlon conversations in Czech; topics on training, nutrition, and athlete stories.",
+      "display_title": "Swimmie(cast)",
+      "blurb": "Swimming and triathlon coaching, training insights, and athlete interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1874921147": {
       "topics": [
@@ -197014,10 +197445,30 @@
     },
     "1875223093": {
       "topics": [
-        "nature"
+        "science",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Thought experiment podcast exploring hypothetical scenarios where essential things suddenly disappear.",
+      "display_title": "Life Without",
+      "blurb": "Roundtable discussions on what would happen if fundamental things like sleep or bees suddenly vanished.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1875364329": {
       "topics": [
@@ -197450,7 +197901,22 @@
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physics and biology intersecting to explore how fundamental laws shape human existence and perception.",
+      "display_title": "Relatively Human",
+      "blurb": "How physics and biology intersect to shape human perception, thinking, and existence.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-61ab892b",
+      "classified_at": "2026-08-15T00:32:17.021Z"
     },
     "1876957696": {
       "topics": [
