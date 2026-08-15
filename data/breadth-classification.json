@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-15T08:11:09.973Z",
+  "built_at": "2026-08-15T16:08:37.454Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-15-23074a0a",
+    "last_batch_id": "fresh-2026-08-15-65fd7bef",
     "last_batch_tier": 1
   },
   "entries": {
@@ -211638,10 +211638,30 @@
     },
     "6786580554": {
       "topics": [
-        "comedy/interviews"
+        "comedy/interviews",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two hosts sharing unfiltered personal stories about LGBTQ+ identity and religious upbringing; conversational, confessional tone.",
+      "display_title": "Confessions Of Mormon Boys",
+      "blurb": "Two best friends share candid, humorous stories about growing up gay in the Mormon church.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-65fd7bef",
+      "classified_at": "2026-08-15T16:08:37.454Z"
     },
     "6786693009": {
       "topics": [
@@ -211750,15 +211770,52 @@
         "aviation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.98
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Detailed flight training instruction covering VFR rules, checkride procedures, aircraft systems, and pilot decision-making.",
+      "display_title": "Traffic Pattern with Pattern",
+      "blurb": "Flight training and checkride prep for student and private pilots covering regulations, procedures, and aircraft systems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-65fd7bef",
+      "classified_at": "2026-08-15T16:08:37.454Z"
     },
     "6787742424": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "health/alternative",
+        "nature"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Shungite mineral; blends purported 'energetic properties' claims with practical applications—positioning unclear between wellness and material science.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-65fd7bef",
+      "classified_at": "2026-08-15T16:08:37.454Z"
     },
     "6787806776": {
       "topics": [
@@ -211955,7 +212012,22 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.96
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coaching-focused discussions of fitness training, nutrition, mindset, and transformation; grounded in practical progress tracking.",
+      "display_title": "FitFuel: Behind the Check-In",
+      "blurb": "Honest conversations about fitness training, nutrition, and mindset with real coaching insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-65fd7bef",
+      "classified_at": "2026-08-15T16:08:37.454Z"
     },
     "6788390326": {
       "topics": [
@@ -212016,10 +212088,30 @@
     },
     "6788785050": {
       "topics": [
+        "music/theory-production",
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.9
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with professional music producers and mixing engineers focused on production craft in rock and metal genres.",
+      "display_title": "The Modern Metal Producer",
+      "blurb": "Interviews with music producers and mixing engineers sharing insights on rock and metal production techniques.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-65fd7bef",
+      "classified_at": "2026-08-15T16:08:37.454Z"
     },
     "6788789221": {
       "topics": [
@@ -212053,10 +212145,30 @@
     },
     "6788876880": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.92
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Behind-the-scenes choreography and creative direction for New Kids on the Block world tours and television performances.",
+      "display_title": "NKOTB & me",
+      "blurb": "Behind-the-scenes accounts of choreographing and creative directing major stage performances for New Kids on the Block.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-65fd7bef",
+      "classified_at": "2026-08-15T16:08:37.454Z"
     },
     "6788885035": {
       "topics": [
@@ -212076,10 +212188,30 @@
     },
     "6788899392": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/after-shows",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.93
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "First-time viewer reaction series; watching Avatar: The Last Airbender episode-by-episode with immediate unfiltered commentary.",
+      "display_title": "28 Years Without Avatar",
+      "blurb": "Reaction series following a first-time viewer watching Avatar: The Last Airbender episode by episode.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-65fd7bef",
+      "classified_at": "2026-08-15T16:08:37.454Z"
     },
     "6788923477": {
       "topics": [
