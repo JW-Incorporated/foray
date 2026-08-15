@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-15T00:32:30.057Z",
+  "built_at": "2026-08-15T08:29:32.213Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-15-61ab892b",
+    "last_batch_id": "fresh-2026-08-15-1cf20c10",
     "last_batch_tier": 1
   },
   "entries": {
@@ -198048,7 +198048,22 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two comedians trading anecdotes and jokes from Mexico in casual, unfiltered conversation.",
+      "display_title": "La Guarida Podcast",
+      "blurb": "Two Mexican comedians share rambling stories, jokes, and personal anecdotes in a casual, irreverent hang.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1877658895": {
       "topics": [
@@ -198098,7 +198113,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Short joke podcast format with punchlines and setups; fits stand-up structure.",
+      "display_title": "LOL Jokes",
+      "blurb": "Daily short-form jokes with setups and punchlines for quick laughs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1877705944": {
       "topics": [
@@ -198207,10 +198237,25 @@
     },
     "1878203047": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two touring comedians calling each other weekly to swap stories and talk shop.",
+      "display_title": "Jolly Brew",
+      "blurb": "Two comedians across the country call weekly to swap stories and discuss their touring lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1878220033": {
       "topics": [
@@ -198273,7 +198318,22 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Romance anime podcast with detailed episode breakdowns and character discussions.",
+      "display_title": "Weeb Belong Together",
+      "blurb": "Hosts dissect romance anime series, analyzing character arcs, confessions, and why communication fails.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1878393358": {
       "topics": [
@@ -198322,10 +198382,30 @@
     },
     "1878708889": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity stylist interviews and behind-scenes fashion work with guests about business and personal growth.",
+      "display_title": "The Inside Edit",
+      "blurb": "Celebrity stylist Maeve Reilly interviews fashion leaders, entrepreneurs, and experts on style and business.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1878732152": {
       "topics": [
@@ -198437,10 +198517,35 @@
     },
     "1879328137": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "paranormal",
+        "nature/earth-science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.65
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.5
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Alternative history and esoteric content with UFOs, ancient wisdom; philosophy-aligned but spans paranormal.",
+      "display_title": "Grimerica Radio",
+      "blurb": "Interviews exploring alternative history, ancient civilizations, UFOs, and fringe science topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1879332485": {
       "topics": [
@@ -198451,17 +198556,52 @@
     },
     "1879333663": {
       "topics": [
-        "tv-film/interviews"
+        "tv-film/interviews",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with filmmakers and artists about movies that shaped them; film-centered conversation.",
+      "display_title": "Test Pattern",
+      "blurb": "Host interviews filmmakers and artists about the movies and films that shaped their lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1879335865": {
       "topics": [
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two hosts with zero script hitting record and riffing; casual, unfiltered comedy hang.",
+      "display_title": "In Other Words...",
+      "blurb": "Two unfiltered hosts riff without script, delivering raw takes and chaotic banter.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1879352777": {
       "topics": [
@@ -198513,7 +198653,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dedicated soccer discussion with celebrities and analysts; deep sports talk show.",
+      "display_title": "The Late Run",
+      "blurb": "Chad Ochocinco and guests discuss soccer with insiders, athletes, and cultural figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1879609706": {
       "topics": [
@@ -198542,7 +198697,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Detailed episode-by-episode rewatch and critique of the TV show Monk.",
+      "display_title": "I Don't Give a Shalhoub",
+      "blurb": "Hosts rewatch and analyze Monk episodes with commentary on characters and plot.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1879816503": {
       "topics": [
@@ -198701,10 +198871,33 @@
     },
     "1880384095": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Marketing strategy focus with segments on SEO, AI search, and brand visibility in discovery.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1880399073": {
       "topics": [
@@ -198744,11 +198937,25 @@
     },
     "1880505637": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental health interview show with celebrities discussing personal struggles and therapy journeys.",
+      "display_title": "Wellness Check with Ashly Burch",
+      "blurb": "Unfiltered interviews with celebrities and creatives about their mental health and therapy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1880534848": {
       "topics": [
@@ -198760,10 +198967,29 @@
     "1880621767": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business strategies, AI tools, and entrepreneurship guidance for startups and side hustles.",
+      "display_title": "The Modern Entrepreneur Show",
+      "blurb": "Practical business strategies, AI tools, and mindset guidance for aspiring founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1880711858": {
       "topics": [
@@ -198873,7 +199099,22 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and analysis on a specific ongoing conflict with geopolitical and market focus.",
+      "display_title": "Epic Fury",
+      "blurb": "Daily news and analysis on geopolitics, military operations, and financial markets.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1881180803": {
       "topics": [
@@ -198891,10 +199132,30 @@
     },
     "1881328537": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video essays and questions probing free will, meaning, consciousness, and personal growth.",
+      "display_title": "Question Everything Podcast",
+      "blurb": "Philosophical questions about free will, consciousness, memory, and the nature of reality.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1881401189": {
       "topics": [
@@ -198940,24 +199201,74 @@
     },
     "1881701203": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unapologetically Jewish and pro-Israel commentary; Judaism and Zionism focused.",
+      "display_title": "Unapologetically Jewish 🇮🇱",
+      "blurb": "Pro-Israel and Zionist perspectives on Jewish identity, antisemitism, and contemporary issues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1881709723": {
       "topics": [
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official unofficial Hannah Montana rewatch podcast with cast and crew sharing memories.",
+      "display_title": "Best of Both Our Worlds",
+      "blurb": "Hannah Montana actors and crew rewatch episodes, sharing behind-the-scenes stories and memories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1881765931": {
       "topics": [
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "PlayStation gaming news, reviews, and nostalgia focused on PS history and current releases.",
+      "display_title": "The PlayStation Effect",
+      "blurb": "Gaming podcast covering PlayStation news, game reviews, and the console's history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1881834567": {
       "topics": [
@@ -199058,7 +199369,22 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motherhood and parenting realities with guests; postpartum, relationships, and identity shifts.",
+      "display_title": "Tell Me I'm a Good Mom",
+      "blurb": "Honest conversations about motherhood, postpartum life, and identity shifts with parent guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1882146616": {
       "topics": [
@@ -199115,7 +199441,22 @@
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hospitality business strategy with hotel leaders discussing operations, sales, and growth.",
+      "display_title": "The Lights On Podcast",
+      "blurb": "Hospitality leaders discuss hotel strategy, operations, and revenue management.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1882393089": {
       "topics": [
@@ -199144,7 +199485,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket news and fixtures digest; no opinions, just game coverage and results.",
+      "display_title": "The Innings Break",
+      "blurb": "Daily cricket news, fixtures, and results from around the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1882515309": {
       "topics": [
@@ -199158,7 +199514,22 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "WWE wrestling coverage with live episodes analyzing matches, promos, and storylines.",
+      "display_title": "Complex Graps",
+      "blurb": "Weekly WWE coverage with hosts and guests breaking down matches, promos, and storylines.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1882523636": {
       "topics": [
@@ -199507,10 +199878,30 @@
     },
     "1884436549": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.8
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Kosher food certification and kashrus challenges; interviews with experts and mashgichim.",
+      "display_title": "Keeping it Kosher",
+      "blurb": "Behind-the-scenes stories of kosher certification, food manufacturing, and kashrus challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1884453149": {
       "topics": [
@@ -199536,12 +199927,33 @@
     },
     "1884704629": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "psychology",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Enneagram personality typing and personal growth; episodes on types and their resource points.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1884735227": {
       "topics": [
@@ -199578,7 +199990,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Essex Cricket-affiliated podcast with player and expert interviews on cricket history and sport.",
+      "display_title": "The Essex Edge",
+      "blurb": "Essex Cricket podcast with interviews and discussions on cricket history and players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1884905741": {
       "topics": [
@@ -199615,7 +200042,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official Women's Professional Baseball League podcast covering games, players, and league.",
+      "display_title": "The WPBL Podcast",
+      "blurb": "Official Women's Professional Baseball League podcast with player interviews and game coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1884997786": {
       "topics": [
@@ -199698,10 +200140,29 @@
     "1885331425": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship, small business ideas, mindset, and success habits for founders.",
+      "display_title": "Business Mission Podcast",
+      "blurb": "Business ideas, entrepreneurship strategies, and success mindset for aspiring founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1885381849": {
       "topics": [
@@ -199772,10 +200233,34 @@
     "1885416577": {
       "topics": [
         "adventure/exploration",
-        "nature"
+        "nature",
+        "religion"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        },
+        {
+          "node": "religion",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Whitetail hunting podcast with tactics, conservation, and faith/purpose conversations.",
+      "display_title": "Revive Outdoors",
+      "blurb": "Hunting education, deer tactics, conservation strategy, and faith-centered outdoor living.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1885437483": {
       "topics": [
@@ -199885,7 +200370,26 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Climate intervention research including stratospheric cooling, geoengineering, and planetary solutions.",
+      "display_title": "Inevitable & Obvious",
+      "blurb": "Researchers discuss climate interventions including stratospheric cooling and geoengineering strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-1cf20c10",
+      "classified_at": "2026-08-15T08:29:32.213Z"
     },
     "1885917003": {
       "topics": [
