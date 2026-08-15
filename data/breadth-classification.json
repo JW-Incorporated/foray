@@ -70412,13 +70412,1023 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-14-1a0a4190",
       "classified_at": "2026-08-14T16:54:54.096Z"
+    },
+    "1796799758": {
+      "topics": [
+        "business/startups",
+        "business",
+        "medicine/biology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biotech CEO interviews on drug development business strategy.",
+      "display_title": "Off-Target Effects with Matt Gline",
+      "blurb": "Biotech leaders discuss drug development, investment strategies, and industry challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1797010898": {
+      "topics": [
+        "sports/football",
+        "sports",
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unfiltered sports commentary covering NFL, NBA, MLB and beyond.",
+      "display_title": "NY's Sports Loud Mouth",
+      "blurb": "Bold unfiltered sports analysis across multiple leagues with insider perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1797408314": {
+      "topics": [
+        "sports/rugby",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby union analysis and player stories from All Blacks and Springboks.",
+      "display_title": "THE AFTERMATCH",
+      "blurb": "Unfiltered rugby stories and analysis from All Blacks and Springboks rivalry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1797475358": {
+      "topics": [
+        "engineering",
+        "science/chemistry",
+        "engineering/energy-grid"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/chemistry",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Process safety and functional safety engineering methods and protocols.",
+      "display_title": "Process Safety Solutions",
+      "blurb": "Safety engineering methods for chemical facilities and process control.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1797623408": {
+      "topics": [
+        "health/mental",
+        "psychology",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Raw conversations on mental health, grief, addiction and life transitions.",
+      "display_title": "Wake Up with Marci",
+      "blurb": "Honest conversations on mental health, healing, addiction recovery and transitions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1797632954": {
+      "topics": [
+        "business/marketing",
+        "business",
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content marketing and brand building for female service-based solopreneurs.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1798238120": {
+      "topics": [
+        "culture/design",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brand designers discuss freelance business reality, pricing and clients.",
+      "display_title": "Sticky Notes with CJ Cawley and Jack Chitty",
+      "blurb": "Designers unpack freelancing realities: niching, pricing, clients and creativity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1798307834": {
+      "topics": [
+        "fiction/sci-fi",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sci-fi audio drama about shadowy company, AI and cosmic conspiracies.",
+      "display_title": "Magnetar: We Own...Your Future",
+      "blurb": "Sci-fi audio drama mixing conspiracy, cosmic phenomena and dark humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1798460240": {
+      "topics": [
+        "news/politics",
+        "news/commentary",
+        "news/daily"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fast political news and commentary covering elections and policy.",
+      "display_title": "10 Minute Drill",
+      "blurb": "Daily political news and analysis in 10-minute segments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1798501652": {
+      "topics": [
+        "news/tech",
+        "computing",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tech industry analysis covering venture capital, founders and trends.",
+      "display_title": "Great Chat",
+      "blurb": "Tech industry commentary on venture capital, startups and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1798623410": {
+      "topics": [
+        "health/fitness",
+        "health",
+        "sports/endurance"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bodybuilding and fitness with supplements and performance optimization.",
+      "display_title": "Evolutionary Bodybuilding Radio",
+      "blurb": "Bodybuilding, fitness and performance optimization with expert analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1798758638": {
+      "topics": [
+        "philosophy",
+        "society",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Feminist analysis of motherhood, family labor and gender inequality.",
+      "display_title": "Liberating Motherhood",
+      "blurb": "Feminist perspectives on motherhood, family labor and social justice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1798788194": {
+      "topics": [
+        "news/commentary",
+        "news/politics",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Iran policy, nuclear program and geopolitical implications analysis.",
+      "display_title": "The Iran Breakdown with Mark Dubowitz",
+      "blurb": "Comprehensive Iran policy analysis covering nuclear programs and geopolitics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1799006786": {
+      "topics": [
+        "science/chemistry",
+        "science",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Accessible chemistry concepts and interesting facts for conversation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1799034638": {
+      "topics": [
+        "health",
+        "medicine",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's health biomarkers, hormones and holistic wellness strategies.",
+      "display_title": "Treated with Dr. Sara Szal",
+      "blurb": "Women's health optimization through biomarker tracking and holistic approaches.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1799170292": {
+      "topics": [
+        "craft",
+        "craft/diy-home"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.55
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "DIY crafting projects; episode descriptions appear corrupted or mismatched.",
+      "display_title": "Craftastic Masters",
+      "blurb": "DIY projects and expert interviews with crafting enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1799231948": {
+      "topics": [
+        "health/fitness",
+        "sports/endurance",
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Performance optimization via peptides, protocols and elite training.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1799445806": {
+      "topics": [
+        "hobbies",
+        "sports/golf",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/golf",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Premium golf courses paired with wine exploration and industry interviews.",
+      "display_title": "Grapes&Greens",
+      "blurb": "Golf course and wine industry interviews exploring luxury leisure.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1799597600": {
+      "topics": [
+        "sports/endurance",
+        "craft/filmmaking",
+        "craft/photography"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running content creators discuss filmmaking, photography and storytelling.",
+      "display_title": "Creators Cooldown",
+      "blurb": "Running content creators discuss filmmaking, photography and storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1799604110": {
+      "topics": [
+        "religion/spirituality",
+        "culture",
+        "philosophy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Indigenous spirituality, sacred community and Earth-based wisdom.",
+      "display_title": "The Holy Wild with Victoria Loorz",
+      "blurb": "Indigenous spirituality, sacred community and Earth-based wisdom.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1799751008": {
+      "topics": [
+        "news/commentary",
+        "news/politics",
+        "news/daily"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conservative political and cultural commentary on daily news.",
+      "display_title": "Scrolling with Hayley",
+      "blurb": "Conservative political and cultural commentary on daily news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1799994176": {
+      "topics": [
+        "medicine",
+        "health",
+        "medicine/neuroscience"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cellular medicine and peptide therapy for health optimization.",
+      "display_title": "Redox Revolution",
+      "blurb": "Cellular medicine and advanced therapies for health optimization.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1799995244": {
+      "topics": [
+        "travel",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Flight deals, airline miles strategy and budget travel tips.",
+      "display_title": "The Thrifty Traveler Podcast",
+      "blurb": "Flight deals, airline miles strategies and budget travel tips.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1800012194": {
+      "topics": [
+        "nature",
+        "adventure/exploration",
+        "nature/pets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bird science, conservation and upland hunting from research experts.",
+      "display_title": "Project Upland Podcast",
+      "blurb": "Bird science, conservation and upland hunting from research experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1800125192": {
+      "topics": [
+        "nature/pets",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Best dogs from news and viral moments with cheerful commentary.",
+      "display_title": "The Dogs Were Good (again)",
+      "blurb": "Weekly celebration of great dogs from news and viral moments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1800171086": {
+      "topics": [
+        "health/sexuality",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adult audio erotica content for sexual wellness and relationships.",
+      "display_title": "Audio Porn 🎧",
+      "blurb": "Adult audio erotica for sexual wellness and relationships.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1800241226": {
+      "topics": [
+        "education/courses",
+        "education",
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nursing exam prep and clinical concepts for student education.",
+      "display_title": "Nexus Nursing",
+      "blurb": "Nursing education covering exams and clinical concepts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1800658994": {
+      "topics": [
+        "business/careers",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real estate business strategies from top-producing agents.",
+      "display_title": "Forward One Podcast",
+      "blurb": "Real estate business strategies from top-producing agents.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1800684854": {
+      "topics": [
+        "sports/soccer",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Sunderland AFC coverage, news and fan analysis.",
+      "display_title": "Haway The Podcast – Sunderland AFC",
+      "blurb": "Daily Sunderland AFC coverage, news and fan analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1801087946": {
+      "topics": [
+        "philosophy",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.95
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Existential philosophy and absurdism explored via psychology.",
+      "display_title": "The Absurd World Podcast",
+      "blurb": "Existential philosophy and absurdism explored with psychological analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1801207070": {
+      "topics": [
+        "tv-film",
+        "culture/pop-culture",
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Behind-the-scenes Big Bang Theory analysis with cast interviews.",
+      "display_title": "The Official Big Bang Theory Podcast",
+      "blurb": "Behind-the-scenes Big Bang Theory analysis with cast interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1801246532": {
+      "topics": [
+        "kids-family/stories",
+        "history",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "History stories for children covering knights, Romans, explorers.",
+      "display_title": "History Storytime - For Kids",
+      "blurb": "Engaging history stories for children covering multiple historical periods.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
+    },
+    "1801493366": {
+      "topics": [
+        "sports/cricket",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Zimbabwe cricket analysis with exclusive player interviews.",
+      "display_title": "The Zimbabwe Cricket Podcast",
+      "blurb": "Zimbabwe cricket analysis with exclusive player interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-cb7607de",
+      "classified_at": "2026-08-15T00:50:39.086Z"
     }
   },
-  "built_at": "2026-08-14T16:54:54.096Z",
+  "built_at": "2026-08-15T00:50:39.086Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-14-1a0a4190",
+    "last_batch_id": "fresh-2026-08-15-cb7607de",
     "last_batch_tier": 1
   }
 }
