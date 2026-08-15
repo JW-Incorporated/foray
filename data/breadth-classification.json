@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-15T00:21:31.919Z",
+  "built_at": "2026-08-15T08:17:54.828Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-15-889cb6b2",
+    "last_batch_id": "fresh-2026-08-15-abbde761",
     "last_batch_tier": 1
   },
   "entries": {
@@ -204265,11 +204265,24 @@
     },
     "1894945779": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Washington Wizards NBA team news and roster analysis.",
+      "display_title": "All Wizards Talk",
+      "blurb": "Washington Wizards news, analysis, and team updates.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1894946662": {
       "topics": [
@@ -204395,10 +204408,24 @@
     },
     "1895180439": {
       "topics": [
-        "kids-family/parenting"
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Family estrangement recovery and relationship rebuilding.",
+      "display_title": "Estranged & Rearranged",
+      "blurb": "Support for estranged parents navigating family rupture and healing.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1895193584": {
       "topics": [
@@ -204455,11 +204482,24 @@
     },
     "1895257857": {
       "topics": [
-        "tv-film/history",
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Retrospective analysis of classic films with production trivia.",
+      "display_title": "¿Qué fue de ellos? En la última fila",
+      "blurb": "Spanish-language film history and trivia from classic movies.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1895275506": {
       "topics": [
@@ -204613,7 +204653,21 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish women discussing identity, culture, and community.",
+      "display_title": "GOLDA Girls",
+      "blurb": "Jewish women's perspectives on culture and modern Jewish life.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1895649600": {
       "topics": [
@@ -204650,7 +204704,21 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Country music artists and legends sharing Nashville stories.",
+      "display_title": "The Nashville Palace Podcast",
+      "blurb": "Country artists and songwriters discussing music and history.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1895766083": {
       "topics": [
@@ -204753,10 +204821,24 @@
     },
     "1895936019": {
       "topics": [
-        "science/physics"
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Dental health and systemic disease connections in Danish.",
+      "display_title": "Det vi tygger på",
+      "blurb": "Oral health research exploring links to systemic disease.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1895953788": {
       "topics": [
@@ -204767,10 +204849,29 @@
     },
     "1895961561": {
       "topics": [
-        "nature"
+        "nature",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biomimicry principles from natural systems for innovation.",
+      "display_title": "The AskNature Podcast",
+      "blurb": "Nature-inspired design solutions for resilience and innovation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1895965966": {
       "topics": [
@@ -204902,14 +205003,42 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "American beef production and carnivore nutrition culture.",
+      "display_title": "Sizzle: The Salty Steak Show",
+      "blurb": "Beef industry, ranching, and carnivore nutrition conversations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896132519": {
       "topics": [
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vedic mantras for spiritual practice and wellness.",
+      "display_title": "NadiVedas Mantras",
+      "blurb": "Ancient Vedic mantras for spiritual practice and meditation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896136820": {
       "topics": [
@@ -204986,10 +205115,29 @@
     },
     "1896260781": {
       "topics": [
-        "true-crime"
+        "history",
+        "espionage"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historic survival and shipwreck narratives from exploration.",
+      "display_title": "What to Carry, What to Burn",
+      "blurb": "Survival stories from Arctic exploration and ocean disasters.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896263244": {
       "topics": [
@@ -205052,18 +205200,45 @@
     },
     "1896294999": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Manchester City football analysis and fan discussion.",
+      "display_title": "The City Social",
+      "blurb": "Manchester City football news and Premier League analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896296247": {
       "topics": [
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Torah perspectives on Israel, faith, and contemporary issues.",
+      "display_title": "Moral Edge",
+      "blurb": "Jewish teachings on Israel, identity, and spiritual life.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896297259": {
       "topics": [
@@ -205097,10 +205272,24 @@
     },
     "1896310431": {
       "topics": [
-        "medicine"
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cardiology, heart disease prevention, and cardiovascular health.",
+      "display_title": "Dr. Pradip Jamnadas, MD",
+      "blurb": "Cardiologist discussing heart health and disease prevention.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896316432": {
       "topics": [
@@ -205111,10 +205300,24 @@
     },
     "1896318297": {
       "topics": [
-        "sports/baseball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional baseball commentary from former MLB players.",
+      "display_title": "Get It Done League",
+      "blurb": "MLB veterans discussing baseball careers and competitive mindset.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896334276": {
       "topics": [
@@ -205296,7 +205499,21 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish prayer practice and spiritual meaning exploration.",
+      "display_title": "Shabbat Unbound",
+      "blurb": "Deep study of Friday night Shabbat prayers and meaning.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896494832": {
       "topics": [
@@ -205355,11 +205572,24 @@
     },
     "1896534309": {
       "topics": [
-        "health/mental",
         "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental health conditions, treatment, and psychological science.",
+      "display_title": "Off the Couch Psychology",
+      "blurb": "Psychology education on mental health conditions and treatment.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896559039": {
       "topics": [
@@ -205472,7 +205702,25 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Heavy metal music artist origins and career trajectories.",
+      "display_title": "Gnarly Origins",
+      "blurb": "Heavy music artists' formative years and early influences.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896594121": {
       "topics": [
@@ -205552,7 +205800,21 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Shabbat wisdom and rest practices for spiritual living.",
+      "display_title": "Rest to Return",
+      "blurb": "Jewish Shabbat practices for spiritual renewal and wellness.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896632003": {
       "topics": [
@@ -205707,18 +205969,55 @@
     },
     "1896683907": {
       "topics": [
-        "science/physics"
+        "science",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Evolution of scientific thought and major breakthroughs.",
+      "display_title": "Rational Thinker",
+      "blurb": "Scientific discovery history from ancient to modern times.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896690567": {
       "topics": [
-        "news",
-        "business"
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial markets trends and investment analysis.",
+      "display_title": "Market Matters",
+      "blurb": "Financial markets analysis and investment perspectives.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896694135": {
       "topics": [
@@ -205766,10 +206065,24 @@
     },
     "1896710127": {
       "topics": [
-        "sports/fantasy"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Advanced dynasty fantasy football strategy and analysis.",
+      "display_title": "The Margins",
+      "blurb": "Dynasty fantasy football strategy and roster construction.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896715654": {
       "topics": [
@@ -205972,17 +206285,45 @@
     },
     "1896769077": {
       "topics": [
-        "health/fitness"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness industry innovation and business leadership.",
+      "display_title": "DISRUPT by Athletech News",
+      "blurb": "Fitness industry leaders discussing innovation and business.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896770019": {
       "topics": [
-        "business/careers"
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tech education and AI tools for beginners.",
+      "display_title": "Tech Simplified",
+      "blurb": "Technology trends and learning resources for beginners.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896770236": {
       "topics": [
@@ -206071,7 +206412,21 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu spiritual teachings and wisdom from sacred texts.",
+      "display_title": "Sai Satcharitra",
+      "blurb": "Sacred teachings and stories of Shirdi Sai Baba.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896784529": {
       "topics": [
@@ -206164,17 +206519,45 @@
     },
     "1896797571": {
       "topics": [
-        "sports/golf"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf culture, courses, and memorable playing experiences.",
+      "display_title": "The Mulligan Man Podcast",
+      "blurb": "Golf stories, courses, and memorable round experiences.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896798525": {
       "topics": [
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hardcore punk history and DIY music culture.",
+      "display_title": "The B9 Podcast",
+      "blurb": "Hardcore and punk music scene stories and artists.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896798672": {
       "topics": [
@@ -206224,17 +206607,50 @@
     },
     "1896803199": {
       "topics": [
-        "true-crime"
+        "espionage",
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "espionage",
+          "confidence": 0.7
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cold War espionage investigation and sports history.",
+      "display_title": "Foul Play",
+      "blurb": "Cold War espionage investigation involving soccer history.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896803283": {
       "topics": [
-        "philosophy"
+        "psychology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intuition, consciousness, and paranormal experiences.",
+      "display_title": "Are You Psychic Too?",
+      "blurb": "Exploration of intuition, psychic experiences, and consciousness.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896803347": {
       "topics": [
@@ -206249,14 +206665,42 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist sutras and spiritual teachings in classical Chinese.",
+      "display_title": "《蕅益大师全集》",
+      "blurb": "Buddhist sutras and classical spiritual teachings in Chinese.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896804777": {
       "topics": [
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic teachings and spiritual wisdom in Arabic.",
+      "display_title": "فضفضة الأحد",
+      "blurb": "Islamic teachings and spiritual guidance in Arabic.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896805652": {
       "topics": [
@@ -206441,10 +206885,24 @@
     },
     "1896829899": {
       "topics": [
-        "gaming"
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming videos and video game entertainment.",
+      "display_title": "SSundee",
+      "blurb": "Gaming videos and comedic reactions to games.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-15-abbde761",
+      "classified_at": "2026-08-15T08:17:54.828Z"
     },
     "1896832456": {
       "topics": [
