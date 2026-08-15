@@ -1,651 +1,315 @@
 {
-  "generated_at": "2026-08-14T08:07:11.353Z",
+  "generated_at": "2026-08-15T07:17:26.675Z",
   "resolved": [
     {
-      "id": "catalyst-shayle-kann--is-now-the-time-for-ders",
-      "show": "Catalyst with Shayle Kann",
-      "title": "Is now the time for DERs to scale?",
-      "apple_collection_id": 1593204897,
-      "apple_track_id": 1000783120693,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/is-now-the-time-for-ders-to-scale/id1593204897?i=1000783120693&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 42,
-      "duration_sec": 2541,
-      "audio_url": "https://traffic.megaphone.fm/PSMI8863526704.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
-      "topics": [
-        "engineering/energy-fusion"
-      ],
-      "explicit": false,
-      "_description": "A decade ago, DERs were hot. The hype was that things like batteries, smart devices, and other distributed energy technologies would offset the need for expanding traditional grid infrastructure. But DERs never took off, at least not at the scale that many hoped for. They had high price tags and short track records compared to the existing substations, transmission lines, and generation options that utilities were familiar with. In short, the market didn’t need them yet. Fast forward 10 years, a"
-    },
-    {
-      "id": "lab-to-market-leadership--why-great-scientists-don-39-t",
-      "show": "Lab to Market Leadership",
-      "title": "Why Great Scientists Don&#39;t Always Build Great Startups with Antti Vasara",
-      "apple_collection_id": 1745548847,
-      "apple_track_id": 1000783130535,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/why-great-scientists-dont-always-build-great-startups/id1745548847?i=1000783130535&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 51,
-      "duration_sec": 3070,
-      "audio_url": "https://www.buzzsprout.com/2317730/episodes/19636751-why-great-scientists-don-t-always-build-great-startups-with-antti-vasara.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 36894841,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/68/db/7d/68db7da0-f9a8-7410-0c4e-31a41960c1b1/mza_7733203469732363336.jpg/600x600bb.jpg",
-      "topics": [
-        "engineering/energy-fusion",
-        "business/startups"
-      ],
-      "explicit": false,
-      "_description": "In this episode of Lab-to-Market Leadership, Chris sits down with Antti Vasara, Vice President, Quantum at PostScriptum, former President and CEO of VTT (Technical Research Centre of Finland), and one of Europe&apos;s most experienced deep tech leaders, to explore what it really takes to transform scientific breakthroughs into successful companies. Drawing on decades of experience leading one of Europe&apos;s largest research and technology organizations, Antti explains why successful founders a"
-    },
-    {
-      "id": "cbc-ideas--bringing-a-farm-and-its-philosophy",
-      "show": "CBC Ideas",
-      "title": "Bringing a farm — and its philosophy — back to life",
-      "apple_collection_id": 151485663,
-      "apple_track_id": 1000740750810,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/bringing-a-farm-and-its-philosophy-back-to-life/id151485663?i=1000740750810&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 54,
-      "duration_sec": 3249,
-      "audio_url": "https://mgln.ai/e/12/cbc.mc.tritondigital.com/CBC_IDEAS_P/media/ideas/ideas-f4Pa0qgi-20251210.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 53994541,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
-      "topics": [
-        "engineering/energy-fusion"
-      ],
-      "explicit": true,
-      "_description": "Growing up with food insecurity, Julian Napoleon yearned to be a farmer. His great-grandparents once farmed on the Saulteau First Nations reserve in northeastern B.C. Over the decades, the farm was replaced by the bush, and the ideas of communal, seasonal living started to fade away. Five years ago, Julian moved to Amisk Farm to bring it back to life. This year the farm has produced food for over 300 Indigenous households, free of cost. IDEAS visits Amisk Farm to learn about rural food security,"
-    },
-    {
-      "id": "stuff-you-should-know--who-was-robert-maxwell-l",
-      "show": "Stuff You Should Know",
-      "title": "Who was Robert Maxwell?l",
-      "apple_collection_id": 278981407,
-      "apple_track_id": 1000783099053,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/who-was-robert-maxwell-l/id278981407?i=1000783099053&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 47,
-      "duration_sec": 2812,
-      "audio_url": "https://podtrac.com/pts/redirect.mp3/pscrb.fm/rss/p/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/a91018a4-ea4f-4130-bf55-ae270180c327/0dc229c1-daad-4b93-a1cc-b4a30105206f/audio.mp3?utm_source=Podcast&in_playlist=44710ecc-10bb-48d1-93c7-ae270180c33e",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 45039369,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
-      "topics": [
-        "science/materials",
-        "history/technology"
-      ],
-      "explicit": false,
-      "_description": "Robert Maxwell was a lot of things, publisher, mogul, spy, politician, crook. But was he murdered when he fell from his yacht? See omnystudio.com/listener for privacy information."
-    },
-    {
-      "id": "business-of-machining--464-mentors",
-      "show": "Business of Machining",
-      "title": "#464 Mentors",
-      "apple_collection_id": 1206942864,
-      "apple_track_id": 1000783244771,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/464-mentors/id1206942864?i=1000783244771&uo=4",
+      "id": "being-an-engineer--tony-kelbert-authenticity-engineering-and-the",
+      "show": "Being an Engineer",
+      "title": "Tony Kelbert | Authenticity, Engineering, and the Business of Manufacturing",
+      "apple_collection_id": 1508222292,
+      "apple_track_id": 1000783290820,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/tony-kelbert-authenticity-engineering-and-the/id1508222292?i=1000783290820&uo=4",
       "release_date": "2026-08-14",
-      "duration_min": 49,
-      "duration_sec": 2933,
-      "audio_url": "https://redirect.zencastr.com/r/episode/6a7cbc7ac7bf4c5d238d0d53/size/70406828/audio-files/5a0594ba6ebaa2000f1ebe78/46bee60c-c065-487a-b411-9a7915bda61f.mp3",
+      "duration_min": 72,
+      "duration_sec": 4314,
+      "audio_url": "https://www.buzzsprout.com/995575/episodes/19636492-tony-kelbert-authenticity-engineering-and-the-business-of-manufacturing.mp3",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 70406828,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/77/a4/bc/77a4bc8a-76f6-e612-da13-050262cbdbae/mza_5516773433192487976.jpg/600x600bb.jpg",
+      "audio_bytes": 51796692,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/precision-mfg"
+        "engineering/precision-mfg",
+        "craft/diy-home"
       ],
       "explicit": false,
-      "_description": "Topics: Hiring Mentors Isotunes hearing protection Costing and process planning"
+      "_description": "Send us Fan Mail Tony Kelbert is a mechanical engineer, manufacturing strategist, and Chief Burrito Officer at AeroGrowth, an organization focused on helping precision manufacturers pursue and win the right aerospace and defense work. Drawing on experience from both the OEM and supplier sides of the industry, Tony helps manufacturers better understand positioning, quoting, customer relationships, and the realities of selling into complex aerospace supply chains. Tony began his engineering career"
     },
     {
-      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1615",
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1616",
       "show": "Engines of Our Ingenuity",
-      "title": "The Engines of Our Ingenuity 1615: Learning to Use Coal",
+      "title": "The Engines of Our Ingenuity 1616: Ivan Polzunov",
       "apple_collection_id": 121493645,
-      "apple_track_id": 1000783253838,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1615-learning-to-use-coal/id121493645?i=1000783253838&uo=4",
-      "release_date": "2026-08-14",
+      "apple_track_id": 1000783407929,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1616-ivan-polzunov/id121493645?i=1000783407929&uo=4",
+      "release_date": "2026-08-15",
       "duration_min": 4,
-      "duration_sec": 227,
-      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260814.mp3?srcid=apple-podcasts",
+      "duration_sec": 226,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260815.mp3?srcid=apple-podcasts",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 1816526,
+      "audio_bytes": 1810884,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
       "topics": [
         "history/technology"
       ],
       "explicit": false,
-      "_description": "Episode: 1615 On learning to use coal. Today, we learn why we shouldn't bring coals to Newcastle."
+      "_description": "Episode: 1616 Ivan Polzunov and early Russian steam engines. Today, the steam engine comes to Russia."
     },
     {
-      "id": "just-fly-performance-podcast--528-dan-back-on-the-natural",
-      "show": "Just Fly Performance Podcast",
-      "title": "528: Dan Back on The Natural Foundations of Speed and Athleticism",
-      "apple_collection_id": 1121047188,
-      "apple_track_id": 1000783133150,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/528-dan-back-on-the-natural-foundations-of/id1121047188?i=1000783133150&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 79,
-      "duration_sec": 4737,
-      "audio_url": "https://media.blubrry.com/justflyperformancepodcast/content.blubrry.com/justflyperformancepodcast/528_Dan_Back.mp3",
+      "id": "this-week-in-startups--what-we-ll-learn-from-anthropic",
+      "show": "This Week in Startups",
+      "title": "What we'll learn from Anthropic's $2-$3T IPO | E2325",
+      "apple_collection_id": 315114957,
+      "apple_track_id": 1000783387312,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/what-well-learn-from-anthropics-%242-%243t-ipo-e2325/id315114957?i=1000783387312&uo=4",
+      "release_date": "2026-08-15",
+      "duration_min": 80,
+      "duration_sec": 4816,
+      "audio_url": "https://pscrb.fm/rss/p/traffic.libsyn.com/secure/4a885955-6823-4b22-a3e1-a526c25516a5/EP_2325_AUDIO.mp3?dest-id=5500155",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 75804426,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/bf/31/2a/bf312a79-6f03-6b36-101c-b39a3624ae7b/mza_17594812248167925708.jpeg/600x600bb.jpg",
+      "audio_bytes": 118590187,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/bf/ce/23/bfce2354-2548-00f0-d795-a34404946a6b/mza_10222213905677371023.jpg/600x600bb.jpg",
       "topics": [
-        "sports/biomechanics"
+        "business/startups"
       ],
       "explicit": false,
-      "_description": "In this episode, Daniel Back gets into the role of variety, play, and subconscious learning in developing speed and athleticism. He discusses resisted sprinting, why he avoids over-coaching acceleration mechanics, lessons from the dunk community, and the value of broad movement experience. Dan also explores extensive tempo, longer sprints, training volume, and why specialization and constant measurement can sometimes limit long-term athletic development. Today’s episode is brought to you by Hamm"
+      "_description": "This Week In Startups is made possible by: PayPal Open https://paypalopen.com CLA https://claconnect.com/withyou Odoo https://Odoo.com/twist Today's show: *Anthropic is likely headed for the largest IPO in history. A reported 2-3 trillion October debut would blow past SpaceX's recent record. Jason breaks down why the. numbers matter less than what they'll reveal about the entire AI economy. Then, chats with a pair of founders: one who's selling subscription water filtration systems that will kee"
     },
     {
-      "id": "99-percent-invisible--100-objects-13-the-sand-letters",
-      "show": "99% Invisible",
-      "title": "100 Objects #13: The Sand Letters",
-      "apple_collection_id": 394775318,
-      "apple_track_id": 1000783263197,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/100-objects-13-the-sand-letters/id394775318?i=1000783263197&uo=4",
+      "id": "bad-friends--new-episode-on-patreon-today",
+      "show": "Bad Friends",
+      "title": "New Episode on Patreon Today",
+      "apple_collection_id": 1496265971,
+      "apple_track_id": 1000783340665,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/new-episode-on-patreon-today/id1496265971?i=1000783340665&uo=4",
       "release_date": "2026-08-14",
-      "duration_min": 49,
-      "duration_sec": 2920,
-      "audio_url": "https://mgln.ai/e/2/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/3bb687b0-04af-4257-90f1-39eef4e631b6/episodes/cd2d774c-2500-42df-b68b-d97db82d622e/audio/128/default.mp3?aid=rss_feed&awCollectionId=3bb687b0-04af-4257-90f1-39eef4e631b6&awEpisodeId=cd2d774c-2500-42df-b68b-d97db82d622e&feed=BqbsxVfO",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 48463334,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
-      "topics": [
-        "architecture/infrastructure"
-      ],
-      "explicit": false,
-      "_description": "This episode is sponsored by Claude. For problems worth solving, get started with Claude at Claude.ai . On his deathbed, President Chester Arthur ordered that all of his personal and professional papers be burned. Three barrels of documents went up in flames. But 23 letters survived, initialed only \"J.I.S.\" Comedian Elliott Kalan joins Roman Mars to tell the story of how a politician who owed so much to a corrupt government system became the one to dismantle it, thanks to one woman: Julia Isabel"
-    },
-    {
-      "id": "the-worlds-best-construction-podcast--why-new-york-just-built-a",
-      "show": "The World's Best Construction Podcast",
-      "title": "Why New York Just Built a 1930s Skyscraper - #201",
-      "apple_collection_id": 1635354647,
-      "apple_track_id": 1000783127195,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/why-new-york-just-built-a-1930s-skyscraper-201/id1635354647?i=1000783127195&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 38,
-      "duration_sec": 2270,
-      "audio_url": "https://sphinx.acast.com/p/open/s/62b4512727ff1c00137a1caf/e/6a7c98ea91cf66ecf89efb1b/media.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 45411403,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/d1/8d/15/d18d15c0-ce12-312d-fdae-6d58179572d3/mza_17731699531660745375.jpeg/600x600bb.jpg",
-      "topics": [
-        "architecture/infrastructure"
-      ],
-      "explicit": false,
-      "_description": "This week, we're digging into some recent construction news stories, including: Why New York Just Built a 1930s Skyscraper Beijing’s new Z8 Tower to start construction Shenzhen’s natural history museum completes This episode is sponsored by Trimble. Learn more about Trimble’s ProjectSight 360 Capture here 👉 https://bit.ly/3PAlIxi We end the show with an email from an anonymous sender. Get in touch! Podcast@TheB1M.com www.TheB1M.com Hosted on Acast. See acast.com/privacy for more information."
-    },
-    {
-      "id": "off-nominal--252-paying-now-and-later-with",
-      "show": "Off-Nominal",
-      "title": "252 - Paying Now and Later (with Eric Berger and Joe Barnard)",
-      "apple_collection_id": 1294131221,
-      "apple_track_id": 1000783196826,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/252-paying-now-and-later-with-eric-berger-and-joe-barnard/id1294131221?i=1000783196826&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 64,
-      "duration_sec": 3823,
-      "audio_url": "https://cdn.simplecast.com/media/audio/transcoded/5f3c0a1f-fe19-41e7-9748-2f7820d3bec6/0dabfb01-42a8-4e13-a744-c84d1aa5e518/episodes/audio/group/e562b381-9275-40e3-8563-b1ae28501f0d/group-item/2dd01d66-2c6b-480f-92c0-84a8016544ee/128_default_tc.mp3?aid=rss_feed&feed=iyz_ESAp",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 61172725,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/8a/3a/c3/8a3ac39d-9739-d1bd-0699-25d89bd74531/mza_6548671454048201085.jpg/600x600bb.jpg",
-      "topics": [
-        "space/rockets"
-      ],
-      "explicit": true,
-      "_description": "Anthony is joined by Eric Berger, Senior Space Editor at Ars Technica, and Joe Barnard to talk about crewed spaceflight in the 2030s, what options exist if and when Dragon stops flying, and what we should do about it. Topics Off-Nominal - YouTube Episode 252 - Paying Now and Later (with Eric Berger and Joe Barnard) - YouTube A \"disaster waiting to happen\"? Industry officials worry about Crew Dragon availability. - Ars Technica Actually, Starliner might fly into space this year - Ars Technica Spa"
-    },
-    {
-      "id": "software-engineering-daily--rebuilding-the-cloud-for-ai-agent",
-      "show": "Software Engineering Daily",
-      "title": "Rebuilding the Cloud for AI Agent Code",
-      "apple_collection_id": 1019576853,
-      "apple_track_id": 1000783097316,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/rebuilding-the-cloud-for-ai-agent-code/id1019576853?i=1000783097316&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 50,
-      "duration_sec": 2997,
-      "audio_url": "https://media.transistor.fm/1b7d1025/1dc73aaa.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 47957371,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
-      "topics": [
-        "computing/history"
-      ],
-      "explicit": false,
-      "_description": "For two decades, the cloud has been shaped by human developers writing code and managing its deployment. Now a growing share of production code is generated by LLMs with little human review. Because that code is not fully trusted, it increasingly runs in isolated, sandboxed environments. Meanwhile, AI agents are starting to operate infrastructure directly, by spinning services up and tearing them down on their own. Together these shifts raise the question of whether the cloud needs to be rebuilt"
-    },
-    {
-      "id": "the-race-f1-podcast--are-these-f1-conspiracy-theories-actually",
-      "show": "The Race F1 Podcast",
-      "title": "Are these F1 conspiracy theories actually true? - The Undercut with Damon Hill and Mark Hughes",
-      "apple_collection_id": 1495557562,
-      "apple_track_id": 1000783168186,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/are-these-f1-conspiracy-theories-actually-true-the/id1495557562?i=1000783168186&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 63,
-      "duration_sec": 3775,
-      "audio_url": "https://sphinx.acast.com/p/open/s/6819ae2bf30c20bff775e8a1/e/6a71ab126af4dfc918649545/media.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 90623379,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/40/7b/8c/407b8cbe-cd34-d818-ff69-a11bc1d6c690/mza_9877600709441097500.jpeg/600x600bb.jpg",
-      "topics": [
-        "automotive/racing"
-      ],
-      "explicit": false,
-      "_description": "There's been plenty of extraordinary conspiracy theories throughout Formula 1 history - but are some of them actually true? Mark Hughes and 1996 world champion Damon Hill dissect some of the most interesting F1 conspiracies in the latest episode of The Undercut. Get bonus F1 podcasts, extra content and ad-free listening, sign-up to The Race Members' Club on Patreon today . Hosted on Acast. See acast.com/privacy for more information."
-    },
-    {
-      "id": "camera-shake-photography-podcast--ai-changed-photography-are-photographers-still",
-      "show": "Camera Shake Photography Podcast",
-      "title": "AI Changed Photography. Are Photographers Still Needed? With Micah Burke - Episode 322",
-      "apple_collection_id": 1514179611,
-      "apple_track_id": 1000783142800,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/ai-changed-photography-are-photographers-still-needed/id1514179611?i=1000783142800&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 106,
-      "duration_sec": 6351,
-      "audio_url": "https://sphinx.acast.com/p/open/s/695fd32b1f7886a9b862d89e/e/6a7c829951319a521d9bf899/media.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 206940761,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/7c/5e/51/7c5e519b-7f7a-2a58-ca12-f3aa88d921f7/mza_13857594628227726337.jpg/600x600bb.jpg",
-      "topics": [
-        "craft/photography"
-      ],
-      "explicit": false,
-      "_description": "AI changed photography. Are photographers still needed—or does the human behind the camera matter more than ever? In this episode of Camera Shake, Kersten Luts welcomes back director, photographer and digital imaging specialist Micah Burke to take an honest look at the state of AI in photography. Four years after their first conversation, generative AI has moved from novelty to production tool, reshaping photo editing, retouching, compositing, graphic design and AI video. Micah shares workflows "
-    },
-    {
-      "id": "science-vs--we-solve-the-49ers-viral-conspiracy",
-      "show": "Science Vs",
-      "title": "We Solve the 49ers Viral Conspiracy Theory",
-      "apple_collection_id": 1051557000,
-      "apple_track_id": 1000783146576,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/we-solve-the-49ers-viral-conspiracy-theory/id1051557000?i=1000783146576&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 61,
-      "duration_sec": 3675,
-      "audio_url": "https://chrt.fm/track/15E3G4/traffic.megaphone.fm/GLT4103334081.mp3",
+      "duration_min": 5,
+      "duration_sec": 291,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/pfx.vpixl.com/u8u9X/mgln.ai/e/1118/arttrk.com/p/YMH00/clrtpod.com/m/traffic.megaphone.fm/YMH9273726576.mp3",
       "audio_type": "audio/mpeg",
       "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/62/15/18/621518e5-8eb3-392b-25a7-e7444aab86b6/mza_815589518502039493.jpg/600x600bb.jpg",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b0/26/c8/b026c805-1a24-55ea-cff3-d0329d2338ce/mza_11376115143280052758.jpeg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "explicit": true,
+      "_description": "For more exclusive content and ad-free early episodes go to https://www.patreon.com/c/badfriends Learn more about your ad choices. Visit megaphone.fm/adchoices"
+    },
+    {
+      "id": "planet-money--you-bet-your-life-insurance",
+      "show": "Planet Money",
+      "title": "You bet your life insurance",
+      "apple_collection_id": 290783428,
+      "apple_track_id": 1000783364262,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/you-bet-your-life-insurance/id290783428?i=1000783364262&uo=4",
+      "release_date": "2026-08-14",
+      "duration_min": 39,
+      "duration_sec": 2323,
+      "audio_url": "https://tracking.swap.fm/track/XvDEoI11TR00olTUO8US/prfx.byspotify.com/e/play.podtrac.com/npr-510289/npr.simplecastaudio.com/43b5acee-463e-4612-95ad-d2596d9dd337/episodes/e643843c-4f2c-43dc-89fc-64f70e7ff656/audio/128/default.mp3?awCollectionId=43b5acee-463e-4612-95ad-d2596d9dd337&awEpisodeId=e643843c-4f2c-43dc-89fc-64f70e7ff656&feed=hvWWWzRv&t=podcast&e=nx-s1-5885879&p=510289&d=2323&size=37172958",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 37172958,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/85/df/53/85df5334-0fae-28a9-2bc4-b97b81061d0e/mza_10839245066228881011.jpg/600x600bb.jpg",
+      "topics": [
+        "economics/markets"
+      ],
+      "explicit": false,
+      "_description": "Some of the biggest firms on Wall Street are, at this very moment, waiting for thousands of strangers to die to reap their returns. Because there’s a market for life insurance policies. And it’s legal. You don’t have to actually die to get some of your life insurance money. Thanks to a secondary market for life insurance policies, you might be able to claw back money from beyond the grave. You just sell your policy to an investor. So when you die, the payout goes to them, instead of your family "
+    },
+    {
+      "id": "freakonomics-radio--the-case-of-the-4-million",
+      "show": "Freakonomics Radio",
+      "title": "The Case of the $4 Million Gold Coffin (Update)",
+      "apple_collection_id": 354668519,
+      "apple_track_id": 1000783191891,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-case-of-the-%244-million-gold-coffin-update/id354668519?i=1000783191891&uo=4",
+      "release_date": "2026-08-14",
+      "duration_min": 54,
+      "duration_sec": 3250,
+      "audio_url": "https://mgln.ai/e/2/pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/2be48404-a43c-4fa8-a32c-760a3216272e/episodes/c2c4eb51-e7bc-4cc0-87b6-5c2a2d7339b5/audio/128/default.mp3?aid=rss_feed&awCollectionId=2be48404-a43c-4fa8-a32c-760a3216272e&awEpisodeId=c2c4eb51-e7bc-4cc0-87b6-5c2a2d7339b5&feed=Y8lFbOT4",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 52009001,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
+      "topics": [
+        "economics/markets"
+      ],
+      "explicit": false,
+      "_description": "How did a freshly looted Egyptian antiquity end up in the Metropolitan Museum of Art? Why did it take Kim Kardashian to crack the case? And how much of what you see in any museum is stolen? (Part 1 of “ Stealing Art Is Easy. Giving It Back Is Hard ,” first published in 2023.) SOURCES: Andrea Bayer , deputy director of collections and administration at the Metropolitan Museum of Art. Matthew Bogdanos , assistant district attorney in the Manhattan District Attorney's Office and chief of the Antiqu"
+    },
+    {
+      "id": "the-cinematography-podcast--michael-bauman-on-building-horror-for",
+      "show": "The Cinematography Podcast",
+      "title": "Michael Bauman on building horror for Monster: The Ed Gein Story",
+      "apple_collection_id": 812436884,
+      "apple_track_id": 1000783364134,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/michael-bauman-on-building-horror-for-monster-the-ed/id812436884?i=1000783364134&uo=4",
+      "release_date": "2026-08-14",
+      "duration_min": 71,
+      "duration_sec": 4272,
+      "audio_url": "https://media.blubrry.com/cine/content.blubrry.com/cine/Michael_Bauman_ep_369.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 5242880,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/48/06/54/48065404-97a9-b8be-c4ac-cca360291f66/mza_13428131324207435940.jpg/600x600bb.jpg",
+      "topics": [
+        "craft/photography",
+        "craft/filmmaking"
+      ],
+      "explicit": true,
+      "_description": "DP Michael Bauman, ASC on shooting Monster: The Ed Gein Story, building a visual language with period lenses, and lighting with just reflectors and flashlights. Podcast highlights include: -How Michael built a distinct visual language for each era with lensing shifting from period to period. Color and texture gave the digital image a weathered, film-period feel. -Lighting the Emmy-nominated Episode 6 sequence almost entirely with reflected and practical light. Rather than lighting the set conven"
+    },
+    {
+      "id": "radiolab--nigel-and-the-real-gannet",
+      "show": "Radiolab",
+      "title": "Nigel and the Real Gannet",
+      "apple_collection_id": 152249110,
+      "apple_track_id": 1000783322179,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/nigel-and-the-real-gannet/id152249110?i=1000783322179&uo=4",
+      "release_date": "2026-08-14",
+      "duration_min": 26,
+      "duration_sec": 1554,
+      "audio_url": "https://pscrb.fm/rss/p/mgln.ai/e/14/prfx.byspotify.com/e/dts.podtrac.com/pts/redirect.mp3/waaa.wnyc.org/758af4c0-a2c3-47ec-a2d8-05f41bfbde51/episodes/0ccc6b22-d811-4685-bc09-7d2b45e3127d/audio/128/default.mp3?aid=rss_feed&awCollectionId=758af4c0-a2c3-47ec-a2d8-05f41bfbde51&awEpisodeId=0ccc6b22-d811-4685-bc09-7d2b45e3127d&feed=EmVW7VGp",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 24874188,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/2b/b2/4d/2bb24d28-f3bb-916f-6bf3-9e125ba5219b/mza_4476298389845914795.jpg/600x600bb.jpg",
       "topics": [
         "science/storytelling"
       ],
-      "explicit": true,
-      "_description": "Is an electrical substation contributing to injuries on the San Francisco 49ers?? A bunch of people on the internet seem to think so, claiming that electromagnetic field waves could be to blame for players getting hurt. We partner with the Pulitzer Prize-winning journalists at Pablo Torre Finds Out to get to the bottom of it. We talk to Peter Cowan, Dr. Ken Karipidis, and Dr. Zachary Binney. Find our transcript here: https://tinyurl.com/SVPTFO49ERSEMF This episode was produced by Rose Rimler, We"
-    },
-    {
-      "id": "masters-of-scale--know-which-rules-to-break-with",
-      "show": "Masters of Scale",
-      "title": "Know which rules to break, with MTV co-founder Tom Freston",
-      "apple_collection_id": 1227971746,
-      "apple_track_id": 1000783096337,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/know-which-rules-to-break-with-mtv-co-founder-tom-freston/id1227971746?i=1000783096337&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 32,
-      "duration_sec": 1895,
-      "audio_url": "https://dts.podtrac.com/redirect.mp3/prfx.byspotify.com/e/pscrb.fm/rss/p/tracking.swap.fm/track/7G0M4p2bOLP0mP50O3CD/rss.art19.com/episodes/a6ece8eb-40b3-47f5-92df-b98efa5a71d8.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 30326700,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/13/4b/81/134b8173-d713-cbb2-2d3b-4a8692bd87c0/mza_996010941061703843.jpeg/600x600bb.jpg",
-      "topics": [
-        "business/founders"
-      ],
       "explicit": false,
-      "_description": "Tom Freston is a cofounder of MTV and former CEO of Viacom. He joined host Jeff Berman to dig into the wild stories and meaningful lessons from his life as an unconventional corporate leader. Freston reveals how MTV’s audience-first mentality and “subway car” approach to hiring helped the network scale into a cultural icon.&nbsp; Tom’s memoir is Unplugged: https://www.simonandschuster.com/books/Unplugged/Tom-Freston/9781668089798 See Privacy Policy at https://art19.com/privacy and California Pri"
+      "_description": "In 2016, Chris Bell, a ranger with New Zealand’s Department of Conservation, was the sole human inhabitant of a small island off the west coast of the country, called Mana Island. He was there to take care of the island’s fragile and recovering ecosystem, including a colony of Australasian Gannets at the top of a high cliff overlooking the sea. But there was one catch. All but one of these striking seabirds were fake, made of concrete and paint. This week on Radiolab, producer Annie McEwen tells"
     },
     {
-      "id": "craft-beer-and-brewing-magazine-podcast--498-andrew-sabatine-of-around-the",
-      "show": "Craft Beer & Brewing Magazine Podcast",
-      "title": "498: Andrew Sabatine of Around The Horn Builds Classic Through Lines to Anchor Modern Lagers and West Coast IPA",
-      "apple_collection_id": 1296082082,
-      "apple_track_id": 1000783264086,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/andrew-sabatine-of-around-the-horn-builds/id1296082082?i=1000783264086&uo=4",
+      "id": "history-of-wwii-podcast--episode-646-guadalcanal-all-or-nothing",
+      "show": "The History of WWII Podcast",
+      "title": "Episode 646-Guadalcanal: All Or Nothing",
+      "apple_collection_id": 493253759,
+      "apple_track_id": 1000783306807,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-646-guadalcanal-all-or-nothing/id493253759?i=1000783306807&uo=4",
       "release_date": "2026-08-14",
-      "duration_min": 75,
-      "duration_sec": 4504,
-      "audio_url": "https://aphid.fireside.fm/d/1437767933/3ff4634a-6f34-4a3c-b3b1-03cc9ec7aa16/2dfa0641-f236-4202-9411-9258e39b97e7.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 90635207,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b6/db/11/b6db1143-1196-629d-97cc-f028ceda4084/mza_14037476996481271738.jpg/600x600bb.jpg",
-      "topics": [
-        "food/fermentation"
-      ],
-      "explicit": true,
-      "_description": "Andrew Sabatine of Around the Horn (Groveland, CA) may have learned much of his trade at breweries on the hazier and more fruit-driven side of the brewing equation, but serving a small mountain town with a huge tourist population means making all the beers that people might want to enjoy. Lagers play an ever-growing role in that product mix, but Sabatine doesn’t fully throw out the rulebook when crafting hop-driven lager, preferring to add Noble hops through hot side additions while pushing more"
-    },
-    {
-      "id": "fast-talk--436-moving-beyond-ftp-to-multi",
-      "show": "Fast Talk",
-      "title": "436: Moving Beyond FTP to Multi-Dimensional Athlete Analysis",
-      "apple_collection_id": 1490521721,
-      "apple_track_id": 1000783128990,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/moving-beyond-ftp-to-multi-dimensional-athlete-analysis/id1490521721?i=1000783128990&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 82,
-      "duration_sec": 4896,
-      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/traffic.megaphone.fm/FL2821462582.mp3",
+      "duration_min": 19,
+      "duration_sec": 1114,
+      "audio_url": "https://pdst.fm/e/chtbl.com/track/95538/swap.fm/track/JhoQDAATtO1l0y8tdKNa/rss.pdrl.fm/eb4bb2/tracking.swap.fm/track/YfZO4tERxneauNcW9Fgn/mgln.ai/e/211/traffic.megaphone.fm/ARML3066669068.mp3",
       "audio_type": "audio/mpeg",
       "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/83/5c/44/835c44ca-7d8e-f044-9562-9952adaef507/mza_17747615336144522345.jpg/600x600bb.jpg",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/bb/fa/9a/bbfa9a3d-9cb1-a452-fc74-c8ebab7bac9a/mza_13831910833290623732.jpg/600x600bb.jpg",
       "topics": [
-        "sports/endurance"
+        "history/military-modern"
       ],
       "explicit": false,
-      "_description": "Physiologist Mac Cassin and the team at Wahoo are developing ways for athletes to better understand their strengths, weaknesses, and biggest areas for&nbsp;improvement with their Dimensional Training Load ecosystem.&nbsp; Learn more about your ad choices. Visit megaphone.fm/adchoices"
+      "_description": "With the latest Japanese defeat or near run American victory, both sides decide to up the ante, sending massive reinforcements.&nbsp; Want to go beyond the battlefield with The History of WWII Podcast? Dive deeper into the war with exclusive bonus episodes, expert interviews, and commercial-free listening for just $5/month! Every penny supports the show and keeps the history coming. https://worldwariipodcast.net/members/ Donations are always welcome and help keep the History of WWII Podcast free"
     },
     {
-      "id": "shipwrecks-and-sea-dogs--bonus-a-reading-of-the-open",
-      "show": "Shipwrecks and Sea Dogs",
-      "title": "(Bonus) A Reading of The Open Boat by Stephen Crane",
-      "apple_collection_id": 1640165188,
-      "apple_track_id": 1000783103436,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/a-reading-of-the-open-boat-by-stephen-crane/id1640165188?i=1000783103436&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 58,
-      "duration_sec": 3497,
-      "audio_url": "https://prefix.up.audio/s/tracking.swap.fm/track/2IMk17EdnEqyRhJTIpIU/clrtpod.com/m/mgln.ai/e/1008/op3.dev/e/traffic.megaphone.fm/RHAPSODYVOICES6424983185.mp3",
+      "id": "amicus-dahlia-lithwick--becoming-justice-gorsuch-1-man-with",
+      "show": "Amicus With Dahlia Lithwick | Law, justice, and the courts",
+      "title": "Becoming Justice Gorsuch | 1. Man With a Plan",
+      "apple_collection_id": 928790786,
+      "apple_track_id": 1000782823954,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/becoming-justice-gorsuch-1-man-with-a-plan/id928790786?i=1000782823954&uo=4",
+      "release_date": "2026-08-15",
+      "duration_min": 40,
+      "duration_sec": 2395,
+      "audio_url": "https://sphinx.acast.com/p/open/s/695ea2381c1db1c5bdf7c59b/e/6a7ba195b8e79c154d017d26/media.mp3",
       "audio_type": "audio/mpeg",
-      "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/6a/6e/a36a6eee-d6fa-4def-65b8-33304a949d54/mza_15180103104043645429.jpeg/600x600bb.jpg",
+      "audio_bytes": 95808972,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e8/52/9b/e8529b7b-21fe-9692-48fd-7696d23a8807/mza_17089514366859568033.jpeg/600x600bb.jpg",
       "topics": [
-        "transport/maritime"
-      ],
-      "explicit": false,
-      "_description": "As a followup to the last episode in which Rich and guest Ben Railton discuss The Open Boat by Stephen Crane, this is a full reading read by Rich in audiobook style. This story is in the public domain and is not restricted by copyright laws. American author Stephen Crane survived the real shipwreck of SS Commodore in 1897 off the coast of Florida. Just a few days later, he wrote The Open Boat, a fictional account of four men surviving in a small dinghy following being shipwrecked. It is a semi-a"
-    },
-    {
-      "id": "robot-talk--bonus-episode-robotics-for-sustainability-erf",
-      "show": "Robot Talk",
-      "title": "Bonus Episode: Robotics for Sustainability (ERF 2026)",
-      "apple_collection_id": 1533429509,
-      "apple_track_id": 1000783110000,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/bonus-episode-robotics-for-sustainability-erf-2026/id1533429509?i=1000783110000&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 32,
-      "duration_sec": 1942,
-      "audio_url": "https://traffic.libsyn.com/secure/ukrobotics/Bonus_6.06.5_ERF_Robotics_for_sustainability.mp3?dest-id=2292818",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 46599763,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/ad/df/d4/addfd411-bc85-f633-5b0b-24fd3e54746b/mza_11020288050044747333.jpg/600x600bb.jpg",
-      "topics": [
-        "engineering/ai-robotics"
-      ],
-      "explicit": false,
-      "_description": "This bonus episode features interviews from academic and industry experts at this year's European Robotics Forum in Stavanger, Norway. During the conference, there were several workshops on sustainability, conservation, and environmental issues and I spoke to some of the presenters and attendees to find out about their reflections on the workshops. This bonus episode was produced in collaboration with euRobotics — an international non-profit association that aims to boost European robotics resea"
-    },
-    {
-      "id": "robot-talk--bonus-episode-drones-in-challenging-environments",
-      "show": "Robot Talk",
-      "title": "Bonus Episode: Drones in Challenging Environments (ERF 2026)",
-      "apple_collection_id": 1533429509,
-      "apple_track_id": 1000783109999,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/bonus-episode-drones-in-challenging-environments-erf-2026/id1533429509?i=1000783109999&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 17,
-      "duration_sec": 1031,
-      "audio_url": "https://traffic.libsyn.com/secure/ukrobotics/Bonus_6.06.4_ERF_Drones_in_challenging_environments.mp3?dest-id=2292818",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 24742169,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/ad/df/d4/addfd411-bc85-f633-5b0b-24fd3e54746b/mza_11020288050044747333.jpg/600x600bb.jpg",
-      "topics": [
-        "engineering/ai-robotics"
-      ],
-      "explicit": false,
-      "_description": "This bonus episode features interviews from academic and industry experts at this year's European Robotics Forum in Stavanger, Norway. During the conference, I attended a workshop on ' Drones for Difficult and Challenging Applications ', which focussed on recent successes and outstanding challenges for aerial robots in a range of fields including healthcare, inspection, and maintenance. This bonus episode was produced in collaboration with euRobotics — an international non-profit association tha"
-    },
-    {
-      "id": "ten-percent-happier--the-science-of-journaling-how-15",
-      "show": "10% Happier with Dan Harris",
-      "title": "The Science of Journaling: How 15 Minutes of Writing Can Free Up Your Brain, Improve Your Health, and Make You a Better Friend | Dr. James Pennebaker",
-      "apple_collection_id": 1087147821,
-      "apple_track_id": 1000783200674,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-science-of-journaling-how-15-minutes-of/id1087147821?i=1000783200674&uo=4",
-      "release_date": "2026-08-14",
-      "duration_min": 69,
-      "duration_sec": 4113,
-      "audio_url": "https://dts.podtrac.com/redirect.mp3/pscrb.fm/rss/p/mgln.ai/e/35/traffic.libsyn.com/secure/05620661-2103-4fe0-9ab9-92bfc4d9cf22/260813_TPH_JamesPennebaker_Remaster_v1.mp3?dest-id=4933335",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 65804813,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/04/87/79048703-d88c-acc2-c319-a8f2534b9ae5/mza_15018160844227259170.jpg/600x600bb.jpg",
-      "topics": [
-        "health/mental",
-        "psychology"
-      ],
-      "explicit": false,
-      "_description": "Writing can reduce overthinking, rumination, and anxiety. Here's what the researcher who pioneered the science suggests. James Pennebaker is Professor Emeritus of Psychology at the University of Texas at Austin. He is known for his early research on expressive writing and health. More recently, he has pioneered ways to study people's personalities and behaviors through the analysis of their language use. His text analysis program LIWC is used across disciplines. Author of over 300 scientific art"
-    },
-    {
-      "id": "zoe-science-nutrition--how-to-shrink-the-dangerous-fat",
-      "show": "ZOE Science & Nutrition",
-      "title": "How to shrink the dangerous fat linked to heart disease and cancer in 12 weeks | Prof Jimmy Bell",
-      "apple_collection_id": 1611216298,
-      "apple_track_id": 1000783129087,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/how-to-shrink-the-dangerous-fat-linked-to-heart/id1611216298?i=1000783129087&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 59,
-      "duration_sec": 3552,
-      "audio_url": "https://pdst.fm/e/traffic.megaphone.fm/ZOELIMITED5081467812.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/83/21/fa/8321fa07-c424-c95e-25f8-b99d952b074e/mza_11331013497668602482.jpeg/600x600bb.jpg",
-      "topics": [
-        "health/nutrition"
-      ],
-      "explicit": false,
-      "_description": "There's a hidden fat that matters more for your health than your weight.&nbsp; This is visceral fat: it wraps around your organs, raises your risk of heart disease and cancer, and builds up even in people who look slim and healthy.&nbsp; In today’s episode, Professor Jimmy Bell, a world-leading expert in measuring visceral fat, explains how we can shrink this dangerous belly fat in just 12 weeks. Jimmy explores why two people can weigh exactly the same and carry completely different amounts of t"
-    },
-    {
-      "id": "armchair-expert--armchair-anonymous-extreme-weather",
-      "show": "Armchair Expert with Dax Shepard",
-      "title": "Armchair Anonymous: Extreme Weather",
-      "apple_collection_id": 1345682353,
-      "apple_track_id": 1000783266663,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/armchair-anonymous-extreme-weather/id1345682353?i=1000783266663&uo=4",
-      "release_date": "2026-08-14",
-      "duration_min": 54,
-      "duration_sec": 3262,
-      "audio_url": "https://rss.art19.com/episodes/5d4992fb-5f90-4fd9-89c9-c038a63d6131.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 52204355,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f0/13/8f/f0138f4b-8bc3-0a64-2c11-ef566840f60f/mza_3062409012210474882.jpeg/600x600bb.jpg",
-      "topics": [
-        "comedy/interviews"
-      ],
-      "explicit": true,
-      "_description": "Dax and Monica talk to Armcherries! In today's episode, Armcherries tell us a crazy extreme weather story. See Privacy Policy at https://art19.com/privacy and California Privacy Notice at https://art19.com/privacy#do-not-sell-my-info ."
-    },
-    {
-      "id": "call-her-daddy--devon-and-sydney-carlson-sisters-situationships",
-      "show": "Call Her Daddy",
-      "title": "Devon and Sydney Carlson: Sisters, Situationships, & Starting a Business (FBF)",
-      "apple_collection_id": 1418960261,
-      "apple_track_id": 1000783179732,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/devon-and-sydney-carlson-sisters-situationships/id1418960261?i=1000783179732&uo=4",
-      "release_date": "2026-08-14",
-      "duration_min": 48,
-      "duration_sec": 2881,
-      "audio_url": "https://dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/f09b6967-f720-4383-a6cf-42d1f475bd95/episodes/d63b4791-800f-4303-b3fc-057988386713/audio/128/default.mp3?aid=rss_feed&awCollectionId=f09b6967-f720-4383-a6cf-42d1f475bd95&awEpisodeId=d63b4791-800f-4303-b3fc-057988386713&feed=mKn_QmLS",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 46124900,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/05/10/91/05109145-8c22-5464-1f20-aaedeab769f8/mza_10276081716633787086.jpg/600x600bb.jpg",
-      "topics": [
-        "comedy/interviews"
-      ],
-      "explicit": true,
-      "_description": "This episode, Devon and Sydney Carlson join Father Cooper. They’re sisters, best friends and business partners. Devon and Sydney recount how a bathroom run-in with Miley Cyrus led to the overnight development of their company, Wildflower. The sisters spill all of their secrets while playing a game of “Who is More Likely to ...” Which Carlson sister is more likely to get kicked out of the club and who will be texting their ex once they get drunk? Which sister gives better head? Devon and Sydney d"
-    },
-    {
-      "id": "this-past-weekend-theo-von--675-professor-jiang",
-      "show": "This Past Weekend w/ Theo Von",
-      "title": "#675 - Professor Jiang",
-      "apple_collection_id": 1190981360,
-      "apple_track_id": 1000783214748,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/professor-jiang/id1190981360?i=1000783214748&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 109,
-      "duration_sec": 6553,
-      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/mgln.ai/e/94/claritaspod.com/measure/verifi.podscribe.com/rss/p/pfx.vpixl.com/j0JIg/arttrk.com/p/MMN23/traffic.megaphone.fm/ROOSTER8750916289.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9c/f6/5a/9cf65abb-f8db-fb7b-984f-b4276a1e8c85/mza_2107148709996282347.jpg/600x600bb.jpg",
-      "topics": [
-        "comedy/interviews"
-      ],
-      "explicit": true,
-      "_description": "Professor Xueqin Jiang is a teacher and geo-politics expert known for his popular YouTube channel “Predictive History”. Professor Jiang joins Theo to talk about his method for predicting world events, what he thinks is really motivating the war in the Middle East, and how secret societies wield power behind the scenes.&nbsp; Professor Jiang: https://www.instagram.com/predictivehistory_&nbsp; Animations by Chris Moran: https://www.instagram.com/chrismoran__&nbsp; ---------------------------------"
-    },
-    {
-      "id": "how-did-this-get-made--xxx-live-w-rob-huebel",
-      "show": "How Did This Get Made?",
-      "title": "xXx LIVE! w/ Rob Huebel",
-      "apple_collection_id": 409287913,
-      "apple_track_id": 1000783245438,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/xxx-live-w-rob-huebel/id409287913?i=1000783245438&uo=4",
-      "release_date": "2026-08-14",
-      "duration_min": 77,
-      "duration_sec": 4599,
-      "audio_url": "https://mgln.ai/e/2/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/862904a4-6939-451a-95ee-49dba31d0dbe/episodes/2718b17d-e72c-4820-8c4f-81351e6a32a9/audio/128/default.mp3?aid=rss_feed&awCollectionId=862904a4-6939-451a-95ee-49dba31d0dbe&awEpisodeId=2718b17d-e72c-4820-8c4f-81351e6a32a9&feed=Ao0C24M8",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 73598494,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/4b/06/00/4b06006c-8936-1653-fc82-132b64441f4f/mza_5523773122723324139.jpg/600x600bb.jpg",
-      "topics": [
-        "comedy/casual-hangs",
-        "tv-film/reviews"
-      ],
-      "explicit": true,
-      "_description": "Welcome to the Xander Zone! Vin Diesel stars in 2002's xXx —a movie that answers the question, \"What if James Bond was a dickhead?\" LIVE from Largo in LA, HDTGM all-star Rob Huebel joins Paul and June to discuss Samuel L. Jackson's fake diner budget, the solar-powered submarine, using X-ray glasses to look at skeletons, the logic behind killing guys via avalanche, and so much more. Plus, June tries to remember if she's seen any other movies in the xXx franchise. • Go to hdtgm.com for tour dates,"
-    },
-    {
-      "id": "dateline--a-mother-s-mind-before-killings",
-      "show": "Dateline NBC",
-      "title": "A mother's mind before killings. Audio recording of missing mom. Plus, rap lyrics as evidence.",
-      "apple_collection_id": 1464919521,
-      "apple_track_id": 1000783130317,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/a-mothers-mind-before-killings-audio-recording/id1464919521?i=1000783130317&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 36,
-      "duration_sec": 2143,
-      "audio_url": "https://dts.podtrac.com/redirect.mp3/pdst.fm/e/tracking.swap.fm/track/WyZndMW35x3t79tHlknd/nbcnews.simplecastaudio.com/ae183fe2-c634-458a-93dd-5770f0676f77/episodes/9308698c-cd03-4603-a89b-8ef637152252/audio/128/default.mp3?aid=rss_feed&awCollectionId=ae183fe2-c634-458a-93dd-5770f0676f77&awEpisodeId=9308698c-cd03-4603-a89b-8ef637152252&feed=HL4TzgYC",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 34298256,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/600x600bb.jpg",
-      "topics": [
-        "true-crime",
         "society/law"
       ],
       "explicit": false,
-      "_description": "In Massachusetts, young mom Lindsay Clancy is on trial for allegedly murdering her three children. Her psychiatrist testifies about her mental state before killings. In California, Tyler McCain is accused of killing his wife, Nikki, who went missing in 2024 after filing a domestic violence report against him. In Dateline Round Up, former OnlyFans model Courtney Clenney pleads guilty to stabbing boyfriend. Update in the case of Luigi Mangione, alleged killer of UnitedHealthcare CEO Brian Thompson"
+      "_description": "Our friends over at the Slate podcast Slow Burn are good at taking events that we think are settled history, then unlocking a new understanding of those stories through interviews, archives, and fresh analysis. They’ve reexamined Supreme Court history several times in recent years, including a new season about Neil Gorsuch we’re featuring on Amicus for the next three weeks. Becoming Justice Gorsuch explores the early years of Donald Trump’s first high-court appointee and his precedent-shattering"
     },
     {
-      "id": "snap-judgment--super-pizza-man",
-      "show": "Snap Judgment",
-      "title": "Super Pizza Man",
-      "apple_collection_id": 283657561,
-      "apple_track_id": 1000783140996,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/super-pizza-man/id283657561?i=1000783140996&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 50,
-      "duration_sec": 2977,
-      "audio_url": "https://pdrl.fm/7a4827/dts.podtrac.com/redirect.mp3/tracking.swap.fm/track/sblTq32fyWAjsHzze2LG/mgln.ai/e/48/pscrb.fm/rss/p/dovetail.prxu.org/320/0f6b0476-149f-4644-978f-3b7a3b48b5f5/1737_SuperPizzaMan_Podcast_MST_Final.mp3",
+      "id": "happier-gretchen-rubin--more-happier-take-better-care-of",
+      "show": "Happier with Gretchen Rubin",
+      "title": "More Happier: Take Better Care of Yourself—Treat Yourself Like a Toddler, Dog, Teenager, and Professor",
+      "apple_collection_id": 969519520,
+      "apple_track_id": 1000782029742,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/more-happier-take-better-care-of-yourself-treat/id969519520?i=1000782029742&uo=4",
+      "release_date": "2026-08-15",
+      "duration_min": 33,
+      "duration_sec": 1991,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/claritaspod.com/measure/pscrb.fm/rss/p/mgln.ai/e/491/traffic.megaphone.fm/LEME9807893536.mp3",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 47635361,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/d1/8c/b8/d18cb82d-31a4-c23d-3dd5-c81862feb928/mza_16753060551613722708.jpg/600x600bb.jpg",
+      "audio_bytes": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/5a/00/0e/5a000e1a-c09e-bb4f-b54f-59a3a0fe834b/mza_288780918127767714.jpeg/600x600bb.jpg",
       "topics": [
-        "science/storytelling",
-        "personal-journals"
+        "education/self-improvement"
       ],
       "explicit": false,
-      "_description": "A pizza delivery guy goes full superhero out on the job. And a husband trying to bring joy to his pregnant wife pays a high price to satisfy her sweet tooth. Super Pizza Man A pizza delivery guy goes full superhero out on the job. A huge thank you to Nicholas Bostic for sharing your story! Nick would go on to be awarded the prestigious Carnegie Medal of Honor ; the highest civilian honor for heroism. He currently runs his own lawn care business in Lafayette, Indiana. Produced by Bo Walsh, edited"
+      "_description": "We revisit one of our favorite happiness ideas: Treat Yourself Like a _____. Over the years, we've explored many variations on this theme, including treating yourself like a toddler, a dog, a teenager, and a professor. Sometimes it's easier to recognize what we need when we imagine we're taking care of someone else. Revisited Highlights: Episode 7: Treat Yourself Like a Toddler Episode 243: Treat Yourself Like a Dog Episode 438: Treat Yourself Like a Teenager Episode 467: Treat Yourself Like a P"
     },
     {
-      "id": "the-moth--schooled-the-moth-podcast",
-      "show": "The Moth",
-      "title": "Schooled: The Moth Podcast",
-      "apple_collection_id": 275699983,
-      "apple_track_id": 1000783244360,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/schooled-the-moth-podcast/id275699983?i=1000783244360&uo=4",
+      "id": "handsome--pretty-little-episode-104",
+      "show": "Handsome",
+      "title": "Pretty Little Episode #104",
+      "apple_collection_id": 1702258458,
+      "apple_track_id": 1000783272311,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/pretty-little-episode-104/id1702258458?i=1000783272311&uo=4",
       "release_date": "2026-08-14",
       "duration_min": 24,
-      "duration_sec": 1463,
-      "audio_url": "https://pdst.fm/e/tracking.swap.fm/track/v9Uiw3bGr54f6BVZKSyc/pscrb.fm/rss/p/serve.castfire.com/audio/8208769/8208769_2026-04-13-034009.192.mp3?rssID=6066",
+      "duration_sec": 1421,
+      "audio_url": "https://s.gum.fm/s-64da7e573d833e9c418c5266/mgln.ai/e/209/pscrb.fm/rss/p/prfx.byspotify.com/e/clrtpod.com/m/rss.art19.com/episodes/7bfe229f-59a5-46cb-8492-a46d5407a730.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 35112960,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/55/f4/47/55f4470d-36fd-31e4-803c-c8c2ec3942bd/mza_2886675367806291532.png/600x600bb.jpg",
+      "audio_bytes": 22742831,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e1/96/1b/e1961bc1-eae4-b488-3b0f-abdc52f06568/mza_18244201912816466457.jpeg/600x600bb.jpg",
       "topics": [
-        "science/storytelling",
-        "culture/performing-arts"
-      ],
-      "explicit": false,
-      "_description": "On this episode, stories of the lessons we learn, both in and out of school. This episode was hosted by Michell Jalowski. Storytellers: As teenagers, Cathy Gasiorowicz and her sister Nina create a mime alphabet book… that’s surprisingly morbid. While a special ed teacher in Chicago, Annie Tan fights an unsupportive principal to provide more resources for her students. Romy Negrin and her Latin Club compete in the highest division. Podcast # 994"
-    },
-    {
-      "id": "the-magnus-archives--the-magnus-protocol-53-previous-administration",
-      "show": "The Magnus Archives",
-      "title": "The Magnus Protocol 53 – Previous Administration",
-      "apple_collection_id": 1095138637,
-      "apple_track_id": 1000783155310,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-magnus-protocol-53-previous-administration/id1095138637?i=1000783155310&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 26,
-      "duration_sec": 1572,
-      "audio_url": "https://sphinx.acast.com/p/acast/s/themagnusarchives/e/6a7b1a3c1549db32d422dfcb/media.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 25160724,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/06/fe/94/06fe9460-1ba3-e5f8-8fa5-92a2943b8d2f/mza_6530408954249108490.jpeg/600x600bb.jpg",
-      "topics": [
-        "fiction",
-        "fiction/drama"
-      ],
-      "explicit": false,
-      "_description": "CAT123RABC4565-24121999-27062024 transmutation (human) -/- catalyst (alchemical) Incident Elements: ·&nbsp;&nbsp;child endangerment ·&nbsp;&nbsp;imprisonment ·&nbsp;&nbsp;human experimentation ·&nbsp;&nbsp;threats of violence ·&nbsp;&nbsp;emotional manipulation Transcripts available at https://rustyquill.com/transcripts/the-magnus-protocol/ You can find a complete list of our Kickstarter backers https://rustyquill.com/the-magnus-protocol-supporter-wall/ Created by Jonathan Sims and Alexander J N"
-    },
-    {
-      "id": "old-gods-of-appalachia--episode-105-the-builder",
-      "show": "Old Gods of Appalachia",
-      "title": "Episode 105: The Builder",
-      "apple_collection_id": 1485435369,
-      "apple_track_id": 1000783100954,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-105-the-builder/id1485435369?i=1000783100954&uo=4",
-      "release_date": "2026-08-13",
-      "duration_min": 37,
-      "duration_sec": 2190,
-      "audio_url": "https://sphinx.acast.com/p/acast/s/old-gods-of-appalachia/e/6a7ccfcd51319a521db63df6/media.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 35047131,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/52/5e/cf/525ecf12-8d77-d18c-b1c5-dda71b12030c/mza_18407091978590203995.jpeg/600x600bb.jpg",
-      "topics": [
-        "fiction",
-        "fiction/drama"
+        "comedy/casual-hangs"
       ],
       "explicit": true,
-      "_description": "Old acquaintances come face to face, and a story begins.&nbsp; CW: References to slavery, racism, land theft, genocide of indigneous people, poison, eldritch madness, monster noises. Written by Cam Collins and Steve Shell&nbsp; Produced and edited by Cam Collins and Steve Shell Narrated and performed by Steve Shell Sound design by Steve Shell Cultural sensitivity consultation by DJ Rogers The voice of Joseph Bland: Willie Repoley The voice of Lavinia Thrice Damned, Beast of Lonely Creek: Cam Col"
+      "_description": "Fortune and Tig finally break Handsome's silence on the Bucee's beaver lawsuit and much more on today's beaver-tastic Pretty Little Episode! Handsome is hosted by Tig Notaro, Mae Martin, and Fortune Feimster Submit your questions to speakpipe.com/handsomepod Follow us on social media @handsomepod Merch at handsomepod.com Watch Handsome on YouTube This is a Headgum podcast. Follow Headgum on Twitter , Instagram , and Tiktok . Advertise on Handsome via Gumball.fm . See Privacy Policy at https://ar"
+    },
+    {
+      "id": "kill-tony--kt-behind-the-tape-msg-night",
+      "show": "KILL TONY",
+      "title": "KT Behind the Tape: MSG Night 1",
+      "apple_collection_id": 1042361179,
+      "apple_track_id": 1000783389187,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/kt-behind-the-tape-msg-night-1/id1042361179?i=1000783389187&uo=4",
+      "release_date": "2026-08-15",
+      "duration_min": 71,
+      "duration_sec": 4245,
+      "audio_url": "https://clrtpod.com/m/pscrb.fm/rss/p/rsv.simplecastaudio.com/5c11d3b8-db1c-4d5c-86b2-2ac6921d6852/episodes/ec83093d-4d7a-445a-bf71-1c7af5c74ec3/audio/128/default.mp3?aid=rss_feed&awCollectionId=5c11d3b8-db1c-4d5c-86b2-2ac6921d6852&awEpisodeId=ec83093d-4d7a-445a-bf71-1c7af5c74ec3&feed=JZSQrle9",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 67926863,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a0/ad/df/a0addf99-adce-5a42-a138-81d9f8e4562e/mza_8301528492532104652.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/stand-up"
+      ],
+      "explicit": true,
+      "_description": "An exclusive, behind the scenes look from 2026 KT MSG Night One with guests Adam Ray and Jim Norton Adam Ray, Jim Norton, Pat O'Neill, Ari Matti, David Lucas, Dedrick Flynn, Mike Finoia, D Madness, Michael A. Gonzales, Jon Deas, Matthew Muehling, Grooveline Horns, Joe White, Troy Conrad, Tony Hinchcliffe, Brian Redban - RECORDED – 08/07/2026 Watch Kill Tony and other exclusive content, ad free! Plus tons of perks. Get Kill Tony + for $5/month now at https://killtony.supercast.com/ Hosted by Simp"
+    },
+    {
+      "id": "unexplained--unexplained-s09e30-come-hear-what-we",
+      "show": "Unexplained",
+      "title": "Unexplained S09E30: Come, Hear What We Have to Say (Pt.2 of 2)",
+      "apple_collection_id": 1078112813,
+      "apple_track_id": 1000783311196,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/unexplained-s09e30-come-hear-what-we-have-to-say-pt-2-of-2/id1078112813?i=1000783311196&uo=4",
+      "release_date": "2026-08-14",
+      "duration_min": 35,
+      "duration_sec": 2089,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/4be3ef45-824a-44b3-b437-b038010038fc/41b74cde-43b5-4aa7-8c60-b4a600a9e5f2/audio.mp3?utm_source=Podcast&in_playlist=3eb75c81-5ed8-4148-bb7b-b03801003947",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 33454696,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7e/a9/5c/7ea95c62-4e9b-359b-7dde-2df168676370/mza_156597234584228073.jpg/600x600bb.jpg",
+      "topics": [
+        "paranormal"
+      ],
+      "explicit": false,
+      "_description": "The second and final part of Unexplained S09E30: Come, Hear What We Have to Say (The Scole Experiment). In October of 1993, the living members of the Scole Experiment Group had supposedly made contact with one spirit, but that was just the beginning.&nbsp; And what incredible sights they had to show them... Written by Neil McRobert and Richard MacLean Smith Watch/follow at youtube.com/@unexplainedpod , tiktok.com/@unexplainedpodcast , X @unexplainedpod , facebook.com/unexplainedpodcast , bsky.ap"
+    },
+    {
+      "id": "welcome-to-night-vale--292-collectibles-1999",
+      "show": "Welcome to Night Vale",
+      "title": "292 - Collectibles (1999)",
+      "apple_collection_id": 536258179,
+      "apple_track_id": 1000783406562,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/292-collectibles-1999/id536258179?i=1000783406562&uo=4",
+      "release_date": "2026-08-15",
+      "duration_min": 31,
+      "duration_sec": 1855,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/mgln.ai/e/495/pscrb.fm/rss/p/tracking.swap.fm/track/bwUd3PHC9DH3VTlBXDTt/traffic.megaphone.fm/SBP1133758777.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e8/9e/4c/e89e4c80-d0f5-2364-c605-9427d89a5ef8/mza_4087082037828265952.jpg/600x600bb.jpg",
+      "topics": [
+        "fiction",
+        "fiction/drama"
+      ],
+      "explicit": false,
+      "_description": "From the archive (1999): There's a great new webpage on the World Wide Web Weather: \"Candy Cigarettes\" by Calvin Pineda and the Antacids⁠⁠ The voice of Leonard Burton is James Urbaniak Original episode art by Jessica Hayworth Episode transcripts Order Night Vale's signature fragrance, Mostly Void Partially Stars, from Sucreabeille Pre-order THE NUDGE by Joseph Fink Listen to UNLICENSED⁠⁠ by Joseph Fink & Jeffrey Cranor. Only on Audible Welcome to Night Vale Roleplaying Game Subscribe to the Nigh"
     }
   ],
   "dropped": [
     {
-      "show": "Odd Lots",
-      "title": "A Historic El Niño Is Coming That Could Cost the World Trillions",
-      "reason": "no trackId match"
-    },
-    {
-      "show": "Criminal",
-      "title": "A Bump in the Night and Unexpected Guests",
-      "reason": "no trackId match"
-    },
-    {
       "show": "Wow in the World",
-      "title": "Two Whats?! And A Wow! People Who Wow Edition – Grayson – Guess the True Facts about this Kid who WOWs!",
-      "reason": "dup id wow-in-the-world--two-whats-and-a-wow-people"
+      "title": "WeWow on the Weekend: Dennis's Least Favorite Things... Mosquitoes and Stinky Socks!",
+      "reason": "no trackId match"
     }
   ]
 }
