@@ -53,6 +53,15 @@
 
    The boundary itself rides on the item ref as `bounds`, supplied by the
    caller — same ownership split as design note 1.
+
+   **This one is JS-only and the Swift has NOT been updated** (#111). Neither
+   `PlayerQueueState.swift` nor `PlayerQueueManager.swift` knows about bounds,
+   `setOutPoint`, or the in-point override, so a Foray cannot play on the
+   native backend yet — and the "diffable by eye" promise at the top of this
+   file is broken for this section until #28 either ports it or retires the
+   Swift. `ios/` is outside the auto-merge allowlist, so porting it is its own
+   PR with a human on it, and it needs a macOS box to build. Said out loud
+   here rather than discovered later.
 */
 
 /* ---------- value types ---------- */

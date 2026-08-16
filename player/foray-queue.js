@@ -71,10 +71,24 @@ export function buildForayQueue(foray, opts = {}) {
 
   const forayId = foray?.id ?? "foray";
   const source = Array.isArray(foray?.items) ? foray.items : [];
+  /* Queue ids must be unique across the whole Foray: every lookup in the
+     manager takes the first match, so a duplicate makes one entry unreachable
+     and the other play twice. Segment ids are unique by construction (index);
+     an authored narration id is not, so it is checked rather than trusted. */
+  const usedIds = new Set();
 
   source.forEach((raw, index) => {
     const qid = `${forayId}#${index}`;
     const drop = (reason) => skipped.push({ index, id: qid, item_id: raw?.item_id ?? null, reason });
+    const uniqueId = (preferred) => {
+      if (!nonEmpty(preferred) || usedIds.has(preferred)) {
+        if (nonEmpty(preferred)) warnings.push(`${qid}: duplicate item id ${preferred} — using ${qid} instead`);
+        usedIds.add(qid);
+        return qid;
+      }
+      usedIds.add(preferred);
+      return preferred;
+    };
 
     if (!raw || typeof raw !== "object") return drop("not an object");
 
@@ -84,7 +98,7 @@ export function buildForayQueue(foray, opts = {}) {
       // manager already applies to a missing TTS bridge (corner case #12).
       if (!nonEmpty(url)) return drop("narration has no asset");
       items.push({
-        id: raw.id ?? qid, kind: "tts", audio_url: url,
+        id: uniqueId(raw.id), kind: "tts", audio_url: url,
         title: raw.title ?? "", script: raw.script ?? "",
       });
       return;
@@ -163,7 +177,7 @@ export function buildForayQueue(foray, opts = {}) {
     }
 
     items.push({
-      id: qid,
+      id: uniqueId(qid),
       kind: "episode",
       audio_url: episode.audio_url,
       start_sec: startSec,

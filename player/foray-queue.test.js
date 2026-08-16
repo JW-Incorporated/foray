@@ -242,6 +242,19 @@ test("skipped segments keep their position and their source, for a UI to explain
   assert.equal(skipped[0].item_id, "dai-ep");
 });
 
+test("a duplicate authored id is replaced, not allowed to shadow another item", () => {
+  // Every lookup in the manager takes the first match, so a duplicate makes one
+  // entry unreachable and plays the other twice.
+  const { items, warnings } = build([
+    { type: NARRATION, id: "nar-1", asset: "a.mp3" },
+    { type: NARRATION, id: "nar-1", asset: "b.mp3" },
+    seg(),
+  ]);
+  assert.equal(new Set(items.map((i) => i.id)).size, 3);
+  assert.equal(items[1].id, "foray-1#1");
+  assert.match(warnings[0], /duplicate item id nar-1/);
+});
+
 test("runtime counts authored content, never the pad", () => {
   const { items } = build([daiSeg({ ad_pad_sec: 100 }), seg({ start_sec: 0, end_sec: 90 })], { allowAdPad: true });
   assert.equal(forayRuntimeSec(items), 110 + 90);

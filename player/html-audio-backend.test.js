@@ -607,3 +607,67 @@ test("back-to-back slices of one episode each stop at their own boundary", async
   assert.ok(el.currentTime >= 400.5 && el.currentTime < 401, `second slice stopped at ${el.currentTime}`);
   assert.ok(!el.calls.includes("load"), "and never refetched the shared episode");
 });
+
+/* ---------- integration: a whole Foray, real manager, real backend ----------
+   The unit tests above each hold one layer still. This one drives the actual
+   stack — reducer, manager, backend, a clock — through the shape a Foray
+   really has: two slices of one episode, then a slice of another, with a phone
+   call in the middle. It is the test that would catch a wiring mistake none of
+   the layers can see on its own. */
+
+test("integration: a three-segment Foray plays every slice and stops", async () => {
+  __resetInstanceForTests();
+  const el = new TickingAudio();
+  const backend = new HtmlAudioBackend({ element: el });
+  const saved = new Map();
+  const m = new PlayerQueueManager({
+    backend,
+    positionStore: { save: (id, s) => saved.set(id, { seconds: s }), load: (id) => saved.get(id) ?? null },
+  });
+  // A stale position on the shared episode must never win over an in-point.
+  saved.set("ep-a", { seconds: 3000 });
+
+  const catalogue = {
+    "ep-a": { id: "ep-a", audio_url: "https://cdn.example/a.mp3", dai_suspected: false, duration_sec: 3600 },
+    "ep-b": { id: "ep-b", audio_url: "https://cdn.example/b.mp3", dai_suspected: false, duration_sec: 3600 },
+  };
+  const s = (item_id, start, end) => ({ type: "segment", item_id, start_sec: start, end_sec: end, why: "w" });
+
+  const report = await m.playForay({
+    id: "f1",
+    items: [s("ep-a", 100, 100.5), s("ep-a", 300, 300.5), s("ep-b", 50, 50.5)],
+  }, { resolveItem: (id) => catalogue[id] ?? null });
+
+  assert.deepStrictEqual(report.skipped, []);
+  assert.equal(el.currentTime >= 100 && el.currentTime < 101, true, "opened at the first in-point, not at 3000");
+
+  // Slice 1 -> slice 2: same episode, so a seek rather than a refetch.
+  const loadsBefore = el.calls.filter((c) => c === "load").length;
+  let deadline = now() + 4000;
+  while (m._currentItem()?.id !== "f1#1" && now() < deadline) await sleep(5);
+  assert.equal(m._currentItem().id, "f1#1");
+  assert.equal(el.calls.filter((c) => c === "load").length, loadsBefore,
+    "two slices of one episode must not refetch it");
+  assert.ok(el.currentTime >= 300 && el.currentTime < 301, `second in-point, got ${el.currentTime}`);
+
+  // A phone call mid-slice must not replay the slice.
+  await m.interruptionBegan();
+  const pausedAt = el.currentTime;
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "playing");
+  assert.ok(el.currentTime >= pausedAt - 0.05, `resumed at ${el.currentTime}, was at ${pausedAt}`);
+
+  // Slice 2 -> slice 3: different episode, so a real load.
+  deadline = now() + 4000;
+  while (m._currentItem()?.id !== "f1#2" && now() < deadline) await sleep(5);
+  assert.equal(m._currentItem().id, "f1#2");
+  assert.equal(el.src, "https://cdn.example/b.mp3");
+  assert.ok(el.currentTime >= 50 && el.currentTime < 51);
+
+  // ...and the Foray ends rather than rolling into anything.
+  deadline = now() + 4000;
+  while (m.state.type !== "ended" && now() < deadline) await sleep(5);
+  assert.equal(m.state.type, "ended");
+  assert.equal(el.paused, true);
+  m.dispose();
+});
