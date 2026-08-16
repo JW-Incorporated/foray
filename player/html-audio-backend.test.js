@@ -6,7 +6,7 @@
    fake fires events the way a real element does rather than resolving
    everything immediately. */
 
-import test from "node:test";
+import test, { after } from "node:test";
 import assert from "node:assert/strict";
 import { HtmlAudioBackend } from "./html-audio-backend.js";
 
@@ -387,8 +387,23 @@ class TickingAudio {
   removeAttribute(a) { this.calls.push(`removeAttribute:${a}`); this.src = ""; }
 }
 
+/** Every backend built by `ticking()`, so a broken out-point cannot leave a
+    real interval running for the rest of the file. */
+const tickingBuilt = [];
+after(() => { for (const el of tickingBuilt) { try { el.pause(); } catch (_) {} } });
+
 const ticking = (opts = {}) => {
   const el = new TickingAudio(opts);
+  /* Timestamp every delivered tick. This is the naive implementation's clock —
+     the thing the fine timer has to beat — measured under the load in the room
+     rather than assumed from TIMEUPDATE_MS. */
+  const tickAt = [];
+  const fire = el._fire.bind(el);
+  el._fire = (type, ...rest) => {
+    if (type === "timeupdate") tickAt.push(now());
+    return fire(type, ...rest);
+  };
+  tickingBuilt.push(el);
   const log = [];
   // A short load deadline so the stall cases cost milliseconds, not the ten
   // real seconds the shipped default allows a slow CDN. The deadline itself is
@@ -398,11 +413,64 @@ const ticking = (opts = {}) => {
   });
   const ends = [];
   b.onItemEnded = (reason) => ends.push(reason ?? "natural");
-  return { el, b, log, ends };
+  return { el, b, log, ends, tickAt };
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-/** Wait for the backend to report an end, or give up. */
-async function waitForEnd(ends, budgetMs) {
+
+/* ---------- surviving a loaded box ----------
+
+   This is the only suite in the root group that drives a REAL clock: the fake
+   element ticks on a real `setInterval` and the backend arms real timers, because
+   what is under test is when a boundary actually lands. That makes every budget
+   here a claim about the SCHEDULER, and on a machine whose cores are saturated —
+   a transcription run, or a CI runner shared with three other jobs — the
+   scheduler is late by tens to hundreds of milliseconds. Measured: this suite
+   failed exactly once in four full runs, and the run it failed was the one with a
+   transcription job pinning every core. The two failures were both hard-coded
+   PRECISION budgets (50 ms and 100 ms of out-point overshoot).
+
+   The fix is NOT a bigger constant. The claim worth making is comparative, and
+   the comparison is already available for free in the same run:
+
+     A bare `if (currentTime >= end)` on `timeupdate` — the naive implementation
+     this backend's fine timer exists to beat — cannot stop sooner than the NEXT
+     TICK. So one observed tick interval IS the naive cost, measured under
+     whatever load is happening right now. Asserting the overshoot comes in at a
+     fraction of it is load-invariant by construction: starve the box and both
+     numbers stretch together.
+
+   That replaces an earlier attempt here that added a measured scheduler jitter to
+   a hard-coded 50 ms and capped it at the nominal 250 ms tick. Two things were
+   wrong with it, both caught in review: the "one-sided guarantee" it fell back to
+   was `overshoot >= 0`, which is non-negative by construction and so asserted
+   nothing at all; and the cap was set against the NOMINAL tick, while a genuinely
+   naive implementation measures 90-133 ms — inside the inflated budget a loaded
+   box produced. It could have passed a real regression. This cannot: the budget
+   is derived from the naive cost rather than guessed against it.
+
+   The other rule still holds: a budget for "did the thing happen at all" is a
+   ceiling, not a duration. The wait returns the moment the event lands, so a
+   green run costs the same however large it is, and only a broken build pays. */
+
+/** Ceiling for "an end was reported". Was 3-4 s, which a saturated box beats.
+    Not larger, because ten of these in a row is what a broken out-point costs
+    before the suite reports it, and there is no `--test-timeout` above us. */
+const END_BUDGET_MS = 10000;
+
+/** The widest gap between consecutive `timeupdate`s actually delivered — the
+    naive implementation's worst case, on this box, during this measurement.
+    Falls back to the nominal interval when there were too few ticks to measure
+    a gap (a very short segment), which is the conservative direction. */
+function observedTickMs(tickAt) {
+  let worst = 0;
+  for (let i = 1; i < tickAt.length; i++) worst = Math.max(worst, tickAt[i] - tickAt[i - 1]);
+  return worst > 0 ? worst : TIMEUPDATE_MS;
+}
+
+/** Wait for the backend to report an end, or give up. Returns the reason so a
+    caller can assert the boundary FIRED — `waitForEnd` returning null and the
+    overshoot never being written is otherwise indistinguishable from success. */
+async function waitForEnd(ends, budgetMs = END_BUDGET_MS) {
   const deadline = now() + budgetMs;
   while (!ends.length && now() < deadline) await sleep(5);
   return ends[0] ?? null;
@@ -414,7 +482,7 @@ test("an out-point stops the item and reports the same end a finished file repor
   b.setOutPoint(100.8);
   b.play();
 
-  assert.equal(await waitForEnd(ends, 3000), "outPoint");
+  assert.equal(await waitForEnd(ends), "outPoint");
   assert.equal(el.paused, true, "the boundary must pause, like a file running out");
 });
 
@@ -426,39 +494,72 @@ test("the stop is never early — the payoff is never clipped", async () => {
     await b.load(item("seg"), { startOffset: 100 });
     b.setOutPoint(target);
     b.play();
-    await waitForEnd(ends, 3000);
+    await waitForEnd(ends);
     assert.ok(el.currentTime >= target, `stopped at ${el.currentTime} before ${target}`);
     assert.ok(b.lastOutPointOvershootSec >= 0);
   }
 });
 
-test("the boundary lands inside a fifth of a timeupdate interval, measured", async () => {
-  // ~250 ms is what a bare `if (currentTime >= end)` on timeupdate would cost.
-  // Measured locally this comes in around 5-15 ms; the assertion is loose
-  // enough for a loaded CI box and still an order of magnitude tighter.
+/** Fraction of the naive cost the fine timer must come in under. A bare
+    timeupdate check averages half a tick and peaks at a whole one, so a half is
+    already a losing score for it; measured, this backend comes in nearer a
+    twentieth. Loose enough not to flake, tight enough that "the fine watch
+    stopped working" — measured at 90-133 ms against a 250 ms nominal tick —
+    fails it. */
+const NAIVE_FRACTION = 0.5;
+
+/* The out-points are spread ACROSS a tick interval on purpose. A naive check can
+   only fire on a tick, so its error is however far the boundary sits past the
+   last one — which means a single target can make a naive implementation look
+   good by luck of alignment. Measured: with the fine watch disabled and a lone
+   target of 100.7, the overshoot was 50 ms and this test passed a genuinely
+   broken build. Sweeping the phase exercises the naive worst case (very nearly a
+   whole tick) while the fine timer, which is scheduled in wall clock rather than
+   on ticks, stays flat across all of them. */
+const PHASE_SWEEP = [100.70, 100.76, 100.82, 100.88];
+
+test("the boundary beats a bare timeupdate check, measured against one", async () => {
+  // Measured on an idle box the overshoot is 5-15 ms against a ~250 ms tick.
+  // The budget is a fraction of the tick interval THIS RUN actually delivered,
+  // so a saturated scheduler stretches both sides equally instead of being
+  // reported as a product regression — which is the flake this replaces.
   const overshoots = [];
-  for (let i = 0; i < 3; i++) {
-    const { b, ends } = ticking();
+  let naiveMs = Infinity;
+  for (const target of PHASE_SWEEP) {
+    const { b, ends, tickAt } = ticking();
     await b.load(item("seg"), { startOffset: 100 });
-    b.setOutPoint(100.7);
+    b.setOutPoint(target);
     b.play();
-    await waitForEnd(ends, 3000);
+    // The boundary must actually FIRE. Without this the whole test is vacuous:
+    // `lastOutPointOvershootSec` starts as null, and `null < anything` is true.
+    assert.equal(await waitForEnd(ends), "outPoint", `the out-point at ${target} never fired`);
+    assert.equal(typeof b.lastOutPointOvershootSec, "number");
     overshoots.push(b.lastOutPointOvershootSec);
+    naiveMs = Math.min(naiveMs, observedTickMs(tickAt));
   }
   const worst = Math.max(...overshoots);
-  assert.ok(worst < TIMEUPDATE_MS / 1000 / 5, `worst overshoot ${worst}s (of ${overshoots.join(", ")})`);
+  const budgetSec = (naiveMs * NAIVE_FRACTION) / 1000;
+  assert.ok(
+    worst < budgetSec,
+    `worst overshoot ${worst}s (of ${overshoots.join(", ")}) vs ${budgetSec}s ` +
+    `— a naive check would have cost up to ${naiveMs.toFixed(0)}ms`
+  );
 });
 
 test("a faster rate does not loosen the boundary", async () => {
   // At 2x, one timeupdate is half a second of CONTENT — a whole sentence. The
   // fine timer is scheduled in wall clock, so the content overshoot stays flat.
-  const { b, ends } = ticking();
+  const { b, ends, tickAt } = ticking();
   await b.load(item("seg"), { startOffset: 100 });
   b.setRate(2);
   b.setOutPoint(101.2);
   b.play();
-  await waitForEnd(ends, 3000);
-  assert.ok(b.lastOutPointOvershootSec < 0.1, `overshoot ${b.lastOutPointOvershootSec}s at 2x`);
+  assert.equal(await waitForEnd(ends), "outPoint", "the out-point never fired at 2x");
+  const worst = b.lastOutPointOvershootSec;
+  // At 2x a tick covers twice the CONTENT, which is what the naive check would
+  // overshoot by — the comparison is against content seconds either way.
+  const budgetSec = (observedTickMs(tickAt) * 2 * NAIVE_FRACTION) / 1000;
+  assert.ok(typeof worst === "number" && worst < budgetSec, `overshoot ${worst}s at 2x vs ${budgetSec}s`);
 });
 
 test("a buffering stall at the boundary neither stops early nor spins", async () => {
@@ -477,7 +578,7 @@ test("a buffering stall at the boundary neither stops early nor spins", async ()
   assert.ok(stallLogs <= 2, `stood down ${stallLogs} times — the fine watch is spinning`);
 
   el.unstall();
-  assert.equal(await waitForEnd(ends, 3000), "outPoint", "must resume and still stop at the boundary");
+  assert.equal(await waitForEnd(ends), "outPoint", "must resume and still stop at the boundary");
   assert.ok(el.currentTime >= 100.6);
 });
 
@@ -487,7 +588,7 @@ test("an out-point past the real audio yields exactly one end, the natural one",
   b.setOutPoint(400); // authored end_sec well past this copy
   b.play();
 
-  assert.equal(await waitForEnd(ends, 3000), "natural");
+  assert.equal(await waitForEnd(ends), "natural");
   await sleep(300);
   assert.equal(ends.length, 1, "the file end and a late boundary must not both fire");
   assert.ok(log.some((m) => /outPoint\.beyondDuration/.test(m)), "and it says so");
@@ -518,7 +619,7 @@ test("scrubbing back before the out-point re-arms it", async () => {
   b.seek(130);          // past — disarmed
   await sleep(60);
   b.seek(109.7);        // back before it — armed again
-  assert.equal(await waitForEnd(ends, 3000), "outPoint");
+  assert.equal(await waitForEnd(ends), "outPoint");
 });
 
 test("an out-point already behind the playhead never fires", async () => {
@@ -660,13 +761,13 @@ test("consecutive same-episode slices may run BACKWARDS through the episode", as
   await b.load(item("seg-1", "https://cdn.example/one.mp3"), { startOffset: 900 });
   b.setOutPoint(900.4);
   b.play();
-  assert.equal(await waitForEnd(ends, 3000), "outPoint");
+  assert.equal(await waitForEnd(ends), "outPoint");
 
   await b.load(item("seg-2", "https://cdn.example/one.mp3"), { startOffset: 100 });
   assert.equal(el.currentTime, 100, "seeks backwards within the buffered source");
   b.setOutPoint(100.4);
   b.play();
-  const deadline = now() + 3000;
+  const deadline = now() + END_BUDGET_MS;
   while (ends.length < 2 && now() < deadline) await sleep(5);
   assert.deepStrictEqual(ends, ["outPoint", "outPoint"]);
   assert.ok(el.currentTime >= 100.4 && el.currentTime < 101);
@@ -682,7 +783,7 @@ test("arming while paused works: the boundary takes effect once play starts", as
   await sleep(120);
   assert.deepStrictEqual(ends, [], "nothing fires while paused");
   b.play();
-  assert.equal(await waitForEnd(ends, 3000), "outPoint");
+  assert.equal(await waitForEnd(ends), "outPoint");
 });
 
 test("a different source still reloads", async () => {
@@ -700,13 +801,13 @@ test("back-to-back slices of one episode each stop at their own boundary", async
   await b.load(item("seg-1", "https://cdn.example/one.mp3"), { startOffset: 100 });
   b.setOutPoint(100.5);
   b.play();
-  assert.equal(await waitForEnd(ends, 3000), "outPoint");
+  assert.equal(await waitForEnd(ends), "outPoint");
 
   el.calls.length = 0;
   await b.load(item("seg-2", "https://cdn.example/one.mp3"), { startOffset: 400 });
   b.setOutPoint(400.5);
   b.play();
-  const deadline = now() + 3000;
+  const deadline = now() + END_BUDGET_MS;
   while (ends.length < 2 && now() < deadline) await sleep(5);
   assert.deepStrictEqual(ends, ["outPoint", "outPoint"]);
   assert.ok(el.currentTime >= 400.5 && el.currentTime < 401, `second slice stopped at ${el.currentTime}`);
@@ -748,7 +849,7 @@ test("integration: a three-segment Foray plays every slice and stops", async () 
 
   // Slice 1 -> slice 2: same episode, so a seek rather than a refetch.
   const loadsBefore = el.calls.filter((c) => c === "load").length;
-  let deadline = now() + 4000;
+  let deadline = now() + END_BUDGET_MS;
   while (m._currentItem()?.id !== "f1#1" && now() < deadline) await sleep(5);
   assert.equal(m._currentItem().id, "f1#1");
   assert.equal(el.calls.filter((c) => c === "load").length, loadsBefore,
@@ -763,14 +864,14 @@ test("integration: a three-segment Foray plays every slice and stops", async () 
   assert.ok(el.currentTime >= pausedAt - 0.05, `resumed at ${el.currentTime}, was at ${pausedAt}`);
 
   // Slice 2 -> slice 3: different episode, so a real load.
-  deadline = now() + 4000;
+  deadline = now() + END_BUDGET_MS;
   while (m._currentItem()?.id !== "f1#2" && now() < deadline) await sleep(5);
   assert.equal(m._currentItem().id, "f1#2");
   assert.equal(el.src, "https://cdn.example/b.mp3");
   assert.ok(el.currentTime >= 50 && el.currentTime < 51);
 
   // ...and the Foray ends rather than rolling into anything.
-  deadline = now() + 4000;
+  deadline = now() + END_BUDGET_MS;
   while (m.state.type !== "ended" && now() < deadline) await sleep(5);
   assert.equal(m.state.type, "ended");
   assert.equal(el.paused, true);
