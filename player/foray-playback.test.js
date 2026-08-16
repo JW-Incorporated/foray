@@ -24,6 +24,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 
 import { PlayerQueueManager, __resetInstanceForTests } from "./queue-manager.js";
@@ -504,4 +505,458 @@ test("a backend with no out-point watch refuses the Foray instead of playing who
     () => m.setQueueFromForay(r.hydrated, { resolveItem: (id) => r.sources.get(id) ?? null }),
     /setOutPoint/
   );
+});
+
+/* ---------- the page is INTERACTIVE, not merely rendered ----------
+
+   WHY THIS EXISTS, SPECIFICALLY
+   A PR on this branch shipped a `ReferenceError` in `bindFeedback`. That runs
+   inside `renderForay`, BEFORE `bindForayTransport` — so the exception escaped,
+   and nothing after it ever ran: play, pause, prev, next, every row, the strip,
+   Start over, and the callback that repaints the running order. The page
+   rendered perfectly and was completely inert. `?foray=grilling-history-1` was a
+   total regression, and every suite in this repo stayed green, because nothing
+   anywhere asserted that the surface RESPONDS. `node --check` cannot see it: the
+   source parses, the identifier is only unresolvable at run time.
+
+   WHAT THIS HARNESS IS, AND WHAT IT IS NOT
+   It is a binding harness, not a DOM. It serves the elements app.js looks up and
+   records the listeners app.js attaches, which is exactly enough to answer "did
+   every binder run, and does clicking reach the player". It deliberately does
+   NOT parse the HTML app.js emits, so it cannot tell you a button was rendered
+   in the wrong place or styled invisibly — jsdom is a dependency this repo does
+   not have (see test/app-security.test.js's header for the same trade).
+
+   The one gap that matters — the harness serving an element the real markup no
+   longer emits — is closed by pinning the emitted HTML string against the
+   selectors the binders use. See the last test.
+
+   app.js is a classic script, so it loads through node:vm the same way
+   test/app-security.test.js loads it. `init()` parks at its first `fetch`, which
+   never settles, so nothing renders until this file calls `renderForay` itself. */
+
+const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+
+/** Elements are identified by what app.js asks for, because that is the only
+    identity the harness has. `attrs` become `dataset` entries. */
+class StubEl {
+  constructor(dom, { id = null, attrs = {}, className = "" } = {}) {
+    this._dom = dom;
+    this.id = id;
+    this.dataset = { ...attrs };
+    this.className = className;
+    this._classes = new Set(String(className).split(/\s+/).filter(Boolean));
+    this._on = new Map();
+    this.style = {};
+    this.hidden = false;
+    this.textContent = "";
+    this.innerHTML = "";
+    this.value = "";
+    this.disabled = false;
+    this.children = [];
+    this.removed = false;
+    this.attributes = {};
+    this.classList = {
+      add: (c) => this._classes.add(c),
+      remove: (c) => this._classes.delete(c),
+      contains: (c) => this._classes.has(c),
+      toggle: (c, on) => { const want = on ?? !this._classes.has(c); want ? this._classes.add(c) : this._classes.delete(c); return want; },
+    };
+  }
+  addEventListener(type, fn) {
+    if (!this._on.has(type)) this._on.set(type, []);
+    this._on.get(type).push(fn);
+  }
+  removeEventListener(type, fn) {
+    const l = this._on.get(type); if (l) this._on.set(type, l.filter((f) => f !== fn));
+  }
+  /** How many handlers are bound — the thing the inert build had zero of. */
+  listeners(type = "click") { return (this._on.get(type) ?? []).length; }
+  /** Fire a click. `target` models event delegation (the strip reads e.target). */
+  async click(target = this) {
+    const ev = { preventDefault() {}, stopPropagation() {}, target };
+    for (const fn of [...(this._on.get("click") ?? [])]) await fn(ev);
+  }
+  setAttribute(k, v) { this.attributes[k] = String(v); }
+  getAttribute(k) { return this.attributes[k] ?? null; }
+  removeAttribute(k) { delete this.attributes[k]; }
+  remove() { this.removed = true; this._dom.detach(this); }
+  closest(sel) { return this._dom.matches(this, sel) ? this : null; }
+  querySelector(sel) { return this._dom.query(sel, this); }
+  querySelectorAll(sel) { return this._dom.queryAll(sel, this); }
+  append() {}
+  appendChild() {}
+}
+
+/** The selector vocabulary app.js actually uses on the Foray page. Anything
+    outside it returns empty rather than guessing — an unrecognised selector
+    should look like "nothing matched", never like a silent pass. */
+class StubDom {
+  constructor(resolved) {
+    this.resolved = resolved;
+    this.byId = new Map();
+    this.detached = new Set();
+
+    const playable = resolved.entries.filter((e) => e.playable);
+    this.rows = playable.map((e) => new StubEl(this, { className: "fy-jump", attrs: { fy: String(e.queueIndex) } }));
+    this.segs = playable.map((_, i) => new StubEl(this, { className: "fy-seg", attrs: { seg: String(i) } }));
+    this.thumbs = [];
+    for (const e of resolved.entries) {
+      if (!e.segment_id || !e.topic) continue;
+      for (const dir of ["up", "down"]) {
+        this.thumbs.push(new StubEl(this, { className: "fy-thumb", attrs: { thumb: dir, segId: e.segment_id } }));
+      }
+    }
+    // Filled from app.js's own FB_CHIPS once the script has been evaluated —
+    // hard-coding a subset here let a rename in FB_CHIPS pass while the sheet
+    // test asserted against a label the page never emitted.
+    this.chips = [];
+    this.srcLinks = [...new Set(playable.map((e) => e.show))]
+      .map((s) => new StubEl(this, { className: "fy-src-head", attrs: { srcShow: s } }));
+
+    for (const id of [
+      "view", "fy-strip", "fy-now", "fy-total", "fy-play", "fy-next", "fy-prev", "fy-error",
+      "fy-resume", "fy-bar-fill", "fy-restart", "fy-sheet", "fy-scrim", "fy-sheet-sub",
+      "fy-sheet-note", "fy-sheet-cancel", "fy-sheet-go", "banner-slot", "home-intro",
+      "intro-close", "pl-form", "pl-input", "pl-note", "pl-remove", "banner-done",
+      "drawer", "drawer-overlay", "drawer-playlists", "family-toggle", "player-toggle",
+      "menu-btn", "refresh-btn",
+    ]) this.byId.set(id, new StubEl(this, { id }));
+
+    this.byId.get("fy-strip").children = this.segs;
+    this.body = new StubEl(this, { id: "body" });
+  }
+  detach(el) { this.detached.add(el); }
+  el(id) { return this.byId.get(id); }
+  live(list) { return list.filter((e) => !this.detached.has(e)); }
+  /** The real reason-chip labels, read out of app.js after it is evaluated. */
+  setChips(labels) {
+    this.chips = labels.map((c) => new StubEl(this, { className: "fy-chip", attrs: { chip: c } }));
+  }
+
+  matches(el, sel) {
+    const m = /^\[data-([a-z-]+)\]$/.exec(sel);
+    if (m) return camel(m[1]) in el.dataset;
+    return false;
+  }
+
+  queryAll(sel, _scope) {
+    const s = sel.trim();
+    if (s === "[data-fy]") return this.live(this.rows);
+    if (s === "[data-seg]") return this.live(this.segs);
+    if (s === "[data-thumb]") return this.live(this.thumbs);
+    if (s === "[data-chip]") return this.live(this.chips);
+    if (s === "[data-chip].on") return this.live(this.chips).filter((c) => c.classList.contains("on"));
+    if (s === "[data-src-show]") return this.live(this.srcLinks);
+    const seg = /^\[data-seg-id="(.*)"\]$/.exec(s);
+    if (seg) return this.live(this.thumbs).filter((t) => t.dataset.segId === seg[1]);
+    return [];
+  }
+  query(sel, scope) {
+    const id = /^#([\w-]+)$/.exec(sel.trim());
+    if (id) {
+      const el = this.byId.get(id[1]);
+      return el && !this.detached.has(el) ? el : null;
+    }
+    return this.queryAll(sel, scope)[0] ?? null;
+  }
+}
+
+const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+
+/** Records every call app.js makes into the player, and resolves the running
+    order with the REAL resolver against the REAL data files. */
+function fakeBridge(resolved, { resume = null } = {}) {
+  const calls = [];
+  let onChange = null;
+  const record = (name) => (...args) => { calls.push({ name, args }); };
+  const credit = {
+    show: resolved.shows[0], clips: 3, seconds: 420,
+    link: "https://podcasts.apple.com/us/search?term=Example",
+    linkKind: "apple-search",
+    episodes: [{ id: "ep-1", title: "An episode", clips: 3, seconds: 420 }],
+  };
+  return {
+    calls,
+    lastOnChange: () => onChange,
+    /* Asserts rather than ignores: `renderForay` has to hand the resolver BOTH
+       side documents, and dropping one produced a Foray with zero playable
+       segments that this harness would otherwise have rendered as fine. */
+    resolve: (foraysDoc, opts = {}) => {
+      calls.push({ name: "resolve", args: [foraysDoc, opts] });
+      assert.ok(foraysDoc, "renderForay must pass the forays document");
+      assert.ok(opts.segmentsDoc, "renderForay must pass data/segments.json to the resolver");
+      assert.ok(opts.sourcesDoc, "renderForay must pass data/segment-sources.json to the resolver");
+      assert.ok(Array.isArray(opts.unlocked) && opts.unlocked.includes(FORAY_ID), "the draft must be unlocked by id");
+      return resolved;
+    },
+    listForays: () => [{ id: resolved.id, title: resolved.title, status: "draft" }],
+    fmtClock, fmtSpan: (s) => `${Math.round(s)}s`,
+    forayResume: () => resume,
+    forayResumeList: () => (resume ? [{ id: resolved.id, title: resolved.title, percent: 32, label: "42 min left", finished: false }] : []),
+    clearForayResume: record("clearForayResume"),
+    // A real credit, so the block is actually emitted and bindSourceLinks has
+    // something to bind — an empty list made that binder untested by accident.
+    forayCredits: () => ({ credits: [credit], summary: "1 episode from 1 show" }),
+    watchForay: (fn) => { onChange = fn; return null; },
+    playForay: (r, opts = {}) => { calls.push({ name: "playForay", args: [r, opts] }); onChange = opts.onChange ?? onChange; return null; },
+    forayToggle: record("forayToggle"),
+    forayNext: record("forayNext"),
+    forayPrevious: record("forayPrevious"),
+    forayJump: (i) => { calls.push({ name: "forayJump", args: [i] }); },
+  };
+}
+
+/** Mount the Foray page the way the router does, and hand back everything a
+    test needs to poke it. Rejects if `renderForay` throws — which is the whole
+    point, and is what the inert build did. */
+async function mountForayPage({ resume = null } = {}) {
+  const resolved = realResolve();
+  const dom = new StubDom(resolved);
+  const bridge = fakeBridge(resolved, { resume });
+  const store = new Map();
+
+  const ctx = {
+    console: { ...console, warn() {}, error() {} },
+    fetch: () => new Promise(() => {}),          // parks init(), same as app-security
+    localStorage: {
+      get length() { return store.size; },
+      key: (i) => [...store.keys()][i] ?? null,
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      setItem: (k, v) => store.set(k, String(v)),
+      removeItem: (k) => store.delete(k),
+    },
+    document: {
+      body: dom.body,
+      documentElement: dom.body,
+      addEventListener() {},
+      createElement: () => new StubEl(dom),
+      querySelector: (s) => dom.query(s),
+      querySelectorAll: (s) => dom.queryAll(s),
+    },
+    navigator: { userAgent: "node" },
+    location: { hash: `#/foray/${FORAY_ID}`, search: `?foray=${FORAY_ID}`, pathname: "/", href: "https://x.test/" },
+    history: { replaceState() {}, pushState() {} },
+    CSS: { escape: (s) => String(s) },
+    URL, URLSearchParams, Math, Date, JSON, Promise, setTimeout, clearTimeout,
+    encodeURIComponent, decodeURIComponent,
+  };
+  ctx.window = ctx;
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+
+  // `state` and `SearchEngine` are lexical consts in app.js, so they are not
+  // properties of the context and have to be reached from inside it.
+  ctx.__forays = FORAYS;
+  ctx.__segments = SEGMENTS;
+  ctx.__sources = SOURCES;
+  ctx.__bridge = bridge;
+  vm.runInContext(
+    "state.forays = __forays; state.segments = __segments; state.segmentSources = __sources;" +
+    "state.ready = true; window.ForayPlayer = __bridge;",
+    ctx
+  );
+  // The reason chips are app.js's own list, not a copy of it.
+  dom.setChips(vm.runInContext("FB_CHIPS", ctx));
+
+  await ctx.renderForay(FORAY_ID);
+  return { dom, bridge, ctx, resolved, store, html: dom.el("view").innerHTML };
+}
+
+test("mounting the Foray page binds the transport — the inert-page regression", async () => {
+  // If renderForay throws anywhere, this rejects. If it completes but a binder
+  // was skipped, the listener counts are zero. The shipped bug did the first,
+  // which caused the second.
+  const { dom } = await mountForayPage();
+  for (const id of ["fy-play", "fy-next", "fy-prev", "fy-strip"]) {
+    assert.ok(dom.el(id).listeners("click") > 0, `#${id} has no click handler — the page is inert`);
+  }
+  assert.equal(dom.rows.length, 32, "every playable segment needs a row to click");
+  assert.ok(dom.rows.every((r) => r.listeners("click") > 0), "a running-order row is not clickable");
+});
+
+test("pressing play reaches the player, and the callback repaints the page", async () => {
+  const { dom, bridge } = await mountForayPage();
+  await dom.el("fy-play").click();
+
+  const started = bridge.calls.filter((c) => c.name === "playForay");
+  assert.equal(started.length, 1, `expected one playForay, got ${JSON.stringify(bridge.calls.map((c) => c.name))}`);
+  assert.equal(started[0].args[1].startIndex, 0, "a cold press must start at the beginning");
+
+  // The page owns the running order, so it only moves if the player's callback
+  // reaches it. This is the half of the transport that looked most alive while
+  // being most dead: the button label never changed on the inert build.
+  const onChange = bridge.lastOnChange();
+  assert.equal(typeof onChange, "function", "playForay was called without an onChange — nothing can repaint");
+  onChange({ forayId: FORAY_ID, index: 3, playing: true, loading: false, ended: false, elapsedSec: 240, totalSec: 3673, error: null });
+
+  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+  assert.equal(dom.el("fy-now").textContent, fmtClock(240));
+  assert.ok(dom.rows[3].classList.contains("is-playing"), "the audible segment must be marked");
+  assert.ok(dom.rows[2].classList.contains("is-played"));
+  assert.ok(!dom.rows[4].classList.contains("is-played"));
+  assert.ok(dom.segs[3].classList.contains("is-playing"), "the strip must track the segment too");
+});
+
+test("pause comes back through the same callback and the label flips", async () => {
+  const { dom, bridge } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  const at = (playing) => onChange({ forayId: FORAY_ID, index: 3, playing, loading: false, ended: false, elapsedSec: 240, totalSec: 3673, error: null });
+
+  at(true);
+  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+  at(false);
+  assert.equal(dom.el("fy-play").textContent, "▶ Resume", "paused mid-Foray is a resume, not a fresh play");
+
+  // Once the player is inside this Foray, play/pause must toggle rather than
+  // rebuild the queue from segment 1.
+  await dom.el("fy-play").click();
+  assert.equal(bridge.calls.filter((c) => c.name === "forayToggle").length, 1);
+  assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 1, "must not restart the Foray");
+});
+
+test("next, previous, a row and the strip each reach the player", async () => {
+  const { dom, bridge } = await mountForayPage();
+  // Cold, every control means "start it" — a next that begins at segment 2
+  // silently drops the opening.
+  await dom.el("fy-next").click();
+  assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 1);
+
+  const onChange = bridge.lastOnChange();
+  onChange({ forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false, elapsedSec: 5, totalSec: 3673, error: null });
+
+  await dom.el("fy-next").click();
+  await dom.el("fy-prev").click();
+  await dom.rows[20].click();
+  await dom.el("fy-strip").click(dom.segs[7]);
+
+  const names = bridge.calls.map((c) => c.name);
+  assert.ok(names.includes("forayNext"), names.join(","));
+  assert.ok(names.includes("forayPrevious"), names.join(","));
+  const jumps = bridge.calls.filter((c) => c.name === "forayJump").map((c) => c.args[0]);
+  assert.deepEqual(jumps, [20, 7], "a row and a strip cell must both jump to their own segment");
+});
+
+test("a thumbs-up records a vote — the binder that actually threw", async () => {
+  // bindFeedback is where the ReferenceError lived. It runs before the transport
+  // is bound, so this assertion and the ones above fail together on that bug —
+  // deliberately, because either symptom alone is enough to catch it.
+  const { dom, store, resolved } = await mountForayPage();
+  const up = dom.thumbs.find((t) => t.dataset.thumb === "up");
+  await up.click();
+
+  const saved = JSON.parse(store.get("cp_foray_feedback") ?? "{}");
+  const first = resolved.entries.find((e) => e.segment_id && e.topic);
+  assert.equal(saved[first.segment_id]?.direction, "up");
+  assert.ok(up.classList.contains("on"), "the control must show the vote it just took");
+
+  const events = JSON.parse(store.get("cp_events") ?? "[]").filter((e) => e.type === "thumbs");
+  assert.equal(events.length, 1);
+  assert.equal(events[0].payload.node_id, first.topic, "the learning job keys on the taxonomy node");
+  assert.equal(events[0].payload.direction, "up");
+});
+
+test("a thumbs-down opens the sheet and records nothing until it is submitted", async () => {
+  const { dom, store } = await mountForayPage();
+  const down = dom.thumbs.find((t) => t.dataset.thumb === "down");
+  await down.click();
+
+  assert.equal(dom.el("fy-sheet").hidden, false, "the reason sheet must open");
+  assert.equal(store.has("cp_foray_feedback"), false, "a down-vote must not commit before its reason");
+  assert.equal(dom.el("fy-sheet-go").disabled, true, "nothing picked yet");
+
+  await dom.chips[1].click();
+  assert.equal(dom.el("fy-sheet-go").disabled, false);
+  await dom.el("fy-sheet-go").click();
+
+  const saved = Object.values(JSON.parse(store.get("cp_foray_feedback") ?? "{}"));
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].direction, "down");
+  assert.deepEqual(saved[0].reasons, [dom.chips[1].dataset.chip]);
+  assert.equal(dom.el("fy-sheet").hidden, true);
+});
+
+test("dismissing the sheet leaves the segment unvoted", async () => {
+  const { dom, store } = await mountForayPage();
+  await dom.thumbs.find((t) => t.dataset.thumb === "down").click();
+  await dom.chips[0].click();
+  await dom.el("fy-scrim").click();
+  assert.equal(dom.el("fy-sheet").hidden, true);
+  assert.equal(store.has("cp_foray_feedback"), false, "cancelling is not a quiet down-vote");
+});
+
+test("a stored position makes the cold press a resume, and Start over clears it", async () => {
+  const resume = { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, label: "42 min left", clock: "19:40" };
+  const { dom, bridge } = await mountForayPage({ resume });
+
+  assert.equal(dom.el("fy-now").textContent, fmtClock(1180), "the page must open on the stored clock");
+  assert.equal(dom.el("fy-play").textContent, "▶ Resume");
+  assert.ok(dom.rows[8].classList.contains("is-played"), "everything before the resume point is behind them");
+  assert.ok(!dom.rows[9].classList.contains("is-played"));
+
+  await dom.el("fy-play").click();
+  const opts = bridge.calls.find((c) => c.name === "playForay").args[1];
+  assert.equal(opts.startElapsedSec, 1180, "the press must resume, not restart");
+  assert.equal(opts.startIndex, undefined);
+
+  await dom.el("fy-restart").click();
+  assert.ok(bridge.calls.some((c) => c.name === "clearForayResume"), "Start over must forget the position");
+  const last = bridge.calls.filter((c) => c.name === "playForay").pop();
+  assert.equal(last.args[1].startIndex, 0);
+  assert.equal(last.args[1].startElapsedSec, undefined);
+});
+
+test("a source credit is bound, so the outbound click is measured", async () => {
+  // Publisher credit is the one surface with a business reason to be
+  // instrumented — this is how we see the traffic we send them.
+  const { dom, resolved, store } = await mountForayPage();
+  assert.ok(dom.srcLinks.length > 0, "the harness has no credit rows to bind");
+  const link = dom.srcLinks.find((a) => a.dataset.srcShow === resolved.shows[0]) ?? dom.srcLinks[0];
+  assert.ok(link.listeners("click") > 0, "a credit link that logs nothing sends the publisher no measurable traffic");
+  await link.click();
+  const opened = JSON.parse(store.get("cp_events") ?? "[]").filter((e) => e.type === "source_opened");
+  assert.equal(opened.length, 1);
+  assert.equal(opened[0].payload.foray_id, FORAY_ID);
+});
+
+test("the markup app.js emits carries every hook the harness serves", async () => {
+  /* The harness's one real blind spot: it hands out elements without parsing the
+     HTML, so on its own it would keep passing if `forayRow` stopped emitting
+     `data-fy` entirely. Pin the string instead — this is what ties the stubs
+     above to the markup a browser would actually get.
+
+     Every id the harness fabricates and every attribute it keys on has to be in
+     here, INCLUDING the ones no test clicks: review found `fy-bar-fill` missing,
+     and `app.js` dereferences it unguarded before any binder runs, so a markup
+     rename would have thrown renderForay and left the page inert — the exact bug
+     this whole section exists to catch, straight through the net. */
+  const { html, dom, resolved, ctx } = await mountForayPage({
+    resume: { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, label: "42 min left", clock: "19:40" },
+  });
+  for (const hook of [
+    'id="fy-play"', 'id="fy-next"', 'id="fy-prev"', 'id="fy-strip"', 'id="fy-now"',
+    'id="fy-total"', 'id="fy-error"', 'id="fy-resume"', 'id="fy-restart"', 'id="fy-bar-fill"',
+    'id="fy-sheet"', 'id="fy-scrim"', 'id="fy-sheet-go"', 'id="fy-sheet-cancel"',
+    'id="fy-sheet-note"', 'id="fy-sheet-sub"',
+    'data-fy="0"', 'data-seg="0"', 'data-thumb="up"', 'data-thumb="down"',
+    'data-chip="', 'data-seg-id="', 'data-src-show="',
+  ]) {
+    assert.ok(html.includes(hook), `the rendered page no longer contains ${hook}`);
+  }
+  // Counts, not just presence: one strip cell instead of 32 leaves 31 segments
+  // unclickable and passes a presence check.
+  assert.equal((html.match(/data-fy="/g) ?? []).length, resolved.playable.length);
+  assert.equal((html.match(/data-seg="/g) ?? []).length, resolved.playable.length);
+  assert.equal((html.match(/data-thumb="/g) ?? []).length, resolved.entries.filter((e) => e.segment_id && e.topic).length * 2);
+  /* Every reason chip the harness serves is a chip the page really emits —
+     compared through app.js's own `esc`, because a label with an apostrophe
+     ("Didn't like the voice") reaches the markup as `&#39;`. Comparing raw
+     strings here failed, which is the pin doing its job on its first outing. */
+  assert.ok(dom.chips.length >= 5, `only ${dom.chips.length} reason chips`);
+  for (const c of dom.chips) {
+    assert.ok(html.includes(`data-chip="${ctx.esc(c.dataset.chip)}"`), `chip "${c.dataset.chip}" is not in the markup`);
+  }
+  assert.equal((html.match(/data-chip="/g) ?? []).length, dom.chips.length);
 });
