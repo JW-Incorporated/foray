@@ -62,7 +62,7 @@ const FLOORS = {
   "tools/ci/path-policy.test.mjs": 82,
   "tools/ci/pr-triage.test.mjs": 85,
   "tools/ci/run-suites.test.mjs": 36,
-  "tools/foray/check-forays.test.mjs": 68,
+  "tools/foray/check-forays.test.mjs": 76,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
   "tools/segments/sweep-transcripts.test.mjs": 26,
