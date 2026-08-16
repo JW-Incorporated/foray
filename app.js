@@ -11,6 +11,12 @@ const state = {
   interests: {},
   semantic: null,
   itemTags: null,
+  forays: null,             // data/forays.json   — may be absent; see fetchJson
+  segments: null,           // data/segments.json
+  segmentSources: null,     // data/segment-sources.json
+  foray: null,              // the resolved Foray currently on screen
+  forayPlaying: null,       // id of the Foray the player is inside, or null
+  forayPainted: null,       // last segment index painted onto the running order
   cardSlots: [],            // the four dealt suggestions
   itemIndex: {},            // id -> snapshot
   ready: false,
@@ -643,6 +649,7 @@ function renderHome() {
     <div class="home">
       <div id="banner-slot">${bannerHtml()}</div>
       ${introHtml()}
+      ${forayHomeHtml()}
       <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
       <form id="pl-form" autocomplete="off">
         <input id="pl-input" type="text" maxlength="120" placeholder="build me a playlist…">
@@ -762,6 +769,309 @@ function renderPlaylists() {
     </div>`;
 }
 
+/* ---------- Forays (#128) ----------
+
+   A Foray is one ordered run of 32 SEGMENTS drawn from nine episodes of five
+   shows — not an episode, and not a playlist of episodes. The running order
+   lives in data/forays.json, the timestamps in data/segments.json, the audio in
+   data/segment-sources.json; the join, the queue and the position maths all
+   live in player/foray-resolve.js, where they are tested. This section is the
+   surface: it renders what that returns and drives the transport.
+
+   ── The draft rule ────────────────────────────────────────────────────────
+   Foray #1 is `status: "draft"` and only a founder may publish it
+   (HUMAN-ACTIONS.md #2). So it is not listed for an ordinary visitor. It is
+   still reachable — by asking for it by id:
+
+       https://jw-incorporated.github.io/foray/?foray=grilling-history-1
+
+   That link opens the Foray once (`enterForayFromQuery` rewrites the hash) and
+   the parameter then stays in the URL as the unlock token — changing
+   `location.hash` leaves the query string alone, so the unlock holds while the
+   founder moves around the app. It is deliberately NOT persisted to
+   localStorage: an unpublished Foray should not start appearing for someone who
+   once opened a link on a shared machine. Nothing is bypassed and nothing is
+   published by opening it — the status in the data file is unchanged, and the
+   page says so on the page. */
+
+function forayParam() {
+  try {
+    const raw = new URLSearchParams(location.search).get("foray");
+    return raw && raw.trim() ? raw.trim() : null;
+  } catch (_) { return null; }
+}
+
+/** Ids the visitor named explicitly. Today that is at most one. */
+function unlockedForays() {
+  const id = forayParam();
+  return id ? [id] : [];
+}
+
+/* The player is an ES module and this is a classic script, so the bridge may
+   not exist yet at first render. Wait for it once, rather than polling — and
+   give up rather than hanging if the module failed to load at all, so a broken
+   deploy shows a message instead of an empty page. */
+const PLAYER_WAIT_MS = 5000;
+
+function playerBridge() {
+  if (window.ForayPlayer) return Promise.resolve(window.ForayPlayer);
+  return new Promise(resolve => {
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(window.ForayPlayer || null); } };
+    window.addEventListener("forayplayer:ready", finish, { once: true });
+    setTimeout(finish, PLAYER_WAIT_MS);
+  });
+}
+
+function forayRow(entry) {
+  const dur = window.ForayPlayer ? window.ForayPlayer.fmtSpan(entry.duration_sec) : "";
+  const meta = [entry.show, dur].filter(Boolean).join(" · ");
+  if (!entry.playable) {
+    return `<div class="fy-row is-out">
+      <span class="fy-label">${esc(entry.label)}</span>
+      <div class="fy-body">
+        <div class="fy-meta">${esc(meta)}</div>
+        <p class="fy-why">${esc(entry.why)}</p>
+        <p class="fy-out">Can't play: ${esc(entry.reason || "unresolved")}</p>
+      </div>
+    </div>`;
+  }
+  return `<button type="button" class="fy-row" data-fy="${esc(String(entry.queueIndex))}"
+      aria-label="Play ${esc(entry.label)}, ${esc(entry.show)}">
+    <span class="fy-label">${esc(entry.label)}</span>
+    <div class="fy-body">
+      <div class="fy-meta">${esc(meta)}</div>
+      <p class="fy-why">${esc(entry.why)}</p>
+    </div>
+    <span class="fy-state" aria-hidden="true"></span>
+  </button>`;
+}
+
+function foraySlotHtml(slot) {
+  if (!slot.entries.length) {
+    return `<section class="fy-slot">
+      <h3>${esc(slot.title)}</h3>
+      <p class="note">Nothing in this part yet.</p>
+    </section>`;
+  }
+  return `<section class="fy-slot">
+    <h3>${esc(slot.title)}</h3>
+    ${slot.entries.map(forayRow).join("")}
+  </section>`;
+}
+
+function forayHeadSub(r) {
+  const fmt = window.ForayPlayer ? window.ForayPlayer.fmtClock : (s => String(Math.round(s)));
+  const parts = [
+    `${r.playable.length} segment${r.playable.length === 1 ? "" : "s"}`,
+    `${r.shows.length} show${r.shows.length === 1 ? "" : "s"}`,
+    fmt(r.totalSec),
+  ];
+  return parts.join(" · ");
+}
+
+async function renderForay(id) {
+  document.body.className = "view-page";
+  $("#view").innerHTML = `<div class="page"><p class="note">Loading…</p></div>`;
+
+  const player = await playerBridge();
+  // Another route may have won while we waited for the module.
+  if (forayRouteId() !== id) return;
+
+  if (!player) {
+    $("#view").innerHTML = `<div class="page"><p class="note">The player didn't load — reload the page.</p></div>`;
+    return;
+  }
+  if (!state.forays) {
+    $("#view").innerHTML = `<div class="page"><p class="note">Forays aren't available right now.</p></div>`;
+    return;
+  }
+
+  const r = player.resolve(state.forays, {
+    id,
+    segmentsDoc: state.segments,
+    sourcesDoc: state.segmentSources,
+    unlocked: unlockedForays(),
+  });
+  // Same answer for "no such Foray" and "not published": a client that
+  // distinguishes them announces the existence of unpublished work.
+  if (!r) {
+    $("#view").innerHTML = `<div class="page"><p class="note">That Foray isn't available.</p></div>`;
+    return;
+  }
+  state.foray = r;
+  state.forayPainted = null;   // fresh DOM: the paint guard must not skip it
+
+  const draft = r.foray.status !== "published";
+  const lost = r.unplayable.length;
+  $("#view").innerHTML = `
+    <div class="page foray">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2>${esc(r.title)}</h2>
+          <p class="sub">${esc(forayHeadSub(r))}</p>
+        </div>
+      </div>
+      ${draft ? `<p class="fy-draft">Draft — not published. You opened it by name; nobody else sees it.</p>` : ""}
+      ${r.foray.summary ? `<p class="fy-summary">${esc(r.foray.summary)}</p>` : ""}
+      <div class="fy-transport">
+        <div class="fy-strip" id="fy-strip">${r.playable.map((_, i) =>
+          `<span class="fy-seg" data-seg="${i}"></span>`).join("")}</div>
+        <div class="fy-times"><span id="fy-now">0:00</span><span id="fy-total"></span></div>
+        <div class="fy-controls">
+          <button type="button" class="fy-btn" id="fy-prev" aria-label="Previous segment">‹‹</button>
+          <button type="button" class="fy-btn fy-main" id="fy-play" aria-label="Play">▶ Play</button>
+          <button type="button" class="fy-btn" id="fy-next" aria-label="Next segment">››</button>
+        </div>
+        <p class="fy-error" id="fy-error" hidden></p>
+      </div>
+      ${lost ? `<p class="note">${lost} segment${lost === 1 ? "" : "s"} can't play — listed below.</p>` : ""}
+      ${r.slots.map(foraySlotHtml).join("")}
+    </div>`;
+
+  $("#fy-total").textContent = player.fmtClock(r.totalSec);
+  sizeForayStrip(r);
+  bindForayTransport(r, player);
+}
+
+/* Each segment's share of the strip is its share of the runtime. Set as a DOM
+   property, never as a style attribute — the page CSP is style-src 'self'. */
+function sizeForayStrip(r) {
+  const strip = $("#fy-strip");
+  if (!strip) return;
+  r.playable.forEach((item, i) => {
+    const seg = strip.children[i];
+    if (!seg) return;
+    const end = item.authored_end_sec ?? item.end_sec;
+    seg.style.flexGrow = String(Math.max(1, Math.round(end - item.start_sec)));
+  });
+}
+
+const FORAY_IDLE = { index: -1, playing: false, ended: false, elapsedSec: 0 };
+
+function bindForayTransport(r, player) {
+  const onChange = (s) => paintForay(s);
+
+  const start = (index) => player.playForay(r, { startIndex: index, onChange });
+
+  // Nothing playable is not a disabled-looking button that still fires: say it
+  // with the control's own state, so the page and the behaviour agree.
+  if (!r.playable.length) {
+    ["#fy-play", "#fy-next", "#fy-prev"].forEach(sel => { $(sel).disabled = true; });
+    $("#fy-play").textContent = "Nothing to play";
+    return;
+  }
+
+  $("#fy-play").addEventListener("click", async () => {
+    if (playerHasForay(r)) return player.forayToggle();
+    // Only the real start is an event. Logging a pause as a play is the kind of
+    // small lie that makes a metric useless six months later.
+    logEvent("foray_play", { foray_id: r.id, segments: r.playable.length });
+    await start(0);
+  });
+  // Before anything has started, every transport button means "start it" — a
+  // next that begins at segment 2 silently drops the opening of the Foray.
+  $("#fy-next").addEventListener("click", () => playerHasForay(r) ? player.forayNext() : start(0));
+  $("#fy-prev").addEventListener("click", () => playerHasForay(r) ? player.forayPrevious() : start(0));
+
+  $("#view").querySelectorAll("[data-fy]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const index = Number(btn.dataset.fy);
+      if (playerHasForay(r)) await player.forayJump(index);
+      else await start(index);
+    });
+  });
+
+  $("#fy-strip").addEventListener("click", async (e) => {
+    const seg = e.target.closest("[data-seg]");
+    if (!seg) return;
+    const index = Number(seg.dataset.seg);
+    if (playerHasForay(r)) await player.forayJump(index);
+    else await start(index);
+  });
+
+  /* Re-entering the page mid-Foray must paint the segment that is actually
+     audible, and route this page's callback at the live player — otherwise the
+     old, detached DOM keeps getting the updates and this one never moves. */
+  const live = player.watchForay(onChange);
+  paintForay(live && live.forayId === r.id ? live : FORAY_IDLE);
+}
+
+/** Is the player already inside THIS Foray? Pressing play on a Foray that is
+    already loaded must resume it, not rebuild the queue from segment 1. */
+function playerHasForay(r) {
+  return Boolean(state.forayPlaying === r.id);
+}
+
+/** The only thing that changes 4x a second. Deliberately not a re-render: the
+    running order is 32 rows and rebuilding it would fight the scroll position
+    and drop focus. */
+function paintForay(s) {
+  if (!state.foray) return;
+  state.forayPlaying = s.index >= 0 ? state.foray.id : null;
+
+  const now = $("#fy-now");
+  if (now && window.ForayPlayer) now.textContent = window.ForayPlayer.fmtClock(s.elapsedSec || 0);
+
+  const playBtn = $("#fy-play");
+  if (playBtn) {
+    const label = s.playing ? "❚❚ Pause" : (s.loading ? "Loading…" : (s.index >= 0 ? "▶ Resume" : "▶ Play"));
+    playBtn.textContent = label;
+    playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
+  }
+
+  // The player's own words are telemetry, not copy. Say the one thing a
+  // listener can act on, and keep the detail in the console.
+  const err = $("#fy-error");
+  if (err) {
+    err.hidden = !s.error;
+    err.textContent = s.error ? "That segment wouldn't load. Check the connection, then press play." : "";
+  }
+
+  // The row and strip classes only change when the segment does, and this runs
+  // on every position tick. Guard it: 32 rows x 4 Hz of class churn for a value
+  // that changes once a minute is work nobody asked for.
+  if (state.forayPainted === s.index) return;
+  state.forayPainted = s.index;
+
+  $("#view").querySelectorAll("[data-fy]").forEach(row => {
+    const i = Number(row.dataset.fy);
+    row.classList.toggle("is-playing", i === s.index);
+    row.classList.toggle("is-played", s.index >= 0 && i < s.index);
+  });
+  const strip = $("#fy-strip");
+  if (strip) {
+    [...strip.children].forEach((seg, i) => {
+      seg.classList.toggle("is-playing", i === s.index);
+      seg.classList.toggle("is-played", s.index >= 0 && i < s.index);
+    });
+  }
+}
+
+/** The Forays this visitor may see on the home screen. Normally empty: nothing
+    is published yet, and a draft is reached by name, not by browsing.
+
+    It reads the bridge synchronously rather than awaiting it, so on a cold load
+    where the module has not evaluated yet the row is simply absent until the
+    next render. That is the right trade while the list is empty for everyone;
+    when the first Foray is published, this wants the same await renderForay
+    does. */
+function forayCards() {
+  if (!state.forays || !window.ForayPlayer) return [];
+  return window.ForayPlayer.listForays(state.forays, { unlocked: unlockedForays() });
+}
+
+function forayHomeHtml() {
+  const list = forayCards();
+  if (!list.length) return "";
+  return `<div class="fy-home">${list.map(f => `
+    <a class="fy-home-row" href="#/foray/${esc(f.id)}">
+      <span class="fy-home-kicker">Foray${f.status === "published" ? "" : " · draft"}</span>
+      <span class="fy-home-title">${esc(f.title)}</span>
+    </a>`).join("")}</div>`;
+}
+
 /* ---------- drawer ---------- */
 
 function renderDrawer() {
@@ -783,12 +1093,40 @@ function openDrawer(open) {
 
 /* ---------- router ---------- */
 
+/** Which Foray this URL asks for, or null. Routing is hash-only; `?foray=` is
+    the way IN and the unlock token, not a route (see enterForayFromQuery). */
+function forayRouteId() {
+  const m = /^#\/foray\/(.+)$/.exec(location.hash || "#/");
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+/* `?foray=<id>` on the site root opens that Foray once, by rewriting the hash
+   in place. replaceState rather than assigning location.hash: assigning fires
+   hashchange and renders the page twice, and it would also put an entry in the
+   history that the back button bounces off.
+
+   After this the param does nothing but unlock — so the Foray page's back link
+   reaches a real home screen, which then LISTS the unlocked draft. The first
+   draft routed `#/` straight back to the Foray, which made the back button a
+   no-op and the home screen unreachable for the one person who most needs to
+   look at the rest of the app. */
+function enterForayFromQuery() {
+  const id = forayParam();
+  const h = location.hash || "";
+  if (!id || (h && h !== "#/")) return;
+  try {
+    history.replaceState(null, "", `${location.pathname}${location.search}#/foray/${encodeURIComponent(id)}`);
+  } catch (_) { /* a hash we cannot write is a home screen, not a broken page */ }
+}
+
 function route() {
   if (!state.ready) return;
   openDrawer(false);
   const h = location.hash || "#/";
+  const forayId = forayRouteId();
   let m;
-  if ((m = /^#\/playlist\/(.+)$/.exec(h))) renderPlaylistDetail(m[1]);
+  if (forayId) renderForay(forayId);
+  else if ((m = /^#\/playlist\/(.+)$/.exec(h))) renderPlaylistDetail(m[1]);
   else if ((m = /^#\/subject\/(.+)$/.exec(h))) renderPlaylistDetail("subject-" + m[1]);
   else if (h === "#/playlists") renderPlaylists();
   else renderHome();
@@ -809,17 +1147,29 @@ async function init() {
     $("#view").innerHTML = `<div class="page"><p class="note">Couldn't load Foray — check your connection and reload.</p></div>`;
     return;
   }
-  [state.validated, state.taxonomy, state.discover, state.semantic, state.itemTags] = await Promise.all([
+  /* Every one of these may come back null (fetchJson swallows a 404 and a
+     parse error alike) and every consumer treats null as "absent", so a
+     partial deploy costs the feature that needs the file rather than the
+     site. The three Foray documents are the newest and the most likely to be
+     missing from a cached service worker — see renderForay(). */
+  [
+    state.validated, state.taxonomy, state.discover, state.semantic, state.itemTags,
+    state.forays, state.segments, state.segmentSources,
+  ] = await Promise.all([
     fetchJson("data/validated-links.json"),
     fetchJson("data/taxonomy.json"),
     fetchJson("data/discover.json"),
     fetchJson("data/semantic-index.json"),
     fetchJson("data/item-tags.json"),
+    fetchJson("data/forays.json"),
+    fetchJson("data/segments.json"),
+    fetchJson("data/segment-sources.json"),
   ]);
 
   loadInterests();
   buildCards();
   state.ready = true;
+  enterForayFromQuery();
   route();
   logEvent("session_shown", { session_id: state.session.session_id });
   trySyncEvents();
