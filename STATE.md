@@ -36,6 +36,28 @@ docs/. Completed workstreams move to their plan doc's retro section.
   through the same `listableForays` rule as everything else, so a draft's
   progress is remembered and simply not advertised without `?foray=` in the URL.
   Do not "fix" that; it is the leak `player/foray-resolve.js` closed on purpose.
+- **Heads-up — the Foray page now has an interactivity test, and it is load
+  bearing.** `player/foray-playback.test.js` mounts `app.js` in a `node:vm`
+  against a small binding harness and asserts the transport RESPONDS, not just
+  that the page renders. It exists because a `ReferenceError` in one binder threw
+  before `bindForayTransport` and left the whole page inert while every suite
+  stayed green and `node --check` passed. If you add a binder to `renderForay`,
+  add it to that harness's selector vocabulary or the test stops covering it.
+- **Timing convention for `player/html-audio-backend.test.js`** — the only suite
+  in the root group on a real clock. It flaked once in four runs while a
+  transcription job saturated all 16 cores: two hard-coded precision budgets
+  (50 ms and 100 ms out-point overshoot) are claims about the SCHEDULER, and a
+  starved scheduler is late by more than that. Reproduced deliberately — the
+  pre-fix file fails exactly those two under 16-core load, the fixed one passes.
+  The budget is now **a fraction of the tick interval the run actually
+  delivered**, which is the naive `if (currentTime >= end)` cost measured under
+  the same load, so both sides stretch together. **Do not re-hardcode a
+  millisecond budget here, and do not compare against the NOMINAL tick** — a
+  first attempt added measured jitter to a 50 ms constant and capped it at the
+  250 ms nominal interval, but a genuinely broken fine watch measures 90–133 ms,
+  which fits inside the budget a loaded box produces. It would have passed a real
+  regression. Any precision assertion here has to be relative to a cost measured
+  in the same run.
 - **Not built, on purpose:** `CreateScreen` (on-demand Forays), narrator bridges
   (no audio exists), generated cover art, and the full `ShowScreen` (no
   description or follower data exists for four of the five shows).

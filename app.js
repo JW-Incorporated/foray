@@ -1204,7 +1204,11 @@ async function renderForay(id) {
 
   $("#fy-total").textContent = player.fmtClock(r.totalSec);
   sizeForayStrip(r);
-  if (resume) $("#fy-bar-fill").style.width = `${resume.percent}%`;
+  // Optional-chained deliberately. This runs BEFORE every binder, so if the
+  // markup and this line ever disagree the throw would take the whole transport
+  // down with it — an unfilled progress bar is a far better failure. CI catches
+  // the disagreement itself: the hook is pinned in player/foray-playback.test.js.
+  if (resume) { const fill = $("#fy-bar-fill"); if (fill) fill.style.width = `${resume.percent}%`; }
   bindFeedback(r);
   bindSourceLinks(r);
   bindForayTransport(r, player, resume);
