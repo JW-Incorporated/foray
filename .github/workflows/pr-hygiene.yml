@@ -145,6 +145,27 @@ jobs:
             --actions actions.jsonl \
             --summary "$GITHUB_STEP_SUMMARY"
 
+      # Its own step, and it runs even when there is nothing to do: this is what
+      # means no owner action is needed to bootstrap any of the labels this
+      # system uses. `gh label create` on an existing label is an error, hence
+      # the `|| true` — that is the idempotence.
+      - name: Ensure the labels exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          gh label create merge-conflict --repo "$REPO" --color "D93F0B" \
+            --description "Conflicts with main; auto-merge cannot act on it" 2>/dev/null || true
+          gh label create needs-founder --repo "$REPO" --color "B60205" \
+            --description "Auto-merge could not land this; a founder must act" 2>/dev/null || true
+          # Nothing here ever APPLIES this one — it is created so it is already
+          # in the picker when a founder reaches for it. `path-policy.yml` only
+          # reads it, with a read-only token, so it cannot create it itself.
+          gh label create founder-approved --repo "$REPO" --color "0E8A16" \
+            --description "A founder approved this PR touching governed paths" 2>/dev/null || true
+          exit 0
+
       - name: Execute
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -152,12 +173,6 @@ jobs:
         run: |
           set -uo pipefail
           [ -s actions.jsonl ] || { echo "nothing to do"; exit 0; }
-
-          # Idempotent label bootstrap, so no owner action is needed to start.
-          gh label create merge-conflict --repo "$REPO" --color "D93F0B" \
-            --description "Conflicts with main; auto-merge cannot act on it" 2>/dev/null || true
-          gh label create needs-founder --repo "$REPO" --color "B60205" \
-            --description "Auto-merge could not land this; a founder must act" 2>/dev/null || true
 
           failures=0
           # Read on fd 3, not stdin. A `gh` subcommand that ever decides to read

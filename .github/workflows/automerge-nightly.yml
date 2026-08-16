@@ -69,7 +69,8 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  issues: write # labels are an issues-API resource
+  # No `issues: write`: this job no longer touches labels. pr-hygiene.yml is
+  # the single writer of `needs-founder` and `merge-conflict`.
 
 concurrency:
   group: automerge-${{ github.event.pull_request.number }}
@@ -100,7 +101,6 @@ jobs:
           persist-credentials: false
 
       - name: Gather PR facts
-        id: facts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
