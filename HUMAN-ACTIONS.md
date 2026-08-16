@@ -53,9 +53,35 @@ stays green. These two steps make it actually block.
   produce, the next step is CODEOWNERS review from a founders-only team — a
   bigger change, and worth its own decision.
 
+**Step 1 is already done.** `PATH_POLICY_ENFORCE=1` was set on 2026-08-16, so the
+check now fails loudly on a governed path. Only step 2 — making it *required* —
+is outstanding, and it is deliberately parked. Read the prerequisite first.
+
+> **PREREQUISITE, added 2026-08-16: let one nightly refresh PR pass through
+> `path-policy` first.**
+>
+> `path-policy` went live at 17:11Z. The most recent nightly content PR merged
+> on 2026-08-14, so **no bot-authored PR has ever been through this check.** That
+> matters more than it sounds, because of what "required" changes:
+>
+> - Today, if the workflows do not run on a PR, the consequence is that
+>   auto-merge never arms and the PR waits. Annoying, recoverable.
+> - Once required, the same silence means the PR **can never merge at all** —
+>   and `protect-main` has **zero bypass actors**, so not even a founder can
+>   click through it without editing the ruleset.
+>
+> This is not hypothetical. On 2026-08-16, PR #192 sat with **no CI checks at
+> all** for hours because it was conflicting with `main`; nothing ran and nothing
+> said why. Had `path-policy` been required, the nightly content pipeline could
+> have stalled the same way overnight with no way through.
+>
+> **Do this after the next nightly refresh PR (≈11:45 UTC) shows a green
+> `path-policy` in its checks.** That is the evidence that bot PRs get the check
+> at all. One observation is enough.
+
 **Steps.**
 
-1. Turn on enforcement (one repo variable):
+1. ~~Turn on enforcement~~ — **done 2026-08-16.** For reference:
 
    ```
    gh variable set PATH_POLICY_ENFORCE --repo JW-Incorporated/foray --body 1
