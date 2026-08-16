@@ -305,3 +305,305 @@ test("integration: a fast double-skip leaves exactly one source loaded", async (
   assert.equal(el.src, "https://cdn.example/c.mp3", "only the final target should be loaded");
   assert.equal(m._currentItem().id, "c");
 });
+
+/* ---------- out-points (#111 / #65) ----------
+
+   These run against a REAL clock. `TickingAudio` derives `currentTime` from
+   elapsed wall time the way a decoder does, and fires `timeupdate` on a genuine
+   250 ms interval, so the numbers below are measured rather than asserted into
+   existence — which is the only way a claim about boundary accuracy means
+   anything. Each test costs well under a second. */
+
+const now = () => Number(process.hrtime.bigint() / 1000n) / 1000; // ms, monotonic
+const TIMEUPDATE_MS = 250;
+
+class TickingAudio {
+  constructor({ durationSec = 3600 } = {}) {
+    this.listeners = new Map();
+    this.src = ""; this.currentSrc = "";
+    this.duration = durationSec;
+    this.playbackRate = 1;
+    this.volume = 1;
+    this.preload = "none";
+    this.readyState = 0;
+    this.error = null;
+    this.paused = true;
+    this.calls = [];
+    this.playResult = Promise.resolve();
+    this._base = 0;
+    this._t0 = null;
+    this._stalled = false;
+    this._ticker = null;
+  }
+  get currentTime() {
+    if (this.paused || this._stalled || this._t0 == null) return this._base;
+    return this._base + ((now() - this._t0) / 1000) * this.playbackRate;
+  }
+  set currentTime(v) { this._base = v; this._t0 = now(); this._fire("seeked"); }
+
+  addEventListener(t, fn) {
+    if (!this.listeners.has(t)) this.listeners.set(t, new Set());
+    this.listeners.get(t).add(fn);
+  }
+  removeEventListener(t, fn) { this.listeners.get(t)?.delete(fn); }
+  _fire(t) { for (const fn of [...(this.listeners.get(t) ?? [])]) fn(); }
+
+  load() {
+    this.calls.push("load");
+    this.currentSrc = this.src;
+    queueMicrotask(() => {
+      this.readyState = 1;
+      this._fire("loadedmetadata");
+      queueMicrotask(() => { this.readyState = 4; this._fire("canplay"); });
+    });
+  }
+  play() {
+    this.calls.push("play");
+    this._base = this.currentTime;
+    this._t0 = now();
+    this.paused = false;
+    this._fire("playing");
+    this._ticker = setInterval(() => {
+      if (this.currentTime >= this.duration) {
+        this._base = this.duration;
+        this.pause();
+        return this._fire("ended");
+      }
+      this._fire("timeupdate");
+    }, TIMEUPDATE_MS);
+    if (this._ticker.unref) this._ticker.unref();
+    return this.playResult;
+  }
+  pause() {
+    this._base = this.currentTime;
+    this.paused = true;
+    if (this._ticker) { clearInterval(this._ticker); this._ticker = null; }
+    this.calls.push("pause");
+    this._fire("pause");
+  }
+  /** Freeze the decoder without pausing — a rebuffer. */
+  stall() { this._base = this.currentTime; this._stalled = true; this._fire("waiting"); }
+  unstall() { this._t0 = now(); this._stalled = false; this._fire("playing"); }
+  removeAttribute(a) { this.calls.push(`removeAttribute:${a}`); this.src = ""; }
+}
+
+const ticking = (opts) => {
+  const el = new TickingAudio(opts);
+  const log = [];
+  const b = new HtmlAudioBackend({ element: el, telemetry: (m) => log.push(m) });
+  const ends = [];
+  b.onItemEnded = (reason) => ends.push(reason ?? "natural");
+  return { el, b, log, ends };
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** Wait for the backend to report an end, or give up. */
+async function waitForEnd(ends, budgetMs) {
+  const deadline = now() + budgetMs;
+  while (!ends.length && now() < deadline) await sleep(5);
+  return ends[0] ?? null;
+}
+
+test("an out-point stops the item and reports the same end a finished file reports", async () => {
+  const { el, b, ends } = ticking();
+  await b.load(item("seg"), { startOffset: 100 });
+  b.setOutPoint(100.8);
+  b.play();
+
+  assert.equal(await waitForEnd(ends, 3000), "outPoint");
+  assert.equal(el.paused, true, "the boundary must pause, like a file running out");
+});
+
+test("the stop is never early — the payoff is never clipped", async () => {
+  // The one-sided guarantee. The fine timer is a prediction; it only ever stops
+  // on a re-read of the real playhead.
+  for (const target of [100.4, 100.75, 101.1]) {
+    const { el, b, ends } = ticking();
+    await b.load(item("seg"), { startOffset: 100 });
+    b.setOutPoint(target);
+    b.play();
+    await waitForEnd(ends, 3000);
+    assert.ok(el.currentTime >= target, `stopped at ${el.currentTime} before ${target}`);
+    assert.ok(b.lastOutPointOvershootSec >= 0);
+  }
+});
+
+test("the boundary lands inside a fifth of a timeupdate interval, measured", async () => {
+  // ~250 ms is what a bare `if (currentTime >= end)` on timeupdate would cost.
+  // Measured locally this comes in around 5-15 ms; the assertion is loose
+  // enough for a loaded CI box and still an order of magnitude tighter.
+  const overshoots = [];
+  for (let i = 0; i < 3; i++) {
+    const { b, ends } = ticking();
+    await b.load(item("seg"), { startOffset: 100 });
+    b.setOutPoint(100.7);
+    b.play();
+    await waitForEnd(ends, 3000);
+    overshoots.push(b.lastOutPointOvershootSec);
+  }
+  const worst = Math.max(...overshoots);
+  assert.ok(worst < TIMEUPDATE_MS / 1000 / 5, `worst overshoot ${worst}s (of ${overshoots.join(", ")})`);
+});
+
+test("a faster rate does not loosen the boundary", async () => {
+  // At 2x, one timeupdate is half a second of CONTENT — a whole sentence. The
+  // fine timer is scheduled in wall clock, so the content overshoot stays flat.
+  const { b, ends } = ticking();
+  await b.load(item("seg"), { startOffset: 100 });
+  b.setRate(2);
+  b.setOutPoint(101.2);
+  b.play();
+  await waitForEnd(ends, 3000);
+  assert.ok(b.lastOutPointOvershootSec < 0.1, `overshoot ${b.lastOutPointOvershootSec}s at 2x`);
+});
+
+test("a buffering stall at the boundary neither stops early nor spins", async () => {
+  const { el, b, log, ends } = ticking();
+  await b.load(item("seg"), { startOffset: 100 });
+  b.setOutPoint(100.6);
+  b.play();
+  await sleep(350);
+  el.stall();
+  const frozenAt = el.currentTime;
+  await sleep(400);
+
+  assert.deepStrictEqual(ends, [], "must not report an end for audio that never played");
+  assert.equal(el.currentTime, frozenAt, "sanity: the stall really froze the playhead");
+  const stallLogs = log.filter((m) => /outPoint\.stalled/.test(m)).length;
+  assert.ok(stallLogs <= 2, `stood down ${stallLogs} times — the fine watch is spinning`);
+
+  el.unstall();
+  assert.equal(await waitForEnd(ends, 3000), "outPoint", "must resume and still stop at the boundary");
+  assert.ok(el.currentTime >= 100.6);
+});
+
+test("an out-point past the real audio yields exactly one end, the natural one", async () => {
+  const { b, log, ends } = ticking({ durationSec: 100.5 });
+  await b.load(item("seg"), { startOffset: 100 });
+  b.setOutPoint(400); // authored end_sec well past this copy
+  b.play();
+
+  assert.equal(await waitForEnd(ends, 3000), "natural");
+  await sleep(300);
+  assert.equal(ends.length, 1, "the file end and a late boundary must not both fire");
+  assert.ok(log.some((m) => /outPoint\.beyondDuration/.test(m)), "and it says so");
+});
+
+/* ---------- scrubbing past the out-point ---------- */
+
+test("scrubbing past the out-point frees the rest of the episode", async () => {
+  // Decision: free play. The boundary is an editorial claim about where the
+  // interesting part stops, not a lock — and the listener just asked, by hand,
+  // to hear what comes after.
+  const { el, b, ends } = ticking();
+  await b.load(item("seg"), { startOffset: 100 });
+  b.setOutPoint(110);
+  b.play();
+  b.seek(130);
+  await sleep(400);
+  assert.deepStrictEqual(ends, [], "no advance");
+  assert.equal(el.paused, false, "and no clamp back to the boundary either");
+  assert.ok(el.currentTime > 130);
+});
+
+test("scrubbing back before the out-point re-arms it", async () => {
+  const { b, ends } = ticking();
+  await b.load(item("seg"), { startOffset: 100 });
+  b.setOutPoint(110);
+  b.play();
+  b.seek(130);          // past — disarmed
+  await sleep(60);
+  b.seek(109.7);        // back before it — armed again
+  assert.equal(await waitForEnd(ends, 3000), "outPoint");
+});
+
+test("an out-point already behind the playhead never fires", async () => {
+  const { b, ends, log } = ticking();
+  await b.load(item("seg"), { startOffset: 500 });
+  b.setOutPoint(200);
+  b.play();
+  await sleep(400);
+  assert.deepStrictEqual(ends, []);
+  assert.ok(log.some((m) => /outPoint\.set 200\.00s armed=false/.test(m)));
+});
+
+/* ---------- the load contract ---------- */
+
+test("load clears the previous item's out-point", async () => {
+  // Contract, relied on by the reducer: it emits setOutPoint only for bounded
+  // items, so a stale boundary would otherwise stop a whole episode partway
+  // through at a time taken from the segment before it.
+  const { b, ends } = ticking();
+  await b.load(item("seg", "https://cdn.example/a.mp3"), { startOffset: 100 });
+  b.setOutPoint(100.5);
+  await b.load(item("whole", "https://cdn.example/b.mp3"));
+  assert.equal(b.outPoint, null);
+  b.play();
+  await sleep(400);
+  assert.deepStrictEqual(ends, []);
+});
+
+test("setOutPoint(null) and junk clear the watch rather than arming nonsense", async () => {
+  const { b } = ticking();
+  await b.load(item("seg"));
+  for (const bad of [null, undefined, NaN, Infinity, -5, 0, "120"]) {
+    b.setOutPoint(100);
+    b.setOutPoint(bad);
+    assert.equal(b.outPoint, null, String(bad));
+  }
+});
+
+test("release stops the watch dead", async () => {
+  const { b, ends } = ticking();
+  await b.load(item("seg"), { startOffset: 100 });
+  b.setOutPoint(100.4);
+  b.play();
+  b.release();
+  await sleep(400);
+  assert.deepStrictEqual(ends, [], "a released backend must not report anything");
+});
+
+/* ---------- back-to-back segments in ONE episode ---------- */
+
+test("the same source is a seek, not a refetch", async () => {
+  // Consecutive Foray segments routinely share an episode. Re-assigning src —
+  // even to the identical string — restarts the media load algorithm: the
+  // buffer is dropped, there is an audible gap, and on an ad-stitched host the
+  // refetch can return a different stitch that moves every later timestamp.
+  const { el, b, log } = ticking();
+  await b.load(item("seg-1", "https://cdn.example/one.mp3"), { startOffset: 100 });
+  el.calls.length = 0;
+
+  await b.load(item("seg-2", "https://cdn.example/one.mp3"), { startOffset: 400 });
+  assert.deepStrictEqual(el.calls, [], "no second load() on the element");
+  assert.equal(el.currentTime, 400, "just a seek to the next in-point");
+  assert.equal(b.currentItem.id, "seg-2", "and the backend knows which item it is on");
+  assert.ok(log.some((m) => /load\.sameSource/.test(m)));
+});
+
+test("a different source still reloads", async () => {
+  const { el, b } = ticking();
+  await b.load(item("seg-1", "https://cdn.example/one.mp3"), { startOffset: 100 });
+  el.calls.length = 0;
+  await b.load(item("seg-2", "https://cdn.example/two.mp3"), { startOffset: 30 });
+  assert.ok(el.calls.includes("load"));
+  assert.equal(el.src, "https://cdn.example/two.mp3");
+  assert.equal(el.currentTime, 30);
+});
+
+test("back-to-back slices of one episode each stop at their own boundary", async () => {
+  const { el, b, ends } = ticking();
+  await b.load(item("seg-1", "https://cdn.example/one.mp3"), { startOffset: 100 });
+  b.setOutPoint(100.5);
+  b.play();
+  assert.equal(await waitForEnd(ends, 3000), "outPoint");
+
+  el.calls.length = 0;
+  await b.load(item("seg-2", "https://cdn.example/one.mp3"), { startOffset: 400 });
+  b.setOutPoint(400.5);
+  b.play();
+  const deadline = now() + 3000;
+  while (ends.length < 2 && now() < deadline) await sleep(5);
+  assert.deepStrictEqual(ends, ["outPoint", "outPoint"]);
+  assert.ok(el.currentTime >= 400.5 && el.currentTime < 401, `second slice stopped at ${el.currentTime}`);
+  assert.ok(!el.calls.includes("load"), "and never refetched the shared episode");
+});

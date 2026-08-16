@@ -10,7 +10,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { reduce, itemRef, S, E, F, EPISODE, TTS } from "./queue-state.js";
+import { reduce, itemRef, itemBounds, S, E, F, EPISODE, TTS } from "./queue-state.js";
 
 /* ---------- fixtures ---------- */
 
@@ -430,4 +430,115 @@ test("an unknown event is ignored with telemetry rather than throwing", () => {
   const [state, effects] = reduce(playing, { type: "notARealEvent" });
   assert.deepStrictEqual(state, playing);
   assert.ok(isTelemetry(effects[0]));
+});
+
+/* ---------- out-points (#111 / #65) ----------
+
+   A Foray segment is a [start_sec, end_sec] slice of an episode. The reducer's
+   whole contribution is one effect and one identity rule; the tests below are
+   mostly about what did NOT change. */
+
+const segment1 = itemRef("foray#0", EPISODE, { startSec: 100, endSec: 210 });
+const segment2 = itemRef("foray#1", EPISODE, { startSec: 400, endSec: 512 });
+/* Two slices of ONE episode — the common Foray shape, and the one that breaks
+   an id-only identity check. */
+const sameEpFirst = itemRef("ep-x", EPISODE, { startSec: 10, endSec: 60 });
+const sameEpSecond = itemRef("ep-x", EPISODE, { startSec: 60, endSec: 140 });
+
+test("itemBounds keeps a real forward slice and drops anything else", () => {
+  assert.deepStrictEqual(itemBounds({ startSec: 10, endSec: 60 }), { startSec: 10, endSec: 60 });
+  assert.equal(itemBounds(null), null);
+  assert.equal(itemBounds({}), null, "an unbounded item has no bounds object at all");
+  assert.equal(itemBounds({ startSec: 0, endSec: undefined }), null);
+  // An end that is not after the start would arm a boundary nothing can cross.
+  assert.deepStrictEqual(itemBounds({ startSec: 60, endSec: 60 }), { startSec: 60, endSec: null });
+  assert.deepStrictEqual(itemBounds({ startSec: 60, endSec: 10 }), { startSec: 60, endSec: null });
+  assert.deepStrictEqual(itemBounds({ startSec: 60, endSec: NaN }), { startSec: 60, endSec: null });
+  assert.deepStrictEqual(itemBounds({ startSec: -5, endSec: 60 }), { startSec: 0, endSec: 60 });
+});
+
+test("a bounded item arms its out-point on itemLoaded, before anything is audible", () => {
+  const [state, effects] = reduce(S.loadingItem(segment1, null), E.itemLoaded());
+  assert.deepStrictEqual(state, S.playing(segment1));
+  assert.deepStrictEqual(effects, [F.restoreRate(), F.setOutPoint(210), F.startPlayback()]);
+});
+
+test("an unbounded item's itemLoaded is unchanged, effect for effect", () => {
+  // The out-point must not cost episodes anything. The backend's load() clears
+  // the previous boundary, so there is nothing to emit here.
+  const [, effects] = reduce(S.loadingItem(episodeA, null), E.itemLoaded());
+  assert.deepStrictEqual(effects, [F.restoreRate(), F.startPlayback()]);
+  assert.ok(!effects.some((e) => e.type === "setOutPoint"));
+});
+
+test("the out-point is armed AFTER the in-point seek, never against 0:00", () => {
+  const loading = S.loadingItem(segment1, null, { seconds: 100, precise: true });
+  const [, effects] = reduce(loading, E.itemLoaded());
+  assert.deepStrictEqual(effects.map((e) => e.type),
+    ["restoreRate", "seekTo", "setOutPoint", "startPlayback"]);
+});
+
+test("reaching an out-point is indistinguishable from the file ending", () => {
+  // The reducer must not be able to tell. That is the entire reason the
+  // backend reports a normal end instead of a new event.
+  const playing = S.playing(segment1);
+  const natural = reduce(playing, E.itemEnded(segment2, false));
+  const outPoint = reduce(playing, E.itemEnded(segment2, false));
+  assert.deepStrictEqual(natural, outPoint);
+  assert.deepStrictEqual(natural[0], S.loadingItem(segment2, segment1));
+  assert.deepStrictEqual(natural[1], [F.loadItem(segment2)]);
+});
+
+test("an out-point on the last segment ends the session, with no chaining", () => {
+  const [state, effects] = reduce(S.playing(segment2), E.itemEnded(null, false));
+  assert.deepStrictEqual(state, S.ended());
+  assert.deepStrictEqual(effects, [F.emitTelemetry("queue.ended")]);
+});
+
+test("two slices of ONE episode are two different items", () => {
+  // Same id, same kind — only the bounds differ. If identity ignored them,
+  // every guard below would treat the second slice as a repeat of the first.
+  const [state, effects] = reduce(S.playing(sameEpFirst), E.play(sameEpSecond));
+  assert.equal(state.type, "loadingItem");
+  assert.deepStrictEqual(state.target, sameEpSecond);
+  assert.ok(effects.some((e) => e.type === "loadItem"), "the second slice must actually load");
+  assert.ok(effects.some((e) => e.type === "pausePlayback"), "single-player invariant still applies");
+});
+
+test("play is still idempotent for the very same slice", () => {
+  const playing = S.playing(sameEpFirst);
+  assert.deepStrictEqual(reduce(playing, E.play(itemRef("ep-x", EPISODE, { startSec: 10, endSec: 60 }))),
+    [playing, []]);
+});
+
+test("the skip debounce distinguishes two slices of one episode", () => {
+  // Skipping from slice 1 to slice 2 of the same episode must load, not no-op.
+  const loading = S.loadingItem(sameEpFirst, null);
+  const [state, effects] = reduce(loading, E.skipToNext(sameEpSecond));
+  assert.deepStrictEqual(state.target, sameEpSecond);
+  assert.ok(effects.some((e) => e.type === "loadItem"));
+  // ...while a genuinely redundant skip to the same slice still no-ops.
+  assert.deepStrictEqual(reduce(loading, E.skipToNext(sameEpFirst)), [loading, []]);
+});
+
+test("bounds survive an interruption and re-arm on resume", () => {
+  const [interrupted] = reduce(S.playing(segment1), E.interruptionBegan());
+  assert.deepStrictEqual(interrupted.item.bounds, { startSec: 100, endSec: 210 });
+  const [resumed] = reduce(interrupted, E.interruptionEnded(true));
+  const [, effects] = reduce(resumed, E.itemLoaded());
+  assert.ok(effects.some((e) => e.type === "setOutPoint" && e.seconds === 210),
+    "a resumed segment must re-arm its boundary");
+});
+
+test("a segment names its slice in telemetry; an episode still names only itself", () => {
+  const [, segEffects] = reduce(S.playing(segment1), E.interruptionEnded(true));
+  assert.match(segEffects[0].message, /playing\(foray#0\[100-210\]\)/);
+  const [, epEffects] = reduce(S.playing(episodeA), E.interruptionEnded(true));
+  assert.match(epEffects[0].message, /playing\(episode-a\)/);
+});
+
+test("seeking inside a segment is an ordinary seek — no new reducer path", () => {
+  const [state, effects] = reduce(S.playing(segment1), E.seek(150, true));
+  assert.deepStrictEqual(state, S.playing(segment1));
+  assert.deepStrictEqual(effects, [F.savePosition(), F.seekTo(150, true)]);
 });

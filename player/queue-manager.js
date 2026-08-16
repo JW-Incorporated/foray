@@ -20,19 +20,39 @@
    ── Backend contract (implemented by #24) ─────────────────────────────────
    Injected, never imported, so this runs under `node --test` with a fake:
 
-     async load(item, { startOffset })   resolve when ready to produce audio
+     async load(item, { startOffset })   resolve when ready to produce audio,
+                                         and CLEAR any armed out-point
      play() / pause()
      seek(seconds, { precise })
+     setOutPoint(seconds | null)         stop there, report a normal end
      setRate(rate)
      get currentTime()  -> seconds
      get duration()     -> seconds | null
      release()
-     onItemEnded = fn   assigned by this manager
-     onError = fn       assigned by this manager
+     onItemEnded = fn(reason)  assigned by this manager
+     onError = fn              assigned by this manager
+
+   ── Forays (issues #111 / #65) ────────────────────────────────────────────
+   A Foray is an ordered list of segments, each a `[start_sec, end_sec]` slice
+   of a *different* episode. Everything above already handles that except two
+   things, and both live here rather than in the reducer:
+
+     8. the in-point — a segment's `start_sec` is the load's `startOffset`, and
+        it OVERRIDES any saved episode position (resuming a segment to where
+        the listener last left that episode drops them outside the segment)
+     9. the ADR-0007 ladder at load time, which is the only moment the observed
+        duration of the copy in hand exists — see `_segmentGate`
+
+   The out-point itself is not here: the reducer emits `setOutPoint`, the
+   backend watches the playhead, and when the boundary lands the backend
+   reports the same `onItemEnded` a finished file reports. `_handleBackendItem-
+   Ended` below cannot tell the difference, and that is the design.
 */
 
-import { reduce, S, E, itemRef, TTS } from "./queue-state.js";
+import { reduce, S, E, itemRef, itemBounds, TTS, END_NATURAL, END_OUT_POINT } from "./queue-state.js";
 import { SINGLE_ITEM, assertStrategy } from "./queue-strategy.js";
+import { seekPrecision, FOREIGN, APPROXIMATE } from "./seek-policy.js";
+import { buildForayQueue } from "./foray-queue.js";
 
 const POSITION_INTERVAL_MS = 15_000;
 
@@ -79,8 +99,19 @@ export class PlayerQueueManager {
     // while still saving the outgoing episode's playhead against the right id.
     this._targetIndex = null;
     this._disposed = false;
+    /** The id the backend last successfully loaded. Distinct from currentIndex:
+        it answers "is this a re-entry into the item we are already inside?",
+        which is what separates a resume from a restart for a bounded item. */
+    this._loadedId = null;
+    /** Set by setQueueFromForay; consulted by the load-time ladder. */
+    this._forayOptions = { isLocalFile: false, allowAdPad: false };
 
-    backend.onItemEnded = () => this._handleBackendItemEnded();
+    /** A backend with no out-point watch cannot play a Foray at all — it would
+        run each segment to the end of its whole episode. Recorded once here so
+        the refusal below can name the cause instead of the symptom. */
+    this._outPointCapable = typeof backend.setOutPoint === "function";
+
+    backend.onItemEnded = (reason) => this._handleBackendItemEnded(reason);
     backend.onError = (msg) => this._handle(E.error(String(msg)));
   }
 
@@ -110,6 +141,51 @@ export class PlayerQueueManager {
   loadQueue(items) {
     this.queue = (items || []).filter(Boolean);
     this.currentIndex = -1;
+  }
+
+  /* ---------- Forays (#111) ---------- */
+
+  /**
+   * Load a Foray as the queue. The strategy is bypassed on purpose: a Foray is
+   * already an ordered list somebody authored, and no strategy gets a vote on
+   * it. It is also ONE queue — when the last segment ends, the session ends
+   * (CLAUDE.md principle 1, no chaining into a second Foray).
+   *
+   * @returns the build report from `buildForayQueue`, including `skipped` —
+   *   read it. A Foray that lost a segment to the ADR-0007 ladder is a shorter
+   *   Foray, and the caller is the only layer that can say so.
+   */
+  setQueueFromForay(foray, opts = {}) {
+    const report = buildForayQueue(foray, opts);
+    const bounded = report.items.filter((i) => typeof i.end_sec === "number");
+    if (bounded.length && !this._outPointCapable) {
+      // Loud, and before anything is audible. Silently playing each segment to
+      // the end of its whole episode is the one outcome worse than not playing.
+      throw new Error(
+        "this backend has no setOutPoint(); a Foray cannot play on it — " +
+        `${bounded.length} of ${report.items.length} items carry an out-point`
+      );
+    }
+    this._forayOptions = { isLocalFile: Boolean(opts.isLocalFile), allowAdPad: Boolean(opts.allowAdPad) };
+    this.loadQueue(report.items);
+    this._emit(
+      `queue.foray.${report.id}.n=${report.items.length}` +
+      `.skipped=${report.skipped.length}.warnings=${report.warnings.length}`
+    );
+    for (const s of report.skipped) this._emit(`foray.segment.skipped[${s.index}]: ${s.reason}`);
+    for (const w of report.warnings) this._emit(`foray.warning: ${w}`);
+    return report;
+  }
+
+  /** Build the Foray's queue and start it. The whole API a surface needs. */
+  async playForay(foray, opts = {}) {
+    const report = this.setQueueFromForay(foray, opts);
+    if (!report.items.length) {
+      this._emit(`foray.${report.id}.empty — every item was skipped`);
+      return report;
+    }
+    await this.play(0);
+    return report;
   }
 
   /* ---------- transport ---------- */
@@ -245,6 +321,15 @@ export class PlayerQueueManager {
       case "seekRejected":
         return this._emit(`seek.rejected: ${effect.reason}`);
 
+      case "setOutPoint":
+        // Capability was asserted at queue-build time, so reaching this on an
+        // incapable backend means a queue arrived some other way. Refuse
+        // audibly rather than playing the whole episode.
+        if (!this._outPointCapable) {
+          return this._emit(`outPoint.unsupportedBackend: cannot stop at ${Math.round(effect.seconds)}s`);
+        }
+        return this.backend.setOutPoint(effect.seconds);
+
       case "resetRateForTTS":
         return this.backend.setRate(1.0);
 
@@ -281,13 +366,37 @@ export class PlayerQueueManager {
     // one-line transition would be nonsense.
     const forced = this._forceNextOffset;
     this._forceNextOffset = null;
+    // A segment's in-point OVERRIDES any saved position, always (#65 §4).
+    // Resuming to where the listener last left this episode would drop them
+    // outside the segment entirely — usually into a different story.
+    const bounds = itemBounds({ startSec: item.start_sec, endSec: item.end_sec });
     // Two distinct notions of "where we are", conflated in the Swift:
     //   currentIndex  what is actually LOADED — savePosition writes against it
     //   _targetIndex  where a skip is HEADING, before the load resolves
     // Keeping them apart is what lets a fast double-skip advance two items
     // while still saving the outgoing episode's playhead against the right id.
     this._targetIndex = null;
-    const startOffset = forced ?? (item.kind === TTS ? 0 : this._savedPositionFor(item.id));
+    // Bounds beat `forced` too, and that is the point of putting them first:
+    // skipToPrevious means "restart this item", and for a segment the start of
+    // the item is `start_sec`, not 0:00 of a two-hour episode.
+    //
+    // ...except when we are re-entering the item we are already inside. Every
+    // resume path in this class routes back through loadItem — a paused
+    // player, a declined call, a car reconnecting — so a flat "segments always
+    // load at start_sec" replays the whole segment when the listener takes a
+    // phone call 100 seconds in. Observed, not declared (principle 2): if the
+    // playhead is inside THIS item's slice and nothing asked for a restart,
+    // that is a resume.
+    const playhead = this.backend.currentTime;
+    const resumingInPlace = Boolean(
+      bounds && forced == null && this._loadedId === item.id &&
+      typeof playhead === "number" && Number.isFinite(playhead) &&
+      playhead > bounds.startSec &&
+      (bounds.endSec == null || playhead < bounds.endSec)
+    );
+    const startOffset = bounds
+      ? (resumingInPlace ? playhead : bounds.startSec)
+      : (forced ?? (item.kind === TTS ? 0 : this._savedPositionFor(item.id)));
 
     // Move the index only now — after savePosition has already run against the
     // outgoing item. currentIndex tracks what is actually loaded, never what we
@@ -300,10 +409,65 @@ export class PlayerQueueManager {
 
     try {
       await this.backend.load(item, { startOffset });
+      this._loadedId = item.id;
+      // The ladder's rung 3 runs HERE and nowhere earlier: this is the first
+      // moment the duration of the copy the listener actually received exists.
+      const gate = this._segmentGate(item);
+      if (!gate.ok) {
+        this._emit(`foray.segment.skipped.atLoad ${item.id}: ${gate.reason}`);
+        return this._skipUnplayableSegment();
+      }
+      if (gate.note) this._emit(`foray.segment.${item.id}: ${gate.note}`);
       await this._handle(E.itemLoaded());
     } catch (err) {
       await this._handle(E.error(`loadItem(${ref.id}) failed: ${err?.message ?? err}`));
     }
+  }
+
+  /**
+   * ADR-0007's ladder, evaluated against the copy in hand.
+   *
+   * Only segments on a DAI source reach the interesting part; everything else
+   * settled at build time. A failure here is a SKIP, never a play at the stale
+   * offset — ADR-0007's "honest failure, never a bad cut", and #111's
+   * acceptance criterion that the drift case is logged rather than silent.
+   */
+  _segmentGate(item) {
+    if (!item?.needs_drift_check) return { ok: true };
+
+    const observed = this.backend.duration;
+    if (typeof observed !== "number" || !Number.isFinite(observed)) {
+      return {
+        ok: false,
+        reason: "the copy in hand reports no duration, so the ad load cannot be compared to the reference",
+      };
+    }
+
+    const { precision, reason } = seekPrecision(
+      { id: item.source_item_id, dai_suspected: item.dai_suspected },
+      {
+        isLocalFile: this._forayOptions.isLocalFile,
+        source: FOREIGN,
+        observedDuration: observed,
+        recordedDuration: item.reference_duration_sec,
+        adPadSec: item.ad_pad_sec ?? undefined,
+        allowAdPad: this._forayOptions.allowAdPad,
+      }
+    );
+    if (precision === APPROXIMATE) return { ok: false, reason };
+    return { ok: true, note: `${precision} — ${reason}` };
+  }
+
+  /** Leave a segment we refused, without ever making it audible. The state is
+      still `loadingItem`, and `skipToNext` from there replaces the in-flight
+      target rather than stacking a second load — the same path a fast double-
+      skip uses. With nothing left it lands on `ended`, so a Foray whose every
+      segment fails the ladder terminates instead of looping. */
+  async _skipUnplayableSegment() {
+    this.backend.pause();
+    const next = this._nextItem(this._cursor(), false);
+    if (next) this._targetIndex = next.index;
+    await this._handle(E.skipToNext(next ? refOf(next.item) : null));
   }
 
   _savedPositionFor(id) {
@@ -336,8 +500,15 @@ export class PlayerQueueManager {
   }
 
   /** Backend says the asset finished. Resolve what "next" means from the queue,
-      then feed exactly one itemEnded into the reducer. */
-  async _handleBackendItemEnded() {
+      then feed exactly one itemEnded into the reducer.
+      `reason` reaches telemetry and stops there — the reducer must not be able
+      to tell an out-point from a file running out, because the entire value of
+      reusing this path is that every downstream transition stays identical. */
+  async _handleBackendItemEnded(reason = END_NATURAL) {
+    if (reason === END_OUT_POINT) {
+      const item = this._currentItem();
+      this._emit(`item.ended.outPoint ${item?.id ?? "?"}@${Math.round(item?.end_sec ?? 0)}s`);
+    }
     if (this.state.type === "transitioning") {
       const next = this._nextItem(this._cursor(), true);
       return this._handle(E.itemEnded(next ? refOf(next.item) : null, false));
@@ -394,6 +565,11 @@ export class PlayerQueueManager {
     if (!this.positionStore) return;
     const item = this._currentItem();
     if (!item) return;
+    // A segment has no resume point worth keeping. It is ~110 s long, its id is
+    // synthetic (`foray#3`) so the position would never be read back for the
+    // episode, and `_loadItem` ignores saved positions for bounded items
+    // anyway. Writing one is pure localStorage litter plus a cp_events row.
+    if (typeof item.end_sec === "number") return;
     const seconds = this.backend.currentTime;
     if (typeof seconds !== "number" || !Number.isFinite(seconds)) return;
     this.positionStore.save(item.id, seconds, { duration: this.backend.duration ?? null });
@@ -405,9 +581,9 @@ export class PlayerQueueManager {
 }
 
 /** Queue items are plain catalogue-shaped objects; the reducer only needs
-    identity and kind. */
+    identity, kind, and (for a segment) the slice it occupies. */
 function refOf(item) {
-  return itemRef(item.id, item.kind ?? "episode");
+  return itemRef(item.id, item.kind ?? "episode", { startSec: item.start_sec, endSec: item.end_sec });
 }
 
 /** Test-only: forget the live instance without disposing a real one. */
