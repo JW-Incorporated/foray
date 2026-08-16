@@ -75173,13 +75173,801 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-16-d748575b",
       "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1831604960": {
+      "topics": [
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Army training center shares lessons from exercises and field operations.",
+      "display_title": "Insights from the Fight",
+      "blurb": "Military professionals discuss lessons learned from training exercises and operations.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1831875614": {
+      "topics": [
+        "nature",
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Master dog breeders share philosophies, breeding decisions, and journeys building programs.",
+      "display_title": "Better Breeder Chronicles",
+      "blurb": "Profiles of purebred dog breeders discussing philosophy and path to success.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1832115086": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast covering various arts and crafts projects and creative techniques.",
+      "display_title": "All Things Arts and Crafts",
+      "blurb": "Episodes on knitting, sewing, sculpture, and various craft techniques.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1832578562": {
+      "topics": [
+        "tv-film"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment news and gossip about reality TV shows, especially Bravo franchises.",
+      "display_title": "The Salty Chip",
+      "blurb": "Fast-paced commentary on reality TV drama and entertainment news.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1832581034": {
+      "topics": [
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political and cultural commentary with sharp analysis of current events.",
+      "display_title": "The Erin Molan Show",
+      "blurb": "Sharp political and cultural analysis covering policy and current events.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1832640248": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Experienced Path of Exile 2 players discuss builds, strategies, and gameplay.",
+      "display_title": "The Path 2 Exile Podcast",
+      "blurb": "Path of Exile 2 strategy, builds, and gameplay mechanics discussion.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1832706398": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quranic recitation by professional Qari specializing in proper Islamic reading.",
+      "display_title": "Muhammad Dibirov",
+      "blurb": "Quranic recitation by professional Qari Muhammad Dibirov.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1832816678": {
+      "topics": [
+        "automotive",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial expert discusses economics of exotic cars, market trends, and investing.",
+      "display_title": "Revonomics",
+      "blurb": "Exotic cars and personal finance intersect: market analysis and investment.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1833189722": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Former Premier League star discusses football, World Cup, and international play.",
+      "display_title": "The Wayne Rooney Show",
+      "blurb": "Footballer discusses World Cup strategy and professional football competition.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1833248870": {
+      "topics": [
+        "architecture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "architecture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Indiana architects and builders discuss design philosophy and AEC leadership.",
+      "display_title": "The On Center Podcast",
+      "blurb": "Architects and construction professionals discuss design and built-world innovation.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1833485222": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Retail expert Clare Bailey discusses British high street trends and strategy.",
+      "display_title": "Retail Reckoning",
+      "blurb": "Retail strategy covering stock management, loyalty, and high street dynamics.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1833790778": {
+      "topics": [
+        "business",
+        "economics/markets"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Profit First methodology for entrepreneurs and small business owners managing cash.",
+      "display_title": "Money Made Simple Strategy",
+      "blurb": "Profit-first strategies for entrepreneurs managing cash flow and business finances.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1834308296": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Two personalities discuss everyday life, TV, books, and audience topics casually.",
+      "display_title": "アオイとキクチ。",
+      "blurb": "Casual conversations on entertainment, lifestyle, and everyday life.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1834364630": {
+      "topics": [
+        "philosophy/ideas",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual teachings on transformation, mindfulness, and personal growth from Dyer.",
+      "display_title": "Wayne Dyer Podcast",
+      "blurb": "Spiritual teachings on transformation, inner peace, and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1834477502": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book club covering classics, modern hits, and prize-winning literature analysis.",
+      "display_title": "Zero to Well-Read",
+      "blurb": "Book club covering literature from classics to contemporary works with analysis.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1834485374": {
+      "topics": [
+        "psychology",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unfiltered personal narrative on anxiety, dating, mental health, and life chaos.",
+      "display_title": "Don't Think",
+      "blurb": "Personal stories on anxiety, relationships, and mental health with humor.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1834491248": {
+      "topics": [
+        "tv-film"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Longer-form interviews with filmmakers discussing craft: directing, acting, editing.",
+      "display_title": "On Film with Kevin McCarthy",
+      "blurb": "Filmmaker interviews exploring craft: directing, cinematography, and storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1834496948": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonprofit fundraising and grant strategy from experienced professionals and funders.",
+      "display_title": "Grant Writing Experts",
+      "blurb": "Grant strategy and fundraising advice from nonprofit professionals and funders.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1834740104": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Personal narrative podcast with unfiltered stories about dating and social chaos.",
+      "display_title": "It's Always Something",
+      "blurb": "Unfiltered personal stories about life, dating, and social experiences.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1835367362": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two scrapbooking enthusiasts discuss creative process, design, and online community.",
+      "display_title": "Hear Me Out & Pass the Scissors",
+      "blurb": "Scrapbooking and creative storytelling with design and community discussion.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1835521862": {
+      "topics": [
+        "fiction/sci-fi"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fan-produced Star Trek audio drama following USS Iona crew exploration mission.",
+      "display_title": "Edge of the Federation",
+      "blurb": "Star Trek fan fiction audio drama following USS Iona crew mission.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1835543120": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf stories and interviews exploring lives and bonds built through the game.",
+      "display_title": "Off the Deck",
+      "blurb": "Golf stories featuring professionals, instructors, and enthusiasts discussing game.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1835622026": {
+      "topics": [
+        "tv-film"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fast, spoiler-filled recaps of popular TV shows with humor and analysis.",
+      "display_title": "Watch Party",
+      "blurb": "TV recaps with humor, theories, and commentary on hit shows.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1835731322": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Author interviews exploring ideas shaping America's past, present, and future.",
+      "display_title": "America's Book Club",
+      "blurb": "Author interviews exploring historical ideas shaping America.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1836163328": {
+      "topics": [
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Media trainer analyzes news through lens of communication and media strategy.",
+      "display_title": "Filtered with TJ Walker",
+      "blurb": "News and culture analyzed through communication and media strategy.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1836258986": {
+      "topics": [
+        "medicine",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French-language guide to global medical device regulatory pathways and approvals.",
+      "display_title": "Accès au Marché Mondial des Dispositifs Médicaux",
+      "blurb": "Medical device regulatory pathways from EU, US, China, and other regions.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1836437900": {
+      "topics": [
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Playful debate format comparing Disney Parks experiences and guest strategies.",
+      "display_title": "The Case For with Chris Cox",
+      "blurb": "Debate-format podcast comparing Disney Parks experiences and strategies.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1836732554": {
+      "topics": [
+        "religion/judaism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hebrew-language podcast pair discussing faith, Judaism, and modern life honestly.",
+      "display_title": "הרב תובנות",
+      "blurb": "Hebrew conversations on Judaism, faith, spirituality, and modern life.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1836783176": {
+      "topics": [
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book summary podcast exploring Mel Robbins' five-second rule for confidence.",
+      "display_title": "The 5 Second Rule",
+      "blurb": "Mel Robbins' book summary on the five-second technique for confidence.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1837079690": {
+      "topics": [
+        "tv-film"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Danielle Fishel interviews celebrities about childhoods and recaps dancing competition.",
+      "display_title": "Teen Beat",
+      "blurb": "Celebrity interviews and Dancing with the Stars recaps hosted by Fishel.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1837213334": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily sports news and analysis covering NFL, NBA, MLB, and college.",
+      "display_title": "Wake Up Barstool",
+      "blurb": "Daily sports news covering NFL, NBA, MLB, and college football.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1837489988": {
+      "topics": [
+        "nature",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lincoln Park Zoo explores animal welfare, conservation science, and research.",
+      "display_title": "That Tracks: Lincoln Park Zoo",
+      "blurb": "Animal welfare science, conservation, and zoo operations exploration.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1837762034": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two women make golf accessible and fun for beginners from Houston.",
+      "display_title": "HER TEE TIME",
+      "blurb": "Women's golf podcast making the sport accessible for beginners.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1837783166": {
+      "topics": [
+        "psychology",
+        "health/mental"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Licensed therapists discuss real mental health questions including trauma and wellness.",
+      "display_title": "What Your Therapist Thinks",
+      "blurb": "Licensed therapists discuss mental health covering trauma, relationships, and healing.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-fa0847e5",
+      "classified_at": "2026-08-16T16:51:40.477Z"
     }
   },
-  "built_at": "2026-08-16T08:50:28.840Z",
+  "built_at": "2026-08-16T16:51:40.477Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-16-d748575b",
+    "last_batch_id": "fresh-2026-08-16-fa0847e5",
     "last_batch_tier": 1
   }
 }
