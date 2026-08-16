@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-15T16:18:02.952Z",
+  "built_at": "2026-08-16T00:18:44.356Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-15-330afdf2",
+    "last_batch_id": "fresh-2026-08-16-774b7ace",
     "last_batch_tier": 1
   },
   "entries": {
@@ -209418,7 +209418,22 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized zombie apocalypse audio fiction with 200+ stories spanning multiple regional survival narratives.",
+      "display_title": "Dead America - Zombie Audiobook",
+      "blurb": "Serialized zombie apocalypse audio fiction following survivors across post-outbreak America.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-774b7ace",
+      "classified_at": "2026-08-16T00:18:44.356Z"
     },
     "6783953761": {
       "topics": [
@@ -209537,10 +209552,30 @@
     },
     "6784747809": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biographical narrative of Mark Fidrych, 1976 Detroit Tigers rookie who became a cultural phenomenon.",
+      "display_title": "The Bird: The Spirit of '76",
+      "blurb": "Biography of Detroit Tigers pitcher Mark Fidrych's 1976 rookie season and lasting cultural legacy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-774b7ace",
+      "classified_at": "2026-08-16T00:18:44.356Z"
     },
     "6784796328": {
       "topics": [
@@ -209857,7 +209892,22 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Israeli news with human-centered narratives from political, social, and crime reporting.",
+      "display_title": "עד הקצה Ad Hakaze",
+      "blurb": "Daily Israeli current affairs and news with compelling human-interest stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-774b7ace",
+      "classified_at": "2026-08-16T00:18:44.356Z"
     },
     "6785864446": {
       "topics": [
@@ -210125,7 +210175,22 @@
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Faith-forward interviews about spiritual calling, healing, and personal obedience to religious conviction.",
+      "display_title": "Initiated by GOD",
+      "blurb": "Faith interviews exploring spiritual calling, healing, and the cost of religious obedience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-774b7ace",
+      "classified_at": "2026-08-16T00:18:44.356Z"
     },
     "6786780019": {
       "topics": [
@@ -210217,10 +210282,29 @@
     "6787224177": {
       "topics": [
         "sports",
-        "news"
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Disc golf analysis and commentary covering the Disc Golf Pro Tour season, tournaments, and player profiles.",
+      "display_title": "SpinCycle DG",
+      "blurb": "Disc golf coverage and analysis of the Disc Golf Pro Tour with tournament reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-774b7ace",
+      "classified_at": "2026-08-16T00:18:44.356Z"
     },
     "6787291799": {
       "topics": [
@@ -210289,10 +210373,30 @@
     },
     "6787832175": {
       "topics": [
-        "food"
+        "culture/pop-culture",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cultural history and nostalgia about McDonald's brand, memorabilia, advertising, and collectibles—not food/cooking.",
+      "display_title": "Golden Archives Podcast",
+      "blurb": "Nostalgic cultural history exploring McDonald's brand impact, advertising, and collectible memorabilia.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-774b7ace",
+      "classified_at": "2026-08-16T00:18:44.356Z"
     },
     "6787944980": {
       "topics": [
@@ -210433,17 +210537,57 @@
     },
     "6788307657": {
       "topics": [
-        "music"
+        "music",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music industry behind-the-scenes interviews with producers, engineers, songwriters, and artists on craft and career.",
+      "display_title": "VEVA Presents: Tuned Out",
+      "blurb": "Music industry interviews with producers and artists sharing stories from behind the creation process.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-774b7ace",
+      "classified_at": "2026-08-16T00:18:44.356Z"
     },
     "6788309985": {
       "topics": [
-        "music"
+        "music",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly commentary on punk, hardcore, emo, and indie music scenes with insider perspectives on touring and industry.",
+      "display_title": "Two Dudes | One Scene",
+      "blurb": "Punk and indie music scene commentary with discussion of touring, industry practices, and artist interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-774b7ace",
+      "classified_at": "2026-08-16T00:18:44.356Z"
     },
     "6788365272": {
       "topics": [
@@ -210461,11 +210605,25 @@
     },
     "6788420763": {
       "topics": [
-        "economics/markets",
-        "business"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "English language learning instruction covering grammar, vocabulary, pronunciation—tier0 prior incorrectly flagged as investing.",
+      "display_title": "English Podcast",
+      "blurb": "English language instruction through grammar, vocabulary, and pronunciation lessons.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-774b7ace",
+      "classified_at": "2026-08-16T00:18:44.356Z"
     },
     "6788496504": {
       "topics": [
