@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-15T11:42:53.581Z",
+  "built_at": "2026-08-16T11:43:03.233Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -30909,6 +30909,195 @@
         "paranormal"
       ],
       "hook": "Part two of the Scole Experiment: spirits, seances, and incredible claimed sights in 1993.",
+      "explicit": false
+    },
+    {
+      "id": "the-ancients--how-slavery-built-the-roman-empire",
+      "show": "The Ancients",
+      "title": "How Slavery Built the Roman Empire",
+      "apple_collection_id": 1520403988,
+      "apple_track_id": 1000783298761,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/how-slavery-built-the-roman-empire/id1520403988?i=1000783298761&uo=4",
+      "release_date": "2026-08-16",
+      "duration_min": 67,
+      "duration_sec": 4046,
+      "audio_url": "https://sphinx.acast.com/p/acast/s/the-ancients/e/6a7ef10204592ab24908b6dc/media.mp3?tk=eyJ0ayI6ImRlZmF1bHQiLCJhZHMiOnRydWUsInNwb25zIjp0cnVlLCJzdGF0dXMiOiJwdWJsaWMifQ==&sig=1ftQlPCnsZh-ixM8NKo0YfuWIadY7lN5c2uJ7aGSEBU",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 64737697,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/6c/94/31/6c943113-5484-a41d-5cb7-bf606ff289ef/mza_6401313720037127611.jpeg/600x600bb.jpg",
+      "topics": [
+        "history/military-ancient"
+      ],
+      "hook": "Millions of enslaved people powered Roman conquest and construction, historian Tristan Hughes traces their hidden labor.",
+      "explicit": false
+    },
+    {
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1617",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 1617: Connections",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000783555764,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1617-connections/id121493645?i=1000783555764&uo=4",
+      "release_date": "2026-08-16",
+      "duration_min": 4,
+      "duration_sec": 229,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260816.mp3?srcid=apple-podcasts",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 1830110,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "topics": [
+        "history/technology"
+      ],
+      "hook": "A meditation on cause, effect, and how historical connections get made or missed.",
+      "explicit": false
+    },
+    {
+      "id": "founders--429-bob-dylan-s-autobiography",
+      "show": "Founders",
+      "title": "#429 Bob Dylan's Autobiography",
+      "apple_collection_id": 1141877104,
+      "apple_track_id": 1000783536703,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/429-bob-dylans-autobiography/id1141877104?i=1000783536703&uo=4",
+      "release_date": "2026-08-16",
+      "duration_min": 60,
+      "duration_sec": 3604,
+      "audio_url": "https://traffic.megaphone.fm/DSLLC5681377545.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ed/71/4f/ed714f67-f095-a4ef-f38e-d8c02300666a/mza_11432355988627368701.jpg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "Founders host analyzes Bob Dylan's autobiography for lessons on artistic drive and reinvention.",
+      "explicit": false
+    },
+    {
+      "id": "twenty-minute-vc--20growth-how-to-build-a-100m",
+      "show": "The Twenty Minute VC (20VC)",
+      "title": "20Growth: How to Build a $100M Growth Engine: Lessons from Wispr Flow and Superhuman | Why You Should Do Paid Ads Today and How To Do Them | How to Build the Best Referral Programs and How to Crush UGC with Matt Swulinski",
+      "apple_collection_id": 958230465,
+      "apple_track_id": 1000783416666,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/20growth-how-to-build-a-%24100m-growth-engine-lessons/id958230465?i=1000783416666&uo=4",
+      "release_date": "2026-08-15",
+      "duration_min": 79,
+      "duration_sec": 4721,
+      "audio_url": "https://traffic.libsyn.com/secure/thetwentyminutevc/20Growth__Matt_Swulinski__Zeta_Labs.mp3?dest-id=240976",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 75522409,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cb/4a/f9/cb4af9a2-5857-c3f1-30d4-14395af9a14f/mza_11350890235230424535.jpeg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "Growth leader Matt Swulinski on scaling paid ads, referral programs, and user-generated content strategies.",
+      "explicit": true
+    },
+    {
+      "id": "the-race-f1-podcast--driving-style-secrets-we-answer-your",
+      "show": "The Race F1 Podcast",
+      "title": "Driving Style Secrets: We answer your questions about five 21st century greats",
+      "apple_collection_id": 1495557562,
+      "apple_track_id": 1000783423663,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/driving-style-secrets-we-answer-your-questions-about/id1495557562?i=1000783423663&uo=4",
+      "release_date": "2026-08-15",
+      "duration_min": 62,
+      "duration_sec": 3708,
+      "audio_url": "https://sphinx.acast.com/p/open/s/6819ae2bf30c20bff775e8a1/e/6a7adf6fbc454115866a11fe/media.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 89037361,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/40/7b/8c/407b8cbe-cd34-d818-ff69-a11bc1d6c690/mza_9877600709441097500.jpeg/600x600bb.jpg",
+      "topics": [
+        "automotive/racing"
+      ],
+      "hook": "Race analysts answer listener questions about the driving techniques of five great 21st-century F1 drivers.",
+      "explicit": false
+    },
+    {
+      "id": "masters-of-scale--pioneers-of-ai-why-ai-conversations",
+      "show": "Masters of Scale",
+      "title": "Pioneers of AI:  Why AI conversations are always one-sided",
+      "apple_collection_id": 1227971746,
+      "apple_track_id": 1000783423297,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/pioneers-of-ai-why-ai-conversations-are-always-one-sided/id1227971746?i=1000783423297&uo=4",
+      "release_date": "2026-08-15",
+      "duration_min": 39,
+      "duration_sec": 2359,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/prfx.byspotify.com/e/pscrb.fm/rss/p/tracking.swap.fm/track/7G0M4p2bOLP0mP50O3CD/rss.art19.com/episodes/8cb0ebfc-d742-465b-ba62-e26ddaabfeb6.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 37760104,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/13/4b/81/134b8173-d713-cbb2-2d3b-4a8692bd87c0/mza_996010941061703843.jpeg/600x600bb.jpg",
+      "topics": [
+        "business/founders"
+      ],
+      "hook": "Charles Duhigg examines why we still can't trust AI conversations the way we trust humans.",
+      "explicit": false
+    },
+    {
+      "id": "common-descent--episode-250-camels",
+      "show": "The Common Descent Podcast",
+      "title": "Episode 250 - Camels",
+      "apple_collection_id": 1207586509,
+      "apple_track_id": 1000783536278,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-250-camels/id1207586509?i=1000783536278&uo=4",
+      "release_date": "2026-08-16",
+      "duration_min": 142,
+      "duration_sec": 8507,
+      "audio_url": "https://mcdn.podbean.com/mf/web/3pwci6gpgxnqwaqm/Episode_250_Camels.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 204190970,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/2d/ad/58/2dad5885-6566-fdd4-6b52-f87b69af3688/mza_3078482384516892224.png/600x600bb.jpg",
+      "topics": [
+        "nature/paleontology"
+      ],
+      "hook": "A tour of camelid evolution, from Middle Eastern dromedaries to Andean llamas and alpacas.",
+      "explicit": false
+    },
+    {
+      "id": "casefile--case-348-toyah-cordingley",
+      "show": "Casefile True Crime",
+      "title": "Case 348: Toyah Cordingley",
+      "apple_collection_id": 998568017,
+      "apple_track_id": 1000781038037,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/case-348-toyah-cordingley/id998568017?i=1000781038037&uo=4",
+      "release_date": "2026-08-15",
+      "duration_min": 88,
+      "duration_sec": 5277,
+      "audio_url": "https://sphinx.acast.com/p/open/s/679acff465f74095106abfaa/e/6a802a95ff328abd84d44c12/media.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 126993086,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/32/81/a3/3281a345-6fa5-1d0d-b0bc-f02b0850a0ae/mza_17562537467118278179.jpeg/600x600bb.jpg",
+      "topics": [
+        "true-crime"
+      ],
+      "hook": "The 2018 disappearance and investigation into the death of Toyah Cordingley near Cairns, Australia.",
+      "explicit": true
+    },
+    {
+      "id": "wow-in-the-world--wewow-on-the-weekend-popsicle-stick",
+      "show": "Wow in the World",
+      "title": "WeWow on the Weekend: Popsicle Stick Sculptures, Ducks, and Bread!",
+      "apple_collection_id": 1233834541,
+      "apple_track_id": 1000783562108,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/wewow-on-the-weekend-popsicle-stick-sculptures-ducks/id1233834541?i=1000783562108&uo=4",
+      "release_date": "2026-08-16",
+      "duration_min": 11,
+      "duration_sec": 653,
+      "audio_url": "https://pscrb.fm/rss/p/rss.art19.com/episodes/0d635c16-fd84-4bf7-a2c0-6e142bd39ecd.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 10464026,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/2c/e0/40/2ce04033-0a89-a9a2-a797-0fa9af40febe/mza_11095829479482076608.jpeg/600x600bb.jpg",
+      "topics": [
+        "kids-family/education"
+      ],
+      "hook": "Dennis and Reggie cover popsicle-stick sculptures, duck facts, and bread-making in this kids weekend bonus.",
       "explicit": false
     }
   ]
