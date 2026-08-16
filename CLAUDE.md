@@ -341,3 +341,34 @@ after it is filed.
 Move finished items to a `DONE` section with the date; never delete them,
 because the history is how you stop re-asking. `SKIP` is final: do not re-raise
 a skipped item, and do not re-argue the recommendation behind it.
+
+## Ownership and names
+
+Only `Swift2` and `foray` are joint projects with a second person. Every other
+project on the map is the owner's alone.
+
+- **The owner's collaborator's name must not appear in any project except
+  `Swift2` and `foray`.** Not in docs, not in `STATE.md`, not in prompts, not in
+  code comments. If you find it elsewhere, replace it — with "the owner" where
+  that is accurate, or with a neutral phrase where it is not (writing "rotated
+  by the owner" when someone else did it trades a privacy problem for a factual
+  one). Purged 2026-08-15; do not reintroduce it.
+- **Never name a specific person as the approver** of anything. Say "the owner".
+  A prompt that names the wrong signer sends an implementing session to ask the
+  wrong human, or stall.
+- **Exception — functional identifiers stay.** GitHub usernames in allowlists or
+  CODEOWNERS, Vercel team slugs, notification email addresses: these are
+  configuration, not prose. Replacing them breaks things. Flag them; never
+  silently rewrite them.
+
+Where each project actually lives — check before assuming, because the GitHub
+org and the Vercel account do not always match:
+
+| Home | Projects |
+|---|---|
+| GitHub org `JW-Incorporated` (**the Team plan / the Actions bill**) | `Swift2` (private), `foray` (public), `starter-kit` (idle) |
+| Personal `sffan15-sys` (free tier, **separate quota**) | `bedrock`, `investment-os`, `dongerbot`, `barometer`, `token-app`, `Watch Website & IG` (repo `4twatches`) |
+| No remote — local only | `backtest-os`, `Stock Evaluation Tool`, `Watch Valuation Tool` |
+
+Only the two `JW-Incorporated` repos consume the Team Actions allowance, so a
+cron in `bedrock` or `barometer` is **not** part of that bill.
