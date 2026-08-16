@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-15T16:30:45.740Z",
+  "built_at": "2026-08-16T00:30:40.870Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-15-b3ecd6ec",
+    "last_batch_id": "fresh-2026-08-16-a94d6dcc",
     "last_batch_tier": 1
   },
   "entries": {
@@ -203395,10 +203395,25 @@
     },
     "1895790127": {
       "topics": [
-        "tv-film/after-shows"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode-by-episode coverage of horror TV show with comedic hosts; entertainment-focused podcast.",
+      "display_title": "Keepers of the Crypt",
+      "blurb": "Hosts cover every episode of Tales From the Crypt with humor and behind-the-scenes insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1895826591": {
       "topics": [
@@ -203510,10 +203525,25 @@
     },
     "1896039115": {
       "topics": [
-        "sports/golf"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly golf analysis, tournament recaps, player interviews, and competitive discussion.",
+      "display_title": "Scorecard",
+      "blurb": "Golf coverage with analysis, picks, and debate from CBS Sports voices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896043535": {
       "topics": [
@@ -203562,10 +203592,30 @@
     },
     "1896086365": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Yale Drama School centennial retrospective exploring disciplines: acting, design, stage management.",
+      "display_title": "Oh, the Drama!",
+      "blurb": "Yale Geffen School centennial with artists spanning acting, design, directing, and theater management.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896092193": {
       "topics": [
@@ -203720,11 +203770,30 @@
     },
     "1896283609": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "nature",
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.7
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form hunting stories, outlaw legends, conservation narratives grounded in outdoor culture.",
+      "display_title": "Andrew Thomas Visuals",
+      "blurb": "Long-form conversations exploring hunting culture, outlaw history, and conservation from the outdoors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896283644": {
       "topics": [
@@ -203792,10 +203861,25 @@
     },
     "1896303451": {
       "topics": [
-        "sports/fantasy"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football strategy, analytics, player rankings, and draft tactics from expert hosts.",
+      "display_title": "Fantasy Football is Life",
+      "blurb": "Fantasy football analysis covering strategy, analytics, rankings, and championship-winning tactics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896310431": {
       "topics": [
@@ -204046,10 +204130,25 @@
     },
     "1896559039": {
       "topics": [
-        "science/physics"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Journal club discussing physics research papers on quantum entanglement and topological phenomena.",
+      "display_title": "AMO Journal Club",
+      "blurb": "Reviewing current physics research papers on atomic, molecular, and optical science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896560592": {
       "topics": [
@@ -204068,11 +204167,25 @@
     },
     "1896565501": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Honest running conversations with athletes and coaches about competitive goals and training.",
+      "display_title": "Evening Double",
+      "blurb": "Conversations with runners and coaches exploring ambition, discipline, and high performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896569415": {
       "topics": [
@@ -204140,10 +204253,30 @@
     },
     "1896594121": {
       "topics": [
-        "science/chemistry"
+        "science",
+        "science/materials"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "science/materials",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unscripted conversations with researchers on chemistry, materials science, quantum systems.",
+      "display_title": "NRTGE | No Reason to Get Excited",
+      "blurb": "Conversations with scientists and researchers exploring chemistry, materials, and quantum physics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896598041": {
       "topics": [
@@ -204168,7 +204301,22 @@
         "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Art therapy hosts guide practical creativity conversations; accessible making, not performance.",
+      "display_title": "The Creative Collective",
+      "blurb": "Art therapy hosts share conversations and tools for integrating creativity into everyday life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896608226": {
       "topics": [
@@ -204187,11 +204335,25 @@
     },
     "1896625897": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Miami athlete interviews covering college sports journeys and recruitment stories.",
+      "display_title": "Ibis Media",
+      "blurb": "Athlete interviews from the University of Miami exploring college sports and recruitment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:40.870Z"
     },
     "1896631617": {
       "topics": [
@@ -204216,10 +204378,25 @@
     },
     "1896635839": {
       "topics": [
-        "relationships"
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal vulnerability: heartbreak, identity, loneliness; late-night conversation tone.",
+      "display_title": "Not So Chic with Elli Freeman",
+      "blurb": "Late-night conversations about life's harder parts: heartbreak, identity, and growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896636265": {
       "topics": [
@@ -204333,10 +204510,25 @@
     },
     "1896675595": {
       "topics": [
-        "tv-film/reviews"
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film reviews working through Letterboxd Top 250, debating critical consensus.",
+      "display_title": "Talking Pictures",
+      "blurb": "Two hosts review films from Letterboxd's Top 250, discussing why each earned its place.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896677788": {
       "topics": [
@@ -204508,10 +204700,25 @@
     },
     "1896741301": {
       "topics": [
-        "tv-film/reviews"
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV and streaming coverage: reviews, cultural moments, reality TV, Bravo drama.",
+      "display_title": "Binge or Cringe",
+      "blurb": "TV and streaming reviews covering what's worth your time and what should be skipped.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896743381": {
       "topics": [
@@ -204602,10 +204809,25 @@
     },
     "1896759049": {
       "topics": [
-        "sports/wrestling"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestling discussion and commentary with Hall of Famer AJ Styles.",
+      "display_title": "The Phenomenally Retro Podcast",
+      "blurb": "Wrestling commentary and stories from WWE Hall of Famer AJ Styles with host Tony Giles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896759282": {
       "topics": [
@@ -204641,10 +204863,30 @@
     },
     "1896762691": {
       "topics": [
-        "food"
+        "food",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Food personality interviews over prepared meals; culinary and creative conversations.",
+      "display_title": "In the Booth with Babish",
+      "blurb": "YouTube food personality Andrew Rea sits down with chefs and celebrities over meals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896763375": {
       "topics": [
@@ -204693,10 +204935,25 @@
     },
     "1896767233": {
       "topics": [
-        "nature/pets"
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog rescue stories, volunteer interviews, animal welfare operations and adoption.",
+      "display_title": "Save Lives With Us",
+      "blurb": "Stories and interviews from Three Little Pitties Rescue about saving and rehoming dogs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896768137": {
       "topics": [
@@ -205183,10 +205440,25 @@
     },
     "1896818137": {
       "topics": [
-        "sports/basketball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beat reporters cover Golden State Valkyries WNBA team weekly with player analysis.",
+      "display_title": "Valkyries Beat Courtside Report",
+      "blurb": "Bay Area beat reporters discuss Golden State Valkyries WNBA season week by week.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896818171": {
       "topics": [
@@ -205236,10 +205508,33 @@
     },
     "1896827647": {
       "topics": [
-        "culture/design"
+        "architecture",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "architecture",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Architects and engineers discuss building practices: data, process, communication, AI readiness.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896828590": {
       "topics": [
@@ -205846,10 +206141,30 @@
     },
     "1896881083": {
       "topics": [
-        "comedy/interviews"
+        "comedy",
+        "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedian and former teacher makes childhood snacks with guest comedians; casual hangout.",
+      "display_title": "After School Snack with Sam Salem",
+      "blurb": "Comedian Sam Salem makes after-school snacks with visiting comedians, discussing school memories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896882298": {
       "topics": [
@@ -205860,10 +206175,25 @@
     },
     "1896884449": {
       "topics": [
-        "sports/soccer"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily World Cup coverage from credentialed Athletic reporters; soccer analysis and commentary.",
+      "display_title": "The Athletic FC: Daily Cup",
+      "blurb": "The Athletic's credentialed reporters deliver daily World Cup coverage and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896884660": {
       "topics": [
@@ -205897,12 +206227,30 @@
     },
     "1896884995": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "nature",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Southern row crop production advice: corn, cotton, soybeans; agricultural learning.",
+      "display_title": "Down The Row",
+      "blurb": "Southern row crop producers discuss corn, cotton, and soybean production practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896885744": {
       "topics": [
@@ -205951,7 +206299,22 @@
         "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Former congressman breaks down daily political news without spin or rhetoric.",
+      "display_title": "The Kinzinger Report",
+      "blurb": "Former congressman and Air Force veteran Adam Kinzinger analyzes current political news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896886543": {
       "topics": [
@@ -206029,10 +206392,25 @@
     },
     "1896891739": {
       "topics": [
-        "religion/spirituality"
+        "philosophy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Astrology and cosmic storytelling; spirituality and personal growth framing.",
+      "display_title": "Astro Talk with Kate Forster",
+      "blurb": "Astrology, storytelling, and cosmic exploration exploring meaning and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896892474": {
       "topics": [
@@ -206246,7 +206624,22 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book-to-screen adaptation analysis with culture reporters and authors.",
+      "display_title": "It Was A Book First",
+      "blurb": "Culture reporters analyze new book-to-screen adaptations and the business behind them.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896902388": {
       "topics": [
@@ -206268,7 +206661,25 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep dives into automotive obscurities: banned tech, badge engineering, racing history.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896902471": {
       "topics": [
@@ -206356,10 +206767,25 @@
     },
     "1896907363": {
       "topics": [
-        "sports/baseball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "ESPN insider covers Chicago Cubs baseball with beat reporters and player interviews.",
+      "display_title": "Inside The Friendly Confines",
+      "blurb": "ESPN insider Jesse Rogers covers the Cubs with beat reporting and insider access.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896907427": {
       "topics": [
@@ -206379,10 +206805,25 @@
     },
     "1896907501": {
       "topics": [
-        "comedy/interviews"
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Irreverent basement game show with celebrities; comedy banter and physical challenges.",
+      "display_title": "The Bad Game Show",
+      "blurb": "Andrew Santino and Bobby Lee host a chaotic basement game show with celebrity guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896907564": {
       "topics": [
@@ -206674,10 +207115,25 @@
     },
     "1896924871": {
       "topics": [
-        "culture/design"
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Furniture building and making conversations; craft practice and small business realities.",
+      "display_title": "With the Grain",
+      "blurb": "Conversations with furniture makers exploring craft, passion, and small business realities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896925583": {
       "topics": [
@@ -206727,10 +207183,25 @@
     },
     "1896929683": {
       "topics": [
-        "culture/art"
+        "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Commercial film directing conversations; production chaos and creative process behind ads.",
+      "display_title": "Ten One",
+      "blurb": "Commercial director Freddie Powell interviews fellow directors about production and craft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-a94d6dcc",
+      "classified_at": "2026-08-16T00:30:12.391Z"
     },
     "1896931293": {
       "topics": [
