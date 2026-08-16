@@ -7,8 +7,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  seekPrecision, canSeekExactly, formatTimestamp, describeTimestamp,
-  OWN, FOREIGN, EXACT, APPROXIMATE, DRIFT_TOLERANCE_SEC,
+  seekPrecision, canSeekExactly, canPlaySegment, locateStep,
+  formatTimestamp, describeTimestamp,
+  OWN, FOREIGN, EXACT, APPROXIMATE, PADDED, DRIFT_TOLERANCE_SEC, AD_PAD_CEILING_SEC,
 } from "./seek-policy.js";
 
 const stitched = { id: "ep-dai", dai_suspected: true };
@@ -153,4 +154,144 @@ test("nothing streaming a stitched show is exact unless the listener made it", (
       `source=${source}`
     );
   }
+});
+
+/* ---------- ADR-0007's ladder, rung 3 (#111) ----------
+
+   An authored segment boundary is FOREIGN by definition, so before this rung
+   every stitched segment was approximate and every stitched segment was
+   skipped. Rung 3 asks a second question: does the copy in hand carry the same
+   ad load as the copy the timestamp was authored against? */
+
+test("a foreign timestamp on a stitched show is exact when the ad load matches", () => {
+  const r = seekPrecision(stitched, {
+    source: FOREIGN, recordedDuration: 2501, observedDuration: 2510,
+  });
+  assert.equal(r.precision, EXACT);
+  assert.match(r.reason, /ad load matches the reference copy/);
+});
+
+test("rung 3 uses the same 30s tolerance as the OWN branch, at the boundary", () => {
+  const at = seekPrecision(stitched, {
+    source: FOREIGN, recordedDuration: 2501, observedDuration: 2501 + DRIFT_TOLERANCE_SEC,
+  });
+  const past = seekPrecision(stitched, {
+    source: FOREIGN, recordedDuration: 2501, observedDuration: 2501 + DRIFT_TOLERANCE_SEC + 1,
+  });
+  assert.equal(at.precision, EXACT);
+  assert.equal(past.precision, APPROXIMATE);
+});
+
+test("drift in either direction counts — a shorter copy is a changed copy", () => {
+  const r = seekPrecision(stitched, {
+    source: FOREIGN, recordedDuration: 2501, observedDuration: 2200,
+  });
+  assert.equal(r.precision, APPROXIMATE);
+});
+
+test("rung 3 needs both durations; one alone decides nothing", () => {
+  for (const ctx of [{ recordedDuration: 2501 }, { observedDuration: 2510 }, {}]) {
+    assert.equal(seekPrecision(stitched, { source: FOREIGN, ...ctx }).precision, APPROXIMATE);
+  }
+});
+
+/* ---------- ADR-0007's rung 4: the locate step ---------- */
+
+test("the locate step is a named, callable absence rather than a silence", () => {
+  // #111: "the unimplemented live-resolution path is explicitly marked in
+  // code, not silently absent". An absence cannot be tested, and a future
+  // reader cannot tell a deliberate gap from an oversight.
+  const step = locateStep();
+  assert.equal(step.implemented, false);
+  assert.match(step.reason, /not implemented/);
+});
+
+test("a drifted stitched copy falls to the honest skip, naming the missing rung", () => {
+  const r = seekPrecision(stitched, {
+    source: FOREIGN, recordedDuration: 2501, observedDuration: 3200,
+  });
+  assert.equal(r.precision, APPROXIMATE);
+  assert.match(r.reason, /dynamic ad insertion/);
+  assert.match(r.reason, /segment skipped rather than played at a stale offset/);
+});
+
+/* ---------- ADR-0008's pad ---------- */
+
+test("the pad rung is off unless the caller opts in", () => {
+  // ADR-0008 open question 2 is addressed to Wyatt and unanswered, and nothing
+  // in this repo records a pad for any episode. Off is the ADR's own position.
+  assert.equal(seekPrecision(stitched, { source: FOREIGN, adPadSec: 100 }).precision, APPROXIMATE);
+});
+
+test("an opted-in pad within the ceiling is padded — playable, never exact", () => {
+  const r = seekPrecision(stitched, { source: FOREIGN, adPadSec: 100, allowAdPad: true });
+  assert.equal(r.precision, PADDED);
+  assert.equal(r.padSec, 100);
+  assert.match(r.reason, /PADDABLE/);
+  assert.equal(canSeekExactly(stitched, { source: FOREIGN, adPadSec: 100, allowAdPad: true }), false,
+    "a padded segment opens on run-up and closes on tail — that is not exact");
+});
+
+test("a pad cannot cover a drift larger than itself", () => {
+  // The pad is a BOUND, and a bound can be exceeded. `observed - recorded` is
+  // this copy's own ad load, which is exactly what the pad claims to bound; if
+  // this copy carries more, ADR-0008's own arithmetic says the stop lands early
+  // and the payload is truncated. Waving it through would let a 60s pad excuse
+  // a 28-minute displacement.
+  const r = seekPrecision(stitched, {
+    source: FOREIGN, recordedDuration: 2501, observedDuration: 2501 + 1699,
+    adPadSec: 60, allowAdPad: true,
+  });
+  assert.equal(r.precision, APPROXIMATE);
+  assert.match(r.reason, /1699s of ad load, beyond the 60s the pad bounds/);
+});
+
+test("a pad that does cover this copy's ad load still pads", () => {
+  const r = seekPrecision(stitched, {
+    source: FOREIGN, recordedDuration: 2501, observedDuration: 2501 + 66,
+    adPadSec: 100, allowAdPad: true,
+  });
+  assert.equal(r.precision, PADDED);
+  assert.equal(r.padSec, 100);
+});
+
+test("a pad over the ceiling is LOCATE-REQUIRED", () => {
+  const r = seekPrecision(stitched, {
+    source: FOREIGN, adPadSec: AD_PAD_CEILING_SEC + 1, allowAdPad: true,
+  });
+  assert.equal(r.precision, APPROXIMATE);
+  assert.match(r.reason, /LOCATE-REQUIRED/);
+});
+
+test("rung 3 outranks the pad — a matching copy needs no tolerance", () => {
+  const r = seekPrecision(stitched, {
+    source: FOREIGN, recordedDuration: 2501, observedDuration: 2510,
+    adPadSec: 100, allowAdPad: true,
+  });
+  assert.equal(r.precision, EXACT);
+});
+
+test("the pad never touches a static enclosure or a downloaded file", () => {
+  assert.equal(seekPrecision(staticEp, { source: FOREIGN, adPadSec: 999, allowAdPad: true }).precision, EXACT);
+  assert.equal(seekPrecision(stitched, { isLocalFile: true, adPadSec: 999, allowAdPad: true }).precision, EXACT);
+});
+
+test("a padded timestamp still renders as an estimate, never as a clock time", () => {
+  assert.equal(formatTimestamp(4050, PADDED), "~68 min");
+  assert.ok(!/\d:\d\d/.test(formatTimestamp(4050, PADDED)));
+});
+
+test("canPlaySegment separates 'play it' from 'promise a time'", () => {
+  const padded = { source: FOREIGN, adPadSec: 100, allowAdPad: true };
+  assert.equal(canPlaySegment(stitched, padded), true, "padded is playable");
+  assert.equal(canSeekExactly(stitched, padded), false, "...but not exact");
+  assert.equal(canPlaySegment(stitched, { source: FOREIGN }), false, "unresolvable is skipped");
+  assert.equal(canPlaySegment(staticEp, { source: FOREIGN }), true);
+});
+
+test("DRIFT_TOLERANCE_SEC stays at 30 — ADR-0008 forbids widening it for ads", () => {
+  // It guards the listener's own marker against their own copy, which is a
+  // different question with a correct answer already. The pad is the ad rung.
+  assert.equal(DRIFT_TOLERANCE_SEC, 30);
+  assert.equal(AD_PAD_CEILING_SEC, 120);
 });

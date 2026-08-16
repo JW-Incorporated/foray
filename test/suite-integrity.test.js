@@ -52,10 +52,11 @@ const ROOT = path.join(__dirname, "..");
 
 /* suite -> minimum number of top-level test() declarations. */
 const FLOORS = {
-  "player/html-audio-backend.test.js": 22,
-  "player/queue-manager.test.js": 26,
-  "player/queue-state.test.js": 43,
-  "player/seek-policy.test.js": 17,
+  "player/foray-queue.test.js": 29,
+  "player/html-audio-backend.test.js": 44,
+  "player/queue-manager.test.js": 50,
+  "player/queue-state.test.js": 56,
+  "player/seek-policy.test.js": 33,
   "test/app-security.test.js": 18,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.

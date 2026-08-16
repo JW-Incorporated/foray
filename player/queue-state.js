@@ -36,6 +36,32 @@
 
    Extension beyond the Swift: seek. See §"seek" below and issue #30 — the
    `precise` flag is passed through, never decided here.
+
+   Extension beyond the Swift: OUT-POINTS (issues #111 / #65). A Foray segment
+   is a `[start_sec, end_sec]` slice of an episode, so an item may finish
+   before its file does. Two deliberate non-changes, both from #65:
+
+   - **No new state.** An out-point produces the same `itemEnded` a natural end
+     produces, so every transition below — bridges, queue exhaustion, the
+     single-player guard — applies unchanged. The reducer never learns that a
+     segment is different from an episode, which is exactly the property that
+     makes it worth having.
+   - **No new watcher here.** Watching the playhead is I/O; the reducer only
+     emits `setOutPoint`, one effect, at the one moment the boundary can be
+     armed safely (on `itemLoaded`, after the in-point, before anything is
+     audible). The backend owns accuracy.
+
+   The boundary itself rides on the item ref as `bounds`, supplied by the
+   caller — same ownership split as design note 1.
+
+   **This one is JS-only and the Swift has NOT been updated** (#111). Neither
+   `PlayerQueueState.swift` nor `PlayerQueueManager.swift` knows about bounds,
+   `setOutPoint`, or the in-point override, so a Foray cannot play on the
+   native backend yet — and the "diffable by eye" promise at the top of this
+   file is broken for this section until #28 either ports it or retires the
+   Swift. `ios/` is outside the auto-merge allowlist, so porting it is its own
+   PR with a human on it, and it needs a macOS box to build. Said out loud
+   here rather than discovered later.
 */
 
 /* ---------- value types ---------- */
@@ -44,10 +70,50 @@
 export const EPISODE = "episode";
 export const TTS = "tts";
 
+/** How an item finished. Carried on the backend's `onItemEnded` callback so
+    the manager can tell the two apart in telemetry — the reducer deliberately
+    cannot, and must not. */
+export const END_NATURAL = "natural";
+export const END_OUT_POINT = "outPoint";
+
+function finiteNonNegative(n) {
+  return typeof n === "number" && Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/**
+ * The slice of the SOURCE audio an item occupies, in that audio's own seconds.
+ *
+ * THE ONE DEFINITION OF "BOUNDED", used by the reducer, the manager and the
+ * Foray builder alike. Bounds exist only for a real forward slice: a usable
+ * `endSec` greater than `startSec`. Everything else — no end, a junk end, an
+ * end at or before the start, or a bare `start_sec` with nothing to stop at —
+ * is an ordinary unbounded item and gets ordinary unbounded treatment.
+ *
+ * Collapsing all of that into one predicate is deliberate. An earlier draft let
+ * three call sites each decide what "bounded" meant (`item.end_sec` being a
+ * number, versus `bounds` being truthy, versus `bounds.endSec` being set) and
+ * they disagreed for exactly the malformed items that most need consistency:
+ * an item could count as bounded for the backend-capability check, arm no
+ * out-point, and silently lose its saved position, all at once.
+ *
+ * Junk is dropped rather than trusted because arming a boundary the playhead
+ * can never cross fails at runtime as "the player ignored my out-point", when
+ * it is really "this Foray is malformed". `player/foray-queue.js` rejects such
+ * a segment loudly at build time, which is where the complaint belongs.
+ */
+export function itemBounds(bounds) {
+  if (!bounds) return null;
+  const startSec = finiteNonNegative(bounds.startSec) ?? 0;
+  const rawEnd = finiteNonNegative(bounds.endSec);
+  if (rawEnd == null || rawEnd <= startSec) return null;
+  return Object.freeze({ startSec, endSec: rawEnd });
+}
+
 /** A minimal, opaque reference to a queue item. The reducer needs nothing
-    beyond identity and kind; the manager resolves `id` to an actual URL. */
-export function itemRef(id, kind = EPISODE) {
-  return Object.freeze({ id, kind });
+    beyond identity, kind, and (for a segment) its bounds; the manager resolves
+    `id` to an actual URL. */
+export function itemRef(id, kind = EPISODE, bounds = null) {
+  return Object.freeze({ id, kind, bounds: itemBounds(bounds) });
 }
 
 /* ---------- states ---------- */
@@ -134,6 +200,16 @@ export const F = Object.freeze({
 
   seekTo: (seconds, precise) => Object.freeze({ type: "seekTo", seconds, precise }),
   seekRejected: (reason) => Object.freeze({ type: "seekRejected", reason }),
+
+  /** Arm the backend's out-point watch at `seconds` on the current source's
+      timeline. Emitted only for a bounded item, and only on `itemLoaded` —
+      after the in-point has landed, before anything is audible.
+
+      There is deliberately no `clear` counterpart. The backend contract makes
+      `load()` drop any armed boundary, so a stale out-point cannot outlive the
+      item that set it, and an unbounded item's `itemLoaded` stays effect-for-
+      effect identical to what it emitted before out-points existed. */
+  setOutPoint: (seconds) => Object.freeze({ type: "setOutPoint", seconds }),
 });
 
 /* ---------- helpers ---------- */
@@ -142,18 +218,40 @@ export const F = Object.freeze({
     interpolation without reproducing Swift's enum-printing noise. */
 function describe(state) {
   switch (state.type) {
-    case "loadingItem": return `loadingItem(${state.target.id})`;
-    case "playing": return `playing(${state.item.id})`;
-    case "transitioning": return `transitioning(${state.from.id} -> ${state.to.id})`;
-    case "interrupted": return `interrupted(${state.item.id}, wasPlaying: ${state.wasPlaying})`;
+    case "loadingItem": return `loadingItem(${name(state.target)})`;
+    case "playing": return `playing(${name(state.item)})`;
+    case "transitioning": return `transitioning(${name(state.from)} -> ${name(state.to)})`;
+    case "interrupted": return `interrupted(${name(state.item)}, wasPlaying: ${state.wasPlaying})`;
     default: return state.type;
   }
 }
 
+/** An unbounded item reads as its bare id, exactly as it did before segments
+    existed; a segment says which slice, because "playing(gastropod-fire)" is
+    ambiguous the moment two items share a source. */
+function name(ref) {
+  const b = ref?.bounds;
+  if (!b) return ref?.id;
+  return `${ref.id}[${Math.round(b.startSec)}-${Math.round(b.endSec)}]`;
+}
+
+function sameBounds(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.startSec === b.startSec && a.endSec === b.endSec;
+}
+
+/** Identity includes the bounds, and that is load-bearing rather than tidy.
+    Two segments of the SAME episode are two queue items over one source, and
+    every "is this the thing I am already doing?" guard below — play's
+    idempotence, the skip debounce, the in-flight-load replacement — would
+    otherwise treat the second as a redundant repeat of the first and silently
+    drop it. Consecutive same-episode segments are common in a Foray, so this
+    is the normal case, not a corner. */
 function sameRef(a, b) {
   if (a === b) return true;
   if (!a || !b) return false;
-  return a.id === b.id && a.kind === b.kind;
+  return a.id === b.id && a.kind === b.kind && sameBounds(a.bounds ?? null, b.bounds ?? null);
 }
 
 /** The item currently "in focus" for a state, if any. */
@@ -253,6 +351,11 @@ function handleItemLoaded(state) {
       if (state.pendingSeek) {
         effects.push(F.seekTo(state.pendingSeek.seconds, state.pendingSeek.precise));
       }
+      // Arm the out-point here and nowhere else: the in-point is already
+      // applied (it rode on the load, or on the pendingSeek above), so the
+      // backend can decide from a settled playhead whether the boundary is
+      // still ahead of us. Arming before the seek would arm against 0:00.
+      if (state.target.bounds) effects.push(F.setOutPoint(state.target.bounds.endSec));
       effects.push(F.startPlayback());
       return [S.playing(state.target), effects];
     }
@@ -409,7 +512,14 @@ function handleSkip(state, target, direction) {
         F.emitTelemetry("skip.previous.restartInPlace"),
       ]];
     }
-    return [S.ended(), [F.emitTelemetry(`skip.${direction}.queueExhausted`)]];
+    // Queue genuinely exhausted. STOP WHAT IS AUDIBLE — this used to return
+    // `ended` with telemetry alone, which left the element playing on while the
+    // state said the session was over. It was always wrong; a Foray makes it
+    // reachable, because a short last segment is exactly where someone presses
+    // skip. (#111 review.)
+    const audible = state.type === "playing" || state.type === "transitioning";
+    const done = F.emitTelemetry(`skip.${direction}.queueExhausted`);
+    return [S.ended(), audible ? [F.savePosition(), F.pausePlayback(), done] : [done]];
   }
 
   switch (state.type) {
