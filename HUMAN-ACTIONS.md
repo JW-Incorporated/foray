@@ -101,19 +101,38 @@ Two known defects to listen for specifically, both recorded in
 - **TAV-2** opens *"Mrs Glass is famous for one other thing"* and the actual
   claim arrives about 4 s in, at the edge of what the rules allow.
 
-There are **no narration bridges yet**, so segments will cut straight from one
-to the next with no explanation of who is speaking or why the subject moved.
-Expect that; it is the next workstream, not a defect in this one.
+There are **no narration bridges yet**, so nothing explains who is speaking or
+why the subject moved. Expect that; it is the next workstream, not a defect in
+this one. What each of the 31 transitions now has instead is **2.0 s of
+silence** — the audiobook section-break beat, added because an instant cut from
+one room to another reads as a glitch rather than as an edit. Judge that beat
+while you listen: 2.0 s is a convention, not a measurement, and yours is the
+first pair of ears on it. If it feels long, or too short, say so — it is one
+number (`SEAM_GAP_SEC` in `player/seam-gap.js`) and item #3 below is the
+decision that owns it.
 
 **Steps.**
 
 1. Read the running order: `docs/curation/grilling-foray.md` §2 (32 rows, in
    listening order, with what each one contributes).
-2. Listen. Every source episode's audio URL is in `data/segment-sources.json`
-   (`sources[].audio_url`), and each segment's in and out points are
-   `start_sec` / `end_sec` in `data/segments.json`. There is no player for this
-   yet — that is issues #111, #128 and #133 — so this is a manual pass with a
-   podcast app and the timestamps.
+2. Listen. **There is a player now** — #111 / #128 / #133 landed, so this is no
+   longer a manual pass with a podcast app and a list of timestamps. Open:
+
+   ```
+   https://jw-incorporated.github.io/foray/?foray=grilling-history-1
+   ```
+
+   That link is the keyless way into the draft: it unlocks this one Foray for
+   that one page load, is not persisted, and does not publish anything. Press
+   **Play** and it runs all 32 segments in order, each starting and stopping at
+   its own timestamp, with the 2.0 s beat between them. The strip along the top
+   is a scrubber — click anywhere in it to jump to that point in the hour — and
+   it remembers where you stopped, so this does not have to be one sitting.
+
+   (The fallback still works if the page will not load: every source episode's
+   audio URL is in `data/segment-sources.json` (`sources[].audio_url`) and each
+   segment's in and out points are `start_sec` / `end_sec` in
+   `data/segments.json`.)
 3. Decide. If it holds together, change **one word** in `data/forays.json`:
 
    ```
@@ -127,6 +146,61 @@ Expect that; it is the next workstream, not a defect in this one.
 **Worked if:** either `data/forays.json` says `"status": "published"` on
 `grilling-history-1`, or there is a written note saying what a listener heard
 that the rules did not catch.
+
+**Status:** OPEN
+
+### 3. Reconcile the two silence numbers: 0.5 s in the brief, 2.0 s in the rules
+
+**Tag:** `[UPGRADE]` · **Time:** ~5 minutes, after item #2
+
+**Why it matters.** Two committed documents give different numbers for the
+silence at a seam, and as of this change the player implements one of them, so
+the other is now wrong in a way a reader cannot detect:
+
+- `docs/brief/04_VOICE_AUDIO_SPEC.md`, line 12: *"Transitions: hard cuts are
+  fine; add ~0.5 s of silence padding around TTS items."*
+- `docs/curation/segment-length-rules.md` §6b: *"Silence. **≥ 2.0 s** of
+  padding, against the ~0.5 s standard from `04_VOICE_AUDIO_SPEC.md`."*
+
+The rules doc already argues the divergence is deliberate — 0.5 s is right for
+*joining* audio around a narration line, 2.0 s is what it takes to *mark an
+edit* (§2e, the audiobook section-break convention) — and its own §10 lists the
+reconciliation as undecided, *"a spec change [that] needs Wyatt, since it
+touches the player."* It now touches the player: `player/seam-gap.js` ships
+2.0 s at every unbridged segment-to-segment seam. Nothing about the 0.5 s TTS
+padding changed, because no narration exists to pad.
+
+Left alone, the next person to implement bridges reads the brief, uses 0.5 s,
+and two parts of the same transition disagree by 4x.
+
+**Steps.**
+
+1. Listen first (item #2). This is a judgement about a sound.
+2. Pick one of three:
+   - **Keep both, and say so.** Add one line to
+     `docs/brief/04_VOICE_AUDIO_SPEC.md` line 12: the 0.5 s is padding around a
+     TTS item; an unbridged seam is 2.0 s per `segment-length-rules.md` §6b.
+     This is the recommendation — the two numbers do different jobs, and it is
+     the only one of the three that touches no code.
+   - **Move the number**, or **drop the beat** (which is the same edit with a
+     zero). Just say what it should be — you do not have to make the change.
+     For whoever does: it is `SEAM_GAP_SEC` in `player/seam-gap.js`, and
+     changing it means updating the tests that pin the current value, which
+     is deliberate rather than friction — the number is meant to be hard to
+     move by accident. They are `player/seam-gap.test.js` ("the merged rule is
+     2.0 s…", "an unbridged segment-to-segment auto-advance…"),
+     `player/queue-manager.test.js` ("an unbridged segment-to-segment seam
+     holds 2.0 s…", "the beat is observable in telemetry…") and
+     `player/foray-playback.test.js` ("every one of Foray #1's 31 seams…").
+     The `seamGapSec: 0` *constructor option* is already covered by a test and
+     needs nothing changed to use — that is the quick way to A/B it by ear
+     before committing to a number.
+3. Whichever you pick, delete the "does not decide" bullet in
+   `docs/curation/segment-length-rules.md` §10 that names this divergence.
+
+**Worked if:** `04_VOICE_AUDIO_SPEC.md` and `segment-length-rules.md` can both
+be read start to finish without coming away with two different answers to "how
+much silence goes at a seam".
 
 **Status:** OPEN
 

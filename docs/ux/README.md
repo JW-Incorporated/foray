@@ -53,8 +53,11 @@ can tell "not built yet" from "built, differently".
 | `resume` / "Jump back in" / `ForayCard` progress | resume across sessions: one row per Foray in `localStorage`, the Foray's own clock | `player/foray-progress.js`, `?foray=…` page + home rail |
 | `MiniPlayer` identity + tap-to-open | the bar already survived navigation; it now leads with the FORAY title, says `Now: <show> · part N of M`, and carries a "Back to the Foray" route | `player/client.js` |
 | `Thumbs` + `FeedbackSheet` (9 `FB_CHIPS`) | per-segment thumbs on the running order; up is one tap, down opens the reason sheet and only commits on submit | `app.js` (`cp_foray_feedback`, `thumbs` events) |
+| `Scrubber` over the whole Foray (`seek()`, jsx ~1329) | the segment strip IS the scrubber: a click is a position in the hour, cold or playing. It already looked like one and behaved like 32 jump targets | `app.js` (`stripElapsedAt`), `ForayPlayer.foraySeek` |
+| `SegmentStrip`'s partial fill on the current bar (`cur.into / seg.dur`, jsx ~229) | the live bar fills left to right; bars behind are full, ahead are empty | `app.js` (`paintSegFill`), `.fy-seg-fill` |
 | `ShowScreen` | NOT built. Its honest subset is: a "Where this came from" credit block per Foray — shows, episodes, clip counts, and a link out | `player/foray-sources.js` |
 | `CreateScreen`, narrator bridges, generated cover art | NOT built, deliberately. See the scope notes above and in `STATE.md`. | — |
+| `PlayerBridge` (m3 prototype) — the handoff screen between two sources | NOT built. What exists instead is the seam itself: 2.0 s of silence at every unbridged transition, which is the beat the bridge screen was drawn around | `player/seam-gap.js` |
 
 Two deviations worth knowing:
 
@@ -66,6 +69,13 @@ Two deviations worth knowing:
   name when we do not, and `linkKind` records which — rather than inventing an id
   or sending a human to an RSS document. There is no follow button, because there
   is nothing to follow with.
+- **The scrubber lost the mockup's tick marks and its knob, and kept its job.**
+  The strip's own 2px gaps already draw a boundary between every segment, so
+  separate ticks would be a second set of lines saying the same thing. There is
+  no drag: a click is a position, which is the gesture that was missing. The
+  exact-segment jump the strip used to do lives on in the running-order rows,
+  which are also the keyboard-reachable half of the control — the strip is a
+  pointer affordance and does not claim otherwise.
 - **The mockup's resume state is read-only and hard-coded** (`const resume = { f1: 1180 }`,
   a literal `"20 min left"`, a literal `62%`). Everything above it is computed.
   The one number that is not the mockup's is the "already finished" threshold:

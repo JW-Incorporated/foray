@@ -53,6 +53,56 @@ class OutPointBlindBackend extends FakeBackend {
   constructor(opts) { super(opts); this.setOutPoint = undefined; }
 }
 
+/* ---------- the seam beat's clock ----------
+
+   NEVER let a test wait out a real 2.0 s beat, and never assert on wall clock:
+   #195 already cost this repo a flaky suite that went red whenever the box was
+   busy, and a transcription run pins this laptop for tens of minutes at a time.
+   Both schedulers below are deterministic and complete in zero real time.
+
+   INSTANT is the default for every pre-existing test: the beat is armed, held
+   and released exactly as it is in production, just on the next microtask
+   instead of in two seconds, so those tests keep asserting on call ORDER and
+   are untouched by this feature. `manual` is for the tests that are about the
+   beat itself — nothing fires until the test says so, which is the only way to
+   observe "the load happened INSIDE the gap" rather than hoping a sleep was
+   long enough. */
+const INSTANT_SCHEDULER = {
+  nowMs: () => 0,
+  // queueMicrotask, not a synchronous call: a scheduler that fires inside
+  // schedule() is not setTimeout semantics, and it made every pre-existing
+  // test blind to the beat's async ordering. This is still zero wall clock.
+  schedule: (_ms, fn) => { let dead = false; queueMicrotask(() => { if (!dead) fn(); }); return () => { dead = true; }; },
+};
+
+function manualScheduler() {
+  let now = 0;
+  const pending = [];
+  return {
+    nowMs: () => now,
+    schedule(ms, fn) {
+      const entry = { at: now + ms, fn, dead: false };
+      pending.push(entry);
+      return () => { entry.dead = true; };
+    },
+    /** Move the clock and run whatever came due. Returns after the callbacks'
+        own microtasks have drained, so `await tick()` leaves the player settled. */
+    async advance(ms) {
+      now += ms;
+      for (const entry of [...pending]) {
+        if (entry.dead || entry.at > now) continue;
+        entry.dead = true;
+        entry.fn();
+      }
+      await tick();
+    },
+    get live() { return pending.filter((e) => !e.dead).length; },
+  };
+}
+
+/** Drain the microtask queue — the manager awaits its own promises. */
+const tick = () => new Promise((r) => setImmediate(r));
+
 function make(opts = {}) {
   __resetInstanceForTests();
   const Backend = opts.backendClass ?? FakeBackend;
@@ -63,10 +113,12 @@ function make(opts = {}) {
     load: (id) => saved.get(id) ?? null,
   };
   const log = [];
+  const scheduler = opts.scheduler ?? INSTANT_SCHEDULER;
   const m = new PlayerQueueManager({
     backend, positionStore, telemetry: (t) => log.push(t), strategy: opts.strategy,
+    scheduler, seamGapSec: opts.seamGapSec, onSeamGapChange: opts.onSeamGapChange,
   });
-  return { m, backend, saved, log };
+  return { m, backend, saved, log, scheduler };
 }
 
 /* ---------- the blocking decision, made pluggable ---------- */
@@ -674,4 +726,511 @@ test("a Foray with nothing playable makes no noise", async () => {
   assert.equal(report.items.length, 0);
   assert.ok(!backend.calls.includes("play"));
   assert.ok(log.some((t) => /empty — every item was skipped/.test(t)));
+});
+
+/* ---------- the seam beat (docs/curation/segment-length-rules.md §6b) -------
+
+   Foray #1 carries no narration, so all 31 of its transitions are unbridged
+   and each one gets 2.0 s of silence. Every test below drives the beat's clock
+   by hand (`manualScheduler`) — there is no sleeping here and no assertion on
+   elapsed wall clock, deliberately: #195 already de-flaked this suite once and
+   a transcription queue is on this box.
+
+   `seam()` starts a two-segment Foray of DIFFERENT episodes and stops the first
+   at its out-point WITHOUT waiting for the beat, so each test can look inside
+   the gap before letting it finish. */
+
+const plays = (backend) => backend.calls.filter((c) => c === "play").length;
+
+async function seam(opts = {}) {
+  const scheduler = manualScheduler();
+  const h = make({ ...opts, scheduler });
+  await h.m.playForay(
+    foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 })]),
+    { resolveItem }
+  );
+  h.backend.currentTime = 210;
+  // NOT awaited: the beat is still running when this returns, which is the
+  // whole point. `settled` is the promise the out-point path eventually keeps.
+  const settled = h.backend.onItemEnded("outPoint");
+  await tick();
+  return { ...h, scheduler, settled };
+}
+
+test("an unbridged segment-to-segment seam holds 2.0 s before the next segment is audible", async () => {
+  const { m, backend, scheduler, settled } = await seam();
+  assert.equal(m.inSeamGap, true, "a beat should be running");
+  assert.equal(m.seamGapRemainingMs, 2000);
+  assert.equal(plays(backend), 1, "the second segment must not be audible yet");
+
+  await scheduler.advance(1999);
+  assert.equal(plays(backend), 1, "still inside the beat");
+
+  await scheduler.advance(1);
+  await settled;
+  assert.equal(plays(backend), 2, "the beat is over, segment 2 starts");
+  assert.equal(m.inSeamGap, false);
+  assert.equal(m.seamGapRemainingMs, 0);
+});
+
+test("THE GAP ABSORBS THE LOAD: the next segment is fetched and positioned inside the beat", async () => {
+  // The difference between a graceful beat and a stall. Invert this ordering
+  // and the listener waits `gap + load` instead of `max(gap, load)`.
+  const { backend, scheduler, settled } = await seam();
+  assert.ok(backend.loads().includes("load:foray-1#1"), `not loaded yet: ${backend.calls}`);
+  assert.ok(backend.calls.includes("load:foray-1#1@400"), "and positioned at its in-point");
+  assert.equal(plays(backend), 1, "loaded, positioned, and still silent");
+  await scheduler.advance(2000);
+  await settled;
+  assert.equal(plays(backend), 2);
+});
+
+test("a load slower than the beat costs max(gap, load), never gap + load", async () => {
+  const scheduler = manualScheduler();
+  let release;
+  const held = new Promise((r) => { release = r; });
+  class SlowLoad extends FakeBackend {
+    async load(item, opts) {
+      await super.load(item, opts);
+      if (item.id === "foray-1#1") await held;
+    }
+  }
+  __resetInstanceForTests();
+  const backend = new SlowLoad();
+  const m = new PlayerQueueManager({ backend, scheduler });
+  await m.playForay(
+    foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 })]),
+    { resolveItem }
+  );
+  backend.currentTime = 210;
+  const settled = backend.onItemEnded("outPoint");
+  await tick();
+
+  // Three seconds of load against a two-second beat. The beat is already spent
+  // by the time the bytes land, so nothing may be added on top of the load.
+  await scheduler.advance(3000);
+  assert.equal(plays(backend), 1, "still loading");
+  release();
+  await settled;
+  assert.equal(plays(backend), 2, "plays the instant the bytes land — no residual wait");
+  assert.equal(scheduler.live, 0, "no beat timer was ever needed");
+  m.dispose();
+  __resetInstanceForTests();
+});
+
+test("the out-point still stops the outgoing segment first; the beat is silence, not overlap", async () => {
+  const { backend, scheduler, settled } = await seam();
+  assert.equal(plays(backend), 1);
+  await scheduler.advance(2000);
+  await settled;
+  const order = backend.calls;
+  assert.ok(order.lastIndexOf("load:foray-1#1@400") < order.lastIndexOf("play"));
+  assert.ok(order.lastIndexOf("outPoint:500") < order.lastIndexOf("play"), "armed before audible");
+});
+
+test("no beat before the FIRST segment — pressing play must be instant", async () => {
+  const scheduler = manualScheduler();
+  const { m, backend } = make({ scheduler });
+  await m.playForay(foray([fseg()]), { resolveItem });
+  assert.equal(plays(backend), 1);
+  assert.equal(m.inSeamGap, false);
+  assert.equal(scheduler.live, 0);
+});
+
+test("no beat after the LAST segment — the Foray just ends", async () => {
+  const scheduler = manualScheduler();
+  const { m, backend } = make({ scheduler });
+  await m.playForay(foray([fseg()]), { resolveItem });
+  backend.currentTime = 210;
+  await backend.onItemEnded("outPoint");
+  assert.equal(m.state.type, "ended");
+  assert.equal(m.inSeamGap, false);
+  assert.equal(scheduler.live, 0);
+});
+
+test("a bridged seam gets no beat — the narration is the marker", async () => {
+  const scheduler = manualScheduler();
+  const { m, backend } = make({ scheduler });
+  m.loadQueue([
+    { id: "s1", kind: "episode", audio_url: "x", start_sec: 10, end_sec: 20 },
+    tts("bridge"),
+    { id: "s2", kind: "episode", audio_url: "y", start_sec: 30, end_sec: 40 },
+  ]);
+  await m.play(0);
+  backend.currentTime = 20;
+  await backend.onItemEnded("outPoint");
+  assert.equal(m.state.type, "transitioning");
+  assert.equal(m.inSeamGap, false, "silence on top of narration is dead air");
+  assert.equal(scheduler.live, 0);
+});
+
+test("no beat between two ordinary episodes — a full episode ending is not an edit we made", async () => {
+  const scheduler = manualScheduler();
+  const { m, backend } = make({ scheduler, strategy: PICKED_FIRST });
+  m.setQueueFromPick(ep("a"), { others: [ep("b")] });
+  await m.play(0);
+  await backend.onItemEnded();
+  assert.equal(m.inSeamGap, false);
+  assert.equal(plays(backend), 2);
+});
+
+/* ---------- what the transport does DURING a beat ---------- */
+
+test("PAUSE during a beat: the beat ends and nothing becomes audible", async () => {
+  const { m, backend, scheduler, settled } = await seam();
+  await m.pause();
+  await settled;
+  assert.equal(m.state.type, "interrupted");
+  assert.equal(plays(backend), 1, "pause must not be overtaken by the beat's own timer");
+  assert.equal(m.inSeamGap, false);
+  assert.equal(scheduler.live, 0, "no timer left to start audio into a paused player");
+
+  // Letting the clock run past where the beat would have ended changes nothing
+  // — the classic "it started playing two seconds after I paused" bug.
+  await scheduler.advance(5000);
+  assert.equal(plays(backend), 1);
+});
+
+test("resuming after a pause inside a beat is instant — the beat is not re-served", async () => {
+  const { m, backend, scheduler, settled } = await seam();
+  await m.pause();
+  await settled;
+  await m.resume();
+  assert.equal(plays(backend), 2, "audio on the gesture, no fresh 2 s wait");
+  assert.equal(scheduler.live, 0);
+  // The resume lands back at the segment's in-point, not at 0:00 of the episode.
+  assert.ok(backend.calls.includes("load:foray-1#1@400"), `got ${backend.calls}`);
+});
+
+test("SKIP during a beat: straight on, no beat, and the abandoned load stays silent", async () => {
+  const scheduler = manualScheduler();
+  const h = make({ scheduler });
+  await h.m.playForay(foray([
+    fseg(),
+    fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
+    fseg({ item_id: "ep-other", start_sec: 700, end_sec: 800 }),
+  ]), { resolveItem });
+  h.backend.currentTime = 210;
+  const settled = h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.equal(h.m.inSeamGap, true);
+
+  await h.m.skipToNext();
+  await settled;
+  assert.equal(h.m.inSeamGap, false, "a skip is a destination, not an edit to mark");
+  assert.equal(plays(h.backend), 2, "exactly one new start — the superseded load must not also play");
+  assert.ok(h.backend.calls.includes("load:foray-1#2@700"), `got ${h.backend.calls}`);
+  assert.equal(scheduler.live, 0);
+
+  // Nothing left to fire, so time passing cannot start the segment we skipped.
+  await scheduler.advance(5000);
+  assert.equal(plays(h.backend), 2);
+});
+
+test("SCRUB during a beat: the beat ends early and playback starts at the scrubbed point", async () => {
+  const { m, backend, scheduler, settled } = await seam();
+  await m.seek(450, { precise: true });
+  await settled;
+  assert.equal(plays(backend), 2, "the listener grabbed the transport; give them audio");
+  const order = backend.calls;
+  assert.ok(order.includes("seek:450"), `got ${order}`);
+  assert.ok(order.lastIndexOf("seek:450") < order.lastIndexOf("play"), "the seek lands before it is audible");
+  assert.equal(scheduler.live, 0);
+});
+
+test("stopping during a beat leaves nothing armed and nothing audible", async () => {
+  const { m, backend, scheduler, settled } = await seam();
+  await m.stop();
+  await settled;
+  assert.equal(m.state.type, "idle");
+  assert.equal(plays(backend), 1);
+  await scheduler.advance(5000);
+  assert.equal(plays(backend), 1);
+});
+
+test("losing the output device during a beat cancels it rather than playing into a dead route", async () => {
+  const { m, backend, scheduler, settled } = await seam();
+  await m.routeChanged({ oldDeviceUnavailable: true });
+  await settled;
+  assert.equal(plays(backend), 1);
+  await scheduler.advance(5000);
+  assert.equal(plays(backend), 1);
+});
+
+/* ---------- the beat versus the other failure paths ---------- */
+
+test("a segment the ADR-0007 ladder refuses consumes the remaining beat, it does not restart it", async () => {
+  const scheduler = manualScheduler();
+  const h = make({ scheduler, backend: { durationById: { "foray-1#1": 4000 } } });
+  await h.m.playForay(foray([
+    fseg(),
+    fdai({ start_sec: 400, end_sec: 500 }),          // fails the drift rung at load
+    fseg({ item_id: "ep-other", start_sec: 700, end_sec: 800 }),
+  ]), { resolveItem });
+  h.backend.currentTime = 210;
+  const settled = h.backend.onItemEnded("outPoint");
+  await tick();
+
+  // The refused segment was loaded and rejected inside the beat; the third is
+  // now loading against the SAME deadline, not a second one.
+  assert.ok(h.log.some((t) => /skipped\.atLoad/.test(t)), `ladder did not fire: ${h.log}`);
+  assert.equal(h.m.seamGapRemainingMs, 2000, "one deadline, not two");
+  await scheduler.advance(2000);
+  await settled;
+  assert.equal(plays(h.backend), 2);
+  assert.ok(h.backend.calls.includes("load:foray-1#2@700"), `got ${h.backend.calls}`);
+});
+
+test("a load that FAILS at a seam reports immediately — an error must not wait out the beat", async () => {
+  const scheduler = manualScheduler();
+  const h = make({ scheduler, backend: { failLoadFor: ["foray-1#1"] } });
+  await h.m.playForay(
+    foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 })]),
+    { resolveItem }
+  );
+  h.backend.currentTime = 210;
+  await h.backend.onItemEnded("outPoint");   // resolves without advancing the clock
+  assert.equal(h.m.state.type, "idle");
+  assert.ok(h.log.some((t) => /player\.error/.test(t)), `got ${h.log}`);
+  assert.equal(scheduler.live, 0);
+});
+
+/* ---------- supersession: the bug a synchronous fake cannot show ----------
+
+   `FakeBackend.load` resolves synchronously. Every test above is therefore
+   blind to WHEN the "am I still the current load?" comparison happens, because
+   with an instant load the replacement is already in place by the time a stale
+   wait resumes and the stale `itemLoaded` looks harmless.
+
+   It is not harmless. Against a load that takes any real time, a stale wait
+   that resolves at CUT time arms an out-point which the replacement `load()`
+   then clears (backend contract), and the replacement's own `itemLoaded` is
+   ignored because the state has already moved to `playing` — leaving a segment
+   with NO boundary, playing to the end of somebody's whole two-hour episode.
+   That is the outcome `_perform`'s setOutPoint refusal calls worse than not
+   playing at all. These tests exist to keep that fixed. */
+
+/** Any real network load: resolves a few microtask turns later. */
+class AsyncLoadBackend extends FakeBackend {
+  constructor(opts = {}) { super(opts); this.turns = opts.turns ?? 3; }
+  async load(item, o) {
+    for (let i = 0; i < this.turns; i++) await Promise.resolve();
+    return super.load(item, o);
+  }
+}
+
+/** A two-segment Foray, stopped at the first out-point, beat still running,
+    against a backend whose loads take time. */
+async function slowSeam(extra = {}) {
+  const scheduler = manualScheduler();
+  const h = make({ scheduler, backendClass: AsyncLoadBackend, backend: { turns: 3 }, ...extra });
+  await h.m.playForay(
+    foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 })]),
+    { resolveItem }
+  );
+  h.backend.currentTime = 210;
+  const settled = h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.equal(h.m.inSeamGap, true, "the beat should be running before the test acts");
+  return { ...h, scheduler, settled };
+}
+
+const lastPlayIsAfterLastLoad = (backend) => {
+  const calls = backend.calls;
+  const lastLoad = calls.map((c) => c.startsWith("load:")).lastIndexOf(true);
+  return calls.lastIndexOf("play") > lastLoad;
+};
+
+test("skipToPrevious during a beat leaves the out-point ARMED", async () => {
+  const { m, backend, settled } = await slowSeam();
+  await m.skipToPrevious();
+  await settled;
+  assert.notEqual(backend.outPoint, null, "no boundary: this segment would play to the end of its episode");
+  assert.equal(backend.outPoint, 500);
+  assert.ok(lastPlayIsAfterLastLoad(backend), `played before the bytes landed: ${backend.calls}`);
+});
+
+test("play() during a beat leaves the out-point ARMED", async () => {
+  // The UI-reachable one: #fy-prev inside a fresh segment, a running-order row,
+  // and a strip scrub all reach manager.play().
+  const { m, backend, settled } = await slowSeam();
+  await m.play(0);
+  await settled;
+  assert.notEqual(backend.outPoint, null);
+  assert.equal(backend.outPoint, 210, "back on segment 1, armed at ITS boundary");
+  assert.ok(lastPlayIsAfterLastLoad(backend), `played before the bytes landed: ${backend.calls}`);
+});
+
+test("skipToNext during a beat never starts audio before the load resolves", async () => {
+  const scheduler = manualScheduler();
+  const h = make({ scheduler, backendClass: AsyncLoadBackend, backend: { turns: 3 } });
+  await h.m.playForay(foray([
+    fseg(),
+    fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
+    fseg({ item_id: "ep-other", start_sec: 700, end_sec: 800 }),
+  ]), { resolveItem });
+  h.backend.currentTime = 210;
+  const settled = h.backend.onItemEnded("outPoint");
+  await tick();
+
+  await h.m.skipToNext();
+  await settled;
+  assert.equal(h.backend.outPoint, 800);
+  assert.ok(lastPlayIsAfterLastLoad(h.backend), `played before the bytes landed: ${h.backend.calls}`);
+  assert.equal(plays(h.backend), 2, "the superseded load must not also play");
+});
+
+test("a scrub during a beat still starts, against a slow load — the cut must not abandon", async () => {
+  // The mirror-image failure of the one above: if cutting a beat abandoned the
+  // waiting load outright, nothing would ever dispatch `itemLoaded` for a seek
+  // and the player would sit in `loadingItem` forever. Silence with no way out.
+  const { m, backend, settled } = await slowSeam();
+  await m.seek(450, { precise: true });
+  await settled;
+  assert.equal(m.state.type, "playing", "a scrub during a beat must not strand the player");
+  assert.equal(plays(backend), 2);
+  assert.ok(backend.calls.includes("seek:450"), `got ${backend.calls}`);
+});
+
+test("pause during a beat, against a slow load, still makes nothing audible", async () => {
+  const { m, backend, scheduler, settled } = await slowSeam();
+  await m.pause();
+  await settled;
+  assert.equal(m.state.type, "interrupted");
+  assert.equal(plays(backend), 1);
+  await scheduler.advance(5000);
+  assert.equal(plays(backend), 1);
+});
+
+/* ---------- the surface has to hear about the beat ---------- */
+
+test("onSeamGapChange fires true when a beat starts and false when it ends", async () => {
+  // Without this hook the page has nothing to repaint on: the element is paused
+  // for the whole beat, so no media event fires and the UI keeps saying
+  // "Loading…" through a silence it chose on purpose.
+  const seen = [];
+  const scheduler = manualScheduler();
+  const h = make({ scheduler, onSeamGapChange: (inGap) => seen.push(inGap) });
+  await h.m.playForay(
+    foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 })]),
+    { resolveItem }
+  );
+  assert.deepStrictEqual(seen, [], "no beat before the first segment");
+
+  h.backend.currentTime = 210;
+  const settled = h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.deepStrictEqual(seen, [true], "armed");
+  await scheduler.advance(2000);
+  await settled;
+  assert.deepStrictEqual(seen, [true, false], "and released, exactly once each");
+});
+
+test("onSeamGapChange also reports the end when a transport action cuts the beat", async () => {
+  const seen = [];
+  const scheduler = manualScheduler();
+  const h = make({ scheduler, onSeamGapChange: (inGap) => seen.push(inGap) });
+  await h.m.playForay(
+    foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 })]),
+    { resolveItem }
+  );
+  h.backend.currentTime = 210;
+  const settled = h.backend.onItemEnded("outPoint");
+  await tick();
+  await h.m.pause();
+  await settled;
+  assert.deepStrictEqual(seen, [true, false]);
+});
+
+test("a surface that throws in onSeamGapChange cannot break playback", async () => {
+  const scheduler = manualScheduler();
+  const h = make({ scheduler, onSeamGapChange: () => { throw new Error("bad paint"); } });
+  await h.m.playForay(
+    foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 })]),
+    { resolveItem }
+  );
+  h.backend.currentTime = 210;
+  const settled = h.backend.onItemEnded("outPoint");
+  await tick();
+  await scheduler.advance(2000);
+  await settled;
+  assert.equal(plays(h.backend), 2);
+});
+
+test("inSeamGap is true from the moment the seam is armed, not only once loaded", async () => {
+  // The load happens INSIDE the beat, and that load is silence the listener is
+  // already hearing. A flag that only went true afterwards would leave the page
+  // showing "Loading…" for the first part of every beat.
+  const scheduler = manualScheduler();
+  const h = make({ scheduler, backendClass: AsyncLoadBackend, backend: { turns: 3 } });
+  await h.m.playForay(
+    foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 })]),
+    { resolveItem }
+  );
+  h.backend.currentTime = 210;
+  const settled = h.backend.onItemEnded("outPoint");
+  // Deliberately no `tick()`: the load is still in flight here.
+  assert.equal(h.m.inSeamGap, true);
+  assert.ok(!h.backend.loads().includes("load:foray-1#1"), "the fixture premise — still loading");
+  await tick();
+  await h.scheduler.advance(2000);
+  await settled;
+  assert.equal(h.m.inSeamGap, false);
+});
+
+test("a failed load at a seam drops the deadline with it", async () => {
+  // Otherwise the next load — including a cold-launch restore, which touches no
+  // transport method and so cuts nothing — inherits a deadline it never earned.
+  const scheduler = manualScheduler();
+  const h = make({ scheduler, backend: { failLoadFor: ["foray-1#1"] } });
+  await h.m.playForay(
+    foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 })]),
+    { resolveItem }
+  );
+  h.backend.currentTime = 210;
+  await h.backend.onItemEnded("outPoint");
+  assert.equal(h.m.seamGapRemainingMs, 0, "a dead segment must not leave a live beat behind");
+});
+
+test("the last segment failing the ladder ends the Foray without a beat left over", async () => {
+  const scheduler = manualScheduler();
+  const h = make({ scheduler, backend: { durationById: { "foray-1#1": 4000 } } });
+  await h.m.playForay(foray([fseg(), fdai({ start_sec: 400, end_sec: 500 })]), { resolveItem });
+  h.backend.currentTime = 210;
+  await h.backend.onItemEnded("outPoint");
+  assert.equal(h.m.state.type, "ended");
+  assert.equal(h.m.seamGapRemainingMs, 0);
+  assert.equal(scheduler.live, 0);
+});
+
+test("disposing during a beat leaves no timer alive", async () => {
+  const { m, scheduler, settled } = await seam();
+  m.dispose();
+  await settled;
+  assert.equal(scheduler.live, 0);
+  __resetInstanceForTests();
+});
+
+test("the beat is observable in telemetry, both when it fires and when it is cut", async () => {
+  const { m, log, scheduler, settled } = await seam();
+  assert.ok(log.some((t) => /seam\.gap\.armed 2\.0s beat: foray-1#0 -> foray-1#1/.test(t)), `got ${log}`);
+  assert.ok(log.some((t) => /seam\.gap\.hold 2000ms/.test(t)));
+  await m.pause();
+  await settled;
+  assert.ok(log.some((t) => /seam\.gap\.cut\.pause/.test(t)), `got ${log}`);
+  await scheduler.advance(2000);
+});
+
+test("seamGapSec: 0 turns the beat off entirely, and nothing else changes", async () => {
+  const scheduler = manualScheduler();
+  const h = make({ scheduler, seamGapSec: 0 });
+  await h.m.playForay(
+    foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 })]),
+    { resolveItem }
+  );
+  h.backend.currentTime = 210;
+  await h.backend.onItemEnded("outPoint");   // no advance needed
+  assert.equal(plays(h.backend), 2);
+  assert.equal(h.m.inSeamGap, false);
+  assert.equal(scheduler.live, 0);
 });

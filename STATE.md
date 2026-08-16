@@ -7,6 +7,68 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Foray UI #3 — the seam beat, and the strip becomes a scrubber (2026-08-16, one PR, no follow-up)
+
+- **What:** `feat/foray-seams`. (1) **The seam silence.** Foray #1 has no
+  narration, so all 31 of its transitions were butt-cuts — one voice stopping
+  mid-room-tone and another starting on the same sample. Every unbridged
+  segment-to-segment seam now gets **2.0 s** of silence
+  (`docs/curation/segment-length-rules.md` §6b / §2e, the audiobook
+  section-break convention). (2) **The strip is a scrubber**: a click on it is a
+  position in the hour, cold or playing — `foraySeek` was implemented, tested
+  and called by nothing. (3) **The live bar fills** as its segment plays, which
+  is also how the beat becomes visible.
+- **New files:** `player/seam-gap.js` + test (the pure "is this a seam, and how
+  long" rule).
+- **Shared files it touches:** `player/queue-manager.js` (the beat's clock),
+  `player/client.js` (`gap` in the snapshot, `segmentAt` on the bridge),
+  `app.js`, `styles.css`, `player/queue-manager.test.js`,
+  `player/foray-playback.test.js`, `test/suite-integrity.test.js` (one new
+  floor, two raised), `HUMAN-ACTIONS.md` (#3), `docs/ux/README.md`,
+  `docs/curation/segment-length-rules.md` §10, this file. **Nothing in `data/`,
+  nothing in `tools/`, nothing in `index.html`, nothing in `sw.js`** — no cache
+  bump is needed, the shell is unchanged. Foray #1 stays `status: "draft"`.
+- **`player/queue-state.js` IS UNCHANGED, on purpose.** The beat is a timer, and
+  the reducer models no timers (same reason the 15 s position timer lives in the
+  manager). No new state, no new event, no further damage to the "diffable by
+  eye against the Swift" promise.
+- **Heads-up — the beat has a clock, and tests must inject it.** Any suite that
+  constructs `PlayerQueueManager` and drives an auto-advance will otherwise wait
+  a real 2.0 s per seam. Pass `scheduler` (`{ nowMs, schedule }`) — both suites
+  above have an `INSTANT_SCHEDULER` and a `manualScheduler()` to copy. Do NOT
+  assert on wall clock; #195 already cost this repo that lesson.
+- **Heads-up — a fake `load()` that resolves synchronously hides real bugs.**
+  Reviewing this PR found one that way: cutting a beat used to resolve the
+  waiting load's supersession check immediately, which against any load that
+  takes real time armed an out-point the replacement `load()` then cleared,
+  leaving a segment playing to the end of its whole source episode. Fixed
+  (`_transport` releases a parked wait only after the action's own effects are
+  done, so `_loadSeq` has moved if it was going to), and pinned by tests using
+  an `AsyncLoadBackend` whose `load` resolves a few microtasks later. **If you
+  add a player test about ordering, use that backend, not the synchronous
+  one.** The `INSTANT_SCHEDULER`s now use `queueMicrotask` for the same reason.
+- **Heads-up — `manager.inSeamGap` is a fourth play state.** `isPlaying()` is
+  false during a beat (it is structurally `loadingItem`), so every play/pause
+  control in `player/client.js` goes through `isRunning()` instead. A control
+  that branches on `isPlaying()` will say "Pause" and start audio. There is
+  also an `onSeamGapChange` hook, and it is not optional for a surface: a beat
+  fires no media events, so without it nothing repaints for the whole 2 s.
+- **Heads-up — the strip's DOM changed shape.** `.fy-seg` now contains
+  `<i class="fy-seg-fill">`, and a click on `#fy-strip` with `clientX` is a
+  seek, not a segment jump. A coordinate-less click still falls back to the
+  segment. `.fy-seg.is-played` / `.is-playing` moved from `background` to
+  `border-color`; the fill carries the colour now.
+- **Heads-up — the two silence specs still disagree.** `04_VOICE_AUDIO_SPEC.md`
+  line 12 says 0.5 s (padding around a TTS item); `segment-length-rules.md` §6b
+  says ≥ 2.0 s (marking an edit). The player implements 2.0 s. Reconciling the
+  documents is a founder call and is `HUMAN-ACTIONS.md` #3 — do not quietly pick
+  one while doing something else.
+- **Not built, on purpose:** narration bridges (no audio exists), the mockup's
+  peek/expand running order, per-show colour, cover art, and anything with a new
+  empty screen behind it. A library screen stays premature — one Foray exists
+  and it is a draft.
+- **Related:** #111, #128, #133, #65.
+
 ### Foray UI #2 — resume, feedback, credit (2026-08-16, one PR, no follow-up)
 
 - **What:** `feat/foray-ui-2`. Three features from `docs/ux/foray-mockup.jsx`,
