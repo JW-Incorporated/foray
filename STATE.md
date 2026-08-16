@@ -34,6 +34,36 @@ docs/. Completed workstreams move to their plan doc's retro section.
 - **Related:** epic #115, ADR-0004 (transcript acquisition ladder), ADR-0007
   (segment anchoring).
 
+### sourcing policy — the ad gate is GONE (2026-08-16, one docs PR, no follow-up)
+
+- **Read this if you are doing any sourcing pass.** Wyatt ruled 2026-08-16 that
+  *"ads should not be a blocking issue as long as we can find the approximate
+  right timestamp."* **Do not reject a show on ad ratio.** New rule in
+  `docs/adr/0008-ad-tolerance-and-timestamp-precision.md`: measure the delta in
+  **seconds**, over **N ≥ 2 probes of the SAME episode**, and take the max. The pad
+  is `delta_max + margin` — an **upper bound, never a point estimate**. The pad
+  controls only the STOP: a pad smaller than the listener's ad load stops early and
+  **truncates the segment**; a generous one just adds tail. Admit if
+  `pad ≤ 120 s` — which in practice means **well under 120 s of raw delta** (Gastropod's
+  66 s delta already produces a 100 s pad). Above that, author the segment now (anchors are durable per
+  ADR-0007) and play it once the anchor-resolution rung exists.
+  `AD_FREE_THRESHOLD = 1.01` is a label, not a verdict.
+- **Measured, and it is why N ≥ 2 is mandatory:** two probes of one Gastropod
+  episode, hours apart from the same client, differed by **33.4 s** (+66.1 / +32.7).
+  The delta is a property of the *request*, not the episode. **No episode in this repo
+  has ever been probed twice**, so no recorded ratio bounds this — and the recorded
+  ratios are medians across *different* episodes, which is a different axis again.
+- **Second ruling, same day:** a narrator (our script, ElevenLabs audio) will
+  cover what no podcast does — braai, Filipino lechon — and is sanctioned in
+  principle, but *"let's wait before we deliver that feature."* **Design only.
+  Build nothing, add no dependency, spend nothing.** Recorded on #107; #64/#66/#174
+  are where the design lives.
+- **Branch:** `docs/ad-tolerance-and-narrator` — docs only, and it **waits for a
+  founder** because `docs/adr/` and `docs/DECISIONS.md` are auto-merge DENIED.
+- **Owned files:** `docs/adr/0008-*`, `docs/DECISIONS.md`, plus superseded-notes
+  in `docs/curation/grilling-foray-sourcing.md` and
+  `docs/curation/catalogue-broadening.md`. Touched nothing in `data/`.
+
 ## Completed workstreams
 
 ### corpus/embeddings — the embedding backfill: a measured NO (2026-08-13, COMPLETE)

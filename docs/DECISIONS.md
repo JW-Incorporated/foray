@@ -502,3 +502,163 @@ its reasoning.
   `false`, refuses to credit a run that silently downgraded, and has tests.
   The standing rule: **a retrieval metric that reads 1.000 on the first try is
   a bug until proven otherwise.**
+
+## 2026-08-16 (two founder rulings on sourcing: ad tolerance, and a narrator)
+
+- **Ads are no longer a blocking issue at sourcing (Wyatt).** The ruling:
+  *"Ads should not be a blocking issue as long as we can find the approximate
+  right timestamp."* Full reasoning, evidence and threshold in
+  **`docs/adr/0008-ad-tolerance-and-timestamp-precision.md`**. In short:
+  - The binary gate we had been applying — reject any show whose delivered bytes
+    exceed its feed-declared length by more than 1% — is **withdrawn as a
+    sourcing gate**. It rejected **eleven** shows across
+    `docs/curation/grilling-foray-sourcing.md` §4 and
+    `docs/curation/catalogue-broadening.md` §3, several with episodes those
+    documents themselves call exactly on brief. Content quality and transcript
+    availability are now the only grounds for rejecting a source.
+  - **The measurement moves from a ratio to a delta in seconds, per episode,
+    over N ≥ 2 probes of the SAME episode, summarised by the maximum.** A ratio is not
+    comparable across episode lengths (1.02 is ~94 s on a 78-minute episode and
+    ~24 s on a 20-minute one) and is uncomputable on the `length="0"` feeds where
+    we most need it, whereas seconds are obtainable from decoded duration
+    against `itunes:duration`. `AD_FREE_THRESHOLD = 1.01` in
+    `tools/transcribe/ad-inflation.mjs` survives as a **label**, not a verdict.
+    `summariseShow()`'s median is right for classifying a show and wrong for this
+    gate, which is a worst-case bound.
+  - **The threshold is 120 s of total delta**, equal to
+    `ANCHOR_TIME_TOLERANCE_SEC` in `tools/segments/merge-segments.mjs`. Below it
+    the gate is **distribution-free** — cumulative ad time before any point is
+    bounded by the total, so the worst-case displacement stays inside the slack
+    the validator already treats as acceptable (that check is authoring-time
+    self-consistency, not a playback guarantee), whether the ads are one pre-roll
+    or six mid-rolls.
+    120 s also sits just above the **centre** of the 75–180 s segment band
+    (~110 s), past which the pad is longer than the typical segment it protects.
+  - **The pad is an UPPER BOUND on the delta, never a point estimate — and this
+    corrects the rule as first drafted.** A confirming double-probe of Gastropod's
+    "Out of the Fire, Into the Frying Pan" (`itunes:duration` 2501.0 s) returned
+    **+66.1 s** and, hours later from the same client, **+32.7 s**: **33.4 s of
+    per-request variance on one episode.** The delta is a property of the *request*,
+    not of the episode. **The pad controls only the STOP** — the seek already lands
+    early by the copy's ad load, whatever the pad is. Padding is asymmetric there:
+    a pad at least as large as the copy's load captures the whole payload plus some
+    extra tail, while **a pad smaller than the copy's load stops early and truncates
+    the payload**, the one failure padding exists to prevent. So
+    `pad = delta_max(N ≥ 2 probes) + margin`, margin ≥ the observed spread, and the
+    120 s admission test runs on the *pad*. For Gastropod: `delta_max` 66.1 s,
+    spread 33.4 s, pad ~100 s (66.1 + 33.4 = 99.5 — clearing the 120 s ceiling by
+    only 17%). **N = 1 bounds nothing.** Two consequences worth recording:
+    practical headroom is well under 120 s of raw delta (strictly `≤ 86.6 s`; the
+    tighter `60–80 s` quoted in the ADR additionally assumes the margin *scales*
+    with the delta, which is generalised from one ratio on one episode and is not
+    measured), and the guarantee weakens from deterministic to probabilistic — a copy
+    carrying more load than we sampled is truncated by the excess, and the one spread
+    we have measured is 33.4 s, up to a third of a 110 s segment. Not "a few
+    seconds", and not a bound.
+  - **`summariseShow()` is wrong twice over for this purpose**, not once: a median
+    (wrong statistic) across *different episodes* (wrong axis). Bounding a pad needs
+    the max across repeats of *one* episode — and no episode in this repo has ever been
+    probed twice, which is the gap, not per-show measurement (many rows are properly
+    per-episode).
+  - **Instrument note.** Gastropod's recorded `1.080 — injected (bitrate-implied)`
+    describes a **different episode** ("Where There's Smoke, There's… Whiskey, Fish,
+    and Barbecue!"), which has not been re-probed — so it is not a refuted
+    measurement, and comparing the two would be the same cross-episode error. What
+    holds: applied to the probed episode's 41.7-min program, 1.080 would imply
+    ~200 s, **3–6× what was measured**, so a bitrate-implied ratio cannot size a pad.
+    A second caveat on the new instrument: it compares against `itunes:duration`
+    only, and `tools/transcribe/README.md` records 244 s of pure metadata error on a
+    non-DAI Radiolab episode — so cross-check against the transcript's last cue
+    before calling a single-source delta "ad load". Where we can afford the download, decode
+    the file and compare against `itunes:duration` (PyAV,
+    `container.duration / av.time_base`); the ranged-GET ratio is the cheap screen,
+    not the number to size a pad from. On `length="0"` feeds (Megaphone — Gastropod,
+    olive, Proof) the byte ratio cannot be computed at all, so N ≥ 2 there means two
+    full downloads. On feeds declaring a real `length`, repeated 2-byte ranged GETs
+    do see per-request variance and cost kilobytes.
+  - **Above 120 s, mid-rolls are the killer, not volume.** The error at any point
+    is our cumulative ad time before it minus the listener's, so it **grows
+    through the episode** and reached +8 to +10.7 min on Stuff You Should Know,
+    Odd Lots and This Podcast Will Kill You (six of the eight episodes downloaded
+    in full on 2026-08-15; the other two were Being an Engineer, which injects
+    nothing). Against a 75–180 s target band that is three to eight
+    segment-lengths — a different story, not an imprecise cut. Note the mid-roll
+    *shape* is an inference from the failure of a single calibration, not a
+    located ad break — no ad position has ever been measured, and finding one is
+    itself the locate step.
+  - **Such segments are authored now and played later.** ADR-0007 already makes
+    the anchor the truth and the timestamp a cache, so extraction output on a
+    heavy-DAI show is correct and durable today. Converting an anchor back into a
+    time needs **ADR-0007's fourth rung** — resolve the anchor against a
+    transcript of the copy in hand. Duration match (the third rung) **detects and
+    cannot locate**: one scalar cannot invert a piecewise-constant offset with k
+    unknown break positions and k unknown pod lengths, which is why route 2 in
+    `docs/curation/transcription-scale-plan.md` §4 is dead. Until that rung
+    exists, `seekPrecision()` returns `approximate` for any foreign DAI timestamp
+    — today it does so unconditionally, since ADR-0007's third and fourth rungs
+    are not implemented and the `DRIFT_TOLERANCE_SEC = 30` check runs only on the
+    `OWN` branch — and the segment is skipped. **The worst case of relaxing this
+    gate today is a skipped segment, never a bad cut.**
+  - **What it unlocks, from measurements already on record (no new scan):** six
+    shows move to PADDABLE and eight to authorable-now/playable-later. **No row is
+    rejected on ad load any more — but "admitted" means `pad ≤ 120 s`, and only
+    Gastropod has the N ≥ 2 same-episode probes needed to establish that.** Nor is
+    Gastropod "ready to ship": playback still needs the `seekPrecision()` `FOREIGN`
+    branch, and transcript availability remains a rejection ground with Gastropod's
+    timed-transcript status unrecorded here. The
+    other five PADDABLE rows (A Taste of the Past, Proof, olive, El Mundo en un
+    Bocado, The Fantastic History Of Food) rest on ratios that are medians across
+    *different* episodes, which cannot bound per-request variance; **Proof and olive
+    are tight enough that probing could push them back over the line, and that is
+    the system working.** **Tandoor moves
+    from "not sourceable" to reachable** — `catalogue-broadening.md` §4's verdict
+    was a consequence of this gate, not of the content — and mangal/kebab gains
+    its first *ad-gated* candidate (its other candidate, Gurmelik Denemeleri, was
+    rejected on content, which this ADR does not touch). The biggest gain is outside Foray #1: Stuff You Should
+    Know (2,850 timed transcripts) and Odd Lots (1,251) are half our free-transcript
+    inventory and were both excluded; they need no ASR budget, only the locate
+    step, which reorders the funding case in `transcription-scale-plan.md` §6.
+  - **Recorded for the next session:** ad detection and ad skipping remain
+    permanently rejected (R11, product principle 3). Nothing here locates an ad;
+    the locate step finds content we already chose, and the delta is an aggregate
+    byte/duration comparison.
+
+- **A narrator will fill gaps no podcast covers — script written by us, audio via
+  ElevenLabs — but "let's wait before we deliver that feature" (Wyatt).**
+  Recorded now because the design is settled and the delivery is not; **nothing
+  is built, no dependency is added, no API is called, nothing is spent.**
+  - **ElevenLabs is sanctioned in principle**, which resolves the direction of
+    #64 §2 and #107 without releasing the spend. Both stay open on the two
+    numbers that are still missing: a monthly ceiling, and routing through the
+    existing cost-metering budget guard like every other paid call
+    (`CLAUDE.md` conventions). #107's recommendation of device TTS with a
+    text-bridge fallback is no longer the destination; it is at most an interim
+    step, and one whose main cost was always a platform-varying voice against
+    `04_VOICE_AUDIO_SPEC.md`'s "I'd tolerate hearing these daily" bar.
+  - **Why a narrator is not a nice-to-have: some content is unobtainable at any
+    effort.** `catalogue-broadening.md` §4 searched 4.71M feeds to exhaustion:
+    **braai returns zero episode-level hits** for braai/braaivleis/shisa
+    nyama/potjie across every crawled feed, **Filipino lechon has no source at
+    all**, and **tandoor existed only on ad-injecting hosts** — that last one is
+    now reversed by ADR-0008, but the first two are not, and no ad tolerance and
+    no ASR budget touches them. A narrator is the only path by which those
+    traditions enter a Foray.
+  - **The second, independent reason: the English-only ruling (also Wyatt,
+    2026-08-16).** Every new tradition source the bulk-dump pass found is
+    non-English — Spanish, Portuguese, Mandarin, Korean. A narrator lets a
+    non-Anglophone tradition be *described in English* without shipping
+    non-English tape, so it serves the English-only constraint rather than
+    fighting it. That makes the narrator load-bearing for two separate content
+    gaps, not one.
+  - **Design lives where it already lives:** #66 (DD-C) holds the pipeline —
+    committed script text as reviewable data, generated audio as a build
+    artefact, idempotent generation so a typo fix does not re-bill the set,
+    loudness normalisation, ~0.5 s silence padding, and the missing-asset
+    fallback that #33's `_advancePastBridgeFailure` already provides. #64 holds
+    the three sign-offs. #174 (length/density modes) is where narrated-gap
+    coverage interacts with the segment `tier` signal, since a narrated bridge
+    over an unsourceable tradition is spine material, not colour. **Extend those;
+    do not open new issues.**
+  - **Copy rules apply to scripts** — they are user-facing copy and go through
+    the CI copy-rules gate. Note the standing irony: the feature's internal name
+    ("deep dive") is itself a banned phrase and must never appear in a script.

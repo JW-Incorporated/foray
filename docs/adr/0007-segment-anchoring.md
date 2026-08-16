@@ -7,6 +7,13 @@
 bug to fix later; it invalidates every segment the extraction produces,
 which is why it was decided before any of it ran.
 
+**Amended by ADR-0008** (`0008-ad-tolerance-and-timestamp-precision.md`, Wyatt,
+2026-08-16). Nothing below is retracted. Two things are added: ad load no longer
+gates *sourcing*, and the fourth rung of the playback ladder below — resolve the
+anchor against a transcript of the copy in hand — is now named the **locate
+step**, which is what playback on a heavily ad-injected show waits on. Read that
+ADR before applying any ad-ratio threshold.
+
 **Primary sources.** The DAI-drift evidence behind this decision is digested in
 `docs/research/corpus/digests.md`: entries 9 (Podcast Namespace issue #254 —
 DAI shifts every downstream timestamp), 48 (Pocket Casts #2093 — ~100s chapter

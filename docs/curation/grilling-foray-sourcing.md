@@ -16,6 +16,15 @@ more important half of this document.
 
 ## 1. Method, and what "usable" means
 
+> **Gate 1 below is SUPERSEDED by `docs/adr/0008-ad-tolerance-and-timestamp-precision.md`**
+> (Wyatt, 2026-08-16: *"Ads should not be a blocking issue as long as we can find
+> the approximate right timestamp."*). Ad load is **no longer a reason to reject a
+> source**. It is now measured as a **delta in seconds per episode** and decides
+> only how a segment is anchored: ≤ 120 s → padded and playable; > 120 s →
+> authored now, played once ADR-0007's anchor-resolution rung exists. The
+> measurements below stand; the verdicts drawn from them do not. Do **not**
+> re-reject a show on ad ratio alone.
+
 Two hard gates, plus a content gate:
 
 1. **Ad-free delivery.** The listener plays their own copy from the publisher's
@@ -146,6 +155,26 @@ to paper over.
 ---
 
 ## 4. Rejected — and why
+
+> **Every "injected" verdict in this table is SUPERSEDED by ADR-0008.**
+> **Gastropod is measured and admitted:** its *"Out of the Fire, Into the Frying
+> Pan"* episode was probed twice on 2026-08-16 by decoding the file, giving
+> **+66.1 s and +32.7 s** against a declared 2501.0 s — a `delta_max` of 66 s and a
+> ~100 s pad. Note the `1.080` row below describes a **different episode** and has
+> not been re-probed, so it is not refuted; the lesson is narrower and still
+> important — a bitrate-implied ratio on a `length="0"` feed cannot size a pad
+> (applied to the probed episode it would have implied ~200 s, 3–6× the truth).
+> **Screened as plausible but NOT yet admitted:** A Taste of the Past, Proof.
+> ADR-0008 requires **N ≥ 2 probes of the same episode** first, because per-request
+> variance measured 33.4 s and **no episode in this repo has ever been probed
+> twice.** Proof's implied delta already sits at Gastropod's *maximum*, so it may
+> not survive probing. **Undecided, and likely over the threshold once padding
+> headroom is applied:** The Fantastic History Of Food, Grill This!. **Over the
+> threshold, therefore authorable now and playable once the locate step exists:**
+> The Delicious Legacy, BBC The Food Programme, Hungry for History. Rejections on
+> *content* (Culinary Connections, Seu Churrasco) and on *dead audio* (BBQ
+> Nation) are unaffected. See ADR-0008 § "The unlock, quantified" for the
+> per-show tier table.
 
 | Show | Ad-free | Why rejected |
 |---|---|---|

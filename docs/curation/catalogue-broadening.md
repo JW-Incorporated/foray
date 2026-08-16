@@ -217,6 +217,25 @@ actually reach a listener. In the manifest every row carries `language` and
 
 ### Rejected — and why
 
+> **The three "injected" rejections here are SUPERSEDED by
+> `docs/adr/0008-ad-tolerance-and-timestamp-precision.md`** (Wyatt, 2026-08-16 —
+> ads no longer block a source). Recomputed as a delta in seconds against that
+> ADR's 120 s threshold: **olive** (~1.02 on a 45-min episode ≈ 54 s) and **El
+> Mundo en un Bocado** (1.0159 on a 47-min episode ≈ 45 s) are **admitted**;
+> **Naan Curry** (1.0470 on a 67-min episode ≈ 189 s) is authorable now and
+> playable once the locate step exists. **Admitted is not yet shippable:** ADR-0008
+> requires **N ≥ 2 probes of the same episode** first, because a Gastropod
+> double-probe measured **33.4 s of per-request variance** and the pad must be an
+> upper bound, not a point estimate. **No episode in this repo has ever been probed
+> twice**, so nothing here bounds it yet. olive is the tighter of the two and needs a
+> decode rather than a byte probe — its Megaphone feed declares `length="0"`, so no
+> ratio can be computed at all, and the ~1.02 above is bitrate-implied. Treat that
+> with care: on Gastropod, a bitrate-implied ratio would have implied 3–6× the ad
+> load that decoding actually found.
+> Rejections on the **content** gate
+> (Gurmelik Denemeleri, Colombia sabe bien, 肉の丸一, Unlock Local, TOROMI, the
+> vlogs) are unaffected. Do not re-reject a show on ad ratio alone.
+
 | Show | Tradition | Ratio | Reason |
 |---|---|---|---|
 | Naan Curry with Sadaf and Archit | tandoor | **1.0470 — injected** | 67-min kebab episode, exactly on brief. Measured on the decoded enclosure URL (the feed's `&amp;` produced a spurious 400 first time). |
@@ -247,6 +266,14 @@ progress". They are answers, and the answer is no.
   whole index holds **10 Afrikaans-language** food/history feeds with ≥6
   episodes active since 2022. **There is no braai podcast to find.** The Foray
   cannot cover braai from podcast audio.
+- **tandoor (India / Central Asia) — SUPERSEDED by ADR-0008: now reachable.**
+  The verdict below turned on the ad gate, and the ad gate is gone. olive's
+  45-minute Maunika Gowardhan tandoori episode is inside ADR-0008's 120 s
+  threshold and is usable now (one seconds-based re-probe first, since its
+  `length="0"` feed forced the bitrate-implied reading); Naan Curry's 67-minute
+  kebab episode is authorable now and playable once the locate step exists.
+  **Tandoor content exists and we can use it.** The original text follows,
+  because its measurements are still the record:
 - **tandoor (India / Central Asia) — nothing usable.** The dump did what Apple
   could not: it surfaced two genuinely on-topic episodes where the earlier pass
   found zero. Both fail the ad gate — Naan Curry at a measured **1.0470**, olive
@@ -278,6 +305,19 @@ non-English audio. **Braai, tandoor, mangal/kebab and Filipino lechon should be
 cut from the plan**, or covered by a narrator over material we cannot source as
 tape. Wyatt should decide that rather than wait for a sourcing pass that has
 now been run to exhaustion.
+
+**He has (2026-08-16), and it splits this list in two — see `docs/DECISIONS.md`.**
+Under ADR-0008, **tandoor** is reachable now; **mangal/kebab** gains its first
+*ad-gated* candidate (The Delicious Legacy's "Kokoretsi: The Ultimate Easter
+Kebab!", authorable now) but is **not** solved, because its best candidate above —
+Gurmelik Denemeleri, measured 1.0000 — was rejected on the **content** gate, which
+ADR-0008 does not touch; and **Mexican** upgrades from three thin clips to a
+47-minute treatment. **Braai and Filipino lechon are unaffected** — they are not an ad
+problem, and the second ruling covers them: a **narrator**, scripted by us with
+ElevenLabs audio, sanctioned in principle but explicitly *not to be delivered
+yet*. That same ruling is also how a non-Anglophone tradition reaches an
+English-only Foray without non-English tape, which is the other half of the
+language problem above.
 
 ---
 
