@@ -1,0 +1,303 @@
+{
+  "_comment": "Candidate passages for Foray #1 (grilling & world barbecue). Companion to docs/curation/grilling-foray-passages.md. NOT data/segments.json — feed this to tools/segments/merge-segments.mjs --batch/--results after the prepare stage has fetched each transcript.url into transcript.body. Anchors were validated against buildTranscriptIndex()/findAnchorOccurrences() from merge-segments.mjs.",
+  "generated": "2026-08-16",
+  "batch": {
+    "batch_id": "seg-2026-08-15-grilling-a",
+    "source": "agent-v1",
+    "episodes": [
+      {
+        "item_id": "satay-okay-e01-satay-myth",
+        "show": "Satay? Okay!",
+        "episode_title": "1. Satay and the Myth of Malaysian Cuisine",
+        "guid": "581a3509-1b50-468a-8fa3-ae903a5b1279",
+        "enclosure_url": "https://content.rss.com/episodes/340886/2188236/satay-okay/2025_08_28_14_13_18_699a6794-7e0b-421e-aa10-7fc0b94bfb6d.mp3",
+        "enclosure_declared_bytes": 37175073,
+        "reference_duration_sec": 2323,
+        "measured_ad_inflation_ratio": 1,
+        "ad_free": true,
+        "dai_suspected": false,
+        "transcript_source": "publisher",
+        "transcript": {
+          "url": "https://transcripts.rss.com/340886/2188236/transcript",
+          "mime_type": "text/vtt",
+          "timed": true
+        }
+      },
+      {
+        "item_id": "satay-okay-e07-kueh",
+        "show": "Satay? Okay!",
+        "episode_title": "7. Kueh and the Unlikely Dutch Affair",
+        "guid": "6db5cebf-797f-46d9-9791-e5c34dbb8b8d",
+        "enclosure_url": "https://content.rss.com/episodes/340886/2208949/satay-okay/2025_10_03_10_04_37_c711be69-783e-4190-a86d-235fbcbfce1f.mp3",
+        "enclosure_declared_bytes": 56822499,
+        "reference_duration_sec": 3551,
+        "measured_ad_inflation_ratio": 1,
+        "ad_free": true,
+        "dai_suspected": false,
+        "transcript_source": "publisher",
+        "transcript": {
+          "url": "https://transcripts.rss.com/340886/2208949/transcript",
+          "mime_type": "text/vtt",
+          "timed": true
+        }
+      },
+      {
+        "item_id": "satay-okay-e06-sambal",
+        "show": "Satay? Okay!",
+        "episode_title": "6. Sambal and the Portuguese Invasion",
+        "guid": "9430db32-d775-4674-9802-953f648f3260",
+        "enclosure_url": "https://content.rss.com/episodes/340886/2197577/satay-okay/2025_09_03_17_29_16_39d45b78-038a-406e-8614-76acc49ff25f.mp3",
+        "enclosure_declared_bytes": 52716050,
+        "reference_duration_sec": 3294,
+        "measured_ad_inflation_ratio": 1,
+        "ad_free": true,
+        "dai_suspected": false,
+        "transcript_source": "publisher",
+        "transcript": {
+          "url": "https://transcripts.rss.com/340886/2197577/transcript",
+          "mime_type": "text/vtt",
+          "timed": true
+        }
+      },
+      {
+        "item_id": "dis-a-fi-mi-moreish-flavours",
+        "show": "Dis a Fi Mi History Podcast",
+        "episode_title": "More-ish Flavours: Uncovering Caribbean Food, Identity and History",
+        "guid": "disafimihisthttporypodcast.podbean.com/a2e7368a-8d9d-31f7-b493-df390d9350ac",
+        "enclosure_url": "https://mcdn.podbean.com/mf/web/ercke6d2n5znx5bk/Moreish_Podcast7tcxm-ia95tx-Optimized.mp3",
+        "enclosure_declared_bytes": 47614362,
+        "reference_duration_sec": 2967,
+        "measured_ad_inflation_ratio": 1,
+        "ad_free": true,
+        "dai_suspected": false,
+        "transcript_source": "publisher",
+        "transcript": {
+          "url": "https://mcdn.podbean.com/mf/web/7q2u87mp3rxg2c2u/Moreish_Podcast7tcxm-ia95tx-Optimized.vtt",
+          "mime_type": "text/vtt",
+          "timed": true
+        }
+      },
+      {
+        "item_id": "etp-revisiting-historical-recipes",
+        "show": "Eat This Podcast",
+        "episode_title": "Revisiting Historical Recipes",
+        "guid": "https://www.eatthispodcast.com/?p=4704",
+        "enclosure_url": "https://media.blubrry.com/eatthispodcast/op3.dev/e/mange-tout.hel1.your-objectstorage.com/2025/past-taste.mp3",
+        "enclosure_declared_bytes": 19195520,
+        "reference_duration_sec": 1191,
+        "measured_ad_inflation_ratio": 1,
+        "ad_free": true,
+        "dai_suspected": false,
+        "transcript_source": "publisher",
+        "transcript": {
+          "url": "https://www.eatthispodcast.com/wp-content/uploads/2025/10/past-taste.srt",
+          "mime_type": "application/srt",
+          "timed": true
+        }
+      },
+      {
+        "item_id": "etp-new-light-neanderthal-diets",
+        "show": "Eat This Podcast",
+        "episode_title": "New Light on Neanderthal Diets",
+        "guid": "https://www.eatthispodcast.com/?p=4685",
+        "enclosure_url": "https://media.blubrry.com/eatthispodcast/op3.dev/e/mange-tout.hel1.your-objectstorage.com/2025/maggots.mp3",
+        "enclosure_declared_bytes": 22517193,
+        "reference_duration_sec": 1400,
+        "measured_ad_inflation_ratio": 1,
+        "ad_free": true,
+        "dai_suspected": false,
+        "transcript_source": "publisher",
+        "transcript": {
+          "url": "https://www.eatthispodcast.com/wp-content/uploads/2025/09/maggots.srt",
+          "mime_type": "application/srt",
+          "timed": true
+        }
+      }
+    ]
+  },
+  "results": {
+    "batch_id": "seg-2026-08-15-grilling-a",
+    "results": {
+      "satay-okay-e01-satay-myth": {
+        "segments": [
+          {
+            "topic": "food",
+            "start_sec": 735.8,
+            "end_sec": 815.6,
+            "start_anchor": "so many Malaysians and Southeast Asians and Asians in general are so obsessed with food",
+            "end_anchor": "wherever humans have gone, they've probably put meat on a stick",
+            "why": "Three rival origin theories for satay, then the point that skewered meat is universal",
+            "confidence": "high",
+            "role": "explanation",
+            "tier": "spine",
+            "long_reason": null,
+            "cold_open_ok": false,
+            "keep_separate_reason": null,
+            "arc_slot": "world-traditions-satay",
+            "duration_sec": 79.8
+          }
+        ]
+      },
+      "satay-okay-e07-kueh": {
+        "segments": [
+          {
+            "topic": "food",
+            "start_sec": 1666.67,
+            "end_sec": 1704.6,
+            "start_anchor": "Holland, again, in the sort of I think 15th or 16th centuries they had cake pans",
+            "end_anchor": "the batter for the kueh probably comes from the Portuguese",
+            "why": "Dutch cast brass pans set over a fire seeded a Southeast Asian baking technique",
+            "confidence": "medium",
+            "role": "quote",
+            "tier": "supporting",
+            "long_reason": null,
+            "cold_open_ok": false,
+            "keep_separate_reason": null,
+            "arc_slot": "pre-modern-hearth",
+            "duration_sec": 37.9
+          },
+          {
+            "topic": "food",
+            "start_sec": 2835.5,
+            "end_sec": 2879.6,
+            "start_anchor": "Originally, my father was a fisherman. The idea at first was to sell in the village",
+            "end_anchor": "It's the cost, right? That's when we switched to gas",
+            "why": "A cook explains why wood fire tasted better and why cost drove them to gas anyway",
+            "confidence": "high",
+            "role": "quote",
+            "tier": "supporting",
+            "long_reason": null,
+            "cold_open_ok": false,
+            "keep_separate_reason": null,
+            "arc_slot": "modern-backyard-era",
+            "duration_sec": 44.1
+          }
+        ]
+      },
+      "satay-okay-e06-sambal": {
+        "segments": [
+          {
+            "topic": "food",
+            "start_sec": 292.5,
+            "end_sec": 349.2,
+            "start_anchor": "You asked me, I think, where chili comes from, and I said it comes from South America",
+            "end_anchor": "set up trading ports along the way, and then traded those around the world",
+            "why": "How chilli reached Asia only via 16th-century Iberian traders, not the old spice routes",
+            "confidence": "high",
+            "role": "quote",
+            "tier": "spine",
+            "long_reason": null,
+            "cold_open_ok": false,
+            "keep_separate_reason": null,
+            "arc_slot": "world-traditions-satay",
+            "duration_sec": 56.7
+          }
+        ]
+      },
+      "dis-a-fi-mi-moreish-flavours": {
+        "segments": [
+          {
+            "topic": "food",
+            "start_sec": 1361.148,
+            "end_sec": 1422.8,
+            "start_anchor": "And food for us, regardless of which Caribbean country you come from",
+            "end_anchor": "be interested in the history of jerk chicken and then you stay to listen to a story",
+            "why": "Caribbean dishes carry indigenous, enslaved, indentured and colonial imprints at once",
+            "confidence": "medium",
+            "role": "explanation",
+            "tier": "spine",
+            "long_reason": null,
+            "cold_open_ok": false,
+            "keep_separate_reason": null,
+            "arc_slot": "world-traditions-jerk",
+            "duration_sec": 61.7
+          }
+        ]
+      },
+      "etp-revisiting-historical-recipes": {
+        "segments": [
+          {
+            "topic": "food",
+            "start_sec": 328.72,
+            "end_sec": 424.13,
+            "start_anchor": "hear a lot from people who say, well, it's no use reconstructing historical recipes",
+            "end_anchor": "because a lot of cake historically was baked in a sort of closed pan",
+            "why": "Before 1800 most cooking happened in a peat-fired hearth, and they cooked the same recipe both ways to test it",
+            "confidence": "high",
+            "role": "explanation",
+            "tier": "spine",
+            "long_reason": null,
+            "cold_open_ok": false,
+            "keep_separate_reason": null,
+            "arc_slot": "pre-modern-hearth",
+            "duration_sec": 95.4
+          }
+        ]
+      },
+      "etp-new-light-neanderthal-diets": {
+        "segments": [
+          {
+            "topic": "food",
+            "start_sec": 274.87,
+            "end_sec": 365.21,
+            "start_anchor": "So how do they know it was a factory for extracting bone grease",
+            "end_anchor": "these bones had actually been heated in water, and that's still missing",
+            "why": "How you boil water before pottery exists, and what would still be needed to prove it happened",
+            "confidence": "high",
+            "role": "explanation",
+            "tier": "spine",
+            "long_reason": null,
+            "cold_open_ok": true,
+            "keep_separate_reason": null,
+            "arc_slot": "fire-and-origins-of-cooking",
+            "duration_sec": 90.3
+          },
+          {
+            "topic": "food",
+            "start_sec": 702.5,
+            "end_sec": 738.02,
+            "start_anchor": "What's interesting in the ethnohistoric record, and this is so counterintuitive",
+            "end_anchor": "The stuff that we all crave, they often tossed. They left it for the wolves",
+            "why": "Northern hunters prized fat and organs and discarded the steaks we consider the prize",
+            "confidence": "high",
+            "role": "quote",
+            "tier": "supporting",
+            "long_reason": null,
+            "cold_open_ok": false,
+            "keep_separate_reason": null,
+            "arc_slot": "fire-and-origins-of-cooking",
+            "duration_sec": 35.5
+          }
+        ]
+      }
+    }
+  },
+  "summary": {
+    "passages": 8,
+    "total_candidate_runtime_sec": 501.4,
+    "episodes_probed_for_ad_inflation": 41,
+    "episodes_ad_free": 41,
+    "max_measured_ratio": 1,
+    "arc_slots_filled": [
+      "fire-and-origins-of-cooking",
+      "modern-backyard-era",
+      "pre-modern-hearth",
+      "world-traditions-jerk",
+      "world-traditions-satay"
+    ],
+    "arc_slots_unfilled": [
+      "american-bbq-birth-and-westward-spread (out of scope — other workstream)",
+      "regional-us-divergence (incl. santa-maria) — no transcript, see ASR-7",
+      "world-traditions-asado — no transcript, see ASR-3",
+      "world-traditions-braai — NO SOURCE: Grill Coach rejected",
+      "world-traditions-yakitori — NO SOURCE: Grill Coach rejected",
+      "world-traditions-korean — Grill Coach rejected; Heritage Food Stories has no transcript, see ASR-6",
+      "world-traditions-filipino — NO SOURCE: Grill Coach rejected",
+      "world-traditions-mexican — NO SOURCE: Grill Coach rejected"
+    ],
+    "arc_slots_partially_filled": {
+      "fire-and-origins-of-cooking": "filled with a pre-ceramic bone-boiling counterpoint, NOT the cooking hypothesis itself; Origin Stories has no transcript (ASR-2)",
+      "world-traditions-jerk": "framing passage only; the actual jerk history is in The Moreish Podcast, whose transcript is untimed (ASR-1)"
+    }
+  }
+}
