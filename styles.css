@@ -509,5 +509,145 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
   border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
   border-radius: 6px; padding: 8px 12px; font-size: 0.75rem; cursor: pointer;
 }
-.fp-open { font-size: 0.75rem; color: var(--accent); }
+/* NOT .fp-open: that class is also set on <body> while the mini-player is up
+   (see client.js), so a bare .fp-open rule painted the whole page accent-blue
+   through inheritance. Nothing showed it until a page had a heading with no
+   colour of its own. */
+.fp-openep { font-size: 0.75rem; color: var(--accent); }
 .fp-note { font-size: 0.7rem; color: var(--text-dim); margin: 10px 0 0; }
+
+/* ---------- Forays (#128) ----------
+   One ordered run of segments from several shows. The design intent is the
+   mockup's (docs/ux/foray-mockup.jsx): a proportional strip that shows the
+   whole Foray at a glance, and a running order you can read and jump around
+   in. Built in the existing vanilla stack — no React, no fonts, no build step
+   (docs/ux/README.md, and the CSP would refuse the fonts anyway). Per-segment
+   widths are set as DOM properties in app.js, never as style attributes. */
+
+.fy-home { flex: none; display: flex; flex-direction: column; gap: 8px; }
+.fy-home-row {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  text-decoration: none;
+}
+.fy-home-kicker {
+  font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent);
+}
+.fy-home-title { font-family: var(--serif); font-size: 1rem; font-weight: 700; }
+
+.fy-draft {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--line);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+.fy-summary { margin: 0 0 14px; color: var(--text-dim); font-size: 0.9rem; }
+
+/* the transport */
+.fy-transport {
+  position: sticky;
+  top: calc(var(--topbar-h) + env(safe-area-inset-top));
+  z-index: 5;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 0 12px;
+  margin-bottom: 8px;
+}
+.fy-strip { display: flex; gap: 2px; width: 100%; height: 10px; cursor: pointer; }
+.fy-seg {
+  flex-basis: 0;
+  border-radius: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  transition: background 0.25s, opacity 0.25s;
+}
+.fy-seg.is-played { background: var(--text-dim); border-color: var(--text-dim); }
+.fy-seg.is-playing { background: var(--accent); border-color: var(--accent); }
+.fy-times {
+  display: flex; justify-content: space-between;
+  font-size: 0.72rem; color: var(--text-dim);
+  margin-top: 6px;
+}
+.fy-controls { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 10px; }
+.fy-btn {
+  min-width: 60px; min-height: 48px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 0.9rem; font-weight: 600;
+  cursor: pointer;
+}
+.fy-btn.fy-main {
+  min-width: 128px;
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.fy-btn:hover { border-color: var(--accent); }
+.fy-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+.fy-btn.fy-main:disabled { background: var(--surface-2); border-color: var(--line); color: var(--text-dim); }
+
+/* the running order */
+.fy-slot { margin: 18px 0 0; }
+.fy-slot h3 {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 0.86rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.fy-row {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 11px 12px;
+  margin-bottom: 8px;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.fy-row:hover { border-color: var(--accent); }
+.fy-row.is-played { opacity: 0.55; }
+.fy-row.is-playing {
+  opacity: 1;
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+.fy-label {
+  flex: none;
+  min-width: 52px;
+  font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  padding-top: 2px;
+}
+.fy-row.is-playing .fy-label { color: var(--accent); }
+.fy-body { flex: 1; min-width: 0; }
+.fy-meta { font-size: 0.74rem; color: var(--text-dim); }
+.fy-why {
+  margin: 3px 0 0;
+  font-family: var(--serif);
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+.fy-state { flex: none; width: 14px; padding-top: 3px; color: var(--accent); }
+.fy-row.is-playing .fy-state::before { content: "▶"; font-size: 0.7rem; }
+.fy-row.is-played .fy-state::before { content: "✓"; font-size: 0.75rem; color: var(--text-dim); }
+
+/* a segment that cannot play is shown, greyed, with the reason — a Foray that
+   lost one is a shorter Foray and has to say so */
+.fy-row.is-out { opacity: 0.6; cursor: default; }
+.fy-out { margin: 4px 0 0; font-size: 0.72rem; color: var(--gold); }
+.fy-error { margin: 10px 0 0; text-align: center; font-size: 0.78rem; color: var(--gold); }

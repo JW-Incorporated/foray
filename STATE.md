@@ -7,6 +7,37 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Foray UI — Foray #1 plays in the browser (2026-08-16, one PR, no follow-up)
+
+- **What:** `feat/foray-ui`, issues #128 / #133 / #111. The web app gets a Foray
+  surface: the 32-segment running order rendered slot by slot with show,
+  length and why-line, a transport (play/pause, previous/next segment, elapsed
+  across the WHOLE Foray), click-to-jump, and the played/playing state on every
+  row. `app.js` now loads `data/forays.json`, `data/segments.json` and
+  `data/segment-sources.json`, and survives any of them 404ing.
+- **Open it at:** `https://jw-incorporated.github.io/foray/?foray=grilling-history-1`
+  — Foray #1 is `status: "draft"`, so it is NOT listed for an ordinary visitor
+  and nothing here publishes it (that stays HUMAN-ACTIONS.md #2). `?foray=<id>`
+  is the keyless way in: it unlocks that one id for that one page load, is not
+  persisted, and after the first render the route is the ordinary
+  `#/foray/<id>`.
+- **New files:** `player/foray-resolve.js` (the pure forays+segments+sources
+  join, the draft rule and the position maths), `player/foray-resolve.test.js`,
+  `player/foray-playback.test.js` (Foray #1 end to end against a fake backend
+  and the REAL data files).
+- **Shared files it touches:** `app.js`, `styles.css`, `player/client.js`,
+  `test/suite-integrity.test.js` (two floors, isolated final commit), this file.
+  **Nothing in `data/`, nothing in `tools/`, nothing in `index.html`** — the CSP,
+  the script tags and the service worker are unchanged.
+- **Heads-up:** `player/client.js`'s "Open episode" link was class `fp-open`,
+  which `<body>` also carries while the mini-player is up — so that rule was
+  colouring every uncoloured element on the page accent-blue by inheritance. It
+  is `fp-openep` now. Cosmetic, but it was real and it is fixed here.
+- **Not verified:** actual audio. Every podcast CDN in the source registry was
+  unreachable from the machine this was built on, so playback is proven against
+  a fake backend (32 segments, in order, each at its own in-point, each stopping
+  at its own out-point) and by the real UI driving the real manager — not by ear.
+
 ### Foray data layer — the running order becomes data (2026-08-16, one PR, no follow-up)
 
 - **What:** `feat/foray-data`, issues #182 and #134. Foray #1's 32-segment
