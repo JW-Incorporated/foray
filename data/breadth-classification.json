@@ -73392,13 +73392,969 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-15-625d5589",
       "classified_at": "2026-08-15T16:50:23.585Z"
+    },
+    "1816348112": {
+      "topics": [
+        "culture/art",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.95
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep-dive podcast on color history from artists, scientists, historians via National Gallery.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:50:44.667Z"
+    },
+    "1816462838": {
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two brothers casually hanging and interviewing musicians, wrestlers, celebrities.",
+      "display_title": "No, But Seriously Though",
+      "blurb": "Canadian brothers interview musicians, athletes, and celebrities in relaxed podcast conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:50:44.667Z"
+    },
+    "1816633148": {
+      "topics": [
+        "psychology",
+        "education/courses"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Exam prep for EPPP psychology licensing exam; covers psychology heavily but also broad licensing topics.",
+      "display_title": "EPPP Study Podcast",
+      "blurb": "Educational resource preparing candidates for the EPPP psychology licensing examination.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:50:44.667Z"
+    },
+    "1816878812": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hosts break down sports science studies for runners; covers running physiology and training.",
+      "display_title": "Run Long Run Healthy",
+      "blurb": "Sports science experts explain running physiology and training studies for distance runners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:50:44.667Z"
+    },
+    "1817234114": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coach Dylan Belles teaches running training; draws from decade of coaching elite athletes.",
+      "display_title": "DB Performance Running Podcast",
+      "blurb": "Endurance training coach shares methods and insights from a decade of working with elite runners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:50:44.667Z"
+    },
+    "1817338598": {
+      "topics": [
+        "fiction/sci-fi",
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio dramatization depicting alien abduction scenario; ASMR-styled fiction.",
+      "display_title": "Hung Girl Games ASMR: Lun'naari",
+      "blurb": "Audio fiction about alien encounters with ASMR-style narration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:50:44.667Z"
+    },
+    "1817695682": {
+      "topics": [
+        "education/self-improvement",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chip Conley hosts conversations on midlife transitions, identity, and personal growth.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:50:44.667Z"
+    },
+    "1817755922": {
+      "topics": [
+        "fiction/drama",
+        "paranormal"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.7
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Stories about Dogman; genre unclear (fiction vs. cryptozoology); requires human review.",
+      "display_title": "Dogman Tales",
+      "blurb": "Stories focused on Dogman legends and encounters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:50:44.667Z"
+    },
+    "1818021794": {
+      "topics": [
+        "relationships",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Allison Williams hosts comedic conversations about relationships and dating.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1818164606": {
+      "topics": [
+        "science/physics",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Explores physics and cosmology; title suggests perspective on reality/perception.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1818344114": {
+      "topics": [
+        "health/sexuality",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio erotica focused on adult sexuality and intimate scenarios.",
+      "display_title": "Dirty Girl Audio Porn",
+      "blurb": "Adult audio erotica exploring intimate and sexual scenarios.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1818389132": {
+      "topics": [
+        "news/politics",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Analysis of political governance, state affairs, and policy commentary.",
+      "display_title": "State of Play",
+      "blurb": "Political analysis and commentary on government policy and state governance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1818438116": {
+      "topics": [
+        "business/careers",
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.95
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Workplace culture podcast exploring hiring mishaps and employment dynamics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1818459092": {
+      "topics": [
+        "economics/markets",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial independence advice and wealth-building strategies.",
+      "display_title": "The Financial Freedom Faster Podcast",
+      "blurb": "Financial education focused on achieving financial independence and wealth building.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1818529940": {
+      "topics": [
+        "nature/earth-science",
+        "nature",
+        "culture/books"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Italian title translates to Trees and Other Humans; nature/environment focus unclear.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1818671690": {
+      "topics": [
+        "economics/markets",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.95
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investment advice and market analysis using contrarian perspectives.",
+      "display_title": "The Real Eisman Playbook",
+      "blurb": "Investment strategies and market analysis from contrarian finance perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1818753260": {
+      "topics": [
+        "culture/fashion",
+        "culture/design"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion, style, and beauty trends and commentary.",
+      "display_title": "Cutting Edge",
+      "blurb": "Fashion trends, style analysis, and beauty commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1819496342": {
+      "topics": [
+        "health/sexuality",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adult audio content focused on sexual scenarios.",
+      "display_title": "Hotwife Audio Porn",
+      "blurb": "Adult audio erotica with focus on specific adult scenarios.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1819566062": {
+      "topics": [
+        "religion/christianity",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.95
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Jesuit priest Fr. James Martin explores spirituality and Christian faith.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1819843688": {
+      "topics": [
+        "personal-journals",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Personal narrative/journal format; mixed content (love, lust, law) topic unclear.",
+      "display_title": "lovelustlaw",
+      "blurb": "Personal podcast exploring themes of love, desire, and legal/ethical questions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1819996106": {
+      "topics": [
+        "nature/pets",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        },
+        {
+          "node": "health",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Animal well-being and pet health stories.",
+      "display_title": "Healing Tails",
+      "blurb": "Stories about animal wellness, pet health, and human-animal bonds.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1820048498": {
+      "topics": [
+        "news/daily",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news briefing and commentary show.",
+      "display_title": "The Tom Sullivan Show",
+      "blurb": "Daily news briefing with host commentary on current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1820216414": {
+      "topics": [
+        "religion/buddhism",
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Dr. Rick Hanson teaches Buddhist mindfulness and practical wisdom.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1820580626": {
+      "topics": [
+        "engineering/energy-fusion",
+        "science/physics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.9
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quantum Kinetics Corporation discusses nuclear fusion technology and research.",
+      "display_title": "Nuclear Fusion is Here",
+      "blurb": "Updates on nuclear fusion energy technology development and research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1820648828": {
+      "topics": [
+        "news/politics",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Joy Reid hosts political news and commentary show.",
+      "display_title": "The Joy Reid Show",
+      "blurb": "Political news, analysis, and commentary hosted by Joy Reid.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1821295376": {
+      "topics": [
+        "hobbies",
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Hobby and domestic topics; specific focus unclear from description.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1821764678": {
+      "topics": [
+        "gaming",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pinball gaming culture and community.",
+      "display_title": "Flip N Out Pinball Podcast",
+      "blurb": "Pinball gaming culture, strategies, and community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1821815942": {
+      "topics": [
+        "sports/cricket"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket sports discussion and commentary.",
+      "display_title": "Sports with Bros",
+      "blurb": "Cricket sports analysis and commentary with enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1821817598": {
+      "topics": [
+        "religion/hinduism",
+        "culture/mythology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Religious podcast focused on Hindu Ramayana scripture.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1822281566": {
+      "topics": [
+        "tv-film/reviews",
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror film and content review/analysis podcast.",
+      "display_title": "Grave Tone: Horror Podcast",
+      "blurb": "Reviews and analysis of horror films, television, and media.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1822387190": {
+      "topics": [
+        "music",
+        "history/technology",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep dives into music history and archival recordings.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1822467692": {
+      "topics": [
+        "comedy/casual-hangs",
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual improvisational comedy and banter with gaming elements.",
+      "display_title": "The Analog Dungeon Podcast",
+      "blurb": "Improvisational comedy and casual conversations with tabletop gaming themes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1822632524": {
+      "topics": [
+        "craft/woodworking",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Norwegian knitting and traditional crafts.",
+      "display_title": "Anne's Norwegian Knitting",
+      "blurb": "Norwegian knitting techniques, patterns, and traditional fiber arts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1823032544": {
+      "topics": [
+        "nature",
+        "sports",
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.4
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cowboy/hunting theme; actual content direction (nature/sport/folklore) unclear.",
+      "display_title": "Shootin' the Bull",
+      "blurb": "Hunting, outdoor culture, and nature stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-16e44dc1",
+      "classified_at": "2026-08-16T00:51:49.987Z"
     }
   },
-  "built_at": "2026-08-15T16:50:36.405Z",
+  "built_at": "2026-08-16T00:51:49.987Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-15-625d5589",
+    "last_batch_id": "fresh-2026-08-16-16e44dc1",
     "last_batch_tier": 1
   }
 }
