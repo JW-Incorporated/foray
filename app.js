@@ -132,6 +132,23 @@ function toEventRow(e, userId) {
       return row("finished", { episode_slug: p.episode_id, topics: p.topics || [], percent_complete: 1, source: "manual_stopgap" });
     case "saved":
       return row("saved", { episode_slug: p.episode_id, topics: p.topics || [] });
+    case "thumbs":
+      // The canonical shape is `{direction, node_id, episode_slug?}` and
+      // `node_id` is MANDATORY — the learning job keys the signal on a taxonomy
+      // node, so a thumb with nowhere to land is dropped here rather than
+      // inserted as a row nothing can read (events-client-integration-spec §2).
+      if (!p.node_id || (p.direction !== "up" && p.direction !== "down")) return null;
+      return row("thumbs", {
+        direction: p.direction,
+        node_id: p.node_id,
+        episode_slug: p.episode_slug || null,
+        // Additive context. §6 of the spec notes `up` reuses `more_like_this`
+        // server-side, so the reason codes only ever ride a `down`.
+        reasons: p.reasons || [],
+        note: p.note || null,
+        segment_id: p.segment_id || null,
+        foray_id: p.foray_id || null,
+      });
     case "session_shown":
       return row("session_built", { session_key: p.session_id, builder: e.builder || "unknown" });
     default:
@@ -182,14 +199,20 @@ function loadInterests() {
 
 function saveInterests() { lsSet("cp_interests", state.interests); }
 
-function boostTopics(topics, amount) {
+/* Move a taxonomy node's weight. Clamped at BOTH ends since thumbs-down made
+   the amount negative for the first time — an unclamped floor lets a few
+   downvotes drive a node below zero, where it can never climb back into a menu
+   however much the listener later plays of it. */
+function nudgeTopics(topics, amount) {
   (topics || []).forEach(t => {
     if (t in state.interests) {
-      state.interests[t] = Math.min(1, state.interests[t] + amount);
+      state.interests[t] = Math.max(0, Math.min(1, state.interests[t] + amount));
     }
   });
   saveInterests();
 }
+
+function boostTopics(topics, amount) { nudgeTopics(topics, amount); }
 
 /* ---------- pool ---------- */
 
@@ -645,10 +668,12 @@ function introHtml() {
 function renderHome() {
   document.body.className = "view-home";
   if (!state.cardSlots.length) buildCards();
+  const resumeRows = forayResumeRows();
   $("#view").innerHTML = `
     <div class="home">
       <div id="banner-slot">${bannerHtml()}</div>
       ${introHtml()}
+      ${jumpBackInHtml(resumeRows)}
       ${forayHomeHtml()}
       <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
       <form id="pl-form" autocomplete="off">
@@ -695,6 +720,7 @@ function renderHome() {
     }
   });
 
+  sizeProgressBars($("#view"));
   bindPickLogging($("#view"));
   bindStars($("#view"));
   bindPlay($("#view"));
@@ -823,28 +849,113 @@ function playerBridge() {
   });
 }
 
+/* ---------- per-segment feedback (the learning loop's input) ----------
+
+   The mockup's thumbs, and they are deliberately asymmetric: up is one silent
+   tap, down opens a sheet and asks what missed. That asymmetry is the design's
+   actual point — "not for me" is nearly useless to a learning job on its own,
+   and a listener who has just been annoyed is the one moment they will tell you
+   why. The vote is only committed when the sheet is submitted; dismissing it
+   leaves the segment unvoted, exactly as `voteDown` does in the mockup.
+
+   The event shape is NOT invented here. `docs/curation/events-client-integration
+   -spec.md` §2 defines `thumbs` as `{direction, node_id, episode_slug?}` with
+   `node_id` mandatory, and §4 records that no thumbs UI existed yet. A segment
+   carries `topic` — a real taxonomy node id, checked against data/taxonomy.json
+   — so it maps straight onto that contract with nothing made up. */
+
+const FB_CHIPS = [
+  "Not into this topic", "Didn't like the voice", "Leans too far left",
+  "Leans too far right", "Too surface-level", "Too in-the-weeds",
+  "Bad audio quality", "Heard this already", "Just not this show",
+];
+
+function forayFeedback() { return lsGet("cp_foray_feedback", {}); }
+
+function feedbackFor(segmentId) { return forayFeedback()[segmentId] || null; }
+
+/** Record (or clear) a vote and emit the event. `reasons`/`note` only ever ride
+    a down-vote — an up-vote has nothing to explain. */
+function setFeedback(entry, direction, { reasons = [], note = "" } = {}) {
+  const all = forayFeedback();
+  const segId = entry.segment_id;
+  if (!segId) return;
+  if (!direction) delete all[segId];
+  else all[segId] = { direction, reasons, note, ts: new Date().toISOString() };
+  lsSet("cp_foray_feedback", all);
+
+  if (direction) {
+    logEvent("thumbs", {
+      direction,
+      node_id: entry.topic || null,
+      episode_slug: entry.item_id || null,
+      segment_id: segId,
+      foray_id: state.foray ? state.foray.id : null,
+      reasons,
+      note: note.trim() || null,
+    });
+    // A thumb is an action the listener took, so it moves the same weights
+    // playing something does — just harder, and in whichever direction.
+    nudgeTopics([entry.topic], direction === "up" ? 0.08 : -0.08);
+    trySyncEvents();
+  }
+  paintFeedback(segId);
+}
+
+function paintFeedback(segmentId) {
+  const vote = feedbackFor(segmentId)?.direction || "";
+  $("#view").querySelectorAll(`[data-seg-id="${CSS.escape(segmentId)}"]`).forEach(btn => {
+    btn.classList.toggle("on", btn.dataset.thumb === vote);
+    btn.setAttribute("aria-pressed", btn.dataset.thumb === vote ? "true" : "false");
+  });
+}
+
+function thumbsHtml(entry) {
+  // No taxonomy node means nowhere for the signal to land, and a control that
+  // silently does nothing is worse than no control.
+  if (!entry.segment_id || !entry.topic) return "";
+  const vote = feedbackFor(entry.segment_id)?.direction || "";
+  const one = (dir, glyph, label) =>
+    `<button type="button" class="fy-thumb ${vote === dir ? "on" : ""}" data-thumb="${dir}"
+        data-seg-id="${esc(entry.segment_id)}" aria-pressed="${vote === dir}"
+        aria-label="${esc(label)} ${esc(entry.label)}">${glyph}</button>`;
+  return `<div class="fy-fb">
+    ${one("up", "👍", "More like")}${one("down", "👎", "Less like")}
+  </div>`;
+}
+
 function forayRow(entry) {
   const dur = window.ForayPlayer ? window.ForayPlayer.fmtSpan(entry.duration_sec) : "";
   const meta = [entry.show, dur].filter(Boolean).join(" · ");
   if (!entry.playable) {
     return `<div class="fy-row is-out">
+      <div class="fy-jump">
+        <span class="fy-label">${esc(entry.label)}</span>
+        <div class="fy-body">
+          <div class="fy-meta">${esc(meta)}</div>
+          <p class="fy-why">${esc(entry.why)}</p>
+          <p class="fy-out">Can't play: ${esc(entry.reason || "unresolved")}</p>
+        </div>
+      </div>
+    </div>`;
+  }
+  /* The row used to BE the button. It cannot be any more: a thumb inside a
+     button is invalid HTML and its click never survives the parent's handler.
+     So the row is a container, the play affordance is the button inside it, and
+     `data-fy` — which paintForay and the transport both key on — moves with the
+     button, not with the container. */
+  return `<div class="fy-row">
+    <button type="button" class="fy-jump" data-fy="${esc(String(entry.queueIndex))}"
+        aria-label="Play ${esc(entry.label)}, ${esc(entry.show)}">
       <span class="fy-label">${esc(entry.label)}</span>
       <div class="fy-body">
         <div class="fy-meta">${esc(meta)}</div>
         <p class="fy-why">${esc(entry.why)}</p>
-        <p class="fy-out">Can't play: ${esc(entry.reason || "unresolved")}</p>
       </div>
-    </div>`;
-  }
-  return `<button type="button" class="fy-row" data-fy="${esc(String(entry.queueIndex))}"
-      aria-label="Play ${esc(entry.label)}, ${esc(entry.show)}">
-    <span class="fy-label">${esc(entry.label)}</span>
-    <div class="fy-body">
-      <div class="fy-meta">${esc(meta)}</div>
-      <p class="fy-why">${esc(entry.why)}</p>
-    </div>
-    <span class="fy-state" aria-hidden="true"></span>
-  </button>`;
+      <span class="fy-state" aria-hidden="true"></span>
+    </button>
+    ${thumbsHtml(entry)}
+  </div>`;
 }
 
 function foraySlotHtml(slot) {
@@ -858,6 +969,136 @@ function foraySlotHtml(slot) {
     <h3>${esc(slot.title)}</h3>
     ${slot.entries.map(forayRow).join("")}
   </section>`;
+}
+
+/* ---------- the feedback sheet ---------- */
+
+/* One sheet per page, reused for whichever segment was thumbed down. Built with
+   the page (hidden) rather than on demand so there is no second render path to
+   keep escaped. */
+function feedbackSheetHtml() {
+  return `<div class="fy-sheet" id="fy-sheet" hidden>
+    <div class="fy-scrim" id="fy-scrim"></div>
+    <div class="fy-panel" role="dialog" aria-modal="true" aria-labelledby="fy-sheet-title">
+      <div class="fy-grab" aria-hidden="true"></div>
+      <h3 id="fy-sheet-title">What missed for you?</h3>
+      <p class="fy-sheet-sub" id="fy-sheet-sub"></p>
+      <div class="fy-chips">${FB_CHIPS.map(c =>
+        `<button type="button" class="fy-chip" data-chip="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+      <input id="fy-sheet-note" type="text" maxlength="200" placeholder="Tell us in your own words…">
+      <div class="fy-sheet-actions">
+        <button type="button" class="fy-sheet-cancel" id="fy-sheet-cancel">Cancel</button>
+        <button type="button" class="fy-sheet-go" id="fy-sheet-go" disabled>Pick at least one</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/** The segment the open sheet is about. Null when it is closed. */
+let fbTarget = null;
+
+function openFeedbackSheet(entry) {
+  fbTarget = entry;
+  const sheet = $("#fy-sheet");
+  if (!sheet) return;
+  $("#fy-sheet-sub").textContent =
+    `About ${entry.show || "this clip"} — the more specific, the faster your picks get good.`;
+  $("#fy-sheet-note").value = "";
+  sheet.querySelectorAll("[data-chip]").forEach(c => c.classList.remove("on"));
+  syncSheetCta();
+  sheet.hidden = false;
+  document.body.classList.add("fy-sheet-open");
+}
+
+function closeFeedbackSheet() {
+  // Dismissing must NOT record the down-vote — the mockup only commits it on
+  // submit, and a vote with no reason is the signal this sheet exists to avoid.
+  fbTarget = null;
+  const sheet = $("#fy-sheet");
+  if (sheet) sheet.hidden = true;
+  document.body.classList.remove("fy-sheet-open");
+}
+
+function sheetPicks() {
+  return [...$("#fy-sheet").querySelectorAll("[data-chip].on")].map(c => c.dataset.chip);
+}
+
+function syncSheetCta() {
+  const any = sheetPicks().length > 0 || $("#fy-sheet-note").value.trim().length > 0;
+  const go = $("#fy-sheet-go");
+  go.disabled = !any;
+  go.textContent = any ? "Tune my picks" : "Pick at least one";
+}
+
+function bindFeedback(r) {
+  const bySegment = new Map(r.entries.filter(e => e.segment_id).map(e => [e.segment_id, e]));
+
+  $("#view").querySelectorAll("[data-thumb]").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const entry = bySegment.get(btn.dataset.segId);
+      if (!entry) return;
+      const current = feedbackFor(entry.segment_id)?.direction || "";
+      const dir = btn.dataset.thumb;
+      // A second tap on the live vote clears it, in either direction — down
+      // included, so undoing does not force the sheet open again.
+      if (current === dir) return setFeedback(entry, null);
+      if (dir === "up") return setFeedback(entry, "up");
+      openFeedbackSheet(entry);
+    });
+  });
+
+  const sheet = $("#fy-sheet");
+  if (!sheet) return;
+  sheet.querySelectorAll("[data-chip]").forEach(chip => {
+    chip.addEventListener("click", () => { chip.classList.toggle("on"); syncSheetCta(); });
+  });
+  $("#fy-sheet-note").addEventListener("input", syncSheetCta);
+  $("#fy-scrim").addEventListener("click", closeFeedbackSheet);
+  $("#fy-sheet-cancel").addEventListener("click", closeFeedbackSheet);
+  $("#fy-sheet-go").addEventListener("click", () => {
+    if (!fbTarget) return closeFeedbackSheet();
+    setFeedback(fbTarget, "down", { reasons: sheetPicks(), note: $("#fy-sheet-note").value });
+    closeFeedbackSheet();
+  });
+  return byIndex;
+}
+
+/* ---------- where this came from ---------- */
+
+/* The publisher credit block. This is not decoration: a Foray plays nine
+   episodes straight from their own enclosure URLs, so the download lands on the
+   publisher's numbers — and until now the listener had no single place that said
+   whose work they had spent an hour with, or how to go and get more of it. The
+   grouping and the links are computed in player/foray-sources.js, where they are
+   tested; this only renders them. */
+function foraySourcesHtml(r, player) {
+  const { credits, summary } = player.forayCredits(r, { discoverDoc: state.discover });
+  if (!credits.length) return "";
+  const rows = credits.map(c => `
+    <div class="fy-src">
+      <a class="fy-src-head" href="${esc(safeUrl(c.link))}" target="_blank" rel="noopener"
+         data-src-show="${esc(c.show)}">
+        <span class="fy-src-show">${esc(c.show)} ↗</span>
+        <span class="fy-src-meta">${c.clips} clip${c.clips === 1 ? "" : "s"} · ${esc(player.fmtSpan(c.seconds))}</span>
+      </a>
+      <ul class="fy-src-eps">${c.episodes.map(e =>
+        `<li>${esc(e.title)} <span>${e.clips} clip${e.clips === 1 ? "" : "s"}</span></li>`).join("")}</ul>
+    </div>`).join("");
+  return `<section class="fy-sources">
+    <h3>Where this came from</h3>
+    <p class="fy-src-note">${esc(summary)}. Every clip plays from the show's own feed, so the download counts for them.</p>
+    ${rows}
+  </section>`;
+}
+
+function bindSourceLinks(r) {
+  $("#view").querySelectorAll("[data-src-show]").forEach(a => {
+    a.addEventListener("click", () => {
+      logEvent("source_opened", { foray_id: r.id, show: a.dataset.srcShow });
+    });
+  });
 }
 
 function forayHeadSub(r) {
@@ -904,6 +1145,12 @@ async function renderForay(id) {
 
   const draft = r.foray.status !== "published";
   const lost = r.unplayable.length;
+  /* Read the resume point BEFORE anything is wired up: it decides the clock the
+     page opens on, which rows are already ticked off, and what the main button
+     says. Against the LIVE runtime, so a repaired data file cannot leave someone
+     resuming past the end of a Foray that got shorter. */
+  const resume = player.forayResume(r.id, { totalSec: r.totalSec });
+
   $("#view").innerHTML = `
     <div class="page foray">
       <div class="page-head">
@@ -916,6 +1163,14 @@ async function renderForay(id) {
       ${draft ? `<p class="fy-draft">Draft — not published. You opened it by name; nobody else sees it.</p>` : ""}
       ${r.foray.summary ? `<p class="fy-summary">${esc(r.foray.summary)}</p>` : ""}
       <div class="fy-transport">
+        ${resume ? `<div class="fy-resume" id="fy-resume">
+          <div class="fy-bar"><span class="fy-bar-fill" id="fy-bar-fill"></span></div>
+          <p class="fy-resume-line">
+            <span class="fy-resume-at">Jump back in at ${esc(player.fmtClock(resume.elapsedSec))}</span>
+            <span class="fy-resume-left">${esc(resume.label)}</span>
+          </p>
+          <button type="button" class="fy-restart" id="fy-restart">Start over</button>
+        </div>` : ""}
         <div class="fy-strip" id="fy-strip">${r.playable.map((_, i) =>
           `<span class="fy-seg" data-seg="${i}"></span>`).join("")}</div>
         <div class="fy-times"><span id="fy-now">0:00</span><span id="fy-total"></span></div>
@@ -928,11 +1183,16 @@ async function renderForay(id) {
       </div>
       ${lost ? `<p class="note">${lost} segment${lost === 1 ? "" : "s"} can't play — listed below.</p>` : ""}
       ${r.slots.map(foraySlotHtml).join("")}
+      ${foraySourcesHtml(r, player)}
+      ${feedbackSheetHtml()}
     </div>`;
 
   $("#fy-total").textContent = player.fmtClock(r.totalSec);
   sizeForayStrip(r);
-  bindForayTransport(r, player);
+  if (resume) $("#fy-bar-fill").style.width = `${resume.percent}%`;
+  bindFeedback(r);
+  bindSourceLinks(r);
+  bindForayTransport(r, player, resume);
 }
 
 /* Each segment's share of the strip is its share of the runtime. Set as a DOM
@@ -948,12 +1208,26 @@ function sizeForayStrip(r) {
   });
 }
 
-const FORAY_IDLE = { index: -1, playing: false, ended: false, elapsedSec: 0 };
+const FORAY_IDLE = { index: -1, playing: false, ended: false, elapsedSec: 0, resumeIndex: -1 };
 
-function bindForayTransport(r, player) {
+function bindForayTransport(r, player, resume = null) {
   const onChange = (s) => paintForay(s);
 
   const start = (index) => player.playForay(r, { startIndex: index, onChange });
+  /* The main button, pressed cold. With a stored position that means RESUME —
+     the whole point of the feature — and an explicit index (a row, the strip)
+     always wins, because the listener just named a segment. */
+  const startOrResume = () => resume
+    ? player.playForay(r, { startElapsedSec: resume.elapsedSec, onChange })
+    : start(0);
+
+  $("#fy-restart")?.addEventListener("click", async () => {
+    player.clearForayResume(r.id);
+    logEvent("foray_restart", { foray_id: r.id, from_sec: Math.round(resume?.elapsedSec || 0) });
+    resume = null;
+    $("#fy-resume")?.remove();
+    await start(0);
+  });
 
   // Nothing playable is not a disabled-looking button that still fires: say it
   // with the control's own state, so the page and the behaviour agree.
@@ -967,13 +1241,16 @@ function bindForayTransport(r, player) {
     if (playerHasForay(r)) return player.forayToggle();
     // Only the real start is an event. Logging a pause as a play is the kind of
     // small lie that makes a metric useless six months later.
-    logEvent("foray_play", { foray_id: r.id, segments: r.playable.length });
-    await start(0);
+    logEvent("foray_play", {
+      foray_id: r.id, segments: r.playable.length,
+      resumed_from_sec: resume ? Math.round(resume.elapsedSec) : null,
+    });
+    await startOrResume();
   });
   // Before anything has started, every transport button means "start it" — a
   // next that begins at segment 2 silently drops the opening of the Foray.
-  $("#fy-next").addEventListener("click", () => playerHasForay(r) ? player.forayNext() : start(0));
-  $("#fy-prev").addEventListener("click", () => playerHasForay(r) ? player.forayPrevious() : start(0));
+  $("#fy-next").addEventListener("click", () => playerHasForay(r) ? player.forayNext() : startOrResume());
+  $("#fy-prev").addEventListener("click", () => playerHasForay(r) ? player.forayPrevious() : startOrResume());
 
   $("#view").querySelectorAll("[data-fy]").forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -993,9 +1270,17 @@ function bindForayTransport(r, player) {
 
   /* Re-entering the page mid-Foray must paint the segment that is actually
      audible, and route this page's callback at the live player — otherwise the
-     old, detached DOM keeps getting the updates and this one never moves. */
+     old, detached DOM keeps getting the updates and this one never moves.
+
+     With nothing live, the page opens on the STORED position rather than at
+     zero: the clock reads where they left off and the rows behind it are already
+     ticked. A resume offer that leaves the page looking untouched is a resume
+     offer nobody believes. */
   const live = player.watchForay(onChange);
-  paintForay(live && live.forayId === r.id ? live : FORAY_IDLE);
+  const idle = resume
+    ? { ...FORAY_IDLE, elapsedSec: resume.elapsedSec, resumeIndex: resume.index }
+    : FORAY_IDLE;
+  paintForay(live && live.forayId === r.id ? live : idle);
 }
 
 /** Is the player already inside THIS Foray? Pressing play on a Foray that is
@@ -1016,7 +1301,10 @@ function paintForay(s) {
 
   const playBtn = $("#fy-play");
   if (playBtn) {
-    const label = s.playing ? "❚❚ Pause" : (s.loading ? "Loading…" : (s.index >= 0 ? "▶ Resume" : "▶ Play"));
+    // Three different "not playing" states, and they mean different things:
+    // paused mid-segment, never started but with a stored position, and cold.
+    const stopped = s.index >= 0 || (s.resumeIndex ?? -1) >= 0 || (s.elapsedSec || 0) > 0;
+    const label = s.playing ? "❚❚ Pause" : (s.loading ? "Loading…" : (stopped ? "▶ Resume" : "▶ Play"));
     playBtn.textContent = label;
     playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
   }
@@ -1035,16 +1323,22 @@ function paintForay(s) {
   if (state.forayPainted === s.index) return;
   state.forayPainted = s.index;
 
+  /* Everything before this index is behind the listener. While something is
+     playing that is the live segment; before anything has started it is the
+     stored resume point, so a page opened cold shows the hour already half
+     ticked off instead of pretending it was never touched. */
+  const mark = s.index >= 0 ? s.index : (s.resumeIndex ?? -1);
+
   $("#view").querySelectorAll("[data-fy]").forEach(row => {
     const i = Number(row.dataset.fy);
     row.classList.toggle("is-playing", i === s.index);
-    row.classList.toggle("is-played", s.index >= 0 && i < s.index);
+    row.classList.toggle("is-played", mark >= 0 && i < mark);
   });
   const strip = $("#fy-strip");
   if (strip) {
     [...strip.children].forEach((seg, i) => {
       seg.classList.toggle("is-playing", i === s.index);
-      seg.classList.toggle("is-played", s.index >= 0 && i < s.index);
+      seg.classList.toggle("is-played", mark >= 0 && i < mark);
     });
   }
 }
@@ -1070,6 +1364,44 @@ function forayHomeHtml() {
       <span class="fy-home-kicker">Foray${f.status === "published" ? "" : " · draft"}</span>
       <span class="fy-home-title">${esc(f.title)}</span>
     </a>`).join("")}</div>`;
+}
+
+/* "Jump back in" — the mockup's own heading for a part-played Foray, and the
+   home screen's half of resuming.
+
+   Gated through the SAME visibility rule as the list above, deliberately. A
+   stored position is not permission: `player/foray-resolve.js` decided that an
+   unpublished Foray is reachable only by asking for it by id, and the unlock is
+   pointedly not persisted so that opening a draft link on a shared machine does
+   not leave it on someone else's home screen. A resume row that ignored that
+   would reintroduce exactly the leak that rule closed — so with no `?foray=` in
+   the URL, a draft's progress is remembered and simply not advertised. */
+function forayResumeRows() {
+  if (!window.ForayPlayer) return [];
+  const visible = new Set(forayCards().map(f => f.id));
+  return window.ForayPlayer.forayResumeList()
+    .filter(p => visible.has(p.id) && !p.finished && p.label)
+    .slice(0, 3);
+}
+
+function jumpBackInHtml(rows) {
+  if (!rows.length) return "";
+  return `<div class="fy-home fy-jbi">${rows.map(p => `
+    <a class="fy-home-row fy-jbi-row" href="#/foray/${esc(p.id)}">
+      <span class="fy-home-kicker">Jump back in</span>
+      <span class="fy-home-title">${esc(p.title || p.id)}</span>
+      <span class="fy-bar"><span class="fy-bar-fill" data-pct="${esc(String(p.percent))}"></span></span>
+      <span class="fy-jbi-left">${esc(p.label)}</span>
+    </a>`).join("")}</div>`;
+}
+
+/** Bar widths are a DOM property, never a style attribute — the page CSP is
+    `style-src 'self'` and test/app-security.test.js gates it. */
+function sizeProgressBars(scope) {
+  scope.querySelectorAll(".fy-bar-fill[data-pct]").forEach(fill => {
+    const pct = Math.max(0, Math.min(100, Number(fill.dataset.pct) || 0));
+    fill.style.width = `${pct}%`;
+  });
 }
 
 /* ---------- drawer ---------- */
