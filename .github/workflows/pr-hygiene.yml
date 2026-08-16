@@ -137,11 +137,21 @@ jobs:
         env:
           FREEZE: ${{ vars.AUTOMERGE_FREEZE }}
           REPO: ${{ github.repository }}
+          ONE_PR: ${{ github.event.pull_request.number }}
         run: |
+          set -uo pipefail
+          # On a `pull_request` event this run looked at exactly one PR, so the
+          # founder queue it can see is not the founder queue. `--partial` makes
+          # the summary say so instead of rendering "nothing is waiting on a
+          # founder" from a sample of one — false reassurance is the specific
+          # bug this whole change set is about.
+          partial=""
+          if [ -n "${ONE_PR:-}" ]; then partial="--partial"; fi
           node tools/ci/pr-triage.mjs plan \
             --from prs.json \
             --freeze "${FREEZE:-}" \
             --repo "$REPO" \
+            $partial \
             --actions actions.jsonl \
             --summary "$GITHUB_STEP_SUMMARY"
 

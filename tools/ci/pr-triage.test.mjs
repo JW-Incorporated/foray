@@ -499,6 +499,22 @@ test("CLI plan appends a summary that includes the waiting block", () => {
   assert.match(h.appended.S, new RegExp(BLOCK_BEGIN.replace(/[-[\]{}()*+?.,\\^$|#]/g, "\\$&")));
 });
 
+test("CLI plan --partial refuses to render a queue it could not have seen", () => {
+  // A pull_request run examines ONE PR. Rendering "nothing is waiting on a
+  // founder" from a sample of one is exactly the false reassurance this change
+  // set exists to remove.
+  const h = harness({ f: JSON.stringify([pr()]) });
+  runCli(["plan", "--from", "f", "--partial", "--summary", "S"], h.io);
+  assert.doesNotMatch(h.appended.S, /Nothing is waiting on a founder/);
+  assert.match(h.appended.S, /Scoped to one PR/);
+});
+
+test("CLI plan without --partial does render the queue", () => {
+  const h = harness({ f: JSON.stringify([pr()]) });
+  runCli(["plan", "--from", "f", "--summary", "S"], h.io);
+  assert.match(h.appended.S, /Nothing is waiting on a founder/);
+});
+
 test("CLI waiting --print writes no file", () => {
   const h = harness({ f: "[]" });
   assert.equal(runCli(["waiting", "--from", "f", "--print"], h.io), 0);

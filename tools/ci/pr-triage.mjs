@@ -456,6 +456,8 @@ options:
                         open PRs with \`gh\` instead — never to mean "none".
   --freeze <value>       AUTOMERGE_FREEZE repo variable
   --no-auto-update       plan no update-branch/dispatch-ci actions
+  --partial              (plan) this run looked at one PR, not all of them, so
+                        do not render the founder queue as if it were complete
   --actions <path>       write planned actions as JSON lines here
   --summary <path>       append a markdown report here ($GITHUB_STEP_SUMMARY)
   --file <path>          (waiting) the file to splice, default HUMAN-ACTIONS.md
@@ -472,7 +474,7 @@ const VALUE_FLAGS = new Set([
   "--file",
   "--repo",
 ]);
-const BOOL_FLAGS = new Set(["--no-auto-update", "--write", "--print", "--check"]);
+const BOOL_FLAGS = new Set(["--no-auto-update", "--write", "--print", "--check", "--partial"]);
 
 export function parseArgs(argv) {
   const [command, ...rest] = argv;
@@ -558,7 +560,17 @@ export function runCli(argv, io = {}) {
         : ["- nothing to do"]),
       "",
       ...(notes.length ? ["Notes:", "", ...notes.map((n) => `- ${n}`), ""] : []),
-      renderWaitingBlock(queue, { repo: opts.repo }),
+      // A run that looked at ONE PR must not print a block that reads like the
+      // whole queue — an empty "nothing is waiting on a founder" rendered from
+      // a single clean PR is exactly the kind of false reassurance this change
+      // set exists to remove.
+      ...(opts.partial
+        ? [
+            `_Scoped to one PR, so the founder queue is not rendered here._ ` +
+              `The full list is in the 6-hourly sweep's summary and at the ` +
+              `\`needs-founder\` filter.`,
+          ]
+        : [renderWaitingBlock(queue, { repo: opts.repo })]),
     ].join("\n");
     $.log(report);
     if (opts.summary) $.append(opts.summary, report + "\n");
