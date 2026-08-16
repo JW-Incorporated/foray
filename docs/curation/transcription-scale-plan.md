@@ -95,42 +95,102 @@ coherent subjects; at best they make one, and it would be chosen for its
 transcripts rather than for being worth listening to. That is the wrong reason
 to pick launch content.
 
-**So the free route cannot bootstrap the product on its own.** Either route 2
-works, or route 3 is the critical path and needs real capacity — which is
-exactly why the §4 probe matters more than any other single task in the epic.
-
-**Route 2 is the highest-leverage unproven thing in the project.** If duration
-matching lets a DAI episode's publisher transcript anchor reliably for some
-meaningful fraction of listeners, we get thousands of transcripts for zero
-compute — which is a bigger win than any amount of GPU. ADR-0007 already
-designs for it. Nobody has measured whether it works.
+On the non-DAI pool alone, the free route cannot bootstrap the product. **§4
+fixes this** — the measurement there found that the DAI flag over-reports, and
+the ad-free shows hiding behind it bring route 1 to **220 timed transcripts
+across 10 shows**, including 120 on a single subject.
 
 Route 3 is where all the money and time goes. Route 4 is a later problem.
 
 ---
 
-## 4. What I would do before buying any hardware
+## 4. MEASURED, 2026-08-15 — route 2 is dead, but the DAI flag is wrong a lot
 
-**Measure route 2.** It is cheap to test and it changes the shape of everything
-downstream:
+This section originally proposed a probe. The probe has now been run, twice,
+because the cheap version of it lied. Results first, method second.
+
+### Route 2 is dead where ads are really injected
+
+Eight episodes downloaded in full across four shows. Compared the last cue in
+the publisher's timed transcript against the true decoded duration of the file
+we receive:
+
+| show | feed says | transcript ends | audio really is | ads injected |
+|---|---|---|---|---|
+| Stuff You Should Know | 36.98 m | 36.88 m | **46.93 m** | **+10.0 min** |
+| Stuff You Should Know | 47.48 m | 47.37 m | 55.72 m | +8.4 min |
+| Odd Lots | 66.43 m | 66.00 m | 76.67 m | +10.7 min |
+| Odd Lots | 59.67 m | 59.15 m | 67.92 m | +8.8 min |
+| This Podcast Will Kill You | 78.78 m | 78.31 m | 86.27 m | +8.0 min |
+| This Podcast Will Kill You | 72.63 m | 72.17 m | 80.13 m | +8.0 min |
+| Being an Engineer | 50.28 m | 51.68 m | 50.30 m | **none (+0.8 s)** |
+| Being an Engineer | 39.25 m | 39.79 m | 39.26 m | **none (+0.3 s)** |
+
+The pattern is unambiguous: **feed duration and transcript end agree with each
+other and both describe the ad-free program**, while the delivered file carries
+8–11 extra minutes. That is not a constant offset that a single calibration
+fixes — it is a pre-roll plus mid-rolls, so every timestamp after the first ad
+break is wrong by a different amount. Duration matching alone cannot rescue it.
+
+### But "DAI" is a claim about the host, not about the file
+
+Being an Engineer is flagged `dai_suspected: true` and delivers **byte-identical
+to its feed declaration**. The flag records which host *could* insert ads, not
+which one *does*. So the flag over-reports, and each over-report is a show whose
+publisher transcripts are usable for free today.
+
+Scanning the 21 shows that ship timed transcripts and appear in
+`data/discover.json`:
+
+| | shows | timed transcripts |
+|---|---|---|
+| deliver ad-free (ratio < 1.01) | **10** | **220** |
+| inject ads | 11 | ~5,700 |
+
+Five of those ten ad-free shows are flagged DAI. The two that matter are
+**Geology Bites (120 transcripts)** and **Practical AI (63)** — both flagged
+DAI, both delivering clean.
+
+**This repairs the §3 problem.** Route 1 is no longer 34 transcripts scattered
+across five unrelated niches: Geology Bites alone is 120 timed transcripts on a
+single coherent subject, which is enough to build a real Foray from, for free,
+today.
+
+### Method, and the trap in it
+
+`tools/transcribe/ad-inflation.mjs`. The measurement is
+`delivered bytes / feed-declared length`, and the trap is that **HEAD requests
+lie**: on DAI hosts HEAD returns the ad-free master's `Content-Length` while a
+real GET delivers the assembled file. The first version of this scan used HEAD,
+reported 18/18 shows as byte-stable, and was completely wrong — Stuff You Should
+Know's HEAD says 35,549,607 and its download is 44,961,612.
+
+A **2-byte ranged GET** reports the true total in `Content-Range` for one tiny
+request per episode. The cheap probe now reproduces the expensive one: 1.15 for
+Odd Lots against 1.15 measured, 1.12 for TPWKY against 1.10.
+
+### What is still unproven
+
+The scan covers only the 21 transcript-shipping shows present in
+`data/discover.json`. The other ~190 shows in `transcript-availability.json`
+have no enclosure URL in the curated pool, so the same scan over the full
+catalogue is the obvious follow-up — every ad-free show it finds is free
+transcripts. At ~1.2 s per episode, all 213 shows is well under an hour.
+
+### The original proposal, kept for the record
 
 - Take N DAI episodes that ship a timed transcript.
 - Download the enclosure twice, hours apart, from different IPs if possible.
 - Compare durations and check whether the publisher transcript's timestamps
   line up with either copy.
 
-The outcome is one of three, and each implies a different project:
+The outcome was the third of these: **ads are scattered mid-episode at varying
+lengths, so route 2 is dead and ASR is the path for injected shows.** The
+consolation is the second finding above — the DAI flag over-reports, and every
+over-report is free transcripts.
 
-- **Timelines are stable in practice** (ads are baked per-episode, not
-  per-request, for most shows) → the DAI label is over-cautious, 7,966
-  transcripts become usable, and the ASR epic shrinks to a nice-to-have.
-- **Durations vary but by a constant offset** → a single per-download
-  calibration fixes it, and route 2 works with modest engineering.
-- **Ads are scattered mid-episode at varying lengths** → route 2 is dead,
-  ASR is the only path, and the cost estimates in §5 are the real budget.
-
-This is a day of work and it gates a decision worth thousands of dollars and
-weeks of compute. **It should happen before T7 (#118) buys or dedicates a GPU.**
+**The §5 numbers are therefore the real budget for injected shows**, but the
+first Forays no longer have to wait for any of it.
 
 ---
 
@@ -169,20 +229,25 @@ Two observations on this table:
 Nothing here needs a decision to start; the first three are already in flight or
 free.
 
-1. **Finish T2 (#117)** — is `base.en` accurate enough to anchor a segment?
-   Decides model size, and therefore every number in §5. *In progress.*
-2. **Run the §4 DAI stability probe** — one day of work, and it decides whether
-   the ASR epic is a nice-to-have or the critical path. This moved ahead of
-   content work because route 1 turned out too thin to bootstrap on (§3), so the
-   probe now gates *what the first Forays can even be made of*.
-3. **Build the first Foray from whatever route 2 or 3 makes available** (#112).
-   One good subject beats three chosen for transcript convenience. Note this
-   unblocks the whole client surface (C2/C12/A7), which needs a populated
-   `segments.json` far more than it needs a large one.
-4. **Then, and only then, size the transcription capacity** against what the
-   probe found — T7 (#118) with real specs, or option C/D with a real quote.
+1. **Build the first Foray from Geology Bites** (#112) — 120 timed transcripts,
+   one coherent subject, ad-free delivery confirmed, **zero compute and zero
+   dollars**. This is the shortest path to a populated `segments.json`, which
+   the entire client surface (C2/C12/A7) is waiting on. Practical AI (63) is
+   the second subject.
+2. **Extend the ad-inflation scan to all 213 transcript-shipping shows.** Under
+   an hour of polite requests, and every ad-free show it finds is more free
+   transcripts. This is the cheapest remaining source of content in the project.
+3. **Finish T2 (#117)** — is `base.en` accurate enough to anchor a segment?
+   Decides model size and therefore every number in §5. Note it is no longer
+   blocking: the first Forays can be built from publisher transcripts while it
+   runs.
+4. **Then size transcription capacity** against what is actually left — the
+   injected shows and the non-DAI pool — via T7 (#118) with real specs, or
+   option C/D with a real quote.
 
-The thing to avoid is buying capacity for a job that route 2 might delete.
+The ordering changed on 2026-08-15. ASR was the critical path when the only
+usable transcripts were 34 scattered episodes; it is now a scaling concern
+behind 220 free ones. **Do not buy capacity before step 2 reports.**
 
 ---
 
