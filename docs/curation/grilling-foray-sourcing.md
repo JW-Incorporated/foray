@@ -156,15 +156,17 @@ to paper over.
 
 ## 4. Rejected — and why
 
-> **Every "injected" verdict in this table is SUPERSEDED by ADR-0008.** Usable:
-> Gastropod (**measured +66 s**, and its 1.080 here was the weaker
-> bitrate-implied method — §7 already flagged it for re-measurement); A Taste of
-> the Past and Proof, whose ratios cross 120 s only above 100 min and 71 min of
-> program respectively, so they clear it on any plausible episode length (probe
-> once to confirm). Borderline and undecided until probed: The Fantastic History
-> Of Food (crosses at 46.5 min). Over the threshold, and therefore **authorable
-> now, playable once the locate step exists**: The Delicious Legacy, BBC The Food
-> Programme, Grill This! and Hungry for History. Rejections on
+> **Every "injected" verdict in this table is SUPERSEDED by ADR-0008.** Usable
+> after one confirming 2-byte probe: **A Taste of the Past** and **Proof**, whose
+> ratios cross 120 s only above 100 min and 71 min of *program* respectively, so
+> they clear the threshold at any plausible episode length. **Gastropod** is
+> usable too but is the least settled row — a +66 s delta was supplied with the
+> ruling, it is not recorded anywhere in this repo, and it contradicts the 1.080
+> bitrate-implied figure below, which §7 had already flagged for re-measurement;
+> probe before shipping. Borderline until probed: **The Fantastic History Of
+> Food** (crosses at 46.5 min) and **Grill This!** (27.4 min). Over the threshold,
+> and therefore **authorable now, playable once the locate step exists**: The
+> Delicious Legacy, BBC The Food Programme and Hungry for History. Rejections on
 > *content* (Culinary Connections, Seu Churrasco) and on *dead audio* (BBQ
 > Nation) are unaffected. See ADR-0008 § "The unlock, quantified" for the
 > per-show tier table.

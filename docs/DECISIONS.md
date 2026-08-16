@@ -511,7 +511,7 @@ its reasoning.
   **`docs/adr/0008-ad-tolerance-and-timestamp-precision.md`**. In short:
   - The binary gate we had been applying — reject any show whose delivered bytes
     exceed its feed-declared length by more than 1% — is **withdrawn as a
-    sourcing gate**. It rejected nine shows across
+    sourcing gate**. It rejected **eleven** shows across
     `docs/curation/grilling-foray-sourcing.md` §4 and
     `docs/curation/catalogue-broadening.md` §3, several with episodes those
     documents themselves call exactly on brief. Content quality and transcript
@@ -532,15 +532,19 @@ its reasoning.
     the validator already treats as acceptable (that check is authoring-time
     self-consistency, not a playback guarantee), whether the ads are one pre-roll
     or six mid-rolls.
-    120 s is also the top of the 75–180 s segment band, past which the pad is
-    longer than the segment it protects. The pad actually applied is the
-    *measured* delta (Gastropod: ~66 s), not the ceiling.
+    120 s also sits just above the **centre** of the 75–180 s segment band
+    (~110 s), past which the pad is longer than the typical segment it protects.
+    The pad actually applied is the *measured* delta, not the ceiling.
   - **Above 120 s, mid-rolls are the killer, not volume.** The error at any point
     is our cumulative ad time before it minus the listener's, so it **grows
     through the episode** and reached +8 to +10.7 min on Stuff You Should Know,
-    Odd Lots and This Podcast Will Kill You (measured 2026-08-15, eight full
-    downloads). Against a 75–180 s target band that is three to eight
-    segment-lengths — a different story, not an imprecise cut.
+    Odd Lots and This Podcast Will Kill You (six of the eight episodes downloaded
+    in full on 2026-08-15; the other two were Being an Engineer, which injects
+    nothing). Against a 75–180 s target band that is three to eight
+    segment-lengths — a different story, not an imprecise cut. Note the mid-roll
+    *shape* is an inference from the failure of a single calibration, not a
+    located ad break — no ad position has ever been measured, and finding one is
+    itself the locate step.
   - **Such segments are authored now and played later.** ADR-0007 already makes
     the anchor the truth and the timestamp a cache, so extraction output on a
     heavy-DAI show is correct and durable today. Converting an anchor back into a
@@ -549,18 +553,24 @@ its reasoning.
     cannot locate**: one scalar cannot invert a piecewise-constant offset with k
     unknown break positions and k unknown pod lengths, which is why route 2 in
     `docs/curation/transcription-scale-plan.md` §4 is dead. Until that rung
-    exists, `seekPrecision()` returns `approximate` and the segment is skipped —
-    **the worst case of relaxing this gate today is a skipped segment, never a
-    bad cut.**
-  - **What it unlocks, from the recorded measurements only (no new scan):** six
-    shows become usable now — Gastropod, olive and El Mundo en un Bocado on
-    recorded numbers alone; A Taste of the Past and Proof on an **estimated**
-    episode length with a wide margin (one 2-byte probe each to confirm); The
+    exists, `seekPrecision()` returns `approximate` for any foreign DAI timestamp
+    — today it does so unconditionally, since ADR-0007's third and fourth rungs
+    are not implemented and the `DRIFT_TOLERANCE_SEC = 30` check runs only on the
+    `OWN` branch — and the segment is skipped. **The worst case of relaxing this
+    gate today is a skipped segment, never a bad cut.**
+  - **What it unlocks, from measurements already on record (no new scan):** six
+    shows become usable now — olive and El Mundo en un Bocado on numbers recorded
+    in this repo; A Taste of the Past and Proof on an **estimated** episode length
+    with a wide margin (one 2-byte probe each to confirm); **Gastropod pending one
+    confirming probe**, because its +66 s was supplied with the ruling and is not
+    recorded here — it contradicts the 1.080 bitrate-implied reading that is, and
+    the ADR says plainly not to ship a Gastropod segment before that probe; The
     Fantastic History Of Food genuinely undecided until probed — and eight become
     authorable-now/playable-later. **Tandoor moves
     from "not sourceable" to reachable** — `catalogue-broadening.md` §4's verdict
     was a consequence of this gate, not of the content — and mangal/kebab gains
-    its first candidate. The biggest gain is outside Foray #1: Stuff You Should
+    its first *ad-gated* candidate (its other candidate, Gurmelik Denemeleri, was
+    rejected on content, which this ADR does not touch). The biggest gain is outside Foray #1: Stuff You Should
     Know (2,850 timed transcripts) and Odd Lots (1,251) are half our free-transcript
     inventory and were both excluded; they need no ASR budget, only the locate
     step, which reorders the funding case in `transcription-scale-plan.md` §6.

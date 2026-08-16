@@ -298,10 +298,12 @@ tape. Wyatt should decide that rather than wait for a sourcing pass that has
 now been run to exhaustion.
 
 **He has (2026-08-16), and it splits this list in two — see `docs/DECISIONS.md`.**
-Under ADR-0008, **tandoor** is reachable now and **mangal/kebab** gains its first
-candidate (The Delicious Legacy's "Kokoretsi: The Ultimate Easter Kebab!",
-authorable now), and **Mexican** upgrades from three thin clips to a 47-minute
-treatment. **Braai and Filipino lechon are unaffected** — they are not an ad
+Under ADR-0008, **tandoor** is reachable now; **mangal/kebab** gains its first
+*ad-gated* candidate (The Delicious Legacy's "Kokoretsi: The Ultimate Easter
+Kebab!", authorable now) but is **not** solved, because its best candidate above —
+Gurmelik Denemeleri, measured 1.0000 — was rejected on the **content** gate, which
+ADR-0008 does not touch; and **Mexican** upgrades from three thin clips to a
+47-minute treatment. **Braai and Filipino lechon are unaffected** — they are not an ad
 problem, and the second ruling covers them: a **narrator**, scripted by us with
 ElevenLabs audio, sanctioned in principle but explicitly *not to be delivered
 yet*. That same ruling is also how a non-Anglophone tradition reaches an

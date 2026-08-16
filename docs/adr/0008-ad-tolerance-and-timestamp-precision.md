@@ -12,8 +12,9 @@ since 2026-08-15 (`docs/curation/grilling-foray-sourcing.md` §1,
 `docs/curation/catalogue-broadening.md` §3,
 `docs/curation/grilling-foray-passages.md` §2): a show whose delivered bytes
 exceeded its feed-declared length by more than 1% was **rejected as a source**.
-Nine shows were rejected on that ground alone, several of them with episodes the
-docs themselves describe as exactly on brief.
+**Eleven** shows were rejected on that ground alone — eight in
+`grilling-foray-sourcing.md` §4, three in `catalogue-broadening.md` §3 — several
+of them with episodes those documents themselves describe as exactly on brief.
 
 Amends ADR-0007 (segment anchoring) rather than replacing it. ADR-0007's ladder,
 its anchors-required rule for DAI items, and its "skip rather than play the wrong
@@ -58,11 +59,31 @@ shows on 2026-08-15:
 | Being an Engineer | 50.28 m | 51.68 m | 50.30 m | **none (+0.8 s)** |
 | Being an Engineer | 39.25 m | 39.79 m | 39.26 m | **none (+0.3 s)** |
 
-Two further recorded deltas matter here: **Gastropod +66 s**, and every
-indie/self-hosted show measured across both sourcing passes at **0 s** (41 of 41
-episodes at ratio 1.0000 in `grilling-foray-passages.md` §2). Stuff You Should
-Know's 8–10 minutes is distributed as **a pre-roll plus mid-rolls**, not as one
-block at the front.
+Every indie/self-hosted show measured across both sourcing passes came in at
+**0 s** — 41 of 41 episodes at ratio 1.0000 in `grilling-foray-passages.md` §2.
+
+**One further delta, and its provenance needs stating precisely, because a lot
+below leans on it. Gastropod: +66 s.** That figure was **supplied to this session
+alongside the ruling on 2026-08-16** and is **not otherwise recorded in this
+repo**. The only Gastropod ad measurement on file is `1.080 — injected
+(bitrate-implied)` (`grilling-foray-sourcing.md` §4), which on a 45-minute
+episode would be ~216 s, so **the two do not reconcile on any plausible episode
+length**. The bitrate-implied reading is the weaker method on a feed that declares
+`length="0"`, and §7 of that document already lists Gastropod for
+re-measurement — so +66 s is the more likely of the two to be right. But it is
+an unreplicated number that contradicts the record, and this ADR does not treat
+it as settled: **Gastropod is PADDABLE pending one confirming seconds-based
+probe**, exactly like the other rows whose ratio does not decide them. Do not
+ship a Gastropod segment before that probe.
+
+Stuff You Should Know's 8–10 minutes is understood to be **a pre-roll plus
+mid-rolls** rather than one block at the front. Note what kind of claim that is:
+no ad position was ever located. `transcription-scale-plan.md` §4 **infers** the
+shape from the failure of a single calibration ("that is not a constant offset
+that a single calibration fixes"), and the same shape was reported with the
+ruling. It is a well-founded inference and the industry-standard DAI
+configuration, but it is an inference, and §"The threshold" below explains why we
+cannot do better without the locate step.
 
 Note what the feed and the transcript agree on: **both describe the ad-free
 program.** The declared duration and the publisher transcript's last cue land
@@ -72,7 +93,8 @@ receives.
 
 ### Why the gate was expensive
 
-`grilling-foray-sourcing.md` §5.2 measured 69 US shows sampled by chart rank:
+`grilling-foray-sourcing.md` §5.2 sampled 70 US shows by chart rank, 69 of which
+yielded a measurement:
 **ranks 1–25 are 33% ad-free (9/27); ranks 26–200 are 71% ad-free (30/42).**
 Yates-corrected χ² = 8.22 on 1 df, p < 0.01; the effect survives restriction to
 the stronger byte-ratio method (41% vs 72%). So chart rank predicts ad
@@ -120,7 +142,7 @@ story, told by a different person, possibly inside an ad.
 
 The status quo. Safe, and rejected: it costs 67% of the top-25 catalogue, it
 selects against fame and against free transcripts simultaneously, and the ruling
-overrules it. It also measures the wrong quantity — see option 3.
+overrules it. It also measures the wrong quantity — see option 2.
 
 ### 2. Relax the gate to a looser ratio
 
@@ -166,10 +188,14 @@ outcome and the distribution is exactly what a byte or duration measurement
 cannot see. Two shows with an identical total delta, one pre-roll-only and one
 mid-rolled, are indistinguishable from outside the file. Determining which is
 *already the locating step*. So the honest rule is: **above 120 s, assume
-mid-rolls** — which is also what all four heavily-measured shows actually do.
+mid-rolls** — which is also the understood shape of all three heavily-injected
+shows in the table above. (Being an Engineer, the fourth show measured, injects
+nothing at all: +0.8 s and +0.3 s.)
 
-**2. A pad longer than the segment is not a segment.** 120 s is also, not
-coincidentally, the top of our target band (75–180 s, centre ~110 s). Padding
+**2. A pad longer than the segment is not a segment.** 120 s sits just above the
+**centre** of our target band (75–180 s, centre ~110 s) — the band's top is 180 s,
+and the number that matters here is the centre, because that is the length of a
+typical segment the pad has to protect. Padding
 costs runtime: seeking to an un-corrected in-point lands us `cum` seconds *early*
 in the content (harmless run-up — §3f's sacrificial-head rule already wants
 segments to open on run-up) but also stops `cum` seconds early, truncating the
@@ -227,8 +253,10 @@ amount."
 transcript of the copy in hand."** Two implementations, and the difference is
 which one we can afford:
 
-- **Windowed on-device ASR** — designed in ADR-0007, needs the audio, therefore
-  needs the download path (#29), therefore native-only. It is cheaper than it
+- **Windowed on-device ASR** — the rung itself is named in ADR-0007, which also
+  establishes that it needs the audio, therefore the download path (#29),
+  therefore native-only. The **windowing** below is this ADR's contribution, not
+  ADR-0007's. It is cheaper than it
   looks, and the delta measurement is what makes it cheap: since
   `cum(t) ∈ [0, total]`, the content authored at `t` lies in
   `[t, t + total]` in the listener's file. **The search window is exactly the
@@ -307,14 +335,14 @@ contradiction.
 
 | Show | recorded | break-even length | episode length | tier |
 |---|---|---|---|---|
-| Gastropod | **+66 s measured** | — | — | **PADDABLE** |
+| Gastropod | **+66 s** (supplied with the ruling; repo records 1.080 bitrate-implied — see § Context) | — | — | **PADDABLE pending one confirming probe** |
 | A Taste of the Past | 1.020 | 100 min | *est.* ~35–45 min | **PADDABLE** unless > 100 min |
 | Proof (America's Test Kitchen) | 1.028 (bitrate-implied) | 71 min | *est.* ~30–40 min | **PADDABLE** unless > 71 min |
-| olive (Immediate Media) | ~1.02 (bitrate-implied) | 100 min | **45 min** (recorded) | **PADDABLE** |
+| olive (Immediate Media) | ~1.02 (bitrate-implied) | 95–100 min | **45 min** (recorded) | **PADDABLE** |
 | El Mundo en un Bocado | 1.0159 | 126 min | **47 min** (recorded) | **PADDABLE** |
 | The Fantastic History Of Food | 1.043 | 46.5 min | unrecorded | **genuinely undecided** — one probe settles it |
 | Naan Curry with Sadaf and Archit | 1.0470 | 42.6 min | **67 min** (recorded) | LOCATE-REQUIRED |
-| Grill This! | 1.073 | 27.4 min | unrecorded | LOCATE-REQUIRED unless < 27 min |
+| Grill This! | 1.073 | 27.4 min | unrecorded | **undecided** — LOCATE-REQUIRED unless < 27 min |
 | BBC The Food Programme | 1.099 | 20.2 min | *est.* ~28 min (R4 slot) | LOCATE-REQUIRED |
 | The Delicious Legacy | 1.170 | 11.8 min | unrecorded — irrelevant, see below | LOCATE-REQUIRED |
 | Hungry for History | 1.461 | 4.3 min | unrecorded — irrelevant | LOCATE-REQUIRED |
@@ -322,20 +350,29 @@ contradiction.
 | Odd Lots | **+8.8 to +10.7 min** | — | 60–66 m (recorded) | LOCATE-REQUIRED |
 | This Podcast Will Kill You | **+8.0 min** | — | 73–79 m (recorded) | LOCATE-REQUIRED |
 
-**Six shows move to PADDABLE (three on recorded numbers alone, two on estimates
-with wide margins, one genuinely undecided); eight move to LOCATE-REQUIRED.**
-Every one of the fourteen was previously a flat reject.
+**Six shows move to PADDABLE (two on recorded numbers alone, two on estimates
+with wide margins, one pending a confirming probe, one genuinely undecided);
+eight move to LOCATE-REQUIRED, one of those eight still undecided.** Of the
+fourteen rows, **eleven were flat rejects** on ad ratio; the other three (Stuff
+You Should Know, Odd Lots, This Podcast Will Kill You) were never in a sourcing
+rejection table — they were routed to ASR instead, because
+`transcription-scale-plan.md` §4 concluded "route 2 is dead and ASR is the path
+for injected shows." This ADR gives them a third option that costs no ASR at all.
 
 **Which rows are safe without a new measurement, and which are not — stated
 explicitly, because this is the part that is easy to over-claim:**
 
-- **Safe on recorded numbers only:** Gastropod, olive, El Mundo en un Bocado,
-  Naan Curry (all four have either a measured delta or a recorded episode
-  duration), plus Stuff You Should Know, Odd Lots and This Podcast Will Kill You
-  (measured deltas). The Delicious Legacy and Hungry for History are also safe
-  *without* a duration, because their break-even lengths (11.8 and 4.3 min) are
-  below any plausible episode — the tier holds whatever the length turns out to
-  be. Same logic in reverse does not apply anywhere.
+- **Safe on numbers recorded in this repo:** olive and El Mundo en un Bocado and
+  Naan Curry (recorded episode durations), plus Stuff You Should Know, Odd Lots
+  and This Podcast Will Kill You (deltas measured from full downloads). The
+  Delicious Legacy and Hungry for History are also safe *without* a duration,
+  because their break-even lengths (11.8 and 4.3 min) are below any plausible
+  episode — the tier holds whatever the length turns out to be. Same logic in
+  reverse does not apply anywhere.
+- **Safe only on a number supplied with the ruling:** Gastropod. Its +66 s is not
+  recorded in this repo and contradicts the 1.080 bitrate-implied reading that is
+  (see § Context). One confirming probe, then it is the cleanest row in the table;
+  until then it is the least settled.
 - **Marked `est.` = an episode length that is NOT recorded in this repo.** Those
   three rows (A Taste of the Past, Proof, BBC The Food Programme) rest on an
   outside-repo expectation of typical episode length, and each has a wide margin
@@ -362,7 +399,7 @@ hold **8 passages / 8:21 total** across 5 slots:
 
 | Arc slot | Before | After the relaxed gate |
 |---|---|---|
-| Fire and the origins of cooking | partial, 2:06 — counterpoint only; the cooking hypothesis is in Origin Stories, which publishes no transcript | **Gastropod's "Out of the Fire, Into the Frying Pan" (prehistoric origins) is PADDABLE at +66 s** — a real source for the arc's opening slot, without ASR |
+| Fire and the origins of cooking | partial, 2:06 — counterpoint only; the cooking hypothesis is in Origin Stories, which publishes no transcript | **Gastropod becomes a candidate for the arc's opening slot, without ASR.** Two things to verify first, neither recorded in this repo: the +66 s delta (§ Context) and the episode itself — *"Out of the Fire, Into the Frying Pan"* (prehistoric origins) was named with the ruling, and the only Gastropod episode on file here is *"Where There's Smoke, There's… Whiskey, Fish, and Barbecue!"*. Confirm both with one feed fetch |
 | Pre-modern hearth / spit / griddle | filled, 2:13 | The Delicious Legacy (249 eps of ancient/medieval food history) becomes authorable — LOCATE-REQUIRED |
 | American barbecue's birth and westward spread | other workstream's | **A Taste of the Past's "Black Smoke, the African American Roots of BBQ" and Proof's 4-part "Barbecue Trailblazers" are PADDABLE** (both on an estimated episode length — one probe each). SYSK's **"A Lip-Smacking Look at Barbecue"** is LOCATE-REQUIRED |
 | Regional US divergence (Santa Maria) | blocked, 0:00 — BBQ RADIO NETWORK ships no transcripts | Proof adds a transcript-bearing US-barbecue source; Santa Maria itself unchanged |
@@ -379,14 +416,22 @@ hold **8 passages / 8:21 total** across 5 slots:
   content. olive's 45-minute Maunika Gowardhan episode on tandoori cooking is
   **PADDABLE**, and Naan Curry's 67-minute kebab episode is LOCATE-REQUIRED. The
   §4 verdict is superseded.
-- **Mangal / kebab gains its first candidate.** The Delicious Legacy's
+- **Mangal / kebab gains its first *ad-gated* candidate.** The Delicious Legacy's
   "Kokoretsi: The Ultimate Easter Kebab!" was the only kebab-adjacent food
-  episode found anywhere in either pass, and was rejected at 1.170. It is now
-  authorable, LOCATE-REQUIRED.
+  episode found in the *first* pass, and was rejected at 1.170. It is now
+  authorable, LOCATE-REQUIRED. Be careful not to over-claim this one: the second
+  pass found **52 mangal/kebab episode hits across 26 shows**, one of them
+  directly on topic and measured **1.0000** (Gurmelik Denemeleri #13) — and that
+  one was rejected on the **content** gate, which this ADR does not touch. So the
+  tradition was never blocked *solely* by ads, and it is not solved now.
 
 **Two traditions are unaffected, and that is the load-bearing negative:**
-**braai** has **zero** episodes across 4.71M feeds, and **Filipino lechon** has no
-source at all. Neither is an ad problem, so no ad tolerance touches them. They
+**braai** returns **zero episode-level hits** (braai / braaivleis / shisa nyama /
+potjie) across all **7,237 crawled feeds** — the feed-level sweep of the full
+4.71M-feed index did surface a handful of braai-named feeds, but they are a
+5-episode show, an Afrikaans religion station, a business podcast and a society
+chat show, none of them a source. **Filipino lechon** has no source at all.
+Neither is an ad problem, so no ad tolerance touches them. They
 are the case for a narrator (the second 2026-08-16 ruling, `DECISIONS.md`) and
 nothing else will reach them.
 
@@ -447,7 +492,9 @@ unlocks more episodes per dollar.**
   is produced, and padding a stop time produces none.
 - **It does not change the length rules.** The 30 s floor, the 75–180 s band and
   §3f's sacrificial head are unchanged. The 120 s ceiling is partly *derived* from
-  that band (reason 2 above), so moving one should move the other.
+  that band's **centre** (~110 s, reason 2 above), so if the centre of mass moves,
+  revisit this threshold — not the band's 180 s top, which is a different number
+  and never the basis for the pad.
 - **It does not lower the content bar.** Every show unlocked here still has to
   pass the gate that rejected Culinary Connections, the Grill Coach and the Idle
   Talk Institute. A Taste of the Past being usable does not make it good; someone
