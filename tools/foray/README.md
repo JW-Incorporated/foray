@@ -56,8 +56,9 @@ exceptions and are not:
   makes the recording checkable rather than decorative.
 - `role` — `quote` / `explanation` / `exchange` / `narrative`. Proposed in
   `docs/curation/segment-length-rules.md` §9 but **not** part of the schema
-  `merge-segments.mjs` writes, so today it can only live here. Without it D2 and
-  D4 are permanently uncheckable. The checker reads the segment's own `role`
+  `merge-segments.mjs` writes, so today it can only live here. Without it L2,
+  L3, L4 and D4 are permanently uncheckable (D2 is a pure duration rule and
+  needs no role). The checker reads the segment's own `role`
   first and only falls back to the Foray's copy, and it errors if the two ever
   disagree — so the day the pool schema gains the field, this copy can be
   deleted with no other change. Recording it also makes **L2, L3, L4 and D4**
