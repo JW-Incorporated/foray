@@ -42,6 +42,36 @@ they are more demanding than what the backend emits today.
   of sources, and an outro. Same structural gap the M3 prototype already
   flagged below: the real session doc has no TTS items at all.
 
+### What has been built FROM it so far (keep this list current)
+
+The ruling above still stands — nobody ports this file. What follows is the
+design *intent* rebuilt in the shipped vanilla stack, so that the next session
+can tell "not built yet" from "built, differently".
+
+| Mockup concept | Shipped as | Where |
+|---|---|---|
+| `resume` / "Jump back in" / `ForayCard` progress | resume across sessions: one row per Foray in `localStorage`, the Foray's own clock | `player/foray-progress.js`, `?foray=…` page + home rail |
+| `MiniPlayer` identity + tap-to-open | the bar already survived navigation; it now leads with the FORAY title, says `Now: <show> · part N of M`, and carries a "Back to the Foray" route | `player/client.js` |
+| `Thumbs` + `FeedbackSheet` (9 `FB_CHIPS`) | per-segment thumbs on the running order; up is one tap, down opens the reason sheet and only commits on submit | `app.js` (`cp_foray_feedback`, `thumbs` events) |
+| `ShowScreen` | NOT built. Its honest subset is: a "Where this came from" credit block per Foray — shows, episodes, clip counts, and a link out | `player/foray-sources.js` |
+| `CreateScreen`, narrator bridges, generated cover art | NOT built, deliberately. See the scope notes above and in `STATE.md`. | — |
+
+Two deviations worth knowing:
+
+- **`ShowScreen` has no data behind it.** The mockup shows a description and a
+  follower count per show; `data/segment-sources.json` carries a feed URL and
+  nothing else, and only one of Foray #1's five shows is in `data/discover.json`
+  (so only one has an `apple_collection_id`). The credit block therefore links to
+  the show's real Apple page when we know its id and to an Apple search for its
+  name when we do not, and `linkKind` records which — rather than inventing an id
+  or sending a human to an RSS document. There is no follow button, because there
+  is nothing to follow with.
+- **The mockup's resume state is read-only and hard-coded** (`const resume = { f1: 1180 }`,
+  a literal `"20 min left"`, a literal `62%`). Everything above it is computed.
+  The one number that is not the mockup's is the "already finished" threshold:
+  the mockup has none, and resuming a listener 20 seconds before the closing
+  out-point drops them into a goodbye.
+
 ### Frictions to know about before anyone implements it
 
 - It imports `react` and `lucide-react`. The repo root is deliberately

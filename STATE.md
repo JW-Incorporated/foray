@@ -7,6 +7,40 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Foray UI #2 — resume, feedback, credit (2026-08-16, one PR, no follow-up)
+
+- **What:** `feat/foray-ui-2`. Three features from `docs/ux/foray-mockup.jsx`,
+  built as design *intent* in the vanilla stack (no React, no deps, no fonts —
+  the ruling in `docs/ux/README.md` is unchanged and this does not port that
+  file). (1) **Resume across sessions**: closing the tab 20 minutes into Foray #1
+  no longer costs the hour — the Foray's own clock is stored per Foray, the page
+  opens on it, and the home screen gets the mockup's "Jump back in" rail.
+  (2) **Per-segment thumbs** with the mockup's asymmetry: up is one tap, down
+  opens the reason sheet and only commits on submit. This is the first `thumbs`
+  event the client has ever emitted — the shape is
+  `docs/curation/events-client-integration-spec.md` §2's, not a new one.
+  (3) **"Where this came from"**: the publisher credit block per Foray.
+- **New files:** `player/foray-progress.js` + test (the resume store, pure),
+  `player/foray-sources.js` + test (the credit grouping and the show link, pure).
+- **Shared files it touches:** `app.js`, `styles.css`, `player/client.js`,
+  `player/foray-playback.test.js` (six resume tests against the real Foray),
+  `test/suite-integrity.test.js` (two floors, isolated final commit),
+  `docs/ux/README.md`, this file. **Nothing in `data/`, nothing in `tools/`,
+  nothing in `index.html`.** Foray #1 stays `status: "draft"`.
+- **Heads-up — the running order's DOM changed shape.** `.fy-row` used to BE the
+  play button; a thumb inside a button is invalid HTML, so the row is now a
+  container and `.fy-jump` is the button. `data-fy` and the `is-playing` /
+  `is-played` classes moved with it. Anything keying on `.fy-row.is-playing`
+  needs `.fy-jump.is-playing`.
+- **Heads-up — a stored position is NOT an unlock.** The home rail is gated
+  through the same `listableForays` rule as everything else, so a draft's
+  progress is remembered and simply not advertised without `?foray=` in the URL.
+  Do not "fix" that; it is the leak `player/foray-resolve.js` closed on purpose.
+- **Not built, on purpose:** `CreateScreen` (on-demand Forays), narrator bridges
+  (no audio exists), generated cover art, and the full `ShowScreen` (no
+  description or follower data exists for four of the five shows).
+- **Related:** #128, #133, #111, #65.
+
 ### Foray UI — Foray #1 plays in the browser (2026-08-16, one PR, no follow-up)
 
 - **What:** `feat/foray-ui`, issues #128 / #133 / #111. The web app gets a Foray
